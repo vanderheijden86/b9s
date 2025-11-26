@@ -41,9 +41,50 @@ func GenerateMarkdown(issues []model.Issue, title string) (string, error) {
 	sb.WriteString("## Table of Contents\n\n")
 	for _, i := range issues {
 		link := fmt.Sprintf("#%s", strings.ToLower(i.ID)) // This is heuristic, markdown anchors vary by renderer
-		sb.WriteString(fmt.Sprintf("- [%s %s](%s) (%s)\n", i.ID, i.Title, link, i.Status))
+		sb.WriteString("- [" + i.ID + " " + i.Title + "](" + link + ") (" + string(i.Status) + ")\n")
 	}
 	sb.WriteString("\n---\n\n")
+
+	// Dependency Graph (Mermaid)
+	sb.WriteString("## Dependency Graph\n\n")
+	sb.WriteString("```mermaid\ngraph TD\n")
+	hasLinks := false
+	for _, i := range issues {
+		// Node definition style
+		// Use styling based on status?
+		// classDef open fill:#50FA7B,stroke:#333,stroke-width:2px;
+		// Not strictly necessary but cool. Let's keep it simple first.
+		
+		// Sanitize title for mermaid
+		safeTitle := strings.ReplaceAll(i.Title, "\"", "'")
+		safeTitle = strings.ReplaceAll(safeTitle, "[]", "")
+		safeTitle = strings.ReplaceAll(safeTitle, "(", "")
+		safeTitle = strings.ReplaceAll(safeTitle, ")", "")
+		if len(safeTitle) > 30 {
+			safeTitle = safeTitle[:27] + "..."
+		}
+		
+		// Define node
+		sb.WriteString(fmt.Sprintf("    %s[\"%s <br/> %s\"]\n", i.ID, i.ID, safeTitle))
+
+		for _, dep := range i.Dependencies {
+			// i depends on dep.DependsOnID
+			// In beads: i -> depends_on
+			// Graph arrow: i --> depends_on
+			linkStyle := "-.->"
+			if dep.Type == model.DepBlocks {
+				linkStyle = "==>" // Bold arrow for blockers
+			}
+			sb.WriteString(fmt.Sprintf("    %s %s %s\n", i.ID, linkStyle, dep.DependsOnID))
+			hasLinks = true
+		}
+	}
+	if !hasLinks {
+		sb.WriteString("    NoDependencies[No Dependencies]\n")
+	}
+	sb.WriteString("```\n\n")
+	
+	sb.WriteString("---\n\n")
 
 	// Issues
 	for _, i := range issues {

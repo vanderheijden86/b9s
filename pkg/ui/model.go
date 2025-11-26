@@ -26,6 +26,7 @@ type focus int
 const (
 	focusList focus = iota
 	focusDetail
+	focusBoard
 )
 
 type UpdateMsg struct {
@@ -49,6 +50,7 @@ type Model struct {
 	list          list.Model
 	viewport      viewport.Model
 	renderer      *glamour.TermRenderer
+	board         BoardModel
 	
 	// Update State
 	updateAvailable bool
@@ -58,6 +60,7 @@ type Model struct {
 	// State
 	focused       focus
 	isSplitView   bool
+	isBoardView   bool
 	showDetails   bool
 	ready         bool
 	width         int
@@ -154,12 +157,16 @@ func NewModel(issues []model.Issue) Model {
 		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(80),
 	)
+	
+	// Initialize Board
+	board := NewBoardModel(issues)
 
 	m := Model{
 		issues:        issues,
 		issueMap:      issueMap,
 		list:          l,
 		renderer:      r,
+		board:         board,
 		currentFilter: "all",
 		focused:       focusList,
 		countOpen:     cOpen,
@@ -205,17 +212,65 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			case "tab":
-				if m.isSplitView {
+				if m.isSplitView && !m.isBoardView {
 					if m.focused == focusList {
 						m.focused = focusDetail
 					} else {
 						m.focused = focusList
 					}
 				}
+			case "b":
+				m.isBoardView = !m.isBoardView
+				if m.isBoardView {
+					m.focused = focusBoard
+				} else {
+					m.focused = focusList
+				}
 			}
 
 			// Focus-specific
-			if m.focused == focusList {
+			if m.focused == focusBoard {
+				switch msg.String() {
+				case "h", "left":
+					m.board.MoveLeft()
+				case "l", "right":
+					m.board.MoveRight()
+				case "j", "down":
+					m.board.MoveDown()
+				case "k", "up":
+					m.board.MoveUp()
+				case "enter":
+					// Switch to detail view of selected issue
+					selected := m.board.SelectedIssue()
+					if selected != nil {
+						// Find index in list? Or just force viewport update
+						// Ideally sync list selection
+						// For now, just toggle off board and try to select in list?
+						// Too complex. Let's just show details overlay?
+						// Let's reuse SplitView logic: set selected item in list
+						// Finding index is slow.
+						// Let's just update viewport manually and switch focus to detail if split view.
+						// Or just switch back to list view but filtered?
+						
+						// Simple hack: Switch back to list view, select correct item
+						// requires linear scan
+						for i, item := range m.list.Items() {
+							if item.(IssueItem).Issue.ID == selected.ID {
+								m.list.Select(i)
+								break
+							}
+						}
+						m.isBoardView = false
+						m.focused = focusList
+						if m.isSplitView {
+							m.focused = focusDetail
+						} else {
+							m.showDetails = true
+						}
+						m.updateViewportContent()
+					}
+				}
+			} else if m.focused == focusList {
 				switch msg.String() {
 				case "enter":
 					if !m.isSplitView {
@@ -309,7 +364,9 @@ func (m Model) View() string {
 
 	var body string
 
-	if m.isSplitView {
+	if m.isBoardView {
+		body = m.board.View(m.width, m.height-1)
+	} else if m.isSplitView {
 		// Split View
 		var listStyle, detailStyle lipgloss.Style
 		
@@ -366,16 +423,18 @@ func (m *Model) renderFooter() string {
 	}
 
 	var keys string
-	if m.list.FilterState() == list.Filtering {
+	if m.isBoardView {
+		keys = "h/j/k/l: nav • enter: view • b: list • q: quit"
+	} else if m.list.FilterState() == list.Filtering {
 		keys = "esc: cancel filter • enter: select"
 	} else {
 		if m.isSplitView {
-			keys = "tab: focus • o/c/r/a: filter • /: search • q: quit"
+			keys = "tab: focus • b: board • o/c/r/a: filter • /: search • q: quit"
 		} else {
 			if m.showDetails {
 				keys = "esc: back • j/k: scroll • q: quit"
 			} else {
-				keys = "enter: details • o/c/r/a: filter • /: search • q: quit"
+				keys = "enter: details • b: board • o/c/r/a: filter • /: search • q: quit"
 			}
 		}
 	}

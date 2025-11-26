@@ -4,69 +4,47 @@ A polished, high-performance TUI for managing and exploring [Beads](https://gith
 
 ## Features
 
-### 🖥️ Slick Dashboard
-*   **Adaptive Split-View**: Automatically transitions to a master-detail dashboard on wide screens (>100 cols).
-*   **Ultra-Wide Mode**: Shows extended metadata (Age, Updated At, Comments) on large displays (>180 cols).
-*   **Live Stats**: Persistent stats bar showing Open, Ready, Blocked, and Closed counts.
-
-### 🎨 Rich Visualization
-*   **Markdown Rendering**: Beautiful rendering of issue content with syntax highlighting (via `glamour`).
-*   **Dracula Theme**: A vibrant, high-contrast color scheme.
-*   **Dependency Graph**: Visualizes blockers (⛔) and related (🔗) issues.
+### 🖥️ Visual Dashboard
+*   **Kanban Board**: Press `b` to toggle a 4-column Kanban board (Open, In Progress, Blocked, Closed).
+*   **Adaptive Split-View**: Automatically transitions to a master-detail dashboard on wide screens.
+*   **Rich Visualization**: Markdown rendering, syntax highlighting, and emoji status icons.
 
 ### ⚡ Workflow
-*   **Instant Filtering**: 
-    *   `o`: **Open** only
-    *   `r`: **Ready** work (Open & Unblocked)
-    *   `c`: **Closed**
-    *   `a`: **All**
-*   **Search**: Use the list's fuzzy search (type to filter).
-*   **Export**: Generate comprehensive Markdown reports with `--export-md`.
+*   **Instant Filtering**: `o` (Open), `r` (Ready), `c` (Closed), `a` (All).
+*   **Markdown Export**: Generate comprehensive reports with dependency graphs using `bv --export-md report.md`.
+*   **Keyboard Centric**: `vim` style navigation (`j`/`k`), `h`/`l` for board columns.
 
-### 🛠️ Robust & Reliable
-*   **Self-Updating**: Automatically checks for new releases.
-*   **Resilient Loader**: Handles large or partially malformed JSONL databases gracefully.
+### 🛠️ Robustness
+*   **Self-Updating**: Automatically notifies you of new releases.
+*   **Reliable**: Handles complex data gracefully.
 
 ## Installation
 
-### One-line Install
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.sh | bash
 ```
 
-### From Source
-```bash
-go install github.com/Dicklesworthstone/beads_viewer/cmd/bv@latest
-```
-
 ## Usage
-
-Navigate to any project initialized with `bd init` and run:
 
 ```bash
 bv
 ```
 
-To export a report:
-```bash
-bv --export-md report.md
-```
-
-### Keybindings
+### Controls
 
 | Key | Context | Action |
 | :--- | :--- | :--- |
+| `b` | Global | Toggle **Kanban Board** / List View |
 | `Tab` | Split View | Switch focus between List and Details |
-| `j` / `k` | Global | Navigate list or scroll details |
-| `Enter` | List | Open details (Mobile) or Focus details (Split) |
-| `o` / `r` / `c` / `a` | Global | Filter by status |
+| `h`/`j`/`k`/`l`| Board | Navigate columns (h/l) and items (j/k) |
+| `Enter` | List/Board| Open/Focus details |
+| `o` / `r` / `c` | Global | Filter status |
 | `q` | Global | Quit |
 
 ## CI/CD
 
-This project uses GitHub Actions for:
-*   **Tests**: Runs full unit and integration suite on every push.
-*   **Releases**: Automatically builds and attaches optimized binaries for Linux, macOS, and Windows to every release tag.
+*   **CI**: Runs tests on every push.
+*   **Release**: Builds binaries for all platforms.
 
 ## License
 
