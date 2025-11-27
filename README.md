@@ -372,78 +372,29 @@ The output is designed to be strictly typed and easily parseable by tools like `
 `bv` is built with the **Bubble Tea** framework, ensuring a glitch-free, 60fps experience. It features an adaptive layout engine that responds to terminal resize events and a custom ASCII/Unicode graph renderer.
 
 ```mermaid
-flowchart TB
-    %% ═══════════════════════════════════════════════════════════════════
-    %% Elegant Pastel Theme — Soft, Modern, Professional
-    %% ═══════════════════════════════════════════════════════════════════
+flowchart LR
+    classDef core fill:#fef3e2,stroke:#f5d0a9,stroke-width:2px,color:#8b5a2b
+    classDef engine fill:#f0e6f6,stroke:#d4b8e0,stroke-width:2px,color:#5d3a6b
+    classDef ui fill:#e6f3e6,stroke:#b8d9b8,stroke-width:2px,color:#2d5a2d
+    classDef output fill:#e8f4f8,stroke:#b8d4e3,stroke-width:2px,color:#2c5f7c
 
-    classDef elmCore fill:#fef3e2,stroke:#f5d0a9,stroke-width:2px,color:#8b5a2b
-    classDef input fill:#e8f4f8,stroke:#b8d4e3,stroke-width:2px,color:#2c5f7c
-    classDef analysis fill:#f0e6f6,stroke:#d4b8e0,stroke-width:2px,color:#5d3a6b
-    classDef views fill:#e6f3e6,stroke:#b8d9b8,stroke-width:2px,color:#2d5a2d
-    classDef render fill:#fce4ec,stroke:#f8bbd9,stroke-width:2px,color:#7b3547
-    classDef accent fill:#fff8e1,stroke:#ffe082,stroke-width:2px,color:#8d6e00
+    INPUT["⌨️ Input<br/>Keys · Mouse · Resize"]:::core
+    MODEL["🫖 Model<br/>Issues · Stats · Focus"]:::core
+    GRAPH["🧮 Graph Engine<br/>PageRank · HITS · Cycles"]:::engine
+    VIEWS["🖼️ Views<br/>List · Board · Graph · Insights"]:::ui
+    LAYOUT["📐 Layout<br/>Mobile · Split · Wide"]:::ui
+    TERM["🖥️ Terminal<br/>60fps Output"]:::output
 
-    subgraph elm ["  🫖  Elm Architecture  "]
-        direction TB
-        M["<b>Model</b><br/><i>issues · stats · focus</i>"]:::elmCore
-        U["<b>Update</b><br/><i>KeyMsg · WindowSize</i>"]:::elmCore
-        V["<b>View</b><br/><i>Render → string</i>"]:::elmCore
+    INPUT -->|tea.Msg| MODEL
+    GRAPH -->|metrics| MODEL
+    MODEL -->|state| VIEWS
+    VIEWS --> LAYOUT
+    LAYOUT --> TERM
 
-        M -->|"state"| V
-        V -->|"tea.Cmd"| U
-        U -->|"mutate"| M
-    end
-
-    subgraph input_layer ["  ⌨️  Input Layer  "]
-        direction LR
-        KB["Keyboard<br/><i>j/k · Tab · Enter</i>"]:::input
-        RS["Resize<br/><i>WindowSizeMsg</i>"]:::input
-        MS["Mouse<br/><i>Scroll · Click</i>"]:::input
-    end
-
-    subgraph analysis_engine ["  🧮  Analysis Engine  "]
-        direction TB
-        GE["<b>Graph Engine</b>"]:::analysis
-        PR["PageRank"]:::analysis
-        BW["Betweenness"]:::analysis
-        EV["Eigenvector"]:::analysis
-        HT["HITS"]:::analysis
-        CP["Critical Path"]:::analysis
-
-        GE --> PR & BW & EV & HT & CP
-    end
-
-    subgraph view_layer ["  🖼️  View Components  "]
-        direction TB
-        LV["📋 List View"]:::views
-        BV["📊 Board View"]:::views
-        GV["🕸️ Graph View"]:::views
-        IV["📈 Insights"]:::views
-        AV["⚡ Actionable"]:::views
-    end
-
-    subgraph layout ["  📐  Adaptive Layout  "]
-        direction LR
-        L1["Mobile<br/><i>&lt;100 cols</i>"]:::render
-        L2["Split<br/><i>100-140</i>"]:::render
-        L3["UltraWide<br/><i>&gt;140 cols</i>"]:::render
-    end
-
-    %% Connections
-    input_layer -->|"tea.Msg"| elm
-    GE -->|"GraphStats"| M
-    M -->|"state"| view_layer
-    view_layer -->|"geometry"| layout
-    layout -->|"rendered"| TERM["🖥️ Terminal<br/><i>60fps · TrueColor</i>"]:::accent
-
-    linkStyle 0,1,2 stroke:#f5d0a9,stroke-width:2px
-    linkStyle 3 stroke:#b8d4e3,stroke-width:2px
-    linkStyle 4,5,6,7,8 stroke:#d4b8e0,stroke-width:1.5px
-    linkStyle 9 stroke:#d4b8e0,stroke-width:2px
-    linkStyle 10 stroke:#b8d9b8,stroke-width:2px
-    linkStyle 11 stroke:#f8bbd9,stroke-width:2px
-    linkStyle 12 stroke:#ffe082,stroke-width:2px
+    linkStyle 0 stroke:#f5d0a9,stroke-width:2px
+    linkStyle 1 stroke:#d4b8e0,stroke-width:2px
+    linkStyle 2 stroke:#b8d9b8,stroke-width:2px
+    linkStyle 3,4 stroke:#b8d4e3,stroke-width:2px
 ```
 
 ### 1. Adaptive Layout Engine
