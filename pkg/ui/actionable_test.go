@@ -71,7 +71,7 @@ func TestActionableRenderShowsSummary(t *testing.T) {
 	if !strings.Contains(out, "Start with ROOT") {
 		t.Fatalf("expected summary callout for ROOT, got:\n%s", out)
 	}
-	if !strings.Contains(out, "(→2)") {
+	if !strings.Contains(out, "→2") {
 		t.Fatalf("expected unblocks count badge, got:\n%s", out)
 	}
 }

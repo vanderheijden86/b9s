@@ -20,43 +20,43 @@ type Recipe struct {
 
 // FilterConfig defines which issues to include
 type FilterConfig struct {
-	Status     []string `yaml:"status,omitempty" json:"status,omitempty"`         // open, closed, in_progress, blocked
-	Priority   []int    `yaml:"priority,omitempty" json:"priority,omitempty"`     // 0, 1, 2, 3
-	Tags       []string `yaml:"tags,omitempty" json:"tags,omitempty"`             // Include issues with these tags
-	ExcludeTags []string `yaml:"exclude_tags,omitempty" json:"exclude_tags,omitempty"` // Exclude issues with these tags
-	CreatedAfter  string `yaml:"created_after,omitempty" json:"created_after,omitempty"`   // Relative: "14d", "1w", "2m" or ISO date
-	CreatedBefore string `yaml:"created_before,omitempty" json:"created_before,omitempty"` // Relative or ISO date
-	UpdatedAfter  string `yaml:"updated_after,omitempty" json:"updated_after,omitempty"`   // Relative or ISO date
-	UpdatedBefore string `yaml:"updated_before,omitempty" json:"updated_before,omitempty"` // Relative or ISO date
-	HasBlockers   *bool  `yaml:"has_blockers,omitempty" json:"has_blockers,omitempty"`     // true = blocked, false = actionable
-	Actionable    *bool  `yaml:"actionable,omitempty" json:"actionable,omitempty"`         // true = no open blockers
-	TitleContains string `yaml:"title_contains,omitempty" json:"title_contains,omitempty"` // Substring match
-	IDPrefix      string `yaml:"id_prefix,omitempty" json:"id_prefix,omitempty"`           // e.g., "bv-" for project filtering
+	Status        []string `yaml:"status,omitempty" json:"status,omitempty"`                 // open, closed, in_progress, blocked
+	Priority      []int    `yaml:"priority,omitempty" json:"priority,omitempty"`             // 0, 1, 2, 3
+	Tags          []string `yaml:"tags,omitempty" json:"tags,omitempty"`                     // Include issues with these tags
+	ExcludeTags   []string `yaml:"exclude_tags,omitempty" json:"exclude_tags,omitempty"`     // Exclude issues with these tags
+	CreatedAfter  string   `yaml:"created_after,omitempty" json:"created_after,omitempty"`   // Relative: "14d", "1w", "2m" or ISO date
+	CreatedBefore string   `yaml:"created_before,omitempty" json:"created_before,omitempty"` // Relative or ISO date
+	UpdatedAfter  string   `yaml:"updated_after,omitempty" json:"updated_after,omitempty"`   // Relative or ISO date
+	UpdatedBefore string   `yaml:"updated_before,omitempty" json:"updated_before,omitempty"` // Relative or ISO date
+	HasBlockers   *bool    `yaml:"has_blockers,omitempty" json:"has_blockers,omitempty"`     // true = blocked, false = actionable
+	Actionable    *bool    `yaml:"actionable,omitempty" json:"actionable,omitempty"`         // true = no open blockers
+	TitleContains string   `yaml:"title_contains,omitempty" json:"title_contains,omitempty"` // Substring match
+	IDPrefix      string   `yaml:"id_prefix,omitempty" json:"id_prefix,omitempty"`           // e.g., "bv-" for project filtering
 }
 
 // SortConfig defines how to order issues
 type SortConfig struct {
-	Field     string `yaml:"field" json:"field"`                               // priority, created, updated, title, id, pagerank, betweenness
-	Direction string `yaml:"direction,omitempty" json:"direction,omitempty"`   // asc, desc (default: asc for priority, desc for dates)
+	Field     string      `yaml:"field" json:"field"`                             // priority, created, updated, title, id, pagerank, betweenness
+	Direction string      `yaml:"direction,omitempty" json:"direction,omitempty"` // asc, desc (default: asc for priority, desc for dates)
 	Secondary *SortConfig `yaml:"secondary,omitempty" json:"secondary,omitempty"` // Tie-breaker
 }
 
 // ViewConfig controls display options
 type ViewConfig struct {
-	Columns      []string `yaml:"columns,omitempty" json:"columns,omitempty"`           // id, title, status, priority, created, updated, tags, blockers
-	ShowGraph    bool     `yaml:"show_graph,omitempty" json:"show_graph,omitempty"`     // Show dependency graph in TUI
-	ShowMetrics  bool     `yaml:"show_metrics,omitempty" json:"show_metrics,omitempty"` // Show analysis metrics
-	GroupBy      string   `yaml:"group_by,omitempty" json:"group_by,omitempty"`         // status, priority, tag, none
-	Collapsed    bool     `yaml:"collapsed,omitempty" json:"collapsed,omitempty"`       // Start with groups collapsed
-	MaxItems     int      `yaml:"max_items,omitempty" json:"max_items,omitempty"`       // Limit displayed items (0 = unlimited)
-	TruncateTitle int    `yaml:"truncate_title,omitempty" json:"truncate_title,omitempty"` // Max title length
+	Columns       []string `yaml:"columns,omitempty" json:"columns,omitempty"`               // id, title, status, priority, created, updated, tags, blockers
+	ShowGraph     bool     `yaml:"show_graph,omitempty" json:"show_graph,omitempty"`         // Show dependency graph in TUI
+	ShowMetrics   bool     `yaml:"show_metrics,omitempty" json:"show_metrics,omitempty"`     // Show analysis metrics
+	GroupBy       string   `yaml:"group_by,omitempty" json:"group_by,omitempty"`             // status, priority, tag, none
+	Collapsed     bool     `yaml:"collapsed,omitempty" json:"collapsed,omitempty"`           // Start with groups collapsed
+	MaxItems      int      `yaml:"max_items,omitempty" json:"max_items,omitempty"`           // Limit displayed items (0 = unlimited)
+	TruncateTitle int      `yaml:"truncate_title,omitempty" json:"truncate_title,omitempty"` // Max title length
 }
 
 // ExportConfig controls output format options
 type ExportConfig struct {
-	Format       string `yaml:"format,omitempty" json:"format,omitempty"`             // markdown, json, csv, mermaid
+	Format       string `yaml:"format,omitempty" json:"format,omitempty"`               // markdown, json, csv, mermaid
 	IncludeGraph bool   `yaml:"include_graph,omitempty" json:"include_graph,omitempty"` // Include Mermaid diagram
-	Template     string `yaml:"template,omitempty" json:"template,omitempty"`         // Custom template path
+	Template     string `yaml:"template,omitempty" json:"template,omitempty"`           // Custom template path
 }
 
 // relativeTimePattern matches relative time expressions like "14d", "2w", "1m", "1y"

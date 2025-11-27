@@ -68,12 +68,12 @@ type RepoDefaults struct {
 // DefaultDiscoveryPatterns returns the standard patterns for common monorepo layouts
 func DefaultDiscoveryPatterns() []string {
 	return []string{
-		"*",           // Direct children
-		"packages/*",  // npm/pnpm workspaces
-		"apps/*",      // Next.js/Turborepo convention
-		"services/*",  // Microservices layout
-		"libs/*",      // Library packages
-		"modules/*",   // Go modules layout
+		"*",          // Direct children
+		"packages/*", // npm/pnpm workspaces
+		"apps/*",     // Next.js/Turborepo convention
+		"services/*", // Microservices layout
+		"libs/*",     // Library packages
+		"modules/*",  // Go modules layout
 	}
 }
 
@@ -297,9 +297,9 @@ func UnqualifyID(namespacedID string, prefix string) string {
 
 // IDResolver provides methods for resolving IDs across repos
 type IDResolver struct {
-	prefixes    []string          // All known prefixes
-	prefixToRepo map[string]string // prefix -> repo name mapping
-	currentPrefix string           // Current repo's prefix for default resolution
+	prefixes      []string          // All known prefixes
+	prefixToRepo  map[string]string // prefix -> repo name mapping
+	currentPrefix string            // Current repo's prefix for default resolution
 }
 
 // NewIDResolver creates an ID resolver from a workspace config

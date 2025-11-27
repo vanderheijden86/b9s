@@ -10,8 +10,8 @@ import (
 
 func TestLoaderBuiltinRecipes(t *testing.T) {
 	loader := recipe.NewLoader(
-		recipe.WithUserPath(""),    // Disable user config
-		recipe.WithProjectDir(""),  // Disable project config
+		recipe.WithUserPath(""),   // Disable user config
+		recipe.WithProjectDir(""), // Disable project config
 	)
 
 	if err := loader.Load(); err != nil {
