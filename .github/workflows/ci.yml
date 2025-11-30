@@ -18,10 +18,64 @@ jobs:
         go-version: '1.25'
         
     - name: Build
-      run: go build -v ./cmd/bv/main.go
+      run: go build -v ./cmd/bv
       
-    - name: Test
-      run: go test -v ./...
+    - name: Test with Coverage
+      run: go test -v -covermode=atomic -coverprofile=coverage.out ./...
+
+    - name: Enforce Coverage Threshold (project)
+      run: |
+        total=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+        echo "Total coverage: ${total}%"
+        python - <<'PY'
+import sys, os
+total = float(os.environ['total'])
+threshold = 80.0
+if total < threshold:
+    print(f"Coverage {total:.2f}% is below threshold {threshold}%")
+    sys.exit(1)
+PY
+
+    - name: Enforce Coverage Thresholds (per-package, coarse)
+      run: |
+        set -e
+        go tool cover -func=coverage.out | awk '/^beads_viewer\/pkg\// {print $1, $3}' > pkgcov.txt
+        python - <<'PY'
+import sys
+thresholds = {
+    'beads_viewer/pkg/analysis': 90.0,
+    'beads_viewer/pkg/export': 95.0,
+    'beads_viewer/pkg/recipe': 90.0,
+    'beads_viewer/pkg/ui': 70.0,
+    'beads_viewer/pkg/loader': 85.0,
+    'beads_viewer/pkg/updater': 70.0,
+    'beads_viewer/pkg/watcher': 85.0,
+    'beads_viewer/pkg/workspace': 90.0,
+}
+violations = []
+with open('pkgcov.txt') as f:
+    for line in f:
+        path, pct = line.strip().split()
+        pct = float(pct.strip('%'))
+        req = thresholds.get(path)
+        if req is not None and pct < req:
+            violations.append((path, pct, req))
+if violations:
+    for path, pct, req in violations:
+        print(f"Coverage for {path} is {pct:.2f}% (< {req}%)")
+    sys.exit(1)
+print("Per-package thresholds OK")
+PY
+
+    - name: Coverage Report Artifact
+      run: |
+        go tool cover -html=coverage.out -o coverage.html
+      
+    - name: Upload Coverage Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.html
 
     - name: Run Quick Benchmarks
       run: |
