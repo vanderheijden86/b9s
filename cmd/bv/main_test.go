@@ -2,8 +2,10 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
+	"github.com/Dicklesworthstone/beads_viewer/pkg/recipe"
 )
 
 func TestFilterByRepo_CaseInsensitiveAndFlexibleSeparators(t *testing.T) {
@@ -33,3 +35,94 @@ func TestFilterByRepo_CaseInsensitiveAndFlexibleSeparators(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyRecipeFilters_ActionableAndHasBlockers(t *testing.T) {
+	now := time.Now()
+	a := model.Issue{ID: "A", Title: "Root", Status: model.StatusOpen, Priority: 2, CreatedAt: now}
+	b := model.Issue{
+		ID:     "B",
+		Title:  "Blocked by A",
+		Status: model.StatusOpen,
+		Dependencies: []*model.Dependency{
+			{DependsOnID: "A", Type: model.DepBlocks},
+		},
+		CreatedAt: now.Add(-time.Hour),
+	}
+	issues := []model.Issue{a, b}
+
+	r := &recipe.Recipe{
+		Filters: recipe.FilterConfig{
+			Actionable: ptrBool(true),
+		},
+	}
+	actionable := applyRecipeFilters(issues, r)
+	if len(actionable) != 1 || actionable[0].ID != "A" {
+		t.Fatalf("expected only A actionable, got %#v", actionable)
+	}
+
+	r.Filters.Actionable = nil
+	r.Filters.HasBlockers = ptrBool(true)
+	blocked := applyRecipeFilters(issues, r)
+	if len(blocked) != 1 || blocked[0].ID != "B" {
+		t.Fatalf("expected only B when HasBlockers=true, got %#v", blocked)
+	}
+}
+
+func TestApplyRecipeFilters_TitleAndPrefix(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "UI-1", Title: "Add login button"},
+		{ID: "API-2", Title: "Login endpoint"},
+	}
+	r := &recipe.Recipe{
+		Filters: recipe.FilterConfig{
+			TitleContains: "login",
+			IDPrefix:      "API",
+		},
+	}
+	got := applyRecipeFilters(issues, r)
+	if len(got) != 1 || got[0].ID != "API-2" {
+		t.Fatalf("expected API-2 only, got %#v", got)
+	}
+}
+
+func TestApplyRecipeSort_DefaultsAndFields(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "A", Title: "zzz", Priority: 2, CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-30 * time.Minute)},
+		{ID: "B", Title: "aaa", Priority: 0, CreatedAt: now, UpdatedAt: now},
+	}
+
+	// Priority default ascending
+	r := &recipe.Recipe{Sort: recipe.SortConfig{Field: "priority"}}
+	sorted := applyRecipeSort(append([]model.Issue{}, issues...), r)
+	if sorted[0].ID != "B" {
+		t.Fatalf("priority sort expected B first, got %s", sorted[0].ID)
+	}
+
+	// Created default descending (newest first)
+	r.Sort = recipe.SortConfig{Field: "created"}
+	sorted = applyRecipeSort(append([]model.Issue{}, issues...), r)
+	if sorted[0].ID != "B" {
+		t.Fatalf("created sort expected newest (B) first, got %s", sorted[0].ID)
+	}
+
+	// Title ascending explicit desc
+	r.Sort = recipe.SortConfig{Field: "title", Direction: "desc"}
+	sorted = applyRecipeSort(append([]model.Issue{}, issues...), r)
+	if sorted[0].ID != "A" {
+		t.Fatalf("title desc expected A (zzz) first, got %s", sorted[0].ID)
+	}
+}
+
+func TestFormatCycle(t *testing.T) {
+	if got := formatCycle(nil); got != "(empty)" {
+		t.Fatalf("expected (empty), got %q", got)
+	}
+	c := []string{"X", "Y", "Z"}
+	want := "X → Y → Z → X"
+	if got := formatCycle(c); got != want {
+		t.Fatalf("formatCycle mismatch: got %q want %q", got, want)
+	}
+}
+
+func ptrBool(b bool) *bool { return &b }
