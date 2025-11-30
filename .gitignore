@@ -3,3 +3,16 @@ beads_reference/
 /main
 *.test
 cmd/bv/bv
+
+# Build artifacts
+dist/
+coverage.out
+coverage.html
+
+# Benchmark outputs
+benchmarks/baseline.txt
+benchmarks/current.txt
+
+# Local BV state and reports
+.bv/
+beads_report_beads_viewer_*.md
