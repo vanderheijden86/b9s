@@ -1,21 +1,27 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"beads_viewer/pkg/analysis"
+	"beads_viewer/pkg/baseline"
+	"beads_viewer/pkg/drift"
 	"beads_viewer/pkg/export"
+	"beads_viewer/pkg/hooks"
 	"beads_viewer/pkg/loader"
 	"beads_viewer/pkg/model"
 	"beads_viewer/pkg/recipe"
 	"beads_viewer/pkg/ui"
 	"beads_viewer/pkg/version"
+	"beads_viewer/pkg/workspace"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -34,6 +40,16 @@ func main() {
 	recipeShort := flag.String("r", "", "Shorthand for --recipe")
 	diffSince := flag.String("diff-since", "", "Show changes since historical point (commit SHA, branch, tag, or date)")
 	asOf := flag.String("as-of", "", "View state at point in time (commit SHA, branch, tag, or date)")
+	forceFullAnalysis := flag.Bool("force-full-analysis", false, "Compute all metrics regardless of graph size (may be slow for large graphs)")
+	profileStartup := flag.Bool("profile-startup", false, "Output detailed startup timing profile for diagnostics")
+	profileJSON := flag.Bool("profile-json", false, "Output profile in JSON format (use with --profile-startup)")
+	noHooks := flag.Bool("no-hooks", false, "Skip running hooks during export")
+	workspaceConfig := flag.String("workspace", "", "Load issues from workspace config file (.bv/workspace.yaml)")
+	repoFilter := flag.String("repo", "", "Filter issues by repository prefix (e.g., 'api-' or 'api')")
+	saveBaseline := flag.String("save-baseline", "", "Save current metrics as baseline with optional description")
+	baselineInfo := flag.Bool("baseline-info", false, "Show information about the current baseline")
+	checkDrift := flag.Bool("check-drift", false, "Check for drift from baseline (exit codes: 0=OK, 1=critical, 2=warning)")
+	robotDriftCheck := flag.Bool("robot-drift", false, "Output drift check as JSON (use with --check-drift)")
 	flag.Parse()
 
 	// Handle -r shorthand
@@ -84,6 +100,17 @@ func main() {
 		fmt.Println("")
 		fmt.Println("  --export-md <file>")
 		fmt.Println("      Generates a readable status report with Mermaid.js visualizations.")
+		fmt.Println("      Runs pre-export and post-export hooks if configured in .bv/hooks.yaml")
+		fmt.Println("")
+		fmt.Println("  --no-hooks")
+		fmt.Println("      Skip running hooks during export. Useful for CI or quick exports.")
+		fmt.Println("")
+		fmt.Println("  Hook Configuration (.bv/hooks.yaml)")
+		fmt.Println("      Configure hooks to automate export workflows:")
+		fmt.Println("      - pre-export: Validation, notifications (failure cancels export)")
+		fmt.Println("      - post-export: Notifications, uploads (failure logged only)")
+		fmt.Println("      Environment variables: BV_EXPORT_PATH, BV_EXPORT_FORMAT,")
+		fmt.Println("        BV_ISSUE_COUNT, BV_TIMESTAMP")
 		fmt.Println("")
 		fmt.Println("  --diff-since <commit|date>")
 		fmt.Println("      Shows changes since a historical point.")
@@ -113,6 +140,52 @@ func main() {
 		fmt.Println("      Apply a named recipe to filter and sort issues.")
 		fmt.Println("      Example: bv --recipe actionable")
 		fmt.Println("      Built-in recipes: default, actionable, recent, blocked, high-impact, stale")
+		fmt.Println("")
+		fmt.Println("  --profile-startup")
+		fmt.Println("      Outputs detailed startup timing profile for diagnostics.")
+		fmt.Println("      Shows Phase 1 (blocking) and Phase 2 (async) breakdown.")
+		fmt.Println("      Provides recommendations based on timing analysis.")
+		fmt.Println("      Use with --profile-json for machine-readable output.")
+		fmt.Println("")
+		fmt.Println("  --workspace CONFIG")
+		fmt.Println("      Load issues from workspace configuration file.")
+		fmt.Println("      Path: typically .bv/workspace.yaml")
+		fmt.Println("      Aggregates issues from multiple repositories with namespaced IDs.")
+		fmt.Println("      Example: bv --workspace .bv/workspace.yaml")
+		fmt.Println("")
+		fmt.Println("  --repo PREFIX")
+		fmt.Println("      Filter issues by repository prefix.")
+		fmt.Println("      Use with --workspace to focus on one repo in a multi-repo view.")
+		fmt.Println("      Matches ID prefixes like 'api-', 'web-', or partial 'api'.")
+		fmt.Println("      Example: bv --workspace .bv/workspace.yaml --repo api")
+		fmt.Println("")
+		fmt.Println("  --save-baseline \"description\"")
+		fmt.Println("      Save current metrics as a baseline snapshot.")
+		fmt.Println("      Stores graph stats, top metrics, and cycle info in .bv/baseline.json.")
+		fmt.Println("      Use for drift detection: compare current state to saved baseline.")
+		fmt.Println("      Example: bv --save-baseline \"Before major refactor\"")
+		fmt.Println("")
+		fmt.Println("  --baseline-info")
+		fmt.Println("      Show information about the saved baseline.")
+		fmt.Println("      Displays: creation date, git commit, graph stats, top metrics.")
+		fmt.Println("")
+		fmt.Println("  --check-drift")
+		fmt.Println("      Check current metrics against saved baseline for drift.")
+		fmt.Println("      Exit codes for CI integration:")
+		fmt.Println("        0 = No critical or warning alerts (info-only OK)")
+		fmt.Println("        1 = Critical alerts (new cycles detected)")
+		fmt.Println("        2 = Warning alerts (blocked increase, density growth)")
+		fmt.Println("      Human-readable output by default, use --robot-drift for JSON.")
+		fmt.Println("")
+		fmt.Println("  --robot-drift")
+		fmt.Println("      Output drift check as JSON (use with --check-drift).")
+		fmt.Println("      Output: {has_drift, exit_code, summary, alerts, baseline}")
+		fmt.Println("")
+		fmt.Println("  Drift Detection Configuration (.bv/drift.yaml)")
+		fmt.Println("      Customize drift detection thresholds:")
+		fmt.Println("      - density_warning_pct: 50    # Warn if density +50%")
+		fmt.Println("      - blocked_increase_threshold: 5   # Warn if 5+ more blocked")
+		fmt.Println("      Run 'bv --baseline-info' to see current baseline state.")
 		os.Exit(0)
 	}
 
@@ -167,16 +240,255 @@ func main() {
 		}
 	}
 
-	// Load issues from current directory
-	issues, err := loader.LoadIssues("")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading beads: %v\n", err)
-		fmt.Fprintln(os.Stderr, "Make sure you are in a project initialized with 'bd init'.")
-		os.Exit(1)
+	// Load issues from current directory or workspace (with timing for profile)
+	loadStart := time.Now()
+	var issues []model.Issue
+	var beadsPath string
+	var workspaceInfo *workspace.LoadSummary
+
+	if *workspaceConfig != "" {
+		// Load from workspace configuration
+		loadedIssues, results, err := workspace.LoadAllFromConfig(context.Background(), *workspaceConfig)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading workspace: %v\n", err)
+			os.Exit(1)
+		}
+		issues = loadedIssues
+		summary := workspace.Summarize(results)
+		workspaceInfo = &summary
+
+		// Print workspace loading summary
+		if summary.FailedRepos > 0 {
+			fmt.Fprintf(os.Stderr, "Warning: %d repos failed to load\n", summary.FailedRepos)
+			for _, name := range summary.FailedRepoNames {
+				fmt.Fprintf(os.Stderr, "  - %s\n", name)
+			}
+		}
+		// No live reload for workspace mode (multiple files)
+		beadsPath = ""
+	} else {
+		// Load from single repo (original behavior)
+		var err error
+		issues, err = loader.LoadIssues("")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading beads: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Make sure you are in a project initialized with 'bd init'.")
+			os.Exit(1)
+		}
+		// Get beads file path for live reload
+		cwd, _ := os.Getwd()
+		beadsPath, _ = loader.FindJSONLPath(filepath.Join(cwd, ".beads"))
+	}
+	loadDuration := time.Since(loadStart)
+
+	// Apply --repo filter if specified
+	if *repoFilter != "" {
+		issues = filterByRepo(issues, *repoFilter)
+	}
+
+	// Handle --profile-startup
+	if *profileStartup {
+		runProfileStartup(issues, loadDuration, *profileJSON, *forceFullAnalysis)
+		os.Exit(0)
+	}
+
+	// Get project directory for baseline operations
+	projectDir, _ := os.Getwd()
+	baselinePath := baseline.DefaultPath(projectDir)
+
+	// Handle --baseline-info
+	if *baselineInfo {
+		if !baseline.Exists(baselinePath) {
+			fmt.Println("No baseline found.")
+			fmt.Println("Create one with: bv --save-baseline \"description\"")
+			os.Exit(0)
+		}
+		bl, err := baseline.Load(baselinePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading baseline: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Print(bl.Summary())
+		os.Exit(0)
+	}
+
+	// Handle --save-baseline
+	if *saveBaseline != "" {
+		analyzer := analysis.NewAnalyzer(issues)
+		if *forceFullAnalysis {
+			cfg := analysis.FullAnalysisConfig()
+			analyzer.SetConfig(&cfg)
+		}
+		stats := analyzer.Analyze()
+
+		// Compute status counts from issues
+		openCount, closedCount, blockedCount := 0, 0, 0
+		for _, issue := range issues {
+			switch issue.Status {
+			case model.StatusOpen, model.StatusInProgress:
+				openCount++
+			case model.StatusClosed:
+				closedCount++
+			case model.StatusBlocked:
+				blockedCount++
+			}
+		}
+
+		// Get actionable count from analyzer
+		actionableCount := len(analyzer.GetActionableIssues())
+
+		// Get cycles (method returns a copy)
+		cycles := stats.Cycles()
+
+		// Build GraphStats from analysis
+		graphStats := baseline.GraphStats{
+			NodeCount:       stats.NodeCount,
+			EdgeCount:       stats.EdgeCount,
+			Density:         stats.Density,
+			OpenCount:       openCount,
+			ClosedCount:     closedCount,
+			BlockedCount:    blockedCount,
+			CycleCount:      len(cycles),
+			ActionableCount: actionableCount,
+		}
+
+		// Build TopMetrics from analysis (top 10 for each)
+		// Methods return copies of the maps
+		topMetrics := baseline.TopMetrics{
+			PageRank:     buildMetricItems(stats.PageRank(), 10),
+			Betweenness:  buildMetricItems(stats.Betweenness(), 10),
+			CriticalPath: buildMetricItems(stats.CriticalPathScore(), 10),
+			Hubs:         buildMetricItems(stats.Hubs(), 10),
+			Authorities:  buildMetricItems(stats.Authorities(), 10),
+		}
+
+		bl := baseline.New(graphStats, topMetrics, cycles, *saveBaseline)
+
+		if err := bl.Save(baselinePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving baseline: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Baseline saved to %s\n", baselinePath)
+		fmt.Print(bl.Summary())
+		os.Exit(0)
+	}
+
+	// Handle --check-drift
+	if *checkDrift {
+		if !baseline.Exists(baselinePath) {
+			fmt.Fprintln(os.Stderr, "Error: No baseline found.")
+			fmt.Fprintln(os.Stderr, "Create one with: bv --save-baseline \"description\"")
+			os.Exit(1)
+		}
+
+		bl, err := baseline.Load(baselinePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error loading baseline: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Run analysis on current issues
+		analyzer := analysis.NewAnalyzer(issues)
+		if *forceFullAnalysis {
+			cfg := analysis.FullAnalysisConfig()
+			analyzer.SetConfig(&cfg)
+		}
+		stats := analyzer.Analyze()
+
+		// Compute status counts from issues
+		openCount, closedCount, blockedCount := 0, 0, 0
+		for _, issue := range issues {
+			switch issue.Status {
+			case model.StatusOpen, model.StatusInProgress:
+				openCount++
+			case model.StatusClosed:
+				closedCount++
+			case model.StatusBlocked:
+				blockedCount++
+			}
+		}
+		actionableCount := len(analyzer.GetActionableIssues())
+		cycles := stats.Cycles()
+
+		// Build current snapshot as baseline for comparison
+		currentStats := baseline.GraphStats{
+			NodeCount:       stats.NodeCount,
+			EdgeCount:       stats.EdgeCount,
+			Density:         stats.Density,
+			OpenCount:       openCount,
+			ClosedCount:     closedCount,
+			BlockedCount:    blockedCount,
+			CycleCount:      len(cycles),
+			ActionableCount: actionableCount,
+		}
+		currentMetrics := baseline.TopMetrics{
+			PageRank:     buildMetricItems(stats.PageRank(), 10),
+			Betweenness:  buildMetricItems(stats.Betweenness(), 10),
+			CriticalPath: buildMetricItems(stats.CriticalPathScore(), 10),
+			Hubs:         buildMetricItems(stats.Hubs(), 10),
+			Authorities:  buildMetricItems(stats.Authorities(), 10),
+		}
+		current := baseline.New(currentStats, currentMetrics, cycles, "current")
+
+		// Load drift config and run calculator
+		driftConfig, err := drift.LoadConfig(projectDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Error loading drift config: %v\n", err)
+			driftConfig = drift.DefaultConfig()
+		}
+
+		calc := drift.NewCalculator(bl, current, driftConfig)
+		result := calc.Calculate()
+
+		if *robotDriftCheck {
+			// JSON output
+			output := struct {
+				GeneratedAt string        `json:"generated_at"`
+				HasDrift    bool          `json:"has_drift"`
+				ExitCode    int           `json:"exit_code"`
+				Summary     struct {
+					Critical int `json:"critical"`
+					Warning  int `json:"warning"`
+					Info     int `json:"info"`
+				} `json:"summary"`
+				Alerts   []drift.Alert `json:"alerts"`
+				Baseline struct {
+					CreatedAt string `json:"created_at"`
+					CommitSHA string `json:"commit_sha,omitempty"`
+				} `json:"baseline"`
+			}{
+				GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+				HasDrift:    result.HasDrift,
+				ExitCode:    result.ExitCode(),
+				Alerts:      result.Alerts,
+			}
+			output.Summary.Critical = result.CriticalCount
+			output.Summary.Warning = result.WarningCount
+			output.Summary.Info = result.InfoCount
+			output.Baseline.CreatedAt = bl.CreatedAt.Format(time.RFC3339)
+			output.Baseline.CommitSHA = bl.CommitSHA
+
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			if err := encoder.Encode(output); err != nil {
+				fmt.Fprintf(os.Stderr, "Error encoding drift result: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			// Human-readable output
+			fmt.Print(result.Summary())
+		}
+
+		os.Exit(result.ExitCode())
 	}
 
 	if *robotInsights {
 		analyzer := analysis.NewAnalyzer(issues)
+		if *forceFullAnalysis {
+			cfg := analysis.FullAnalysisConfig()
+			analyzer.SetConfig(&cfg)
+		}
 		stats := analyzer.Analyze()
 		// Generate top 50 lists for summary, but full stats are included in the struct
 		insights := stats.GenerateInsights(50)
@@ -192,6 +504,10 @@ func main() {
 
 	if *robotPlan {
 		analyzer := analysis.NewAnalyzer(issues)
+		if *forceFullAnalysis {
+			cfg := analysis.FullAnalysisConfig()
+			analyzer.SetConfig(&cfg)
+		}
 		plan := analyzer.GetExecutionPlan()
 
 		// Wrap with metadata
@@ -214,6 +530,10 @@ func main() {
 
 	if *robotPriority {
 		analyzer := analysis.NewAnalyzer(issues)
+		if *forceFullAnalysis {
+			cfg := analysis.FullAnalysisConfig()
+			analyzer.SetConfig(&cfg)
+		}
 		recommendations := analyzer.GenerateRecommendations()
 
 		// Count high confidence recommendations
@@ -325,8 +645,8 @@ func main() {
 			os.Exit(0)
 		}
 
-		// Launch TUI with historical issues
-		m := ui.NewModel(historicalIssues, activeRecipe)
+		// Launch TUI with historical issues (no live reload for historical view)
+		m := ui.NewModel(historicalIssues, activeRecipe, "")
 		p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Error running beads viewer: %v\n", err)
@@ -337,10 +657,50 @@ func main() {
 
 	if *exportFile != "" {
 		fmt.Printf("Exporting to %s...\n", *exportFile)
+
+		// Load and run pre-export hooks
+		cwd, _ := os.Getwd()
+		var executor *hooks.Executor
+		if !*noHooks {
+			hookLoader := hooks.NewLoader(hooks.WithProjectDir(cwd))
+			if err := hookLoader.Load(); err != nil {
+				fmt.Printf("Warning: failed to load hooks: %v\n", err)
+			} else if hookLoader.HasHooks() {
+				ctx := hooks.ExportContext{
+					ExportPath:   *exportFile,
+					ExportFormat: "markdown",
+					IssueCount:   len(issues),
+					Timestamp:    time.Now(),
+				}
+				executor = hooks.NewExecutor(hookLoader.Config(), ctx)
+
+				// Run pre-export hooks
+				if err := executor.RunPreExport(); err != nil {
+					fmt.Printf("Error: pre-export hook failed: %v\n", err)
+					os.Exit(1)
+				}
+			}
+		}
+
+		// Perform the export
 		if err := export.SaveMarkdownToFile(issues, *exportFile); err != nil {
 			fmt.Printf("Error exporting: %v\n", err)
 			os.Exit(1)
 		}
+
+		// Run post-export hooks
+		if executor != nil {
+			if err := executor.RunPostExport(); err != nil {
+				fmt.Printf("Warning: post-export hook failed: %v\n", err)
+				// Don't exit, just warn
+			}
+
+			// Print hook summary if any hooks ran
+			if len(executor.Results()) > 0 {
+				fmt.Println(executor.Summary())
+			}
+		}
+
 		fmt.Println("Done!")
 		os.Exit(0)
 	}
@@ -356,8 +716,20 @@ func main() {
 		issues = applyRecipeSort(issues, activeRecipe)
 	}
 
-	// Initial Model
-	m := ui.NewModel(issues, activeRecipe)
+	// Initial Model with live reload support
+	m := ui.NewModel(issues, activeRecipe, beadsPath)
+	defer m.Stop() // Clean up file watcher
+
+	// Enable workspace mode if loading from workspace config
+	if workspaceInfo != nil {
+		m.EnableWorkspaceMode(ui.WorkspaceInfo{
+			Enabled:      true,
+			RepoCount:    workspaceInfo.TotalRepos,
+			FailedCount:  workspaceInfo.FailedRepos,
+			TotalIssues:  workspaceInfo.TotalIssues,
+			RepoPrefixes: workspaceInfo.RepoPrefixes,
+		})
+	}
 
 	// Run Program
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
@@ -713,4 +1085,294 @@ func applyRecipeSort(issues []model.Issue, r *recipe.Recipe) []model.Issue {
 	})
 
 	return issues
+}
+
+// runProfileStartup runs profiled startup analysis and outputs results
+func runProfileStartup(issues []model.Issue, loadDuration time.Duration, jsonOutput bool, forceFullAnalysis bool) {
+	// Time analyzer construction
+	buildStart := time.Now()
+	analyzer := analysis.NewAnalyzer(issues)
+	buildDuration := time.Since(buildStart)
+
+	// Select config
+	var config analysis.AnalysisConfig
+	if forceFullAnalysis {
+		config = analysis.FullAnalysisConfig()
+	} else {
+		nodeCount := len(issues)
+		// Estimate edge count from issues
+		edgeCount := 0
+		for _, issue := range issues {
+			edgeCount += len(issue.Dependencies)
+		}
+		config = analysis.ConfigForSize(nodeCount, edgeCount)
+	}
+
+	// Run profiled analysis
+	_, profile := analyzer.AnalyzeWithProfile(config)
+
+	// Add load and build durations to profile
+	profile.BuildGraph = buildDuration
+
+	// Calculate total including load
+	totalWithLoad := loadDuration + profile.Total
+
+	if jsonOutput {
+		// JSON output
+		output := struct {
+			GeneratedAt string                   `json:"generated_at"`
+			DataPath    string                   `json:"data_path"`
+			LoadJSONL   string                   `json:"load_jsonl"`
+			Profile     *analysis.StartupProfile `json:"profile"`
+			TotalWithLoad string                 `json:"total_with_load"`
+			Recommendations []string             `json:"recommendations"`
+		}{
+			GeneratedAt:   time.Now().UTC().Format(time.RFC3339),
+			DataPath:      ".beads/beads.jsonl",
+			LoadJSONL:     loadDuration.String(),
+			Profile:       profile,
+			TotalWithLoad: totalWithLoad.String(),
+			Recommendations: generateProfileRecommendations(profile, loadDuration, totalWithLoad),
+		}
+
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(output); err != nil {
+			fmt.Fprintf(os.Stderr, "Error encoding profile: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Human-readable output
+		printProfileReport(profile, loadDuration, totalWithLoad)
+	}
+}
+
+// printProfileReport outputs a human-readable startup profile
+func printProfileReport(profile *analysis.StartupProfile, loadDuration, totalWithLoad time.Duration) {
+	fmt.Println("Startup Profile")
+	fmt.Println("===============")
+	fmt.Printf("Data: %d issues, %d dependencies, density=%.4f\n\n",
+		profile.NodeCount, profile.EdgeCount, profile.Density)
+
+	// Phase 1
+	fmt.Println("Phase 1 (blocking):")
+	fmt.Printf("  Load JSONL:      %v\n", formatDuration(loadDuration))
+	fmt.Printf("  Build graph:     %v\n", formatDuration(profile.BuildGraph))
+	fmt.Printf("  Degree:          %v\n", formatDuration(profile.Degree))
+	fmt.Printf("  TopoSort:        %v\n", formatDuration(profile.TopoSort))
+	fmt.Printf("  Total Phase 1:   %v\n\n", formatDuration(loadDuration+profile.BuildGraph+profile.Phase1))
+
+	// Phase 2
+	fmt.Println("Phase 2 (async in normal mode, sync for profiling):")
+	printMetricLine("PageRank", profile.PageRank, profile.PageRankTO, profile.Config.ComputePageRank)
+	printMetricLine("Betweenness", profile.Betweenness, profile.BetweennessTO, profile.Config.ComputeBetweenness)
+	printMetricLine("Eigenvector", profile.Eigenvector, false, profile.Config.ComputeEigenvector)
+	printMetricLine("HITS", profile.HITS, profile.HITSTO, profile.Config.ComputeHITS)
+	printMetricLine("Critical Path", profile.CriticalPath, false, profile.Config.ComputeCriticalPath)
+	printCyclesLine(profile)
+	fmt.Printf("  Total Phase 2:   %v\n\n", formatDuration(profile.Phase2))
+
+	// Total
+	fmt.Printf("Total startup:     %v\n\n", formatDuration(totalWithLoad))
+
+	// Configuration used
+	fmt.Println("Configuration:")
+	fmt.Printf("  Size tier: %s\n", getSizeTier(profile.NodeCount))
+	skipped := profile.Config.SkippedMetrics()
+	if len(skipped) > 0 {
+		var names []string
+		for _, s := range skipped {
+			names = append(names, s.Name)
+		}
+		fmt.Printf("  Skipped metrics: %s\n", strings.Join(names, ", "))
+	} else {
+		fmt.Println("  All metrics computed")
+	}
+	fmt.Println()
+
+	// Recommendations
+	recommendations := generateProfileRecommendations(profile, loadDuration, totalWithLoad)
+	if len(recommendations) > 0 {
+		fmt.Println("Recommendations:")
+		for _, rec := range recommendations {
+			fmt.Printf("  %s\n", rec)
+		}
+	}
+}
+
+// printMetricLine prints a single metric timing line
+func printMetricLine(name string, duration time.Duration, timedOut, computed bool) {
+	if !computed {
+		fmt.Printf("  %-14s [Skipped]\n", name+":")
+		return
+	}
+	suffix := ""
+	if timedOut {
+		suffix = " (TIMEOUT)"
+	}
+	fmt.Printf("  %-14s %v%s\n", name+":", formatDuration(duration), suffix)
+}
+
+// printCyclesLine prints the cycles metric line with count
+func printCyclesLine(profile *analysis.StartupProfile) {
+	if !profile.Config.ComputeCycles {
+		fmt.Printf("  %-14s [Skipped]\n", "Cycles:")
+		return
+	}
+	suffix := ""
+	if profile.CyclesTO {
+		suffix = " (TIMEOUT)"
+	} else if profile.CycleCount > 0 {
+		suffix = fmt.Sprintf(" (found: %d)", profile.CycleCount)
+	} else {
+		suffix = " (none)"
+	}
+	fmt.Printf("  %-14s %v%s\n", "Cycles:", formatDuration(profile.Cycles), suffix)
+}
+
+// formatDuration formats a duration for display, right-aligned
+func formatDuration(d time.Duration) string {
+	if d < time.Millisecond {
+		return fmt.Sprintf("%6.2fms", float64(d.Microseconds())/1000)
+	}
+	return fmt.Sprintf("%6dms", d.Milliseconds())
+}
+
+// getSizeTier returns the size tier name based on node count
+func getSizeTier(nodeCount int) string {
+	switch {
+	case nodeCount < 100:
+		return "Small (<100 issues)"
+	case nodeCount < 500:
+		return "Medium (100-500 issues)"
+	case nodeCount < 2000:
+		return "Large (500-2000 issues)"
+	default:
+		return "XL (>2000 issues)"
+	}
+}
+
+// generateProfileRecommendations generates actionable recommendations based on profile
+func generateProfileRecommendations(profile *analysis.StartupProfile, loadDuration, totalWithLoad time.Duration) []string {
+	var recs []string
+
+	// Check overall startup time
+	if totalWithLoad < 500*time.Millisecond {
+		recs = append(recs, "✓ Startup within acceptable range (<500ms)")
+	} else if totalWithLoad < 1*time.Second {
+		recs = append(recs, "✓ Startup acceptable (<1s)")
+	} else if totalWithLoad < 2*time.Second {
+		// Check if full analysis is being used (no skipped metrics on a large graph)
+		if len(profile.Config.SkippedMetrics()) == 0 && profile.NodeCount >= 500 {
+			recs = append(recs, "⚠ Startup is slow (1-2s) - if using --force-full-analysis, consider removing it")
+		} else {
+			recs = append(recs, "⚠ Startup is slow (1-2s)")
+		}
+	} else {
+		recs = append(recs, "⚠ Startup is very slow (>2s) - optimization recommended")
+	}
+
+	// Check for timeouts
+	if profile.PageRankTO {
+		recs = append(recs, "⚠ PageRank timed out - graph may be too large or dense")
+	}
+	if profile.BetweennessTO {
+		recs = append(recs, "⚠ Betweenness timed out - this is expected for large graphs (>500 nodes)")
+	}
+	if profile.HITSTO {
+		recs = append(recs, "⚠ HITS timed out - graph may have convergence issues")
+	}
+	if profile.CyclesTO {
+		recs = append(recs, "⚠ Cycle detection timed out - graph may have many overlapping cycles")
+	}
+
+	// Check which metric is taking longest
+	if profile.Config.ComputeBetweenness && profile.Betweenness > 0 {
+		phase2NoZero := profile.Phase2
+		if phase2NoZero > 0 {
+			betweennessPercent := float64(profile.Betweenness) / float64(phase2NoZero) * 100
+			if betweennessPercent > 50 {
+				recs = append(recs, fmt.Sprintf("⚠ Betweenness taking %.0f%% of Phase 2 time - consider skipping for large graphs", betweennessPercent))
+			}
+		}
+	}
+
+	// Check for cycles
+	if profile.CycleCount > 0 {
+		recs = append(recs, fmt.Sprintf("⚠ Found %d circular dependencies - resolve to improve graph health", profile.CycleCount))
+	}
+
+	return recs
+}
+
+// filterByRepo filters issues to only include those from a specific repository.
+// The filter matches issue IDs that start with the given prefix.
+// If the prefix doesn't end with a separator character, it normalizes by checking
+// common patterns (prefix-, prefix:, etc.).
+func filterByRepo(issues []model.Issue, repoFilter string) []model.Issue {
+	if repoFilter == "" {
+		return issues
+	}
+
+	// Normalize the filter - ensure it's a proper prefix
+	filter := repoFilter
+	// If filter doesn't end with common separators, try matching as-is or with separators
+	needsFlexibleMatch := !strings.HasSuffix(filter, "-") &&
+		!strings.HasSuffix(filter, ":") &&
+		!strings.HasSuffix(filter, "_")
+
+	var result []model.Issue
+	for _, issue := range issues {
+		// Check if issue ID starts with the filter
+		if strings.HasPrefix(issue.ID, filter) {
+			result = append(result, issue)
+			continue
+		}
+
+		// If flexible matching is needed, try with common separators
+		if needsFlexibleMatch {
+			if strings.HasPrefix(issue.ID, filter+"-") ||
+				strings.HasPrefix(issue.ID, filter+":") ||
+				strings.HasPrefix(issue.ID, filter+"_") {
+				result = append(result, issue)
+				continue
+			}
+		}
+
+		// Also check SourceRepo field if set (case-insensitive)
+		if issue.SourceRepo != "" && issue.SourceRepo != "." {
+			sourceRepoLower := strings.ToLower(issue.SourceRepo)
+			filterLower := strings.ToLower(filter)
+			if strings.HasPrefix(sourceRepoLower, filterLower) {
+				result = append(result, issue)
+			}
+		}
+	}
+
+	return result
+}
+
+// buildMetricItems converts a metrics map to a sorted slice of MetricItems
+func buildMetricItems(metrics map[string]float64, limit int) []baseline.MetricItem {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	// Convert to slice for sorting
+	items := make([]baseline.MetricItem, 0, len(metrics))
+	for id, value := range metrics {
+		items = append(items, baseline.MetricItem{ID: id, Value: value})
+	}
+
+	// Sort by value descending
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Value > items[j].Value
+	})
+
+	// Limit to top N
+	if len(items) > limit {
+		items = items[:limit]
+	}
+
+	return items
 }
