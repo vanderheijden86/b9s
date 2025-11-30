@@ -72,6 +72,7 @@ func TestApplyRecipeFilters_TitleAndPrefix(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "UI-1", Title: "Add login button"},
 		{ID: "API-2", Title: "Login endpoint"},
+		{ID: "API-3", Title: "Health check"},
 	}
 	r := &recipe.Recipe{
 		Filters: recipe.FilterConfig{
@@ -82,6 +83,27 @@ func TestApplyRecipeFilters_TitleAndPrefix(t *testing.T) {
 	got := applyRecipeFilters(issues, r)
 	if len(got) != 1 || got[0].ID != "API-2" {
 		t.Fatalf("expected API-2 only, got %#v", got)
+	}
+}
+
+func TestApplyRecipeFilters_TagsAndDates(t *testing.T) {
+	now := time.Now()
+	old := now.Add(-48 * time.Hour)
+	issues := []model.Issue{
+		{ID: "T1", Title: "Tagged", Labels: []string{"backend", "p0"}, CreatedAt: now, UpdatedAt: now},
+		{ID: "T2", Title: "Old", Labels: []string{"backend"}, CreatedAt: old, UpdatedAt: old},
+	}
+	r := &recipe.Recipe{
+		Filters: recipe.FilterConfig{
+			Tags:         []string{"backend"},
+			ExcludeTags:  []string{"p0"},
+			CreatedAfter: "1d",
+			UpdatedAfter: "1d",
+		},
+	}
+	got := applyRecipeFilters(issues, r)
+	if len(got) != 0 {
+		t.Fatalf("expected all filtered out (exclude p0 and date), got %#v", got)
 	}
 }
 
@@ -111,6 +133,13 @@ func TestApplyRecipeSort_DefaultsAndFields(t *testing.T) {
 	sorted = applyRecipeSort(append([]model.Issue{}, issues...), r)
 	if sorted[0].ID != "A" {
 		t.Fatalf("title desc expected A (zzz) first, got %s", sorted[0].ID)
+	}
+
+	// Status ascending (string compare)
+	r.Sort = recipe.SortConfig{Field: "status"}
+	sorted = applyRecipeSort(append([]model.Issue{}, issues...), r)
+	if sorted[0].ID != "A" { // both open; stable sort keeps original order
+		t.Fatalf("status sort expected A first, got %s", sorted[0].ID)
 	}
 }
 
