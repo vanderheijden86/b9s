@@ -4,6 +4,7 @@
 
 pub mod articulation;
 pub mod betweenness;
+pub mod coverage;
 pub mod critical_path;
 pub mod cycles;
 pub mod eigenvector;

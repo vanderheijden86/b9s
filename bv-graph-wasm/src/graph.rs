@@ -423,6 +423,32 @@ impl DiGraph {
         total_float(self)
     }
 
+    /// Compute coverage set (greedy vertex cover).
+    /// Finds nodes that collectively "cover" all edges in the graph.
+    /// Returns JSON: { items: [{node, edges_added}], edges_covered, total_edges, coverage_ratio }
+    #[wasm_bindgen(js_name = coverageSet)]
+    pub fn coverage_set(&self, limit: usize) -> JsValue {
+        use crate::algorithms::coverage::coverage_set;
+        let result = coverage_set(self, limit);
+        serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
+    }
+
+    /// Compute coverage set with default limit of 10.
+    #[wasm_bindgen(js_name = coverageSetDefault)]
+    pub fn coverage_set_default(&self) -> JsValue {
+        use crate::algorithms::coverage::coverage_set_default;
+        let result = coverage_set_default(self);
+        serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
+    }
+
+    /// Get just the node indices from coverage set computation.
+    #[wasm_bindgen(js_name = coverageNodes)]
+    pub fn coverage_nodes(&self, limit: usize) -> JsValue {
+        use crate::algorithms::coverage::coverage_nodes;
+        let nodes = coverage_nodes(self, limit);
+        serde_wasm_bindgen::to_value(&nodes).unwrap_or(JsValue::NULL)
+    }
+
     /// Extract a subgraph containing only the specified node indices.
     /// Returns a new DiGraph with renumbered indices.
     #[wasm_bindgen(js_name = subgraph)]
