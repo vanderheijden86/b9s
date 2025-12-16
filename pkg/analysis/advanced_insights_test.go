@@ -206,7 +206,6 @@ func TestPendingFeatureStatus(t *testing.T) {
 		name   string
 		status FeatureStatus
 	}{
-		{"KPaths", insights.KPaths.Status},
 		{"ParallelCut", insights.ParallelCut.Status},
 		{"ParallelGain", insights.ParallelGain.Status},
 	}
@@ -233,6 +232,11 @@ func TestPendingFeatureStatus(t *testing.T) {
 	// CoverageSet should be available (bv-152)
 	if insights.CoverageSet.Status.State != "available" {
 		t.Errorf("CoverageSet: expected available state, got %s", insights.CoverageSet.Status.State)
+	}
+
+	// KPaths should be available (bv-153)
+	if insights.KPaths.Status.State != "available" {
+		t.Errorf("KPaths: expected available state, got %s", insights.KPaths.Status.State)
 	}
 }
 
@@ -557,5 +561,299 @@ func TestCoverageSetSelectionSequence(t *testing.T) {
 		if item.SelectionSeq != expectedSeq {
 			t.Errorf("item %d: expected SelectionSeq=%d, got %d", i, expectedSeq, item.SelectionSeq)
 		}
+	}
+}
+
+// K-Paths Tests (bv-153)
+
+func TestKPathsEmpty(t *testing.T) {
+	an := NewAnalyzer([]model.Issue{})
+	cfg := DefaultAdvancedInsightsConfig()
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if insights.KPaths == nil {
+		t.Fatal("expected KPaths result")
+	}
+	if insights.KPaths.Status.State != "available" {
+		t.Errorf("expected available state, got %s", insights.KPaths.Status.State)
+	}
+	if len(insights.KPaths.Paths) != 0 {
+		t.Error("expected no paths for empty graph")
+	}
+}
+
+func TestKPathsNoEdges(t *testing.T) {
+	// Disconnected nodes with no dependencies
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen},
+		{ID: "C", Status: model.StatusOpen},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if insights.KPaths.Status.State != "available" {
+		t.Errorf("expected available state, got %s", insights.KPaths.Status.State)
+	}
+	// No edges means no non-trivial paths
+	if len(insights.KPaths.Paths) != 0 {
+		t.Errorf("expected no paths for graph with no edges, got %d", len(insights.KPaths.Paths))
+	}
+}
+
+func TestKPathsLinearChain(t *testing.T) {
+	// A -> B -> C -> D: longest path is A-B-C-D (length 4)
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "C", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "B", Type: model.DepBlocks}}},
+		{ID: "D", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "C", Type: model.DepBlocks}}},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if insights.KPaths == nil {
+		t.Fatal("expected KPaths result")
+	}
+	if insights.KPaths.Status.State != "available" {
+		t.Errorf("expected available state, got %s", insights.KPaths.Status.State)
+	}
+	if len(insights.KPaths.Paths) < 1 {
+		t.Fatal("expected at least 1 path")
+	}
+
+	// First path should be the longest: A -> B -> C -> D
+	path := insights.KPaths.Paths[0]
+	if path.Rank != 1 {
+		t.Errorf("expected rank 1, got %d", path.Rank)
+	}
+	if path.Length != 4 {
+		t.Errorf("expected length 4, got %d", path.Length)
+	}
+	// Check path order: should start from source (A) and end at sink (D)
+	if len(path.IssueIDs) != 4 {
+		t.Fatalf("expected 4 issue IDs, got %d", len(path.IssueIDs))
+	}
+	if path.IssueIDs[0] != "A" {
+		t.Errorf("expected path to start with A, got %s", path.IssueIDs[0])
+	}
+	if path.IssueIDs[3] != "D" {
+		t.Errorf("expected path to end with D, got %s", path.IssueIDs[3])
+	}
+}
+
+func TestKPathsMultiplePaths(t *testing.T) {
+	// Create two separate chains:
+	// Chain 1: A -> B -> C (length 3)
+	// Chain 2: X -> Y (length 2)
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "C", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "B", Type: model.DepBlocks}}},
+		{ID: "X", Status: model.StatusOpen},
+		{ID: "Y", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "X", Type: model.DepBlocks}}},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	cfg.KPathsLimit = 5
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if len(insights.KPaths.Paths) < 2 {
+		t.Fatalf("expected at least 2 paths, got %d", len(insights.KPaths.Paths))
+	}
+
+	// First path should be longer (length 3)
+	if insights.KPaths.Paths[0].Length != 3 {
+		t.Errorf("first path should have length 3, got %d", insights.KPaths.Paths[0].Length)
+	}
+	// Second path should be shorter (length 2)
+	if insights.KPaths.Paths[1].Length != 2 {
+		t.Errorf("second path should have length 2, got %d", insights.KPaths.Paths[1].Length)
+	}
+}
+
+func TestKPathsDeterministic(t *testing.T) {
+	// Run multiple times and verify deterministic output
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "C", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "B", Type: model.DepBlocks}}},
+		{ID: "X", Status: model.StatusOpen},
+		{ID: "Y", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "X", Type: model.DepBlocks}}},
+	}
+
+	cfg := DefaultAdvancedInsightsConfig()
+	var firstResult *KPathsResult
+
+	for i := 0; i < 5; i++ {
+		an := NewAnalyzer(issues)
+		insights := an.GenerateAdvancedInsights(cfg)
+
+		if firstResult == nil {
+			firstResult = insights.KPaths
+			continue
+		}
+
+		// Compare with first result
+		if len(insights.KPaths.Paths) != len(firstResult.Paths) {
+			t.Fatalf("iteration %d: path count changed from %d to %d", i, len(firstResult.Paths), len(insights.KPaths.Paths))
+		}
+		for j, path := range insights.KPaths.Paths {
+			if path.Length != firstResult.Paths[j].Length {
+				t.Errorf("iteration %d: path %d length changed", i, j)
+			}
+			if len(path.IssueIDs) != len(firstResult.Paths[j].IssueIDs) {
+				t.Errorf("iteration %d: path %d issue count changed", i, j)
+			}
+			for k, id := range path.IssueIDs {
+				if id != firstResult.Paths[j].IssueIDs[k] {
+					t.Errorf("iteration %d: path %d issue %d changed from %s to %s",
+						i, j, k, firstResult.Paths[j].IssueIDs[k], id)
+				}
+			}
+		}
+	}
+}
+
+func TestKPathsCapping(t *testing.T) {
+	// Create multiple chains to test capping
+	issues := []model.Issue{
+		{ID: "A1", Status: model.StatusOpen},
+		{ID: "A2", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A1", Type: model.DepBlocks}}},
+		{ID: "B1", Status: model.StatusOpen},
+		{ID: "B2", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "B1", Type: model.DepBlocks}}},
+		{ID: "C1", Status: model.StatusOpen},
+		{ID: "C2", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "C1", Type: model.DepBlocks}}},
+		{ID: "D1", Status: model.StatusOpen},
+		{ID: "D2", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "D1", Type: model.DepBlocks}}},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	cfg.KPathsLimit = 2 // Cap at 2
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if len(insights.KPaths.Paths) > 2 {
+		t.Errorf("expected at most 2 paths (capped), got %d", len(insights.KPaths.Paths))
+	}
+	if !insights.KPaths.Status.Capped {
+		t.Error("expected Capped=true when results exceed limit")
+	}
+}
+
+func TestKPathsClosedIssuesIgnored(t *testing.T) {
+	// Closed issues should not be considered
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusClosed}, // Closed - should be ignored
+		{ID: "B", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "C", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "B", Type: model.DepBlocks}}},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	// Since A is closed, B has no valid blocker, so the only path would be B->C
+	// But B->C is only length 2, and the path would be [B, C]
+	if len(insights.KPaths.Paths) > 0 {
+		path := insights.KPaths.Paths[0]
+		for _, id := range path.IssueIDs {
+			if id == "A" {
+				t.Error("closed issue A should not appear in paths")
+			}
+		}
+	}
+}
+
+func TestKPathsPathLengthCap(t *testing.T) {
+	// Create a long chain and verify path length capping
+	issues := make([]model.Issue, 10)
+	issues[0] = model.Issue{ID: "N0", Status: model.StatusOpen}
+	for i := 1; i < 10; i++ {
+		issues[i] = model.Issue{
+			ID:     "N" + string(rune('0'+i)),
+			Status: model.StatusOpen,
+			Dependencies: []*model.Dependency{
+				{DependsOnID: "N" + string(rune('0'+i-1)), Type: model.DepBlocks},
+			},
+		}
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	cfg.PathLengthCap = 5 // Cap path length at 5
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if len(insights.KPaths.Paths) < 1 {
+		t.Fatal("expected at least 1 path")
+	}
+
+	path := insights.KPaths.Paths[0]
+	if path.Length > 5 {
+		t.Errorf("expected path length <= 5 (capped), got %d", path.Length)
+	}
+	if !path.Truncated {
+		t.Error("expected Truncated=true for capped path")
+	}
+}
+
+func TestKPathsRankOrdering(t *testing.T) {
+	// Verify ranks are assigned sequentially
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "X", Status: model.StatusOpen},
+		{ID: "Y", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "X", Type: model.DepBlocks}}},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	for i, path := range insights.KPaths.Paths {
+		expectedRank := i + 1
+		if path.Rank != expectedRank {
+			t.Errorf("path %d: expected Rank=%d, got %d", i, expectedRank, path.Rank)
+		}
+	}
+}
+
+func TestKPathsDiamondGraph(t *testing.T) {
+	// Diamond: A -> B, A -> C, B -> D, C -> D
+	// Two paths of equal length: A-B-D and A-C-D
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "C", Status: model.StatusOpen, Dependencies: []*model.Dependency{{DependsOnID: "A", Type: model.DepBlocks}}},
+		{ID: "D", Status: model.StatusOpen, Dependencies: []*model.Dependency{
+			{DependsOnID: "B", Type: model.DepBlocks},
+			{DependsOnID: "C", Type: model.DepBlocks},
+		}},
+	}
+
+	an := NewAnalyzer(issues)
+	cfg := DefaultAdvancedInsightsConfig()
+	insights := an.GenerateAdvancedInsights(cfg)
+
+	if len(insights.KPaths.Paths) < 1 {
+		t.Fatal("expected at least 1 path")
+	}
+
+	// The longest path should have length 3 (A -> B/C -> D)
+	path := insights.KPaths.Paths[0]
+	if path.Length != 3 {
+		t.Errorf("expected path length 3, got %d", path.Length)
+	}
+	// Path should start with A and end with D
+	if path.IssueIDs[0] != "A" {
+		t.Errorf("expected path to start with A, got %s", path.IssueIDs[0])
+	}
+	if path.IssueIDs[path.Length-1] != "D" {
+		t.Errorf("expected path to end with D, got %s", path.IssueIDs[path.Length-1])
 	}
 }

@@ -203,14 +203,8 @@ func (a *Analyzer) GenerateAdvancedInsights(config AdvancedInsightsConfig) *Adva
 	// Coverage Set - greedy 2-approx vertex cover (bv-152)
 	insights.CoverageSet = a.generateCoverageSet(config.CoverageSetLimit)
 
-	// K-Paths - placeholder until bv-153 implements
-	insights.KPaths = &KPathsResult{
-		Status: FeatureStatus{
-			State:  "pending",
-			Reason: "Awaiting implementation (bv-153)",
-		},
-		HowToUse: DefaultUsageHints()["k_paths"],
-	}
+	// K-Paths - top k longest/critical paths through the dependency graph (bv-153)
+	insights.KPaths = a.generateKPaths(config.KPathsLimit, config.PathLengthCap)
 
 	// Parallel Cut - placeholder until bv-154 implements
 	insights.ParallelCut = &ParallelCutResult{
@@ -595,6 +589,226 @@ func (a *Analyzer) generateCoverageSet(limit int) *CoverageSetResult {
 		CoverageRatio: float64(edgesCovered) / float64(totalEdges),
 		Rationale:     "Greedy vertex cover (2-approx): iteratively pick highest uncovered degree until edges are covered or cap is reached.",
 		HowToUse:      DefaultUsageHints()["coverage_set"],
+	}
+}
+
+// generateKPaths finds the k longest critical paths through the dependency graph (bv-153).
+// Uses topological sort with DP to compute longest path distances, then reconstructs
+// paths from nodes with highest distances. Only considers blocking edges between open issues.
+func (a *Analyzer) generateKPaths(k int, pathLengthCap int) *KPathsResult {
+	if k <= 0 {
+		k = 5
+	}
+	if pathLengthCap <= 0 {
+		pathLengthCap = 50
+	}
+
+	// Build adjacency list of blocking deps between non-closed issues
+	// adj[from] = list of nodes that depend on 'from' (i.e., from blocks them)
+	type nodeInfo struct {
+		id    string
+		index int
+	}
+	var nodes []nodeInfo
+	idToIndex := make(map[string]int)
+
+	// Collect non-closed issues
+	for id, issue := range a.issueMap {
+		if issue.Status != model.StatusClosed {
+			idToIndex[id] = len(nodes)
+			nodes = append(nodes, nodeInfo{id: id, index: len(nodes)})
+		}
+	}
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].id < nodes[j].id })
+	// Re-index after sorting for determinism
+	for i, n := range nodes {
+		idToIndex[n.id] = i
+	}
+
+	n := len(nodes)
+	if n == 0 {
+		return &KPathsResult{
+			Status: FeatureStatus{
+				State:  "available",
+				Count:  0,
+				Reason: "No open issues",
+			},
+			HowToUse: DefaultUsageHints()["k_paths"],
+		}
+	}
+
+	// Build adjacency: adj[i] = nodes that i blocks (i.e., they depend on i)
+	adj := make([][]int, n)
+	inDegree := make([]int, n)
+
+	for _, node := range nodes {
+		issue := a.issueMap[node.id]
+		for _, dep := range issue.Dependencies {
+			if dep == nil || dep.Type != model.DepBlocks {
+				continue
+			}
+			// dep.DependsOnID blocks node.id
+			fromIdx, ok := idToIndex[dep.DependsOnID]
+			if !ok {
+				continue // blocker is closed or not in graph
+			}
+			toIdx := idToIndex[node.id]
+			adj[fromIdx] = append(adj[fromIdx], toIdx)
+			inDegree[toIdx]++
+		}
+	}
+
+	// Sort adjacency lists for determinism
+	for i := range adj {
+		sort.Ints(adj[i])
+	}
+
+	// Kahn's algorithm for topological sort
+	var topoOrder []int
+	queue := make([]int, 0, n)
+	for i := 0; i < n; i++ {
+		if inDegree[i] == 0 {
+			queue = append(queue, i)
+		}
+	}
+	sort.Ints(queue) // deterministic starting order
+
+	tempInDegree := make([]int, n)
+	copy(tempInDegree, inDegree)
+
+	for len(queue) > 0 {
+		// Sort queue for deterministic processing (always pick smallest index first)
+		sort.Ints(queue)
+		u := queue[0]
+		queue = queue[1:]
+		topoOrder = append(topoOrder, u)
+
+		for _, v := range adj[u] {
+			tempInDegree[v]--
+			if tempInDegree[v] == 0 {
+				queue = append(queue, v)
+			}
+		}
+	}
+
+	// If topoOrder doesn't include all nodes, there's a cycle - handle gracefully
+	hasCycle := len(topoOrder) < n
+	if hasCycle {
+		// Fall back to partial ordering for nodes we could process
+		// Nodes not in topoOrder are in cycles - we'll skip them for path computation
+	}
+
+	// DP for longest path distances and predecessor tracking
+	dist := make([]int, n)     // dist[i] = length of longest path ending at i
+	pred := make([]int, n)     // pred[i] = predecessor on longest path (-1 if source)
+	for i := range pred {
+		pred[i] = -1
+	}
+
+	// Process in topological order
+	for _, u := range topoOrder {
+		for _, v := range adj[u] {
+			if dist[u]+1 > dist[v] {
+				dist[v] = dist[u] + 1
+				pred[v] = u
+			} else if dist[u]+1 == dist[v] && (pred[v] == -1 || u < pred[v]) {
+				// Tie-break: prefer smaller index predecessor for determinism
+				pred[v] = u
+			}
+		}
+	}
+
+	// Find nodes with longest paths (these are our path endpoints)
+	type pathEnd struct {
+		idx    int
+		length int
+		id     string
+	}
+	var pathEnds []pathEnd
+	for i := 0; i < n; i++ {
+		pathEnds = append(pathEnds, pathEnd{idx: i, length: dist[i], id: nodes[i].id})
+	}
+
+	// Sort by length (descending), then by ID (ascending) for determinism
+	sort.Slice(pathEnds, func(i, j int) bool {
+		if pathEnds[i].length != pathEnds[j].length {
+			return pathEnds[i].length > pathEnds[j].length
+		}
+		return pathEnds[i].id < pathEnds[j].id
+	})
+
+	// Reconstruct paths from top k endpoints
+	var paths []CriticalPath
+	usedSources := make(map[int]bool) // Avoid returning duplicate paths (same source)
+
+	for _, pe := range pathEnds {
+		if len(paths) >= k {
+			break
+		}
+		// Skip trivial paths (single node, no dependencies)
+		if pe.length == 0 {
+			continue
+		}
+
+		// Reconstruct path by walking predecessors
+		var pathIndices []int
+		curr := pe.idx
+		for curr != -1 {
+			pathIndices = append(pathIndices, curr)
+			curr = pred[curr]
+		}
+
+		// Path is in reverse order (sink to source), reverse it
+		for i, j := 0, len(pathIndices)-1; i < j; i, j = i+1, j-1 {
+			pathIndices[i], pathIndices[j] = pathIndices[j], pathIndices[i]
+		}
+
+		// Check if we already have a path from this source
+		if len(pathIndices) > 0 {
+			source := pathIndices[0]
+			if usedSources[source] {
+				continue // Skip duplicate source paths
+			}
+			usedSources[source] = true
+		}
+
+		// Convert indices to issue IDs
+		truncated := false
+		if len(pathIndices) > pathLengthCap {
+			pathIndices = pathIndices[:pathLengthCap]
+			truncated = true
+		}
+
+		issueIDs := make([]string, len(pathIndices))
+		for i, idx := range pathIndices {
+			issueIDs[i] = nodes[idx].id
+		}
+
+		paths = append(paths, CriticalPath{
+			Rank:      len(paths) + 1,
+			Length:    len(issueIDs),
+			IssueIDs:  issueIDs,
+			Truncated: truncated,
+		})
+	}
+
+	// Count total non-trivial paths for status
+	totalPaths := 0
+	for _, pe := range pathEnds {
+		if pe.length > 0 {
+			totalPaths++
+		}
+	}
+
+	return &KPathsResult{
+		Status: FeatureStatus{
+			State:   "available",
+			Count:   len(paths),
+			Capped:  len(paths) >= k && totalPaths > k,
+			Limited: totalPaths,
+		},
+		Paths:    paths,
+		HowToUse: DefaultUsageHints()["k_paths"],
 	}
 }
 
