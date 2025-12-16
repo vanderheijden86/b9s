@@ -11,4 +11,5 @@ pub mod hits;
 pub mod kcore;
 pub mod pagerank;
 pub mod slack;
+pub mod subgraph;
 pub mod topo;

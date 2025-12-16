@@ -402,6 +402,38 @@ impl DiGraph {
         use crate::algorithms::slack::total_float;
         total_float(self)
     }
+
+    /// Extract a subgraph containing only the specified node indices.
+    /// Returns a new DiGraph with renumbered indices.
+    #[wasm_bindgen(js_name = subgraph)]
+    pub fn subgraph(&self, indices: &[usize]) -> DiGraph {
+        use crate::algorithms::subgraph::extract_subgraph;
+        extract_subgraph(self, indices)
+    }
+
+    /// Get all node indices reachable from a source node (outgoing direction).
+    #[wasm_bindgen(js_name = reachableFrom)]
+    pub fn reachable_from(&self, source: usize) -> JsValue {
+        use crate::algorithms::subgraph::reachable_from;
+        let nodes = reachable_from(self, source);
+        serde_wasm_bindgen::to_value(&nodes).unwrap_or(JsValue::NULL)
+    }
+
+    /// Get all node indices that can reach a target node (incoming direction).
+    #[wasm_bindgen(js_name = reachableTo)]
+    pub fn reachable_to(&self, target: usize) -> JsValue {
+        use crate::algorithms::subgraph::reachable_to;
+        let nodes = reachable_to(self, target);
+        serde_wasm_bindgen::to_value(&nodes).unwrap_or(JsValue::NULL)
+    }
+
+    /// Get all nodes in the dependency cone (ancestors + node + descendants).
+    #[wasm_bindgen(js_name = dependencyCone)]
+    pub fn dependency_cone(&self, node: usize) -> JsValue {
+        use crate::algorithms::subgraph::dependency_cone;
+        let nodes = dependency_cone(self, node);
+        serde_wasm_bindgen::to_value(&nodes).unwrap_or(JsValue::NULL)
+    }
 }
 
 // Internal methods (not exposed to WASM)
