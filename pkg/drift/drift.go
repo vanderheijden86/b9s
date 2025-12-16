@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Dicklesworthstone/beads_viewer/pkg/baseline"
 )
@@ -23,13 +24,19 @@ const (
 type AlertType string
 
 const (
-	AlertNewCycle         AlertType = "new_cycle"
-	AlertPageRankChange   AlertType = "pagerank_change"
-	AlertDensityGrowth    AlertType = "density_growth"
-	AlertNodeCountChange  AlertType = "node_count_change"
-	AlertEdgeCountChange  AlertType = "edge_count_change"
-	AlertBlockedIncrease  AlertType = "blocked_increase"
-	AlertActionableChange AlertType = "actionable_change"
+	AlertNewCycle           AlertType = "new_cycle"
+	AlertPageRankChange     AlertType = "pagerank_change"
+	AlertDensityGrowth      AlertType = "density_growth"
+	AlertNodeCountChange    AlertType = "node_count_change"
+	AlertEdgeCountChange    AlertType = "edge_count_change"
+	AlertBlockedIncrease    AlertType = "blocked_increase"
+	AlertActionableChange   AlertType = "actionable_change"
+	AlertStaleIssue         AlertType = "stale_issue"
+	AlertVelocityDrop       AlertType = "velocity_drop"
+	AlertBlockingCascade    AlertType = "blocking_cascade"
+	AlertHighImpactUnblock  AlertType = "high_impact_unblock"
+	AlertAbandonedClaim     AlertType = "abandoned_claim"
+	AlertPotentialDuplicate AlertType = "potential_duplicate"
 )
 
 // Alert represents a single drift detection alert
@@ -41,6 +48,9 @@ type Alert struct {
 	CurrentVal  float64   `json:"current_value,omitempty"`
 	Delta       float64   `json:"delta,omitempty"`
 	Details     []string  `json:"details,omitempty"`
+	IssueID     string    `json:"issue_id,omitempty"`
+	Label       string    `json:"label,omitempty"`
+	DetectedAt  time.Time `json:"detected_at,omitempty"`
 }
 
 // Result contains the complete drift analysis
@@ -146,6 +156,7 @@ func (c *Calculator) checkCycles(result *Result) {
 			CurrentVal:  float64(len(c.current.Cycles)),
 			Delta:       float64(len(newCycles)),
 			Details:     details,
+			DetectedAt:  time.Now().UTC(),
 		})
 	}
 }
@@ -170,6 +181,7 @@ func (c *Calculator) checkDensity(result *Result) {
 			BaselineVal: blDensity,
 			CurrentVal:  curDensity,
 			Delta:       delta,
+			DetectedAt:  time.Now().UTC(),
 		})
 	} else if pctChange >= c.config.DensityInfoPct {
 		result.Alerts = append(result.Alerts, Alert{
@@ -179,6 +191,7 @@ func (c *Calculator) checkDensity(result *Result) {
 			BaselineVal: blDensity,
 			CurrentVal:  curDensity,
 			Delta:       delta,
+			DetectedAt:  time.Now().UTC(),
 		})
 	}
 }
@@ -199,6 +212,7 @@ func (c *Calculator) checkGraphSize(result *Result) {
 				BaselineVal: float64(blNodes),
 				CurrentVal:  float64(curNodes),
 				Delta:       float64(nodeDelta),
+				DetectedAt:  time.Now().UTC(),
 			})
 		}
 	}
@@ -217,6 +231,7 @@ func (c *Calculator) checkGraphSize(result *Result) {
 				BaselineVal: float64(blEdges),
 				CurrentVal:  float64(curEdges),
 				Delta:       float64(edgeDelta),
+				DetectedAt:  time.Now().UTC(),
 			})
 		}
 	}
@@ -236,6 +251,7 @@ func (c *Calculator) checkBlocked(result *Result) {
 			BaselineVal: float64(blBlocked),
 			CurrentVal:  float64(curBlocked),
 			Delta:       float64(delta),
+			DetectedAt:  time.Now().UTC(),
 		})
 	}
 }
@@ -256,6 +272,7 @@ func (c *Calculator) checkActionable(result *Result) {
 				BaselineVal: float64(blAction),
 				CurrentVal:  float64(curAction),
 				Delta:       float64(delta),
+				DetectedAt:  time.Now().UTC(),
 			})
 		} else if pct >= c.config.ActionableIncreaseInfoPct || pct <= -c.config.ActionableIncreaseInfoPct {
 			result.Alerts = append(result.Alerts, Alert{
@@ -265,6 +282,7 @@ func (c *Calculator) checkActionable(result *Result) {
 				BaselineVal: float64(blAction),
 				CurrentVal:  float64(curAction),
 				Delta:       float64(delta),
+				DetectedAt:  time.Now().UTC(),
 			})
 		}
 	}
@@ -308,10 +326,11 @@ func (c *Calculator) checkPageRankChanges(result *Result) {
 
 	if len(changes) > 0 {
 		result.Alerts = append(result.Alerts, Alert{
-			Type:     AlertPageRankChange,
-			Severity: SeverityWarning,
-			Message:  fmt.Sprintf("%d PageRank changes detected", len(changes)),
-			Details:  changes,
+			Type:       AlertPageRankChange,
+			Severity:   SeverityWarning,
+			Message:    fmt.Sprintf("%d PageRank changes detected", len(changes)),
+			Details:    changes,
+			DetectedAt: time.Now().UTC(),
 		})
 	}
 }

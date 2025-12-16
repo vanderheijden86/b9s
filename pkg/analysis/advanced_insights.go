@@ -75,49 +75,54 @@ type FeatureStatus struct {
 
 // TopKSetResult represents the optimal set of issues to complete for maximum unlock.
 type TopKSetResult struct {
-	Status       FeatureStatus   `json:"status"`
-	Items        []TopKSetItem   `json:"items,omitempty"`        // Ordered by selection sequence
-	TotalGain    int             `json:"total_gain"`             // Total issues unlocked by set
-	MarginalGain []int           `json:"marginal_gain,omitempty"` // Gain per item added
-	HowToUse     string          `json:"how_to_use"`
+	Status       FeatureStatus `json:"status"`
+	Items        []TopKSetItem `json:"items,omitempty"`         // Ordered by selection sequence
+	TotalGain    int           `json:"total_gain"`              // Total issues unlocked by set
+	MarginalGain []int         `json:"marginal_gain,omitempty"` // Gain per item added
+	HowToUse     string        `json:"how_to_use"`
 }
 
 // TopKSetItem represents one issue in the top-k unlock set.
 type TopKSetItem struct {
-	ID           string `json:"id"`
-	Title        string `json:"title,omitempty"`
-	MarginalGain int    `json:"marginal_gain"` // Additional unlocks from this pick
+	ID           string   `json:"id"`
+	Title        string   `json:"title,omitempty"`
+	MarginalGain int      `json:"marginal_gain"`      // Additional unlocks from this pick
 	Unblocks     []string `json:"unblocks,omitempty"` // IDs directly unblocked
 }
 
-// CoverageSetResult represents minimal set covering critical paths.
+// CoverageSetResult represents minimal set covering all dependency edges (vertex cover).
+// Uses greedy 2-approximation algorithm for bounded, deterministic output (bv-152).
 type CoverageSetResult struct {
-	Status      FeatureStatus    `json:"status"`
-	Items       []CoverageItem   `json:"items,omitempty"`
-	PathsCovered int             `json:"paths_covered"`
-	TotalPaths   int             `json:"total_paths"`
-	HowToUse    string           `json:"how_to_use"`
+	Status        FeatureStatus  `json:"status"`
+	Items         []CoverageItem `json:"items,omitempty"`
+	EdgesCovered  int            `json:"edges_covered"`  // Number of edges covered by this set
+	TotalEdges    int            `json:"total_edges"`    // Total edges in the dependency graph
+	CoverageRatio float64        `json:"coverage_ratio"` // EdgesCovered / TotalEdges (0.0-1.0)
+	Rationale     string         `json:"rationale"`      // Explanation of selection strategy
+	HowToUse      string         `json:"how_to_use"`
 }
 
 // CoverageItem represents one issue in the coverage set.
 type CoverageItem struct {
-	ID          string   `json:"id"`
-	Title       string   `json:"title,omitempty"`
-	CoversPaths []int    `json:"covers_paths"` // Indices of paths covered
+	ID           string `json:"id"`
+	Title        string `json:"title,omitempty"`
+	EdgesAdded   int    `json:"edges_added"`   // Edges newly covered by including this node
+	TotalDegree  int    `json:"total_degree"`  // Total edges incident to this node
+	SelectionSeq int    `json:"selection_seq"` // Order in which this was selected (1-indexed)
 }
 
 // KPathsResult represents K-shortest critical paths.
 type KPathsResult struct {
-	Status    FeatureStatus `json:"status"`
-	Paths     []CriticalPath `json:"paths,omitempty"`
-	HowToUse  string         `json:"how_to_use"`
+	Status   FeatureStatus  `json:"status"`
+	Paths    []CriticalPath `json:"paths,omitempty"`
+	HowToUse string         `json:"how_to_use"`
 }
 
 // CriticalPath represents one critical path through the graph.
 type CriticalPath struct {
-	Rank      int      `json:"rank"`      // 1-indexed path rank
-	Length    int      `json:"length"`    // Number of nodes in path
-	IssueIDs  []string `json:"issue_ids"` // Path from source to sink
+	Rank      int      `json:"rank"`                // 1-indexed path rank
+	Length    int      `json:"length"`              // Number of nodes in path
+	IssueIDs  []string `json:"issue_ids"`           // Path from source to sink
 	Truncated bool     `json:"truncated,omitempty"` // True if path was capped
 }
 
@@ -133,43 +138,43 @@ type ParallelCutResult struct {
 type ParallelCutItem struct {
 	ID            string   `json:"id"`
 	Title         string   `json:"title,omitempty"`
-	ParallelGain  int      `json:"parallel_gain"`  // Additional parallel streams enabled
+	ParallelGain  int      `json:"parallel_gain"`            // Additional parallel streams enabled
 	EnabledTracks []string `json:"enabled_tracks,omitempty"` // Track IDs enabled
 }
 
 // ParallelGainResult provides parallelization metrics for top recommendations.
 type ParallelGainResult struct {
-	Status   FeatureStatus       `json:"status"`
-	Metrics  []ParallelGainItem  `json:"metrics,omitempty"`
-	HowToUse string              `json:"how_to_use"`
+	Status   FeatureStatus      `json:"status"`
+	Metrics  []ParallelGainItem `json:"metrics,omitempty"`
+	HowToUse string             `json:"how_to_use"`
 }
 
 // ParallelGainItem represents parallelization gain for one issue.
 type ParallelGainItem struct {
-	ID               string  `json:"id"`
-	Title            string  `json:"title,omitempty"`
-	CurrentParallel  int     `json:"current_parallel"`   // Current parallel streams
-	PotentialParallel int    `json:"potential_parallel"` // After completion
-	GainPercent      float64 `json:"gain_percent"`       // Percentage improvement
+	ID                string  `json:"id"`
+	Title             string  `json:"title,omitempty"`
+	CurrentParallel   int     `json:"current_parallel"`   // Current parallel streams
+	PotentialParallel int     `json:"potential_parallel"` // After completion
+	GainPercent       float64 `json:"gain_percent"`       // Percentage improvement
 }
 
 // CycleBreakResult provides suggestions for breaking cycles.
 type CycleBreakResult struct {
-	Status      FeatureStatus      `json:"status"`
-	Suggestions []CycleBreakItem   `json:"suggestions,omitempty"`
-	CycleCount  int                `json:"cycle_count"`  // Total cycles detected
-	HowToUse    string             `json:"how_to_use"`
-	Advisory    string             `json:"advisory"`     // Important warning text
+	Status      FeatureStatus    `json:"status"`
+	Suggestions []CycleBreakItem `json:"suggestions,omitempty"`
+	CycleCount  int              `json:"cycle_count"` // Total cycles detected
+	HowToUse    string           `json:"how_to_use"`
+	Advisory    string           `json:"advisory"` // Important warning text
 }
 
 // CycleBreakItem represents one cycle break suggestion.
 type CycleBreakItem struct {
-	EdgeFrom     string   `json:"edge_from"`     // Source node of edge to remove
-	EdgeTo       string   `json:"edge_to"`       // Target node of edge to remove
-	Impact       int      `json:"impact"`        // Number of cycles broken
-	Collateral   int      `json:"collateral"`    // Dependents affected
-	InCycles     []int    `json:"in_cycles"`     // Cycle indices containing this edge
-	Rationale    string   `json:"rationale"`     // Why this edge is suggested
+	EdgeFrom   string `json:"edge_from"`  // Source node of edge to remove
+	EdgeTo     string `json:"edge_to"`    // Target node of edge to remove
+	Impact     int    `json:"impact"`     // Number of cycles broken
+	Collateral int    `json:"collateral"` // Dependents affected
+	InCycles   []int  `json:"in_cycles"`  // Cycle indices containing this edge
+	Rationale  string `json:"rationale"`  // Why this edge is suggested
 }
 
 // DefaultUsageHints returns agent-friendly guidance for each feature.
@@ -195,14 +200,8 @@ func (a *Analyzer) GenerateAdvancedInsights(config AdvancedInsightsConfig) *Adva
 	// TopK Set - greedy submodular selection for maximum unlock (bv-145)
 	insights.TopKSet = a.generateTopKSet(config.TopKSetLimit)
 
-	// Coverage Set - placeholder until bv-152 implements
-	insights.CoverageSet = &CoverageSetResult{
-		Status: FeatureStatus{
-			State:  "pending",
-			Reason: "Awaiting implementation (bv-152)",
-		},
-		HowToUse: DefaultUsageHints()["coverage_set"],
-	}
+	// Coverage Set - greedy 2-approx vertex cover (bv-152)
+	insights.CoverageSet = a.generateCoverageSet(config.CoverageSetLimit)
 
 	// K-Paths - placeholder until bv-153 implements
 	insights.KPaths = &KPathsResult{
@@ -278,9 +277,9 @@ func (a *Analyzer) generateCycleBreakSuggestions(limit int) *CycleBreakResult {
 
 	// Rank edges by frequency (breaking highest-frequency edges affects most cycles)
 	type edgeRank struct {
-		key     edgeKey
-		cycles  []int
-		count   int
+		key    edgeKey
+		cycles []int
+		count  int
 	}
 	var ranked []edgeRank
 	for k, cycs := range edgeFreq {
@@ -304,12 +303,12 @@ func (a *Analyzer) generateCycleBreakSuggestions(limit int) *CycleBreakResult {
 			break
 		}
 		suggestions = append(suggestions, CycleBreakItem{
-			EdgeFrom:  r.key.from,
-			EdgeTo:    r.key.to,
-			Impact:    r.count,
+			EdgeFrom:   r.key.from,
+			EdgeTo:     r.key.to,
+			Impact:     r.count,
 			Collateral: a.countDependents(r.key.to),
-			InCycles:  r.cycles,
-			Rationale: "Appears in most cycles; removing minimizes structural damage.",
+			InCycles:   r.cycles,
+			Rationale:  "Appears in most cycles; removing minimizes structural damage.",
 		})
 	}
 
@@ -484,3 +483,118 @@ func (a *Analyzer) computeMarginalUnblocks(issueID string, alreadyCompleted map[
 	sort.Strings(unblocks)
 	return unblocks
 }
+
+// generateCoverageSet computes a greedy vertex cover (2-approx) over blocking edges.
+// Uses only open issues; returns deterministic ordering with caps.
+func (a *Analyzer) generateCoverageSet(limit int) *CoverageSetResult {
+	if limit <= 0 {
+		limit = 5
+	}
+
+	// Build edge list of blocking deps between non-closed issues
+	type edge struct{ from, to string }
+	var edges []edge
+	for id, issue := range a.issueMap {
+		if issue.Status == model.StatusClosed {
+			continue
+		}
+		for _, dep := range issue.Dependencies {
+			if dep == nil || dep.Type != model.DepBlocks {
+				continue
+			}
+			if target, ok := a.issueMap[dep.DependsOnID]; ok && target.Status != model.StatusClosed {
+				edges = append(edges, edge{from: id, to: dep.DependsOnID})
+			}
+		}
+	}
+	totalEdges := len(edges)
+	if totalEdges == 0 {
+		return &CoverageSetResult{
+			Status: FeatureStatus{
+				State:  "available",
+				Count:  0,
+				Reason: "No blocking edges to cover",
+			},
+			EdgesCovered:  0,
+			TotalEdges:    0,
+			CoverageRatio: 1.0,
+			Rationale:     "Graph has no blocking dependencies.",
+			HowToUse:      DefaultUsageHints()["coverage_set"],
+		}
+	}
+
+	// Track uncovered edges and degrees
+	type nodeStats struct {
+		deg int
+	}
+	uncovered := make(map[int]edge, len(edges))
+	for i, e := range edges {
+		uncovered[i] = e
+	}
+
+	var items []CoverageItem
+	selection := 0
+	edgesCovered := 0
+
+	for len(uncovered) > 0 && len(items) < limit {
+		// recompute degree from uncovered edges
+		deg := make(map[string]int)
+		for _, e := range uncovered {
+			deg[e.from]++
+			deg[e.to]++
+		}
+
+		// pick node with highest degree (tie-break lexicographically)
+		bestID := ""
+		bestDeg := -1
+		for id, d := range deg {
+			if d > bestDeg || (d == bestDeg && (bestID == "" || id < bestID)) {
+				bestID, bestDeg = id, d
+			}
+		}
+		if bestID == "" {
+			break
+		}
+
+		// remove all edges incident to bestID
+		added := 0
+		for idx, e := range uncovered {
+			if e.from == bestID || e.to == bestID {
+				delete(uncovered, idx)
+				added++
+			}
+		}
+		edgesCovered += added
+		selection++
+
+		title := ""
+		if issue, ok := a.issueMap[bestID]; ok {
+			title = issue.Title
+		}
+
+		items = append(items, CoverageItem{
+			ID:           bestID,
+			Title:        title,
+			EdgesAdded:   added,
+			TotalDegree:  bestDeg,
+			SelectionSeq: selection,
+		})
+	}
+
+	capped := len(uncovered) > 0
+	return &CoverageSetResult{
+		Status: FeatureStatus{
+			State:   "available",
+			Count:   len(items),
+			Capped:  capped,
+			Limited: len(edges),
+		},
+		Items:         items,
+		EdgesCovered:  edgesCovered,
+		TotalEdges:    totalEdges,
+		CoverageRatio: float64(edgesCovered) / float64(totalEdges),
+		Rationale:     "Greedy vertex cover (2-approx): iteratively pick highest uncovered degree until edges are covered or cap is reached.",
+		HowToUse:      DefaultUsageHints()["coverage_set"],
+	}
+}
+

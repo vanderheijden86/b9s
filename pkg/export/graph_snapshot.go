@@ -484,10 +484,17 @@ func drawLegendRowSVG(canvas *svg.SVG, x, y int, c color.RGBA, label string) {
 // --- helpers ---------------------------------------------------------------
 
 func truncate(s string, max int) string {
-	if len(s) <= max {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
 		return s
 	}
-	return s[:max-1] + "…"
+	if max <= 3 {
+		return string(runes[:max])
+	}
+	return string(runes[:max-3]) + "..."
 }
 
 func css(c color.RGBA) string {

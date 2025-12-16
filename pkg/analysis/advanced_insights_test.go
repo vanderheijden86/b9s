@@ -206,7 +206,6 @@ func TestPendingFeatureStatus(t *testing.T) {
 		name   string
 		status FeatureStatus
 	}{
-		{"CoverageSet", insights.CoverageSet.Status},
 		{"KPaths", insights.KPaths.Status},
 		{"ParallelCut", insights.ParallelCut.Status},
 		{"ParallelGain", insights.ParallelGain.Status},
@@ -229,6 +228,11 @@ func TestPendingFeatureStatus(t *testing.T) {
 	// TopKSet should be available (bv-145)
 	if insights.TopKSet.Status.State != "available" {
 		t.Errorf("TopKSet: expected available state, got %s", insights.TopKSet.Status.State)
+	}
+
+	// CoverageSet should be available (bv-152)
+	if insights.CoverageSet.Status.State != "available" {
+		t.Errorf("CoverageSet: expected available state, got %s", insights.CoverageSet.Status.State)
 	}
 }
 
