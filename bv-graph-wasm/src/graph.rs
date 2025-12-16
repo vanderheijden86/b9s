@@ -339,6 +339,26 @@ impl DiGraph {
         use crate::algorithms::kcore::degeneracy;
         degeneracy(self)
     }
+
+    /// Find articulation points (cut vertices) in the graph.
+    /// These are nodes whose removal disconnects the graph.
+    /// Returns array of node indices.
+    #[wasm_bindgen(js_name = articulationPoints)]
+    pub fn articulation_points(&self) -> JsValue {
+        use crate::algorithms::articulation::articulation_points;
+        let ap = articulation_points(self);
+        serde_wasm_bindgen::to_value(&ap).unwrap_or(JsValue::NULL)
+    }
+
+    /// Find bridges (cut edges) in the graph.
+    /// These are edges whose removal disconnects the graph.
+    /// Returns array of [from, to] pairs.
+    #[wasm_bindgen(js_name = bridges)]
+    pub fn bridges(&self) -> JsValue {
+        use crate::algorithms::articulation::bridges;
+        let br = bridges(self);
+        serde_wasm_bindgen::to_value(&br).unwrap_or(JsValue::NULL)
+    }
 }
 
 // Internal methods (not exposed to WASM)
