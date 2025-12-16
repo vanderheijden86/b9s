@@ -132,7 +132,7 @@ func LoadHistoryCmd(issues []model.Issue, beadsPath string) tea.Cmd {
 			}
 		}
 
-		correlator := correlation.NewCorrelator(cwd)
+		correlator := correlation.NewCorrelator(cwd, beadsPath)
 		opts := correlation.CorrelatorOptions{
 			Limit: 500, // Reasonable limit for TUI performance
 		}
@@ -750,6 +750,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		triage := analysis.ComputeTriage(m.issues)
 		m.insightsPanel.SetTopPicks(triage.QuickRef.TopPicks)
 
+		// Set full recommendations with breakdown for priority radar (bv-93)
+		dataHash := fmt.Sprintf("v%s@%s#%d", triage.Meta.Version, triage.Meta.GeneratedAt.Format("15:04:05"), triage.Meta.IssueCount)
+		m.insightsPanel.SetRecommendations(triage.Recommendations, dataHash)
+
 		// Generate priority recommendations now that Phase 2 is ready
 		recommendations := m.analyzer.GenerateRecommendations()
 		m.priorityHints = make(map[string]*analysis.PriorityRecommendation, len(recommendations))
@@ -1080,9 +1084,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					label := m.attentionCache.Labels[idx].Label
 					m.currentFilter = "label:" + label
 					m.applyFilter()
-					m.focused = focusList
-					m.showAttentionView = false
-					m.insightsPanel.extraText = ""
 					m.statusMsg = fmt.Sprintf("Filtered to label %s (attention #%d)", label, idx+1)
 					m.statusIsError = false
 				}
@@ -1120,12 +1121,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						for i, item := range m.list.Items() {
 							if it, ok := item.(IssueItem); ok && it.Issue.ID == issueID {
 								m.list.Select(i)
-								m.showAlertsPanel = false
-								return m, nil
+								break
 							}
 						}
 					}
 				}
+				m.showAlertsPanel = false
 				return m, nil
 			case "d":
 				// Dismiss the selected alert
@@ -1412,6 +1413,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Include priority triage (bv-91)
 						triage := analysis.ComputeTriage(m.issues)
 						m.insightsPanel.SetTopPicks(triage.QuickRef.TopPicks)
+						// Set full recommendations with breakdown for priority radar (bv-93)
+						dataHash := fmt.Sprintf("v%s@%s#%d", triage.Meta.Version, triage.Meta.GeneratedAt.Format("15:04:05"), triage.Meta.IssueCount)
+						m.insightsPanel.SetRecommendations(triage.Recommendations, dataHash)
 						panelHeight := m.height - 2
 						if panelHeight < 3 {
 							panelHeight = 3
@@ -4114,7 +4118,7 @@ func (m *Model) enterHistoryView() {
 	}
 
 	// Load correlation data
-	correlator := correlation.NewCorrelator(cwd)
+	correlator := correlation.NewCorrelator(cwd, m.beadsPath)
 	opts := correlation.CorrelatorOptions{
 		Limit: 500, // Reasonable limit for TUI performance
 	}

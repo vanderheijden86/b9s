@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Dicklesworthstone/beads_viewer/pkg/analysis"
 	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
@@ -143,6 +144,11 @@ type InsightsModel struct {
 	// Priority triage data (bv-91)
 	topPicks []analysis.TopPick
 
+	// Priority radar data (bv-93) - full recommendations with breakdown
+	recommendations    []analysis.Recommendation
+	recommendationMap  map[string]*analysis.Recommendation // ID -> Recommendation for quick lookup
+	triageDataHash     string                              // Hash of data used for triage
+
 	// Navigation state
 	focusedPanel  MetricPanel
 	selectedIndex [PanelCount]int // Selection per panel
@@ -184,6 +190,17 @@ func (m *InsightsModel) SetInsights(ins analysis.Insights) {
 // SetTopPicks sets the priority triage recommendations (bv-91)
 func (m *InsightsModel) SetTopPicks(picks []analysis.TopPick) {
 	m.topPicks = picks
+}
+
+// SetRecommendations sets the full recommendations with breakdown data (bv-93)
+func (m *InsightsModel) SetRecommendations(recs []analysis.Recommendation, dataHash string) {
+	m.recommendations = recs
+	m.triageDataHash = dataHash
+	// Build lookup map
+	m.recommendationMap = make(map[string]*analysis.Recommendation, len(recs))
+	for i := range recs {
+		m.recommendationMap[recs[i].ID] = &recs[i]
+	}
 }
 
 // isPanelSkipped returns true and a reason if the metric for this panel was skipped
@@ -914,7 +931,86 @@ func (m *InsightsModel) renderPriorityPanel(width, height int, t Theme) string {
 		sb.WriteString(scrollStyle.Render(scrollInfo))
 	}
 
+	// Data hash footer (bv-93)
+	if m.triageDataHash != "" {
+		sb.WriteString("\n")
+		hashStyle := t.Renderer.NewStyle().
+			Foreground(t.Subtext).
+			Italic(true).
+			Align(lipgloss.Right).
+			Width(width - 4)
+		sb.WriteString(hashStyle.Render("📊 " + m.triageDataHash))
+	}
+
 	return panelStyle.Render(sb.String())
+}
+
+// renderMiniBar renders a compact progress bar for metric visualization (bv-93)
+// label: 2-char label (e.g., "PR", "BW", "TI")
+// value: normalized 0.0-1.0
+// width: total width for the bar (including label)
+func (m *InsightsModel) renderMiniBar(label string, value float64, width int, t Theme) string {
+	// Ensure value is in range
+	if value < 0 {
+		value = 0
+	}
+	if value > 1 {
+		value = 1
+	}
+
+	// Bar width = total - label(2) - colon(1) - space(1) - brackets(2)
+	barWidth := width - 6
+	if barWidth < 3 {
+		barWidth = 3
+	}
+
+	filled := int(float64(barWidth) * value)
+	if filled > barWidth {
+		filled = barWidth
+	}
+
+	// Color based on value intensity
+	var barColor lipgloss.AdaptiveColor
+	switch {
+	case value >= 0.7:
+		barColor = lipgloss.AdaptiveColor{Light: "#50FA7B", Dark: "#50FA7B"} // Green - high
+	case value >= 0.4:
+		barColor = lipgloss.AdaptiveColor{Light: "#FFB86C", Dark: "#FFB86C"} // Orange - medium
+	default:
+		barColor = lipgloss.AdaptiveColor{Light: "#6272A4", Dark: "#6272A4"} // Gray - low
+	}
+
+	labelStyle := t.Renderer.NewStyle().Foreground(t.Subtext)
+	filledStyle := t.Renderer.NewStyle().Foreground(barColor)
+	emptyStyle := t.Renderer.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#3D3D3D", Dark: "#3D3D3D"})
+
+	filledBar := strings.Repeat("█", filled)
+	emptyBar := strings.Repeat("░", barWidth-filled)
+
+	return labelStyle.Render(label+":") + filledStyle.Render(filledBar) + emptyStyle.Render(emptyBar)
+}
+
+// formatDueIn formats remaining time until due date (bv-93)
+func formatDueIn(due *time.Time) string {
+	if due == nil || due.IsZero() {
+		return ""
+	}
+	remaining := time.Until(*due)
+	if remaining < 0 {
+		return "⚠️OVER"
+	}
+	days := int(remaining.Hours() / 24)
+	if days > 7 {
+		return fmt.Sprintf("%dw", days/7)
+	}
+	if days > 0 {
+		return fmt.Sprintf("%dd", days)
+	}
+	hours := int(remaining.Hours())
+	if hours > 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return "<1h"
 }
 
 // renderPriorityItem renders a single priority recommendation item
@@ -987,6 +1083,21 @@ func (m *InsightsModel) renderPriorityItem(pick analysis.TopPick, width, height 
 		sb.WriteString("\n")
 	}
 
+	// PR/BW/Impact mini-bars (bv-93)
+	rec := m.recommendationMap[pick.ID]
+	if rec != nil {
+		barWidth := width - 4
+		if barWidth > 20 {
+			barWidth = 20 // Cap bar width for readability
+		}
+		sb.WriteString(m.renderMiniBar("PR", rec.Breakdown.PageRankNorm, barWidth, t))
+		sb.WriteString(" ")
+		sb.WriteString(m.renderMiniBar("BW", rec.Breakdown.BetweennessNorm, barWidth, t))
+		sb.WriteString("\n")
+		sb.WriteString(m.renderMiniBar("TI", rec.Breakdown.TimeToImpactNorm, barWidth, t))
+		sb.WriteString("\n")
+	}
+
 	// Unblocks indicator
 	if pick.Unblocks > 0 {
 		unblockStyle := t.Renderer.NewStyle().Foreground(t.Open).Bold(true)
@@ -994,10 +1105,10 @@ func (m *InsightsModel) renderPriorityItem(pick analysis.TopPick, width, height 
 		sb.WriteString("\n")
 	}
 
-	// Reasons (compact)
+	// Reasons (compact) - reduced to 1 reason to save space for bars
 	reasonStyle := t.Renderer.NewStyle().Foreground(t.Subtext).Italic(true)
 	for i, reason := range pick.Reasons {
-		if i >= 2 { // Show max 2 reasons
+		if i >= 1 { // Show max 1 reason (reduced from 2 to fit bars)
 			break
 		}
 		reasonTrunc := truncateRunesHelper(reason, width-8, "…")
