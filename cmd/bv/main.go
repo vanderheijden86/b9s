@@ -414,7 +414,7 @@ func main() {
 	// Handle --robot-label-health
 	if *robotLabelHealth {
 		cfg := analysis.DefaultLabelHealthConfig()
-		results := analysis.ComputeAllLabelHealth(issues, cfg, time.Now().UTC())
+		results := analysis.ComputeAllLabelHealth(issues, cfg, time.Now().UTC(), nil)
 
 		output := struct {
 			GeneratedAt    string                       `json:"generated_at"`

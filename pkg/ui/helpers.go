@@ -57,6 +57,20 @@ func truncateRunesHelper(s string, maxRunes int, suffix string) string {
 	return string(runes[:maxRunes-suffixLen]) + suffix
 }
 
+// padRight pads string s with spaces on the right to length width
+func padRight(s string, width int) string {
+	runeCount := utf8.RuneCountInString(s)
+	if runeCount >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-runeCount)
+}
+
+// truncate truncates string s to maxRunes
+func truncate(s string, maxRunes int) string {
+	return truncateRunesHelper(s, maxRunes, "…")
+}
+
 // DependencyNode represents a visual node in the dependency tree
 type DependencyNode struct {
 	ID       string

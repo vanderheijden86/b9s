@@ -523,7 +523,7 @@ func ComputeLabelHealthForLabel(label string, issues []model.Issue, cfg LabelHea
 }
 
 // ComputeAllLabelHealth computes health for all labels in the issue set.
-func ComputeAllLabelHealth(issues []model.Issue, cfg LabelHealthConfig, now time.Time) LabelAnalysisResult {
+func ComputeAllLabelHealth(issues []model.Issue, cfg LabelHealthConfig, now time.Time, stats *GraphStats) LabelAnalysisResult {
 	labels := ExtractLabels(issues)
 	result := LabelAnalysisResult{
 		GeneratedAt:     now,
@@ -536,9 +536,14 @@ func ComputeAllLabelHealth(issues []model.Issue, cfg LabelHealthConfig, now time
 	// Deterministic traversal
 	sort.Strings(labels.Labels)
 
-	// Precompute stats once for efficiency
-	analyzer := NewAnalyzer(issues)
-	fullStats := analyzer.Analyze()
+	// Precompute stats once for efficiency if not provided
+	var fullStats GraphStats
+	if stats != nil {
+		fullStats = *stats
+	} else {
+		analyzer := NewAnalyzer(issues)
+		fullStats = analyzer.Analyze()
+	}
 
 	for _, label := range labels.Labels {
 		health := ComputeLabelHealthForLabel(label, issues, cfg, now, &fullStats)

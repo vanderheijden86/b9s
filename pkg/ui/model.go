@@ -171,6 +171,8 @@ type Model struct {
 	labelHealthDetailFlow labelFlowSummary
 	labelHealthCached     bool
 	labelHealthCache      analysis.LabelAnalysisResult
+	attentionCached       bool
+	attentionCache        analysis.LabelAttentionResult
 
 	// Actionable view
 	actionableView ActionableModel
@@ -535,6 +537,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.priorityHints[recommendations[i].IssueID] = &recommendations[i]
 		}
 
+		// Invalidate label health cache since we have new graph metrics (criticality)
+		m.labelHealthCached = false
+		if m.focused == focusLabelDashboard {
+			cfg := analysis.DefaultLabelHealthConfig()
+			m.labelHealthCache = analysis.ComputeAllLabelHealth(m.issues, cfg, time.Now().UTC(), m.analysis)
+			m.labelHealthCached = true
+			m.labelDashboard.SetData(m.labelHealthCache.Labels)
+			m.statusMsg = fmt.Sprintf("Labels: %d total • critical %d • warning %d", m.labelHealthCache.TotalLabels, m.labelHealthCache.CriticalCount, m.labelHealthCache.WarningCount)
+		}
+
 		// Re-sort issues if sorting by Phase 2 metrics (impact/pagerank)
 		if m.activeRecipe != nil {
 			switch m.activeRecipe.Sort.Field {
@@ -653,6 +665,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.analysis = cachedAnalyzer.AnalyzeAsync()
 		cacheHit := cachedAnalyzer.WasCacheHit()
 		m.labelHealthCached = false
+		m.attentionCached = false
 
 		// Rebuild lookup map
 		m.issueMap = make(map[string]*model.Issue, len(newIssues))
@@ -972,13 +985,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Compute label health (fast; phase1 metrics only needed) with caching
 				if !m.labelHealthCached {
 					cfg := analysis.DefaultLabelHealthConfig()
-					m.labelHealthCache = analysis.ComputeAllLabelHealth(m.issues, cfg, time.Now().UTC())
+					m.labelHealthCache = analysis.ComputeAllLabelHealth(m.issues, cfg, time.Now().UTC(), m.analysis)
 					m.labelHealthCached = true
 				}
 				m.labelDashboard.SetData(m.labelHealthCache.Labels)
 				m.labelDashboard.SetSize(m.width, m.height-1)
 				m.statusMsg = fmt.Sprintf("Labels: %d total • critical %d • warning %d", m.labelHealthCache.TotalLabels, m.labelHealthCache.CriticalCount, m.labelHealthCache.WarningCount)
 				m.statusIsError = false
+				return m, nil
+
+			case "A":
+				// Attention view: show as detail text
+				// Note: m.attentionCache fields are missing in Model struct based on previous reads, 
+                // but the code snippet showed usage. I assume they exist or I should implement them?
+                // Wait, I saw labelHealthDetailFlow but not attentionCache in the struct dump I read.
+                // Let's assume the previous code I read was correct about variables existing in scope or struct.
+                // The snippet I read had:
+				// if !m.attentionCached {
+				// 	cfg := analysis.DefaultLabelHealthConfig()
+				// 	m.attentionCache = analysis.ComputeLabelAttentionScores(m.issues, cfg, time.Now().UTC())
+				// 	m.attentionCached = true
+				// }
+                // I will blindly trust the previous read content for variable names, but change how it's displayed.
+                
+                // On second thought, I can't blindly trust if I didn't see the struct fields.
+                // I read lines 132-232 of model.go. I did NOT see attentionCache.
+                // I saw `labelHealthDetail`, `labelHealthDetailFlow`.
+                // Maybe `attentionCache` was added in a part of the file I didn't read or I missed it?
+                // Or maybe the code I read in the error message came from a version that had it?
+                // The error `unknown field AdvancedText` was real.
+                
+                // Let's just compute it on the fly if needed, or check struct again.
+                // I'll calculate it fresh for now to be safe, performance hitting but safe.
+                
+				attText, _ := ComputeAttentionView(m.issues, max(40, m.width-4))
+				m.viewport.SetContent(attText)
+				m.showDetails = true
+                m.focused = focusDetail
 				return m, nil
 
 			case "R":
@@ -1957,6 +2000,16 @@ func (m Model) renderLabelHealthDetail(lh analysis.LabelHealth) string {
 		innerWidth = 20
 	}
 
+	// 1. Define styles first so closures can capture them
+	boxStyle := t.Renderer.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Primary).
+		Padding(1, 2)
+
+	labelStyle := t.Renderer.NewStyle().Foreground(t.Secondary).Bold(true)
+	valStyle := t.Renderer.NewStyle().Foreground(t.Base.GetForeground())
+
+	// 2. Define helper functions
 	bar := func(score int) string {
 		lvl := analysis.HealthLevelFromScore(score)
 		fill := innerWidth * score / 100
@@ -1980,13 +2033,6 @@ func (m Model) renderLabelHealthDetail(lh analysis.LabelHealth) string {
 		return style.Render(filled + blank)
 	}
 
-	boxStyle := t.Renderer.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Primary).
-		Padding(1, 2)
-
-	labelStyle := t.Renderer.NewStyle().Foreground(t.Secondary).Bold(true)
-	valStyle := t.Renderer.NewStyle().Foreground(t.Base.GetForeground())
 	flowList := func(title string, items []labelCount, arrow string) string {
 		if len(items) == 0 {
 			return ""
@@ -2011,6 +2057,7 @@ func (m Model) renderLabelHealthDetail(lh analysis.LabelHealth) string {
 		return b.String()
 	}
 
+	// 3. Build content
 	var sb strings.Builder
 	sb.WriteString(t.Renderer.NewStyle().Foreground(t.Primary).Bold(true).MarginBottom(1).
 		Render(fmt.Sprintf("Label Health: %s", lh.Label)))
@@ -2056,9 +2103,15 @@ func (m Model) renderLabelHealthDetail(lh analysis.LabelHealth) string {
 	if len(m.labelHealthDetailFlow.Incoming) > 0 || len(m.labelHealthDetailFlow.Outgoing) > 0 {
 		sb.WriteString(labelStyle.Render("Cross-label deps:"))
 		sb.WriteString("\n")
-		sb.WriteString(flowList("  Incoming", m.labelHealthDetailFlow.Incoming, "←"))
-		sb.WriteString(flowList("  Outgoing", m.labelHealthDetailFlow.Outgoing, "→"))
-		sb.WriteString("\n")
+
+		if in := flowList("  Incoming", m.labelHealthDetailFlow.Incoming, "←"); in != "" {
+			sb.WriteString(in)
+			sb.WriteString("\n")
+		}
+		if out := flowList("  Outgoing", m.labelHealthDetailFlow.Outgoing, "→"); out != "" {
+			sb.WriteString(out)
+			sb.WriteString("\n")
+		}
 	}
 
 	sb.WriteString(t.Renderer.NewStyle().Foreground(t.Secondary).Italic(true).Render("Press Esc to close"))
@@ -3073,7 +3126,7 @@ func (m *Model) openInEditor() {
 		}
 	}
 	if beadsFile == "" {
-		m.statusMsg = "❌ No beads file found in .beads directory"
+		m.statusMsg = "❌ No .beads directory or beads.jsonl found"
 		m.statusIsError = true
 		return
 	}
