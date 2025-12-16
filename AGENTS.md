@@ -30,11 +30,37 @@
     - `commit_index`: Reverse lookup from commit SHA to bead IDs
     - Flags: `--bead-history <id>` (filter to single bead), `--history-since <ref>` (limit to recent), `--history-limit <n>` (max commits)
 
+  **Label-Centric Analysis Commands:**
+  - **bv --robot-label-health [label]** — JSON health metrics per label. Without arg: all labels. With arg: deep analysis of single label. Key fields: `health_level` (healthy|warning|critical), `velocity_score`, `flow_score`, `staleness`, `blocked_count`.
+  - **bv --robot-label-flow** — JSON cross-label dependency flow. Shows `flow_matrix[from][to]`, `dependencies[{from,to,count}]`, `bottleneck_labels`. Use to identify which labels are blocking others.
+  - **bv --robot-label-attention [--attention-limit=N]** — JSON attention-ranked labels (default N=5). Ranks by attention_score = (pagerank × staleness × block_impact) / velocity. Use to find which labels need focus.
+  - **bv --label LABEL** — Scope other commands to a label's subgraph. Works with `--robot-insights`, `--robot-plan`, `--robot-priority`. Example: `bv --robot-insights --label api`
+
+  **Label Analysis Examples:**
+  ```bash
+  # Find which labels need the most attention
+  bv --robot-label-attention --attention-limit=3
+
+  # Get health metrics for all labels
+  bv --robot-label-health | jq '.labels[] | select(.health_level == "critical")'
+
+  # Deep dive into a specific label
+  bv --robot-label-health api | jq '.health'
+
+  # See how labels depend on each other
+  bv --robot-label-flow | jq '.bottleneck_labels'
+
+  # Scope planning to a specific label
+  bv --robot-plan --label backend
+  ```
+
   **Recommended workflow for agents:**
   1. Start with `bv --robot-next` for a quick "what's next?" answer
   2. Use `bv --robot-triage` for comprehensive context when planning
   3. Use `bv --robot-plan` for parallel work partitioning
   4. Use `bv --robot-insights` when you need deep graph analysis
+  5. Use `bv --robot-label-attention` to identify which labels need focus
+  6. Use `bv --label X --robot-plan` to scope work to a specific domain
 
   Use these commands instead of hand-rolling graph logic; bv already computes the hard parts so agents can act safely and quickly.
 
