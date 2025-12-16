@@ -16,6 +16,14 @@ const DB_STATE = {
   source: 'unknown',  // 'network' | 'cache' | 'chunks'
 };
 
+// Graph engine state (WASM)
+const GRAPH_STATE = {
+  wasm: null,         // WASM module (bv_graph.js)
+  graph: null,        // DiGraph instance
+  nodeMap: null,      // Map<string, number> - issue ID to node index
+  ready: false,       // true when graph is loaded
+};
+
 /**
  * Initialize sql.js library
  */
@@ -25,6 +33,7 @@ async function initSqlJs() {
   // Load sql.js from CDN (with WASM)
   const sqlPromise = initSqlJs.cached || (initSqlJs.cached = new Promise(async (resolve, reject) => {
     try {
+      let usedLocal = false;
       // Try loading from local vendor first
       let sqlJs;
       try {
@@ -36,6 +45,7 @@ async function initSqlJs() {
           script.onerror = rej;
         });
         sqlJs = window.initSqlJs;
+        usedLocal = true;
       } catch {
         // Fallback to CDN
         const script = document.createElement('script');
@@ -46,11 +56,15 @@ async function initSqlJs() {
           script.onerror = rej;
         });
         sqlJs = window.initSqlJs;
+        usedLocal = false;
       }
 
       const SQL = await sqlJs({
         locateFile: file => {
-          // Try local vendor, fallback to CDN
+          // Prefer local vendored wasm when available for offline use
+          if (usedLocal) {
+            return `./vendor/${file}`;
+          }
           return `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`;
         }
       });
@@ -235,6 +249,207 @@ function execScalar(sql, params = []) {
   const result = execQuery(sql, params);
   if (!result.length) return null;
   return Object.values(result[0])[0];
+}
+
+// ============================================================================
+// WASM Graph Engine - Live graph calculations
+// ============================================================================
+
+/**
+ * Initialize the WASM graph engine
+ */
+async function initGraphEngine() {
+  if (GRAPH_STATE.ready) return true;
+
+  try {
+    // Dynamic import of the WASM module
+    const wasmModule = await import('./vendor/bv_graph.js');
+    await wasmModule.default(); // Initialize WASM
+
+    GRAPH_STATE.wasm = wasmModule;
+    GRAPH_STATE.graph = new wasmModule.DiGraph();
+    GRAPH_STATE.nodeMap = new Map();
+
+    // Load graph data from SQLite
+    if (!DB_STATE.db) {
+      console.warn('[Graph] Database not loaded yet');
+      return false;
+    }
+
+    const deps = execQuery(`
+      SELECT issue_id, depends_on_id
+      FROM dependencies
+      WHERE type = 'blocks'
+    `);
+
+    for (const row of deps) {
+      const from = row.issue_id;
+      const to = row.depends_on_id;
+
+      if (!GRAPH_STATE.nodeMap.has(from)) {
+        const idx = GRAPH_STATE.graph.addNode(from);
+        GRAPH_STATE.nodeMap.set(from, idx);
+      }
+      if (!GRAPH_STATE.nodeMap.has(to)) {
+        const idx = GRAPH_STATE.graph.addNode(to);
+        GRAPH_STATE.nodeMap.set(to, idx);
+      }
+
+      GRAPH_STATE.graph.addEdge(
+        GRAPH_STATE.nodeMap.get(from),
+        GRAPH_STATE.nodeMap.get(to)
+      );
+    }
+
+    GRAPH_STATE.ready = true;
+    console.log(`[Graph] Loaded: ${GRAPH_STATE.graph.nodeCount()} nodes, ${GRAPH_STATE.graph.edgeCount()} edges`);
+    return true;
+  } catch (err) {
+    console.warn('[Graph] WASM init failed:', err.message);
+    GRAPH_STATE.ready = false;
+    return false;
+  }
+}
+
+/**
+ * Build closed set array from database
+ * Returns Uint8Array where 1 = closed, 0 = open
+ */
+function buildClosedSet() {
+  if (!GRAPH_STATE.ready) return null;
+
+  const n = GRAPH_STATE.graph.nodeCount();
+  const closed = new Uint8Array(n);
+
+  const closedIssues = execQuery(`
+    SELECT id FROM issues WHERE status = 'closed'
+  `);
+
+  for (const row of closedIssues) {
+    const idx = GRAPH_STATE.nodeMap.get(row.id);
+    if (idx !== undefined) {
+      closed[idx] = 1;
+    }
+  }
+
+  return closed;
+}
+
+/**
+ * Recalculate graph metrics for a filtered set of issues
+ */
+function recalculateMetrics(issueIds) {
+  if (!GRAPH_STATE.ready) return null;
+
+  const start = performance.now();
+  const indices = issueIds
+    .map(id => GRAPH_STATE.nodeMap.get(id))
+    .filter(idx => idx !== undefined);
+
+  if (indices.length === 0) return null;
+
+  // Extract subgraph for filtered issues
+  const subgraph = GRAPH_STATE.graph.subgraph(new Uint32Array(indices));
+
+  const result = {
+    nodeCount: subgraph.nodeCount(),
+    edgeCount: subgraph.edgeCount(),
+    pagerank: subgraph.pagerankDefault(),
+    betweenness: subgraph.betweenness(),
+    hasCycles: subgraph.hasCycles(),
+    criticalPath: subgraph.criticalPathHeights(),
+  };
+
+  const elapsed = performance.now() - start;
+  console.log(`[Graph] Recalculated metrics in ${elapsed.toFixed(1)}ms`);
+
+  return result;
+}
+
+/**
+ * What-if analysis: compute cascade impact of closing an issue
+ */
+function whatIfClose(issueId) {
+  if (!GRAPH_STATE.ready) return null;
+
+  const idx = GRAPH_STATE.nodeMap.get(issueId);
+  if (idx === undefined) return null;
+
+  const closedSet = buildClosedSet();
+  const result = GRAPH_STATE.graph.whatIfClose(idx, closedSet);
+
+  // Convert node indices back to issue IDs
+  if (result && result.cascade_ids) {
+    result.cascade_issue_ids = result.cascade_ids
+      .map(i => GRAPH_STATE.graph.nodeId(i))
+      .filter(Boolean);
+  }
+
+  return result;
+}
+
+/**
+ * Get top issues by cascade impact
+ */
+function topWhatIf(limit = 10) {
+  if (!GRAPH_STATE.ready) return [];
+
+  const closedSet = buildClosedSet();
+  const results = GRAPH_STATE.graph.topWhatIf(closedSet, limit);
+
+  // Enrich with issue IDs
+  return (results || []).map(item => ({
+    ...item,
+    issueId: GRAPH_STATE.graph.nodeId(item.node),
+    result: item.result,
+  }));
+}
+
+/**
+ * Get actionable issues (all blockers closed)
+ */
+function getActionableIssues() {
+  if (!GRAPH_STATE.ready) return [];
+
+  const closedSet = buildClosedSet();
+  const indices = GRAPH_STATE.graph.actionableNodes(closedSet);
+
+  return (indices || [])
+    .map(idx => GRAPH_STATE.graph.nodeId(idx))
+    .filter(Boolean);
+}
+
+/**
+ * Find cycle break suggestions
+ */
+function getCycleBreakSuggestions(limit = 5) {
+  if (!GRAPH_STATE.ready) return null;
+
+  const result = GRAPH_STATE.graph.cycleBreakSuggestions(limit, 100);
+  return result;
+}
+
+/**
+ * Get greedy top-k issues to maximize unblocks
+ */
+function getTopKSet(k = 5) {
+  if (!GRAPH_STATE.ready) return null;
+
+  const closedSet = buildClosedSet();
+  const result = GRAPH_STATE.graph.topkSet(closedSet, k);
+
+  // Enrich with issue IDs
+  if (result && result.items) {
+    result.items = result.items.map(item => ({
+      ...item,
+      issueId: GRAPH_STATE.graph.nodeId(item.node),
+      unblocked_issue_ids: (item.unblocked_ids || [])
+        .map(i => GRAPH_STATE.graph.nodeId(i))
+        .filter(Boolean),
+    }));
+  }
+
+  return result;
 }
 
 // ============================================================================
@@ -549,6 +764,12 @@ function beadsApp() {
     // Selected issue
     selectedIssue: null,
 
+    // Graph engine state
+    graphReady: false,
+    graphMetrics: null,
+    whatIfResult: null,
+    topKSet: null,
+
     /**
      * Initialize the application
      */
@@ -578,6 +799,13 @@ function beadsApp() {
 
         // Load issues for list view
         this.loadIssues();
+
+        // Initialize WASM graph engine (non-blocking)
+        this.loadingMessage = 'Loading graph engine...';
+        this.graphReady = await initGraphEngine();
+        if (this.graphReady) {
+          this.topKSet = getTopKSet(5);
+        }
 
         this.loading = false;
       } catch (err) {
@@ -642,6 +870,58 @@ function beadsApp() {
       document.documentElement.classList.toggle('dark', this.darkMode);
     },
 
+    // ========================================================================
+    // Graph Engine Methods
+    // ========================================================================
+
+    /**
+     * Recalculate graph metrics for currently filtered issues
+     */
+    recalculateForFilter() {
+      if (!this.graphReady) return;
+      const ids = this.issues.map(i => i.id);
+      this.graphMetrics = recalculateMetrics(ids);
+    },
+
+    /**
+     * Compute what-if cascade impact for an issue
+     */
+    computeWhatIf(issueId) {
+      if (!this.graphReady) return;
+      this.whatIfResult = whatIfClose(issueId);
+    },
+
+    /**
+     * Clear what-if result
+     */
+    clearWhatIf() {
+      this.whatIfResult = null;
+    },
+
+    /**
+     * Refresh top-k set
+     */
+    refreshTopKSet() {
+      if (!this.graphReady) return;
+      this.topKSet = getTopKSet(5);
+    },
+
+    /**
+     * Get top issues by cascade impact
+     */
+    getTopImpact(limit = 10) {
+      if (!this.graphReady) return [];
+      return topWhatIf(limit);
+    },
+
+    /**
+     * Get cycle break suggestions
+     */
+    getCycleBreaks(limit = 5) {
+      if (!this.graphReady) return null;
+      return getCycleBreakSuggestions(limit);
+    },
+
     /**
      * Format date helper
      */
@@ -656,6 +936,7 @@ function beadsApp() {
 
 // Export for use in graph integration
 window.beadsViewer = {
+  // Database
   DB_STATE,
   loadDatabase,
   execQuery,
@@ -664,4 +945,15 @@ window.beadsViewer = {
   getIssueDependencies,
   getStats,
   getMeta,
+
+  // Graph Engine
+  GRAPH_STATE,
+  initGraphEngine,
+  buildClosedSet,
+  recalculateMetrics,
+  whatIfClose,
+  topWhatIf,
+  getActionableIssues,
+  getCycleBreakSuggestions,
+  getTopKSet,
 };

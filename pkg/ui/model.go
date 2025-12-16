@@ -176,6 +176,7 @@ type Model struct {
 	labelDrilldownLabel   string
 	labelDrilldownIssues  []model.Issue
 	labelDrilldownCache   map[string][]model.Issue
+	showAttentionView     bool
 	labelHealthCached     bool
 	labelHealthCache      analysis.LabelAnalysisResult
 	attentionCached       bool
@@ -726,6 +727,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
+		// Clear ephemeral overlays tied to old data
+		m.clearAttentionOverlay()
+
 		// Exit time-travel mode if active (file changed, show current state)
 		if m.timeTravelMode {
 			m.timeTravelMode = false
@@ -925,6 +929,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Handle attention view quick jumps (bv-117)
+		if m.showAttentionView {
+			s := msg.String()
+			switch {
+			case s == "esc" || s == "q" || s == "d":
+				m.showAttentionView = false
+				m.insightsPanel.extraText = ""
+				return m, nil
+			case len(s) == 1 && s[0] >= '1' && s[0] <= '9':
+				if len(m.attentionCache.Labels) == 0 {
+					return m, nil
+				}
+				idx := int(s[0] - '1')
+				if idx >= 0 && idx < len(m.attentionCache.Labels) {
+					label := m.attentionCache.Labels[idx].Label
+					m.currentFilter = "label:" + label
+					m.applyFilter()
+					m.focused = focusList
+					m.showAttentionView = false
+					m.insightsPanel.extraText = ""
+					m.statusMsg = fmt.Sprintf("Filtered to label %s (attention #%d)", label, idx+1)
+					m.statusIsError = false
+				}
+				return m, nil
+			}
+		}
+
 		// Handle alerts panel modal if open (bv-168)
 		if m.showAlertsPanel {
 			// Build list of active (non-dismissed) alerts
@@ -1106,6 +1137,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "b":
+				m.clearAttentionOverlay()
 				m.isBoardView = !m.isBoardView
 				m.isGraphView = false
 				m.isActionableView = false
@@ -1117,6 +1149,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "g":
 				// Toggle graph view
+				m.clearAttentionOverlay()
 				m.isGraphView = !m.isGraphView
 				m.isBoardView = false
 				m.isActionableView = false
@@ -1129,6 +1162,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "a":
 				// Toggle actionable view
+				m.clearAttentionOverlay()
 				m.isActionableView = !m.isActionableView
 				m.isGraphView = false
 				m.isBoardView = false
@@ -1145,6 +1179,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "i":
+				m.clearAttentionOverlay()
 				if m.focused == focusInsights {
 					m.focused = focusList
 				} else {
@@ -1183,6 +1218,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "H":
 				// Toggle history view
+				m.clearAttentionOverlay()
 				m.isHistoryView = !m.isHistoryView
 				m.isGraphView = false
 				m.isBoardView = false
@@ -1202,6 +1238,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "L":
 				// Open label dashboard (phase 1: table view)
+				m.clearAttentionOverlay()
 				m.isGraphView = false
 				m.isBoardView = false
 				m.isActionableView = false
@@ -1230,6 +1267,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isBoardView = false
 				m.isActionableView = false
 				m.focused = focusInsights
+				m.showAttentionView = true
 				m.insightsPanel = NewInsightsModel(analysis.Insights{}, m.issueMap, m.theme)
 				m.insightsPanel.labelAttention = m.attentionCache.Labels
 				m.insightsPanel.extraText = attText
@@ -1242,6 +1280,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "F":
 				// Flow matrix view (cross-label dependencies)
+				m.clearAttentionOverlay()
 				cfg := analysis.DefaultLabelHealthConfig()
 				flow := analysis.ComputeCrossLabelFlow(m.issues, cfg)
 				m.flowMatrixText = FlowMatrixView(flow, max(60, m.width-4))
@@ -2645,6 +2684,14 @@ func (m *Model) renderFooter() string {
 		Padding(0, 1).
 		Render("L:labels • h:detail")
 
+	if m.showAttentionView {
+		labelHint = lipgloss.NewStyle().
+			Foreground(ColorMuted).
+			Background(ColorBgDark).
+			Padding(0, 1).
+			Render("A:attention • 1-9 filter • esc close")
+	}
+
 	// ─────────────────────────────────────────────────────────────────────────
 	// STATS SECTION - Issue counts with visual indicators
 	// ─────────────────────────────────────────────────────────────────────────
@@ -3765,6 +3812,14 @@ func (m *Model) openInEditor() {
 func (m *Model) Stop() {
 	if m.watcher != nil {
 		m.watcher.Stop()
+	}
+}
+
+// clearAttentionOverlay hides the attention overlay and clears its rendered text.
+func (m *Model) clearAttentionOverlay() {
+	if m.showAttentionView {
+		m.showAttentionView = false
+		m.insightsPanel.extraText = ""
 	}
 }
 
