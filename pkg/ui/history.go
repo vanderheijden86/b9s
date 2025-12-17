@@ -397,19 +397,21 @@ func (h *HistoryModel) UpdateSearchInput(msg interface{}) {
 
 // applySearchFilter filters the data based on current search query
 func (h *HistoryModel) applySearchFilter() {
-	query := strings.TrimSpace(h.searchInput.Value())
+	// Always rebuild base filtered list first (applies author/confidence filters)
+	// This ensures we always filter from the complete set, not an already-filtered list
+	// (bv-nkrj fix: backspacing to relax filter now works correctly)
+	h.rebuildFilteredList()
+	if h.viewMode == historyModeGit {
+		h.buildCommitList()
+	}
 
+	query := strings.TrimSpace(h.searchInput.Value())
 	if query == "" {
-		// No filter - rebuild full lists
-		h.rebuildFilteredList()
-		if h.viewMode == historyModeGit {
-			h.buildCommitList()
-			h.filteredCommits = nil // Use full commitList
-		}
+		h.filteredCommits = nil // Use full commitList in git mode
 		return
 	}
 
-	// Apply filter based on view mode
+	// Apply search filter on top of base filters
 	if h.viewMode == historyModeGit {
 		h.filterCommitList(query)
 	} else {
@@ -602,6 +604,10 @@ func (h *HistoryModel) ToggleViewMode() {
 		h.selectedBead = 0
 		h.selectedCommit = 0
 		h.scrollOffset = 0
+	}
+	// Re-apply search filter if active (bv-nkrj fix: filter persists across mode toggle)
+	if h.searchActive && h.searchInput.Value() != "" {
+		h.applySearchFilter()
 	}
 }
 
