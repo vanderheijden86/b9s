@@ -220,8 +220,7 @@ const contextHelpFilter = `## Filter Mode
   Esc       Clear search
 
 **Label Filters**
-  L         Open label picker
-  Shift+L   Filter by label`
+  l         Open label picker`
 
 const contextHelpLabelPicker = `## Label Picker
 
