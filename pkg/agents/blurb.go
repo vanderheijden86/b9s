@@ -19,8 +19,6 @@ const BlurbStartMarker = "<!-- bv-agent-instructions-v1 -->"
 const BlurbEndMarker = "<!-- end-bv-agent-instructions -->"
 
 // AgentBlurb contains the instructions to be appended to AGENTS.md files.
-// This content helps AI coding agents understand how to use beads_viewer
-// for issue tracking and project management.
 const AgentBlurb = `<!-- bv-agent-instructions-v1 -->
 
 ---
@@ -95,32 +93,63 @@ var SupportedAgentFiles = []string{
 // blurbVersionRegex extracts the version number from a blurb marker.
 var blurbVersionRegex = regexp.MustCompile(`<!-- bv-agent-instructions-v(\d+) -->`)
 
+// LegacyBlurbPatterns are markers that identify the old blurb format (pre-v1, no HTML markers).
+var LegacyBlurbPatterns = []string{
+	"### Using bv as an AI sidecar",
+	"--robot-insights",
+	"--robot-plan",
+	"bv already computes the hard parts",
+}
+
+// legacyBlurbStartPattern matches the beginning of the legacy blurb.
+var legacyBlurbStartPattern = regexp.MustCompile(`(?m)^#{2,3}\s*Using bv as an AI sidecar`)
+
+// legacyBlurbEndPattern matches content near the end of the legacy blurb.
+var legacyBlurbEndPattern = regexp.MustCompile(`(?m)bv already computes the hard parts[^\n]*\n*` + "```" + `?\n*`)
+
 // ContainsBlurb checks if the content already contains a beads_viewer agent blurb.
-// Returns true if any version of the blurb marker is found.
 func ContainsBlurb(content string) bool {
 	return strings.Contains(content, "<!-- bv-agent-instructions-v")
 }
 
+// ContainsLegacyBlurb checks if the content contains the old-format blurb (pre-v1, no HTML markers).
+func ContainsLegacyBlurb(content string) bool {
+	if !legacyBlurbStartPattern.MatchString(content) {
+		return false
+	}
+	matchCount := 0
+	for _, pattern := range LegacyBlurbPatterns {
+		if strings.Contains(content, pattern) {
+			matchCount++
+		}
+	}
+	return matchCount >= 3
+}
+
+// ContainsAnyBlurb checks if the content contains either the current or legacy blurb format.
+func ContainsAnyBlurb(content string) bool {
+	return ContainsBlurb(content) || ContainsLegacyBlurb(content)
+}
+
 // GetBlurbVersion extracts the version number from existing blurb content.
-// Returns 0 if no blurb is found.
 func GetBlurbVersion(content string) int {
 	matches := blurbVersionRegex.FindStringSubmatch(content)
 	if len(matches) < 2 {
 		return 0
 	}
-	// Parse version number
 	var version int
 	_, _ = strings.NewReader(matches[1]).Read(make([]byte, 1))
 	if matches[1] == "1" {
 		version = 1
 	}
-	// For future versions, add more cases or use strconv
 	return version
 }
 
-// NeedsUpdate checks if the content has an older version of the blurb
-// that should be updated to the current version.
+// NeedsUpdate checks if the content has an older version of the blurb that should be updated.
 func NeedsUpdate(content string) bool {
+	if ContainsLegacyBlurb(content) {
+		return true
+	}
 	if !ContainsBlurb(content) {
 		return false
 	}
@@ -128,13 +157,10 @@ func NeedsUpdate(content string) bool {
 }
 
 // AppendBlurb appends the agent blurb to the given content.
-// It adds proper spacing before the blurb.
 func AppendBlurb(content string) string {
-	// Ensure content ends with newline
 	if !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	// Add extra newline for spacing
 	content += "\n"
 	content += AgentBlurb
 	content += "\n"
@@ -142,37 +168,63 @@ func AppendBlurb(content string) string {
 }
 
 // RemoveBlurb removes an existing blurb from the content.
-// This is useful for updating to a new version.
 func RemoveBlurb(content string) string {
-	// Find start marker
 	startIdx := strings.Index(content, "<!-- bv-agent-instructions-v")
 	if startIdx == -1 {
 		return content
 	}
-
-	// Find end marker
 	endIdx := strings.Index(content, BlurbEndMarker)
 	if endIdx == -1 {
-		// Malformed blurb - just return as-is
 		return content
 	}
 	endIdx += len(BlurbEndMarker)
-
-	// Remove any trailing newlines after the end marker
 	for endIdx < len(content) && (content[endIdx] == '\n' || content[endIdx] == '\r') {
 		endIdx++
 	}
-
-	// Remove any leading newlines before the start marker
 	for startIdx > 0 && (content[startIdx-1] == '\n' || content[startIdx-1] == '\r') {
 		startIdx--
 	}
+	return content[:startIdx] + content[endIdx:]
+}
 
+// RemoveLegacyBlurb removes the old-format blurb (pre-v1, no HTML markers) from content.
+func RemoveLegacyBlurb(content string) string {
+	if !ContainsLegacyBlurb(content) {
+		return content
+	}
+	startLoc := legacyBlurbStartPattern.FindStringIndex(content)
+	if startLoc == nil {
+		return content
+	}
+	startIdx := startLoc[0]
+	endLoc := legacyBlurbEndPattern.FindStringIndex(content[startIdx:])
+	var endIdx int
+	if endLoc != nil {
+		endIdx = startIdx + endLoc[1]
+	} else {
+		nextSection := regexp.MustCompile(`(?m)^#{1,2}\s+[^#]`)
+		nextLoc := nextSection.FindStringIndex(content[startIdx+10:])
+		if nextLoc != nil {
+			endIdx = startIdx + 10 + nextLoc[0]
+		} else {
+			endIdx = len(content)
+		}
+	}
+	for endIdx < len(content) && (content[endIdx] == '\n' || content[endIdx] == '\r') {
+		endIdx++
+	}
+	for startIdx > 0 && (content[startIdx-1] == '\n' || content[startIdx-1] == '\r') {
+		startIdx--
+	}
+	if startIdx > 0 {
+		startIdx++
+	}
 	return content[:startIdx] + content[endIdx:]
 }
 
 // UpdateBlurb replaces an existing blurb with the current version.
 func UpdateBlurb(content string) string {
+	content = RemoveLegacyBlurb(content)
 	content = RemoveBlurb(content)
 	return AppendBlurb(content)
 }
