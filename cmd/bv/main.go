@@ -72,10 +72,9 @@ func main() {
 	graphRoot := flag.String("graph-root", "", "Subgraph from specific root issue ID")
 	graphDepth := flag.Int("graph-depth", 0, "Max depth for subgraph (0 = unlimited)")
 	// Graph snapshot export (bv-94)
-	exportGraph := flag.String("export-graph", "", "Export graph snapshot to PNG or SVG (format inferred from extension)")
+	exportGraph := flag.String("export-graph", "", "Export graph: .html for interactive, .png/.svg for static (auto-names if empty)")
 	graphPreset := flag.String("graph-preset", "compact", "Graph layout preset: compact (default) or roomy")
-	graphTitle := flag.String("graph-title", "", "Title for graph snapshot (default: 'Graph Snapshot')")
-	graphStyle := flag.String("graph-style", "force", "Graph visual style: force (beautiful force-directed) or grid (simple grid layout)")
+	graphTitle := flag.String("graph-title", "", "Title for graph export (default: project name)")
 	// Robot output filters (bv-84)
 	robotMinConf := flag.Float64("robot-min-confidence", 0.0, "Filter robot outputs by minimum confidence (0.0-1.0)")
 	robotMaxResults := flag.Int("robot-max-results", 0, "Limit robot output count (0 = use defaults)")
@@ -1405,7 +1404,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Handle --export-graph (bv-94) - PNG/SVG snapshot export
+	// Handle --export-graph (bv-94) - PNG/SVG/HTML export
 	if *exportGraph != "" {
 		analyzer := analysis.NewAnalyzer(issues)
 		stats := analyzer.Analyze()
@@ -1430,6 +1429,38 @@ func main() {
 			os.Exit(1)
 		}
 
+		// Get project name from current directory
+		cwd, _ := os.Getwd()
+		projectName := filepath.Base(cwd)
+
+		// Check if HTML export requested (interactive graph)
+		if strings.HasSuffix(strings.ToLower(*exportGraph), ".html") || *exportGraph == "html" || *exportGraph == "interactive" {
+			title := *graphTitle
+			if title == "" {
+				title = projectName
+			}
+			opts := export.InteractiveGraphOptions{
+				Issues:      exportIssues,
+				Stats:       &stats,
+				Title:       title,
+				DataHash:    dataHash,
+				Path:        *exportGraph,
+				ProjectName: projectName,
+			}
+			// Auto-generate filename if just "html" or "interactive"
+			if *exportGraph == "html" || *exportGraph == "interactive" {
+				opts.Path = ""
+			}
+			outputPath, err := export.GenerateInteractiveGraphHTML(opts)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error exporting interactive graph: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Interactive graph exported to %s (%d nodes, %d edges)\n", outputPath, len(exportIssues), stats.EdgeCount)
+			os.Exit(0)
+		}
+
+		// Static PNG/SVG export (use .html for better interactive graphs)
 		opts := export.GraphSnapshotOptions{
 			Path:     *exportGraph,
 			Title:    *graphTitle,
@@ -1439,21 +1470,13 @@ func main() {
 			DataHash: dataHash,
 		}
 
-		var err error
-		if strings.EqualFold(*graphStyle, "grid") {
-			// Original simple grid layout
-			err = export.SaveGraphSnapshot(opts)
-		} else {
-			// Beautiful force-directed layout (default)
-			err = export.SaveBeautifulGraphSnapshot(opts)
-		}
-
+		err := export.SaveGraphSnapshot(opts)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error exporting graph snapshot: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("✓ Graph exported to %s (%d nodes, %s style)\n", *exportGraph, len(exportIssues), *graphStyle)
+		fmt.Printf("✓ Graph exported to %s (%d nodes) - tip: use .html for interactive graphs\n", *exportGraph, len(exportIssues))
 		os.Exit(0)
 	}
 
