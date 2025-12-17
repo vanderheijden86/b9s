@@ -9,13 +9,16 @@ import (
 // MarkdownRenderer provides theme-aware markdown rendering using glamour.
 // It detects the terminal's color scheme and uses appropriate styles.
 type MarkdownRenderer struct {
-	renderer *glamour.TermRenderer
-	width    int
-	isDark   bool
+	renderer  *glamour.TermRenderer
+	width     int
+	isDark    bool
+	theme     *Theme // nil if using built-in styles, non-nil if using custom theme
+	useTheme  bool   // true if created with NewMarkdownRendererWithTheme
 }
 
-// NewMarkdownRenderer creates a new theme-aware markdown renderer.
+// NewMarkdownRenderer creates a new markdown renderer using built-in styles.
 // It uses Dracula style for dark terminals and a light style for light terminals.
+// Prefer NewMarkdownRendererWithTheme for consistent styling with the bv Theme.
 func NewMarkdownRenderer(width int) *MarkdownRenderer {
 	isDark := lipgloss.HasDarkBackground()
 
@@ -35,6 +38,8 @@ func NewMarkdownRenderer(width int) *MarkdownRenderer {
 		renderer: renderer,
 		width:    width,
 		isDark:   isDark,
+		theme:    nil,
+		useTheme: false,
 	}
 }
 
@@ -53,6 +58,8 @@ func NewMarkdownRendererWithTheme(width int, theme Theme) *MarkdownRenderer {
 		renderer: renderer,
 		width:    width,
 		isDark:   isDark,
+		theme:    &theme,
+		useTheme: true,
 	}
 }
 
@@ -65,12 +72,26 @@ func (mr *MarkdownRenderer) Render(markdown string) (string, error) {
 }
 
 // SetWidth updates the word wrap width and recreates the renderer.
+// If the renderer was created with a theme, the theme is preserved.
 func (mr *MarkdownRenderer) SetWidth(width int) {
 	if width == mr.width || width <= 0 {
 		return
 	}
 	mr.width = width
 
+	// If created with a theme, preserve it
+	if mr.useTheme && mr.theme != nil {
+		styleConfig := buildStyleFromTheme(*mr.theme, mr.isDark)
+		if r, err := glamour.NewTermRenderer(
+			glamour.WithStyles(styleConfig),
+			glamour.WithWordWrap(width),
+		); err == nil {
+			mr.renderer = r
+		}
+		return
+	}
+
+	// Otherwise use built-in styles
 	var styleName string
 	if mr.isDark {
 		styleName = "dracula"
@@ -87,11 +108,14 @@ func (mr *MarkdownRenderer) SetWidth(width int) {
 }
 
 // SetWidthWithTheme updates width and recreates renderer with theme colors.
+// This also updates the stored theme for future SetWidth calls.
 func (mr *MarkdownRenderer) SetWidthWithTheme(width int, theme Theme) {
 	if width == mr.width || width <= 0 {
 		return
 	}
 	mr.width = width
+	mr.theme = &theme
+	mr.useTheme = true
 	styleConfig := buildStyleFromTheme(theme, mr.isDark)
 
 	if r, err := glamour.NewTermRenderer(
