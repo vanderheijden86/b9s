@@ -129,14 +129,23 @@ const contextHelpBoard = `## Board View
 **Navigation**
   h/l       Move between columns
   j/k       Move within column
-  Enter     View issue details
-  m         Move to different status
+  1-4       Jump to column 1/2/3/4
+  H/L       Jump to first/last column
+  gg        Go to top of column
+  G         Go to bottom of column
+  0/$       First/last item in column
 
-**Columns**
-  OPEN      New issues
-  IN PROGRESS  Being worked on
-  BLOCKED   Waiting on dependencies
-  CLOSED    Completed work
+**Search**
+  /         Start search
+  n/N       Next/prev match
+  Enter     Confirm search
+  Esc       Cancel search
+
+**Actions**
+  Tab       Toggle detail panel
+  Ctrl+j/k  Scroll detail panel
+  y         Copy issue ID
+  Enter     View issue details
 
 Press 1 to return to List view`
 

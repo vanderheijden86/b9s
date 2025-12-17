@@ -2090,9 +2090,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// handleBoardKeys handles keyboard input when the board is focused
+// handleBoardKeys handles keyboard input when the board is focused (bv-yg39)
 func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
-	switch msg.String() {
+	key := msg.String()
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Search mode input handling (bv-yg39)
+	// ═══════════════════════════════════════════════════════════════════════════
+	if m.board.IsSearchMode() {
+		switch key {
+		case "esc":
+			m.board.CancelSearch()
+		case "enter":
+			// Keep search results but exit search mode
+			m.board.FinishSearch()
+		case "backspace":
+			m.board.BackspaceSearch()
+		case "n":
+			m.board.NextMatch()
+		case "N":
+			m.board.PrevMatch()
+		default:
+			// Append printable characters to search query
+			if len(key) == 1 {
+				m.board.AppendSearchChar(rune(key[0]))
+			}
+		}
+		return m
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Vim 'gg' combo handling (bv-yg39)
+	// ═══════════════════════════════════════════════════════════════════════════
+	if m.board.IsWaitingForG() {
+		m.board.ClearWaitingForG()
+		if key == "g" {
+			m.board.MoveToTop()
+			return m
+		}
+		// Not a second 'g', fall through to normal handling
+	}
+
+	// ═══════════════════════════════════════════════════════════════════════════
+	// Normal key handling (bv-yg39 enhanced)
+	// ═══════════════════════════════════════════════════════════════════════════
+	switch key {
+	// Basic navigation (existing)
 	case "h", "left":
 		m.board.MoveLeft()
 	case "l", "right":
@@ -2109,22 +2152,70 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.board.PageDown(m.height / 3)
 	case "ctrl+u":
 		m.board.PageUp(m.height / 3)
+
+	// Column jumping (bv-yg39)
+	case "1":
+		m.board.JumpToColumn(ColOpen)
+	case "2":
+		m.board.JumpToColumn(ColInProgress)
+	case "3":
+		m.board.JumpToColumn(ColBlocked)
+	case "4":
+		m.board.JumpToColumn(ColClosed)
+	case "H":
+		m.board.JumpToFirstColumn()
+	case "L":
+		m.board.JumpToLastColumn()
+
+	// Vim-style navigation (bv-yg39)
+	case "g":
+		m.board.SetWaitingForG() // Wait for second 'g'
+	case "0":
+		m.board.MoveToTop() // First item in column
+	case "$":
+		m.board.MoveToBottom() // Last item in column
+
+	// Search (bv-yg39)
+	case "/":
+		m.board.StartSearch()
+
+	// Search navigation when not in search mode (bv-yg39)
+	case "n":
+		if m.board.SearchMatchCount() > 0 {
+			m.board.NextMatch()
+		}
+	case "N":
+		if m.board.SearchMatchCount() > 0 {
+			m.board.PrevMatch()
+		}
+
+	// Copy ID to clipboard (bv-yg39)
+	case "y":
+		if selected := m.board.SelectedIssue(); selected != nil {
+			if err := clipboard.WriteAll(selected.ID); err != nil {
+				m.statusMsg = fmt.Sprintf("❌ Clipboard error: %v", err)
+				m.statusIsError = true
+			} else {
+				m.statusMsg = fmt.Sprintf("📋 Copied %s to clipboard", selected.ID)
+				m.statusIsError = false
+			}
+		}
+
+	// Detail panel (bv-r6kh)
 	case "tab":
-		// Toggle detail panel (bv-r6kh)
 		m.board.ToggleDetail()
 	case "ctrl+j":
-		// Scroll detail panel down (bv-r6kh)
 		if m.board.IsDetailShown() {
 			m.board.DetailScrollDown(3)
 		}
 	case "ctrl+k":
-		// Scroll detail panel up (bv-r6kh)
 		if m.board.IsDetailShown() {
 			m.board.DetailScrollUp(3)
 		}
+
+	// Exit to detail view
 	case "enter":
 		if selected := m.board.SelectedIssue(); selected != nil {
-			// Find and select in list
 			for i, item := range m.list.Items() {
 				if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selected.ID {
 					m.list.Select(i)
@@ -3870,7 +3961,28 @@ func (m *Model) renderFooter() string {
 		Padding(0, 1).
 		Render("L:labels • h:detail")
 
-	if m.showAttentionView {
+	// Board-specific hints (bv-yg39)
+	if m.isBoardView {
+		if m.board.IsSearchMode() {
+			// Search mode active - show search hints
+			matchInfo := ""
+			if m.board.SearchMatchCount() > 0 {
+				matchInfo = fmt.Sprintf(" [%d/%d]", m.board.SearchCursorPos(), m.board.SearchMatchCount())
+			}
+			labelHint = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Background(ColorBgDark).
+				Padding(0, 1).
+				Render(fmt.Sprintf("/%s%s • n/N:match • enter:done • esc:cancel", m.board.SearchQuery(), matchInfo))
+		} else {
+			// Normal board mode - show navigation hints
+			labelHint = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Background(ColorBgDark).
+				Padding(0, 1).
+				Render("1-4:col • /:search • y:copy • tab:detail • ?:help")
+		}
+	} else if m.showAttentionView {
 		labelHint = lipgloss.NewStyle().
 			Foreground(ColorMuted).
 			Background(ColorBgDark).

@@ -948,13 +948,34 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 				content.WriteString(fmt.Sprintf("**Labels:** %s\n\n", strings.Join(issue.Labels, ", ")))
 			}
 
-			// Dependencies
+			// Dependencies - show with titles and status (bv-kklp)
 			if len(issue.Dependencies) > 0 {
 				content.WriteString("**Blocked by:**\n")
 				for _, dep := range issue.Dependencies {
-					content.WriteString(fmt.Sprintf("- %s\n", dep))
+					if dep != nil && dep.Type.IsBlocking() {
+						// Look up blocker info for richer display
+						if blocker, ok := b.issueMap[dep.DependsOnID]; ok && blocker != nil {
+							content.WriteString(fmt.Sprintf("- %s: %s (%s)\n",
+								dep.DependsOnID, blocker.Title, blocker.Status))
+						} else {
+							content.WriteString(fmt.Sprintf("- %s\n", dep.DependsOnID))
+						}
+					}
 				}
 				content.WriteString("\n")
+			}
+
+			// Show what this issue blocks (bv-kklp)
+			if blockedIDs, ok := b.blocksIndex[issue.ID]; ok && len(blockedIDs) > 0 {
+				content.WriteString("**Blocks:**\n")
+				for _, blockedID := range blockedIDs {
+					if blocked, ok := b.issueMap[blockedID]; ok && blocked != nil {
+						content.WriteString(fmt.Sprintf("- %s: %s\n", blockedID, blocked.Title))
+					} else {
+						content.WriteString(fmt.Sprintf("- %s\n", blockedID))
+					}
+				}
+				content.WriteString(fmt.Sprintf("\n💡 Completing this would unblock %d issue(s)\n\n", len(blockedIDs)))
 			}
 
 			// Description
