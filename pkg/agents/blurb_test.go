@@ -367,6 +367,44 @@ func TestRemoveLegacyBlurbNoLegacy(t *testing.T) {
 	}
 }
 
+func TestRemoveLegacyBlurbNoTrailingBackticks(t *testing.T) {
+	// Legacy content WITHOUT trailing triple backticks (regression test for regex fix)
+	legacyNoBackticks := `# My AGENTS.md
+
+### Using bv as an AI sidecar
+
+Some description here.
+
+**Available robot flags**:
+- --robot-insights - Analysis
+- --robot-plan - Planning
+
+bv already computes the hard parts for you.
+
+## Next Section
+`
+	result := RemoveLegacyBlurb(legacyNoBackticks)
+
+	// Should not contain legacy markers
+	if strings.Contains(result, "### Using bv as an AI sidecar") {
+		t.Error("RemoveLegacyBlurb() did not remove legacy header (no trailing backticks case)")
+	}
+	if strings.Contains(result, "--robot-insights") {
+		t.Error("RemoveLegacyBlurb() did not remove robot flags (no trailing backticks case)")
+	}
+	if strings.Contains(result, "bv already computes the hard parts") {
+		t.Error("RemoveLegacyBlurb() did not remove end phrase (no trailing backticks case)")
+	}
+
+	// Should preserve surrounding content
+	if !strings.Contains(result, "# My AGENTS.md") {
+		t.Error("RemoveLegacyBlurb() did not preserve header")
+	}
+	if !strings.Contains(result, "## Next Section") {
+		t.Error("RemoveLegacyBlurb() did not preserve next section")
+	}
+}
+
 func TestUpdateBlurbFromLegacy(t *testing.T) {
 	// Start with content containing legacy blurb
 	legacyContent := "# My AGENTS.md\n\n" + LegacyBlurbContent + "\n"

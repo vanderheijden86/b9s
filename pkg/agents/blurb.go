@@ -106,7 +106,8 @@ var LegacyBlurbPatterns = []string{
 var legacyBlurbStartPattern = regexp.MustCompile(`(?m)^#{2,3}\s*Using bv as an AI sidecar`)
 
 // legacyBlurbEndPattern matches content near the end of the legacy blurb.
-var legacyBlurbEndPattern = regexp.MustCompile(`(?m)bv already computes the hard parts[^\n]*\n*` + "```" + `?\n*`)
+// Uses non-capturing group to make the entire triple-backtick sequence optional.
+var legacyBlurbEndPattern = regexp.MustCompile(`(?m)bv already computes the hard parts[^\n]*(?:\n*` + "```" + `)?\n*`)
 
 // legacyBlurbNextSectionPattern matches the start of a new section after the legacy blurb.
 // Used as fallback when the end pattern isn't found.
