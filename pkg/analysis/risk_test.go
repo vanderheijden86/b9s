@@ -23,7 +23,7 @@ func TestComputeRiskSignals_EmptyIssue(t *testing.T) {
 	issues := make(map[string]model.Issue)
 	issues["TEST-1"] = *issue
 
-	signals := ComputeRiskSignals(issue, &stats, issues, nil, time.Now())
+	signals := ComputeRiskSignals(issue, &stats, issues, time.Now())
 
 	// Empty issue with no deps should have low risk
 	if signals.FanVariance > 0.1 {
@@ -35,45 +35,45 @@ func TestComputeRiskSignals_EmptyIssue(t *testing.T) {
 }
 
 func TestComputeRiskSignals_FanVariance(t *testing.T) {
-	// Create a hub-and-spoke pattern with varying degrees
+	// Create a hub-and-spoke pattern with varying In-Degree of dependencies
 	now := time.Now()
 	issues := make(map[string]model.Issue)
 
-	// Hub issue with many deps
-	hub := model.Issue{
-		ID:        "HUB",
-		Title:     "Hub Issue",
+	// Issue depends on 3 things with different popularity
+	issue := model.Issue{
+		ID:        "ISSUE",
+		Title:     "Main Issue",
 		Status:    model.StatusOpen,
-		CreatedAt: now.Add(-48 * time.Hour),
+		CreatedAt: now,
 		UpdatedAt: now,
 		Dependencies: []*model.Dependency{
-			{IssueID: "HUB", DependsOnID: "DEP-1", Type: model.DepBlocks},
-			{IssueID: "HUB", DependsOnID: "DEP-2", Type: model.DepBlocks},
-			{IssueID: "HUB", DependsOnID: "DEP-3", Type: model.DepBlocks},
+			{IssueID: "ISSUE", DependsOnID: "POPULAR-LIB", Type: model.DepBlocks},
+			{IssueID: "ISSUE", DependsOnID: "NICHE-LIB", Type: model.DepBlocks},
+			{IssueID: "ISSUE", DependsOnID: "MID-LIB", Type: model.DepBlocks},
 		},
 	}
 
-	// Dependencies with varying in/out degrees
-	dep1 := model.Issue{ID: "DEP-1", Title: "Dep 1", Status: model.StatusOpen, CreatedAt: now, UpdatedAt: now}
-	dep2 := model.Issue{ID: "DEP-2", Title: "Dep 2", Status: model.StatusOpen, CreatedAt: now, UpdatedAt: now}
-	dep3 := model.Issue{ID: "DEP-3", Title: "Dep 3", Status: model.StatusOpen, CreatedAt: now, UpdatedAt: now}
+	issues["ISSUE"] = issue
+	issues["POPULAR-LIB"] = model.Issue{ID: "POPULAR-LIB"}
+	issues["NICHE-LIB"] = model.Issue{ID: "NICHE-LIB"}
+	issues["MID-LIB"] = model.Issue{ID: "MID-LIB"}
 
-	issues["HUB"] = hub
-	issues["DEP-1"] = dep1
-	issues["DEP-2"] = dep2
-	issues["DEP-3"] = dep3
-
-	// Create stats with varying degrees to create variance
+	// Stats with varying In-Degrees for the blockers
 	stats := GraphStats{
-		InDegree:  map[string]int{"HUB": 0, "DEP-1": 5, "DEP-2": 1, "DEP-3": 10},
-		OutDegree: map[string]int{"HUB": 3, "DEP-1": 0, "DEP-2": 2, "DEP-3": 0},
+		InDegree: map[string]int{
+			"POPULAR-LIB": 100, // Very popular
+			"NICHE-LIB":   1,   // Very niche
+			"MID-LIB":     50,  // Medium
+		},
+		OutDegree: make(map[string]int),
 	}
 
-	signals := ComputeRiskSignals(&hub, &stats, issues, nil, now)
+	signals := ComputeRiskSignals(&issue, &stats, issues, now)
 
-	// Should have some fan variance due to differing neighbor degrees
+	// Should have some fan variance due to differing blocker In-Degrees (1, 50, 100)
+	// Mean = 50.3. StdDev ~ 40. CV ~ 0.8. Normalized ~ 0.4.
 	if signals.FanVariance < 0.1 {
-		t.Errorf("expected higher fan variance with varying deps, got %f", signals.FanVariance)
+		t.Errorf("expected higher fan variance with varying blocker degrees, got %f", signals.FanVariance)
 	}
 }
 
@@ -134,7 +134,7 @@ func TestComputeRiskSignals_StatusRisk(t *testing.T) {
 			}
 			issues := make(map[string]model.Issue)
 
-			signals := ComputeRiskSignals(issue, &stats, issues, nil, now)
+			signals := ComputeRiskSignals(issue, &stats, issues, now)
 
 			if tc.expectHigh && signals.StatusRisk < 0.5 {
 				t.Errorf("expected high status risk for %s, got %f", tc.name, signals.StatusRisk)
@@ -183,8 +183,8 @@ func TestComputeRiskSignals_ActivityChurn(t *testing.T) {
 	}
 	issues := make(map[string]model.Issue)
 
-	highChurnSignals := ComputeRiskSignals(highChurnIssue, &stats, issues, nil, now)
-	lowChurnSignals := ComputeRiskSignals(lowChurnIssue, &stats, issues, nil, now)
+	highChurnSignals := ComputeRiskSignals(highChurnIssue, &stats, issues, now)
+	lowChurnSignals := ComputeRiskSignals(lowChurnIssue, &stats, issues, now)
 
 	if highChurnSignals.ActivityChurn <= lowChurnSignals.ActivityChurn {
 		t.Errorf("high churn issue should have higher activity churn: high=%f, low=%f",
@@ -223,7 +223,7 @@ func TestComputeRiskSignals_CrossRepoRisk(t *testing.T) {
 		OutDegree: make(map[string]int),
 	}
 
-	signals := ComputeRiskSignals(&issueA, &stats, issues, nil, now)
+	signals := ComputeRiskSignals(&issueA, &stats, issues, now)
 
 	// All deps are cross-repo, so should have high cross-repo risk
 	if signals.CrossRepoRisk < 0.9 {
@@ -266,7 +266,7 @@ func TestComputeRiskSignals_CompositeRisk(t *testing.T) {
 		OutDegree: map[string]int{"HIGH-RISK": 1, "DEP-1": 0},
 	}
 
-	signals := ComputeRiskSignals(&highRiskIssue, &stats, issues, nil, now)
+	signals := ComputeRiskSignals(&highRiskIssue, &stats, issues, now)
 
 	// Composite risk should be significant
 	if signals.CompositeRisk < 0.4 {

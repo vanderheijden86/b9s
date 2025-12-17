@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"math"
-	"sort"
 	"time"
 
 	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
@@ -55,10 +54,9 @@ func ComputeRiskSignals(
 	issue *model.Issue,
 	stats *GraphStats,
 	issues map[string]model.Issue,
-	dependents map[string][]string, // Optional: optimization for reverse lookups
 	now time.Time,
 ) RiskSignals {
-	return ComputeRiskSignalsWithWeights(issue, stats, issues, dependents, now, DefaultRiskWeights())
+	return ComputeRiskSignalsWithWeights(issue, stats, issues, now, DefaultRiskWeights())
 }
 
 // ComputeRiskSignalsWithWeights calculates risk with custom weights
@@ -66,14 +64,13 @@ func ComputeRiskSignalsWithWeights(
 	issue *model.Issue,
 	stats *GraphStats,
 	issues map[string]model.Issue,
-	dependents map[string][]string,
 	now time.Time,
 	weights RiskWeights,
 ) RiskSignals {
 	signals := RiskSignals{}
 
 	// 1. Fan variance - measure spread in dependency degrees
-	signals.FanVariance = computeFanVariance(issue, stats, issues, dependents)
+	signals.FanVariance = computeFanVariance(issue, stats)
 
 	// 2. Activity churn - comment/edit frequency relative to age
 	signals.ActivityChurn = computeActivityChurn(issue, now)
@@ -101,58 +98,23 @@ func ComputeRiskSignalsWithWeights(
 	return signals
 }
 
-// computeFanVariance measures variance in blocker fan-in/out across neighborhood
-func computeFanVariance(issue *model.Issue, stats *GraphStats, issues map[string]model.Issue, dependents map[string][]string) float64 {
-	if len(issue.Dependencies) == 0 && (dependents == nil || len(dependents[issue.ID]) == 0) {
-		// Fast path if we know there are no deps and no reverse deps (if dependents provided)
-		// If dependents is nil, we still have to check reverse manually unless we assume isolated
-		if dependents != nil {
-			return 0
-		}
-	}
-
-	// Collect degrees from direct dependencies
+// computeFanVariance measures variance in blocker In-Degrees (upstream stability variance)
+func computeFanVariance(issue *model.Issue, stats *GraphStats) float64 {
+	// Collect In-Degrees of blocking dependencies
 	var degrees []float64
 
-	// Include this issue's in/out degrees
-	inDeg := float64(stats.InDegree[issue.ID])
-	outDeg := float64(stats.OutDegree[issue.ID])
-	degrees = append(degrees, inDeg, outDeg)
-
-	// Include neighbor degrees
 	for _, dep := range issue.Dependencies {
 		if dep == nil || dep.Type != model.DepBlocks {
 			continue
 		}
 		neighborID := dep.DependsOnID
 		if neighborID != "" {
+			// We use InDegree as a proxy for "Stability/Popularity" of the dependency
 			degrees = append(degrees, float64(stats.InDegree[neighborID]))
-			degrees = append(degrees, float64(stats.OutDegree[neighborID]))
 		}
 	}
 
-	// Also check reverse dependencies (things that depend on this)
-	if dependents != nil {
-		// Optimized path: use precomputed dependents
-		for _, depID := range dependents[issue.ID] {
-			degrees = append(degrees, float64(stats.InDegree[depID]))
-			degrees = append(degrees, float64(stats.OutDegree[depID]))
-		}
-	} else {
-		// Slow path: scan all issues
-		for id, other := range issues {
-			if id == issue.ID {
-				continue
-			}
-			for _, dep := range other.Dependencies {
-				if dep != nil && dep.Type == model.DepBlocks && dep.DependsOnID == issue.ID {
-					degrees = append(degrees, float64(stats.InDegree[id]))
-					degrees = append(degrees, float64(stats.OutDegree[id]))
-				}
-			}
-		}
-	}
-
+	// We need at least 2 dependencies to calculate variance
 	if len(degrees) < 2 {
 		return 0
 	}
@@ -379,26 +341,11 @@ func ComputeAllRiskSignals(
 	result := make(map[string]RiskSignals, len(issues))
 	weights := DefaultRiskWeights()
 
-	// Precompute dependents for optimization
-	dependents := make(map[string][]string)
-	for id, issue := range issues {
-		for _, dep := range issue.Dependencies {
-			if dep != nil && dep.Type == model.DepBlocks {
-				dependents[dep.DependsOnID] = append(dependents[dep.DependsOnID], id)
-			}
-		}
-	}
-
-	// Sort dependents for determinism
-	for _, deps := range dependents {
-		sort.Strings(deps)
-	}
-
 	for id, issue := range issues {
 		if issue.Status == model.StatusClosed {
 			continue // Skip closed issues
 		}
-		result[id] = ComputeRiskSignalsWithWeights(&issue, stats, issues, dependents, now, weights)
+		result[id] = ComputeRiskSignalsWithWeights(&issue, stats, issues, now, weights)
 	}
 
 	return result

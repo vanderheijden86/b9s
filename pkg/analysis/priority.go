@@ -160,7 +160,7 @@ func (a *Analyzer) ComputeImpactScoresFromStats(stats *GraphStats, now time.Time
 		urgencyNorm, urgencyExplanation := computeUrgency(&issue, now)
 
 		// Compute risk signals (bv-82)
-		riskSignals := ComputeRiskSignals(&issue, stats, a.issueMap, dependents, now)
+		riskSignals := ComputeRiskSignals(&issue, stats, a.issueMap, now)
 
 		// Compute weighted score
 		breakdown := ScoreBreakdown{

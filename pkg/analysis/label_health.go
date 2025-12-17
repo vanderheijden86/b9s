@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -1941,10 +1942,13 @@ func ComputeLabelAttentionScores(issues []model.Issue, cfg LabelHealthConfig, no
 		}
 	}
 
-	// Sort by attention score descending
+	// Sort by attention score descending, then by label for determinism.
+	// Use an epsilon so near-identical scores don't cause unstable ordering due to
+	// floating point noise (e.g., PageRank power-iteration over map-backed graphs).
 	sort.Slice(scores, func(i, j int) bool {
-		if scores[i].AttentionScore != scores[j].AttentionScore {
-			return scores[i].AttentionScore > scores[j].AttentionScore
+		const eps = 1e-6
+		if diff := scores[i].AttentionScore - scores[j].AttentionScore; math.Abs(diff) > eps {
+			return diff > 0
 		}
 		return scores[i].Label < scores[j].Label
 	})
