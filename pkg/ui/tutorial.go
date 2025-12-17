@@ -775,70 +775,62 @@ func defaultTutorialPages() []TutorialPage {
 		},
 
 		// =============================================================
-		// VIEWS & NAVIGATION (placeholder - bv-36wz)
+		// VIEWS & NAVIGATION (bv-36wz, bv-wra5, bv-h6jw)
 		// =============================================================
+		{
+			ID:      "views-nav-fundamentals",
+			Title:   "Navigation Fundamentals",
+			Section: "Views",
+			Content: viewsNavFundamentalsContent,
+		},
 		{
 			ID:       "views-list",
 			Title:    "List View",
 			Section:  "Views",
 			Contexts: []string{"list"},
-			Content: `## List View
-
-The **List view** shows all your beads in a filterable list.
-
-### Navigation
-| Key | Action |
-|-----|--------|
-| **j/k** | Move up/down |
-| **Enter** | View details |
-| **g/G** | Jump to start/end |
-
-### Filtering
-| Key | Filter |
-|-----|--------|
-| **o** | Open issues |
-| **c** | Closed issues |
-| **r** | Ready (no blockers) |
-| **a** | All issues |
-
-> More detailed content coming in bv-36wz.`,
+			Content:  viewsListContent,
+		},
+		{
+			ID:       "views-detail",
+			Title:    "Detail View",
+			Section:  "Views",
+			Contexts: []string{"detail"},
+			Content:  viewsDetailContent,
+		},
+		{
+			ID:       "views-split",
+			Title:    "Split View",
+			Section:  "Views",
+			Contexts: []string{"split"},
+			Content:  viewsSplitContent,
 		},
 		{
 			ID:       "views-board",
 			Title:    "Board View",
 			Section:  "Views",
 			Contexts: []string{"board"},
-			Content: `## Board View
-
-Kanban-style columns: **Open**, **In Progress**, **Blocked**, **Closed**.
-
-### Navigation
-| Key | Action |
-|-----|--------|
-| **h/l** | Move between columns |
-| **j/k** | Move within column |
-| **Enter** | View details |
-
-> More detailed content coming in bv-36wz.`,
+			Content:  viewsBoardContent,
 		},
 		{
 			ID:       "views-graph",
 			Title:    "Graph View",
 			Section:  "Views",
 			Contexts: []string{"graph"},
-			Content: `## Graph View
-
-Visualizes dependencies between beads.
-
-- Arrows point TO dependencies (A → B means A blocks B)
-- Highlighted node is selected
-
-| Key | Action |
-|-----|--------|
-| **j/k** | Navigate nodes |
-| **Enter** | Select node |
-
-> More detailed content coming in bv-36wz.`,
+			Content:  viewsGraphContent,
+		},
+		{
+			ID:       "views-insights",
+			Title:    "Insights Panel",
+			Section:  "Views",
+			Contexts: []string{"insights"},
+			Content:  viewsInsightsContent,
+		},
+		{
+			ID:       "views-history",
+			Title:    "History View",
+			Section:  "Views",
+			Contexts: []string{"history"},
+			Content:  viewsHistoryContent,
 		},
 
 		// =============================================================
