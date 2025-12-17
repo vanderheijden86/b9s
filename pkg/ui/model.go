@@ -59,6 +59,33 @@ const (
 	focusSprint // Sprint dashboard view (bv-161)
 )
 
+// SortMode represents the current list sorting mode (bv-3ita)
+type SortMode int
+
+const (
+	SortDefault     SortMode = iota // Priority asc, then created desc (original default)
+	SortCreatedAsc                  // By creation date, oldest first
+	SortCreatedDesc                 // By creation date, newest first
+	SortPriority                    // By priority only (ascending)
+	SortUpdated                     // By last update, newest first
+)
+
+// String returns a human-readable label for the sort mode
+func (s SortMode) String() string {
+	switch s {
+	case SortCreatedAsc:
+		return "Created ↑"
+	case SortCreatedDesc:
+		return "Created ↓"
+	case SortPriority:
+		return "Priority"
+	case SortUpdated:
+		return "Updated"
+	default:
+		return "Default"
+	}
+}
+
 // LabelGraphAnalysisResult holds label-specific graph analysis results (bv-109)
 type LabelGraphAnalysisResult struct {
 	Label        string
@@ -229,8 +256,9 @@ type Model struct {
 	historyLoading    bool // True while history is being loaded in background
 	historyLoadFailed bool // True if history loading failed
 
-	// Filter state
+	// Filter and sort state
 	currentFilter         string
+	sortMode              SortMode // bv-3ita: current sort mode
 	semanticSearchEnabled bool
 	semanticIndexBuilding bool
 	semanticSearch        *SemanticSearch
@@ -2237,6 +2265,10 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			m.activeRecipe = r
 			m.applyRecipe(r)
 		}
+	case "s":
+		// Cycle sort mode (bv-3ita)
+		m.sortMode = (m.sortMode + 1) % 5 // 5 sort modes total
+		m.applyFilter()                    // Re-apply filter with new sort
 	}
 	return m
 }
@@ -2683,15 +2715,17 @@ func (m *Model) renderHelpOverlay() string {
 		sb.WriteString(keyStyle.Render(s.key) + descStyle.Render(s.desc) + "\n")
 	}
 
-	// Filters
+	// Filters & Sort
 	sb.WriteString("\n")
-	sb.WriteString(sectionStyle.Render("Filters"))
+	sb.WriteString(sectionStyle.Render("Filters & Sort"))
 	sb.WriteString("\n")
 	filters := []struct{ key, desc string }{
 		{"o", "Show Open issues"},
 		{"c", "Show Closed issues"},
 		{"r", "Show Ready (unblocked)"},
 		{"a", "Show All issues"},
+		{"s", "Cycle sort mode"},
+		{"S", "Apply triage sort"},
 		{"/", "Fuzzy search"},
 		{"Ctrl+S", "Toggle semantic search mode"},
 	}
@@ -3664,6 +3698,9 @@ func (m *Model) applyFilter() {
 		}
 	}
 
+	// Apply sort mode (bv-3ita)
+	m.sortFilteredItems(filteredItems, filteredIssues)
+
 	m.list.SetItems(filteredItems)
 	m.updateSemanticIDs(filteredItems)
 	m.board.SetIssues(filteredIssues)
@@ -3676,6 +3713,66 @@ func (m *Model) applyFilter() {
 		m.list.Select(0)
 	}
 	m.updateViewportContent()
+}
+
+// cycleSortMode cycles through available sort modes (bv-3ita)
+func (m *Model) cycleSortMode() {
+	m.sortMode = (m.sortMode + 1) % 5 // 5 sort modes total
+	m.applyFilter()                    // Re-apply filter with new sort
+}
+
+// sortFilteredItems sorts the filtered items based on current sortMode (bv-3ita)
+func (m *Model) sortFilteredItems(items []list.Item, issues []model.Issue) {
+	if len(items) == 0 {
+		return
+	}
+
+	// Sort indices to keep items and issues in sync
+	indices := make([]int, len(items))
+	for i := range indices {
+		indices[i] = i
+	}
+
+	sort.Slice(indices, func(i, j int) bool {
+		iItem := items[indices[i]].(IssueItem)
+		jItem := items[indices[j]].(IssueItem)
+
+		switch m.sortMode {
+		case SortCreatedAsc:
+			// Oldest first
+			return iItem.Issue.CreatedAt.Before(jItem.Issue.CreatedAt)
+		case SortCreatedDesc:
+			// Newest first
+			return iItem.Issue.CreatedAt.After(jItem.Issue.CreatedAt)
+		case SortPriority:
+			// Priority ascending (P0 first)
+			return iItem.Issue.Priority < jItem.Issue.Priority
+		case SortUpdated:
+			// Most recently updated first
+			return iItem.Issue.UpdatedAt.After(jItem.Issue.UpdatedAt)
+		default:
+			// Default: Open first, then priority, then newest
+			iClosed := iItem.Issue.Status == model.StatusClosed
+			jClosed := jItem.Issue.Status == model.StatusClosed
+			if iClosed != jClosed {
+				return !iClosed
+			}
+			if iItem.Issue.Priority != jItem.Issue.Priority {
+				return iItem.Issue.Priority < jItem.Issue.Priority
+			}
+			return iItem.Issue.CreatedAt.After(jItem.Issue.CreatedAt)
+		}
+	})
+
+	// Reorder items and issues based on sorted indices
+	sortedItems := make([]list.Item, len(items))
+	sortedIssues := make([]model.Issue, len(issues))
+	for newIdx, oldIdx := range indices {
+		sortedItems[newIdx] = items[oldIdx]
+		sortedIssues[newIdx] = issues[oldIdx]
+	}
+	copy(items, sortedItems)
+	copy(issues, sortedIssues)
 }
 
 // applyRecipe applies a recipe's filters and sort to the current view
