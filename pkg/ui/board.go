@@ -245,23 +245,20 @@ func (b BoardModel) View(width, height int) string {
 			Render("No issues to display")
 	}
 
-	// Calculate column widths - distribute space proportionally
-	// Minimum column width for readability
+	// Calculate column widths - distribute space evenly
+	// Minimum column width for readability, NO maximum cap (bv-ic17)
 	minColWidth := 28
-	maxColWidth := 60
 
 	// Calculate available width (subtract gaps between columns)
 	gaps := numCols - 1
 	availableWidth := width - (gaps * 2) // 2 chars gap between columns
 
-	// Base width per column
+	// Distribute width evenly across columns, respecting minimum
 	baseWidth := availableWidth / numCols
 	if baseWidth < minColWidth {
 		baseWidth = minColWidth
 	}
-	if baseWidth > maxColWidth {
-		baseWidth = maxColWidth
-	}
+	// NO maxColWidth cap - use all available horizontal space
 
 	colHeight := height - 4 // Account for header
 	if colHeight < 8 {
