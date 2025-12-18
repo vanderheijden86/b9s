@@ -174,6 +174,10 @@ func main() {
 	pagesIncludeHistory := flag.Bool("pages-include-history", true, "Include git history for time-travel (default: true)")
 	previewPages := flag.String("preview-pages", "", "Preview existing static site bundle")
 	pagesWizard := flag.Bool("pages", false, "Launch interactive Pages deployment wizard")
+	// Debug rendering flag (for diagnosing TUI issues)
+	debugRender := flag.String("debug-render", "", "Render a view and output to file (views: insights, board)")
+	debugWidth := flag.Int("debug-width", 180, "Width for debug render")
+	debugHeight := flag.Int("debug-height", 50, "Height for debug render")
 	flag.Parse()
 
 	// Ensure static export flags are retained even when build tags strip features in some environments.
@@ -183,6 +187,9 @@ func main() {
 	_ = pagesIncludeHistory
 	_ = previewPages
 	_ = pagesWizard
+	_ = debugRender
+	_ = debugWidth
+	_ = debugHeight
 	_ = robotForecast
 	_ = forecastLabel
 	_ = forecastSprint
@@ -4246,6 +4253,13 @@ func main() {
 			TotalIssues:  workspaceInfo.TotalIssues,
 			RepoPrefixes: workspaceInfo.RepoPrefixes,
 		})
+	}
+
+	// Debug render mode - output a view to file and exit
+	if *debugRender != "" {
+		output := m.RenderDebugView(*debugRender, *debugWidth, *debugHeight)
+		fmt.Println(output)
+		os.Exit(0)
 	}
 
 	// Run Program

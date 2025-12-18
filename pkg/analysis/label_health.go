@@ -857,6 +857,8 @@ func ExtractLabels(issues []model.Issue) LabelExtractionResult {
 				stats.ClosedCount++
 			case model.StatusInProgress:
 				stats.InProgress++
+			case model.StatusBlocked:
+				stats.Blocked++
 			}
 
 			// Count by priority
@@ -1038,19 +1040,19 @@ func ComputeBlockageCascade(issues []model.Issue, flow CrossLabelFlow, cfg Label
 	// Build issue map and count blocked per label
 	issueMap := make(map[string]model.Issue, len(issues))
 	blockedByLabel := make(map[string][]model.Issue)
+	blockedIssueIDs := make(map[string]bool) // Track unique blocked issues
 	for _, iss := range issues {
 		issueMap[iss.ID] = iss
 		if iss.Status == model.StatusBlocked {
+			blockedIssueIDs[iss.ID] = true // Count each blocked issue once
 			for _, label := range iss.Labels {
 				blockedByLabel[label] = append(blockedByLabel[label], iss)
 			}
 		}
 	}
 
-	// Count total blocked
-	for _, blocked := range blockedByLabel {
-		result.TotalBlocked += len(blocked)
-	}
+	// Count total blocked (unique issues, not double-counting multi-label issues)
+	result.TotalBlocked = len(blockedIssueIDs)
 
 	// For each label with blocked issues, compute cascade
 	var allCascades []BlockageCascadeResult
@@ -2201,10 +2203,7 @@ func ComputeHistoricalVelocity(issues []model.Issue, label string, numWeeks int,
 		// Use coefficient of variation (CV) - lower is better
 		// CV = stddev / mean, so we invert it for the score
 		if mean > 0 {
-			stddev := variance // Approximate
-			if stddev > 0 {
-				stddev = variance / mean // Simple approximation
-			}
+			stddev := math.Sqrt(variance)
 			cv := stddev / mean
 			// CV of 0 = 100 score, CV of 1+ = 0 score
 			result.ConsistencyScore = clampScore(int(100 * (1 - cv)))

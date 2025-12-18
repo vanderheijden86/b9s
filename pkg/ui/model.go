@@ -610,9 +610,15 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 	// Theme
 	theme := DefaultTheme(lipgloss.NewRenderer(os.Stdout))
 
-	// List setup
+	// Default dimensions for immediate ready state (updated when WindowSizeMsg arrives)
+	// This eliminates the "Initializing..." phase entirely, fixing slow startup issues
+	// in tmux, SSH, and slow terminal emulators where the terminal may delay sending size.
+	const defaultWidth = 120
+	const defaultHeight = 40
+
+	// List setup - initialize with default dimensions so UI is immediately usable
 	delegate := IssueDelegate{Theme: theme, WorkspaceMode: false}
-	l := list.New(items, delegate, 0, 0)
+	l := list.New(items, delegate, defaultWidth, defaultHeight-3)
 	l.Title = ""
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
@@ -636,13 +642,18 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 	// Theme-aware markdown renderer
 	renderer := NewMarkdownRendererWithTheme(80, theme)
 
+	// Initialize viewport with default dimensions
+	vp := viewport.New(defaultWidth, defaultHeight-2)
+
 	// Initialize sub-components
 	board := NewBoardModel(issues, theme)
 	labelDashboard := NewLabelDashboardModel(theme)
+	labelDashboard.SetSize(defaultWidth, defaultHeight-1)
 	velocityComparison := NewVelocityComparisonModel(theme) // bv-125
 	shortcutsSidebar := NewShortcutsSidebar(theme)          // bv-3qi5
 	ins := graphStats.GenerateInsights(len(issues))         // allow UI to show as many as fit
 	insightsPanel := NewInsightsModel(ins, issueMap, theme)
+	insightsPanel.SetSize(defaultWidth, defaultHeight-1)
 	graphView := NewGraphModel(issues, &ins, theme)
 
 	// Priority hints are generated asynchronously when Phase 2 completes
@@ -763,6 +774,7 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		beadsPath:           beadsPath,
 		watcher:             fileWatcher,
 		list:                l,
+		viewport:            vp,
 		renderer:            renderer,
 		board:               board,
 		labelDashboard:      labelDashboard,
@@ -774,6 +786,10 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		currentFilter:       "all",
 		semanticSearch:      semanticSearch,
 		focused:             focusList,
+		// Initialize as ready with default dimensions to eliminate "Initializing..." phase
+		ready:  true,
+		width:  defaultWidth,
+		height: defaultHeight,
 		countOpen:           cOpen,
 		countReady:          cReady,
 		countBlocked:        cBlocked,
@@ -817,10 +833,12 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 }
 
 func (m Model) Init() tea.Cmd {
+	// Note: ReadyTimeoutCmd is no longer needed since the model is now
+	// initialized as ready with default dimensions in NewModel().
+	// This eliminates the "Initializing..." phase entirely.
 	cmds := []tea.Cmd{
 		CheckUpdateCmd(),
 		WaitForPhase2Cmd(m.analysis),
-		ReadyTimeoutCmd(), // bv-7wl7: Fallback if terminal delays WindowSizeMsg
 	}
 	if m.watcher != nil {
 		cmds = append(cmds, WatchFileCmd(m.watcher))
@@ -847,13 +865,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateURL = msg.URL
 
 	case ReadyTimeoutMsg:
-		// bv-7wl7: Fallback if terminal doesn't send WindowSizeMsg promptly.
-		// Set ready with reasonable defaults so the UI doesn't hang on "Initializing...".
+		// bv-7wl7: Legacy fallback handler (no longer used).
+		// The model is now initialized as ready with default dimensions in NewModel(),
+		// so this handler should never execute. Kept for backwards compatibility.
 		if !m.ready {
-			m.width = 120  // Reasonable default width
-			m.height = 40  // Reasonable default height
+			m.width = 120
+			m.height = 40
 			m.ready = true
-			// Initialize components with default sizes
 			m.list.SetSize(m.width, m.height-3)
 			m.viewport = viewport.New(m.width, m.height-2)
 			m.insightsPanel.SetSize(m.width, m.height-1)
@@ -5742,4 +5760,25 @@ func (m Model) renderAlertsPanel() string {
 		lipgloss.Center,
 		content,
 	)
+}
+
+// RenderDebugView renders a specific view for debugging purposes.
+// This is used by --debug-render to capture TUI output without running interactively.
+func (m *Model) RenderDebugView(viewName string, width, height int) string {
+	m.width = width
+	m.height = height
+	m.ready = true
+
+	switch viewName {
+	case "insights":
+		m.insightsPanel.SetSize(width, height-1)
+		return m.insightsPanel.View()
+	case "board":
+		return m.board.View(width, height-1)
+	case "history":
+		m.historyView.SetSize(width, height-1)
+		return m.historyView.View()
+	default:
+		return "Unknown view: " + viewName
+	}
 }

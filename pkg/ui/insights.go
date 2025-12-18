@@ -729,7 +729,6 @@ func (m *InsightsModel) renderMetricPanel(panel MetricPanel, width, height int, 
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Width(width).
-		Height(height).
 		Padding(0, 1)
 
 	// Title with count and value range
@@ -950,7 +949,6 @@ func (m *InsightsModel) renderCyclesPanel(width, height int, t Theme) string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Width(width).
-		Height(height).
 		Padding(0, 1)
 
 	titleStyle := t.Renderer.NewStyle().Bold(true)
@@ -1087,7 +1085,6 @@ func (m *InsightsModel) renderPriorityPanel(width, height int, t Theme) string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Width(width).
-		Height(height).
 		Padding(0, 1)
 
 	titleStyle := t.Renderer.NewStyle().Bold(true)
@@ -1234,8 +1231,7 @@ func (m *InsightsModel) renderMiniBar(label string, value float64, width int, t 
 func (m *InsightsModel) renderPriorityItem(pick analysis.TopPick, width, height int, isSelected bool, t Theme) string {
 	itemStyle := t.Renderer.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		Width(width-2).
-		Height(height-1).
+		Width(width - 2).
 		Padding(0, 1)
 
 	if isSelected {
@@ -1351,7 +1347,6 @@ func (m *InsightsModel) renderHeatmapPanel(width, height int, t Theme) string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
 		Width(width).
-		Height(height).
 		Padding(0, 1)
 
 	// If in drill-down mode, delegate to drill-down renderer
@@ -1983,7 +1978,6 @@ Navigate to a metric panel and select an item to view its details here.
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(t.Primary).
 		Width(width).
-		Height(height).
 		Padding(0, 1)
 
 	return panelStyle.Render(sb.String())
