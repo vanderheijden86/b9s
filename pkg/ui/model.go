@@ -21,6 +21,7 @@ import (
 	"github.com/Dicklesworthstone/beads_viewer/pkg/loader"
 	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
 	"github.com/Dicklesworthstone/beads_viewer/pkg/recipe"
+	"github.com/Dicklesworthstone/beads_viewer/pkg/search"
 	"github.com/Dicklesworthstone/beads_viewer/pkg/updater"
 	"github.com/Dicklesworthstone/beads_viewer/pkg/watcher"
 
@@ -315,11 +316,16 @@ type Model struct {
 	historyLoadFailed bool // True if history loading failed
 
 	// Filter and sort state
-	currentFilter         string
-	sortMode              SortMode // bv-3ita: current sort mode
-	semanticSearchEnabled bool
-	semanticIndexBuilding bool
-	semanticSearch        *SemanticSearch
+	currentFilter          string
+	sortMode               SortMode // bv-3ita: current sort mode
+	semanticSearchEnabled  bool
+	semanticIndexBuilding  bool
+	semanticSearch         *SemanticSearch
+	semanticHybridEnabled  bool
+	semanticHybridPreset   search.PresetName
+	semanticHybridBuilding bool
+	semanticHybridReady    bool
+	lastSearchTerm         string
 
 	// Stats (cached)
 	countOpen    int
@@ -399,8 +405,8 @@ type Model struct {
 	tutorialModel TutorialModel
 
 	// Cass session preview modal (bv-5bqh)
-	showCassModal bool
-	cassModal     CassSessionModal
+	showCassModal  bool
+	cassModal      CassSessionModal
 	cassCorrelator *cass.Correlator
 }
 
@@ -504,12 +510,95 @@ func (m *Model) updateSemanticIDs(items []list.Item) {
 		return
 	}
 	ids := make([]string, 0, len(items))
+	docs := make(map[string]string, len(items))
 	for _, it := range items {
 		if issueItem, ok := it.(IssueItem); ok {
-			ids = append(ids, issueItem.Issue.ID)
+			id := issueItem.Issue.ID
+			ids = append(ids, id)
+			docs[id] = search.IssueDocument(issueItem.Issue)
 		}
 	}
 	m.semanticSearch.SetIDs(ids)
+	m.semanticSearch.SetDocs(docs)
+}
+
+func (m *Model) shouldShowSearchScores() bool {
+	if !m.semanticSearchEnabled || !m.semanticHybridEnabled || m.semanticSearch == nil {
+		return false
+	}
+	if m.list.FilterState() == list.Unfiltered {
+		return false
+	}
+	if strings.TrimSpace(m.list.FilterInput.Value()) == "" {
+		return false
+	}
+	return true
+}
+
+func (m *Model) updateListDelegate() {
+	m.list.SetDelegate(IssueDelegate{
+		Theme:             m.theme,
+		ShowPriorityHints: m.showPriorityHints,
+		PriorityHints:     m.priorityHints,
+		WorkspaceMode:     m.workspaceMode,
+		ShowSearchScores:  m.shouldShowSearchScores(),
+	})
+}
+
+func (m *Model) applySemanticScores(term string) {
+	if m.semanticSearch == nil {
+		return
+	}
+	scores, ok := m.semanticSearch.Scores(term)
+	if !ok {
+		return
+	}
+	items := m.list.Items()
+	for i := range items {
+		issueItem, ok := items[i].(IssueItem)
+		if !ok {
+			continue
+		}
+		if score, ok := scores[issueItem.Issue.ID]; ok {
+			issueItem.SearchScore = score.Score
+			issueItem.SearchTextScore = score.TextScore
+			issueItem.SearchComponents = score.Components
+			issueItem.SearchScoreSet = true
+		} else {
+			issueItem.SearchScore = 0
+			issueItem.SearchTextScore = 0
+			issueItem.SearchComponents = nil
+			issueItem.SearchScoreSet = false
+		}
+		items[i] = issueItem
+	}
+}
+
+func (m *Model) clearSemanticScores() {
+	items := m.list.Items()
+	changed := false
+	for i := range items {
+		issueItem, ok := items[i].(IssueItem)
+		if !ok {
+			continue
+		}
+		if issueItem.SearchScoreSet || issueItem.SearchComponents != nil {
+			issueItem.SearchScore = 0
+			issueItem.SearchTextScore = 0
+			issueItem.SearchComponents = nil
+			issueItem.SearchScoreSet = false
+			items[i] = issueItem
+			changed = true
+		}
+	}
+	if changed && m.list.FilterState() != list.Unfiltered {
+		prevState := m.list.FilterState()
+		currentTerm := m.list.FilterInput.Value()
+		m.list.SetFilterText(currentTerm)
+		if prevState == list.Filtering {
+			m.list.SetFilterState(list.Filtering)
+		}
+	}
 }
 
 // NewModel creates a new Model from the given issues
@@ -767,29 +856,34 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 	}
 
 	return Model{
-		issues:              issues,
-		issueMap:            issueMap,
-		analyzer:            analyzer,
-		analysis:            graphStats,
-		beadsPath:           beadsPath,
-		watcher:             fileWatcher,
-		list:                l,
-		viewport:            vp,
-		renderer:            renderer,
-		board:               board,
-		labelDashboard:      labelDashboard,
-		velocityComparison:  velocityComparison,
-		shortcutsSidebar:    shortcutsSidebar,
-		graphView:           graphView,
-		insightsPanel:       insightsPanel,
-		theme:               theme,
-		currentFilter:       "all",
-		semanticSearch:      semanticSearch,
-		focused:             focusList,
+		issues:                 issues,
+		issueMap:               issueMap,
+		analyzer:               analyzer,
+		analysis:               graphStats,
+		beadsPath:              beadsPath,
+		watcher:                fileWatcher,
+		list:                   l,
+		viewport:               vp,
+		renderer:               renderer,
+		board:                  board,
+		labelDashboard:         labelDashboard,
+		velocityComparison:     velocityComparison,
+		shortcutsSidebar:       shortcutsSidebar,
+		graphView:              graphView,
+		insightsPanel:          insightsPanel,
+		theme:                  theme,
+		currentFilter:          "all",
+		semanticSearch:         semanticSearch,
+		semanticHybridEnabled:  false,
+		semanticHybridPreset:   search.PresetDefault,
+		semanticHybridBuilding: false,
+		semanticHybridReady:    false,
+		lastSearchTerm:         "",
+		focused:                focusList,
 		// Initialize as ready with default dimensions to eliminate "Initializing..." phase
-		ready:  true,
-		width:  defaultWidth,
-		height: defaultHeight,
+		ready:               true,
+		width:               defaultWidth,
+		height:              defaultHeight,
 		countOpen:           cOpen,
 		countReady:          cReady,
 		countBlocked:        cBlocked,
@@ -910,6 +1004,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case HybridMetricsReadyMsg:
+		m.semanticHybridBuilding = false
+		if msg.Error != nil {
+			m.semanticHybridEnabled = false
+			m.semanticHybridReady = false
+			if m.semanticSearch != nil {
+				m.semanticSearch.SetMetricsCache(nil)
+				m.semanticSearch.SetHybridConfig(false, m.semanticHybridPreset)
+			}
+			m.statusMsg = fmt.Sprintf("Hybrid search unavailable: %v", msg.Error)
+			m.statusIsError = true
+			break
+		}
+		if m.semanticSearch != nil && msg.Cache != nil {
+			m.semanticSearch.SetMetricsCache(msg.Cache)
+		}
+		m.semanticHybridReady = msg.Cache != nil
+		m.statusMsg = fmt.Sprintf("Hybrid search ready (%s)", m.semanticHybridPreset)
+		m.statusIsError = false
+
+		// Recompute semantic results if hybrid is enabled and search is active.
+		if m.semanticHybridEnabled && m.semanticSearchEnabled && m.list.FilterState() != list.Unfiltered {
+			currentTerm := m.list.FilterInput.Value()
+			if currentTerm != "" {
+				m.semanticSearch.ResetCache()
+				cmds = append(cmds, ComputeSemanticFilterCmd(m.semanticSearch, currentTerm))
+			}
+		}
+
 	case SemanticFilterResultMsg:
 		// Async semantic filter results arrived - cache and refresh list
 		if m.semanticSearch != nil && msg.Results != nil {
@@ -918,6 +1041,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Refresh list if still filtering with the same term
 			currentTerm := m.list.FilterInput.Value()
 			if m.semanticSearchEnabled && currentTerm == msg.Term {
+				m.applySemanticScores(msg.Term)
 				prevState := m.list.FilterState()
 				m.list.SetFilterText(currentTerm)
 				if prevState == list.Filtering {
@@ -1158,6 +1282,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.updateSemanticIDs(items)
+		m.clearSemanticScores()
+		if m.semanticSearch != nil {
+			m.semanticSearch.ResetCache()
+			m.semanticSearch.SetMetricsCache(nil)
+		}
+		m.semanticHybridReady = false
+		m.semanticHybridBuilding = false
+		if m.semanticHybridEnabled {
+			m.semanticHybridBuilding = true
+			cmds = append(cmds, BuildHybridMetricsCmd(m.issues))
+		}
 		m.list.SetItems(items)
 
 		// Restore selection position
@@ -1531,6 +1666,62 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Hybrid search toggle/preset cycle (bv-xbar.6)
+		if m.focused == focusList && m.list.FilterState() != list.Filtering {
+			switch msg.String() {
+			case "H":
+				m.statusIsError = false
+				m.semanticHybridEnabled = !m.semanticHybridEnabled
+				if m.semanticSearch == nil {
+					m.semanticHybridEnabled = false
+					m.statusMsg = "Hybrid search unavailable"
+					m.statusIsError = true
+					return m, nil
+				}
+				m.semanticSearch.SetHybridConfig(m.semanticHybridEnabled, m.semanticHybridPreset)
+				m.semanticSearch.ResetCache()
+				m.clearSemanticScores()
+				if m.semanticHybridEnabled && !m.semanticHybridReady && !m.semanticHybridBuilding {
+					m.semanticHybridBuilding = true
+					m.statusMsg = "Hybrid search: computing metrics…"
+					cmds = append(cmds, BuildHybridMetricsCmd(m.issues))
+				} else if m.semanticHybridEnabled {
+					m.statusMsg = fmt.Sprintf("Hybrid search enabled (%s)", m.semanticHybridPreset)
+				} else {
+					m.statusMsg = "Semantic search: text-only"
+				}
+				if m.semanticSearchEnabled && m.list.FilterState() != list.Unfiltered {
+					currentTerm := m.list.FilterInput.Value()
+					if currentTerm != "" && !m.semanticHybridBuilding {
+						cmds = append(cmds, ComputeSemanticFilterCmd(m.semanticSearch, currentTerm))
+					}
+				}
+				m.updateListDelegate()
+				return m, tea.Batch(cmds...)
+			case "alt+h", "alt+H":
+				m.statusIsError = false
+				m.semanticHybridPreset = nextHybridPreset(m.semanticHybridPreset)
+				if m.semanticSearch != nil {
+					m.semanticSearch.SetHybridConfig(m.semanticHybridEnabled, m.semanticHybridPreset)
+					m.semanticSearch.ResetCache()
+				}
+				m.clearSemanticScores()
+				if m.semanticHybridEnabled {
+					m.statusMsg = fmt.Sprintf("Hybrid preset: %s", m.semanticHybridPreset)
+				} else {
+					m.statusMsg = fmt.Sprintf("Hybrid preset set (%s)", m.semanticHybridPreset)
+				}
+				if m.semanticSearchEnabled && m.semanticHybridEnabled && m.list.FilterState() != list.Unfiltered {
+					currentTerm := m.list.FilterInput.Value()
+					if currentTerm != "" && !m.semanticHybridBuilding {
+						cmds = append(cmds, ComputeSemanticFilterCmd(m.semanticSearch, currentTerm))
+					}
+				}
+				m.updateListDelegate()
+				return m, tea.Batch(cmds...)
+			}
+		}
+
 		// Semantic search toggle (bv-9gf.3)
 		if msg.String() == "ctrl+s" && m.focused == focusList {
 			m.statusIsError = false
@@ -1553,9 +1744,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.statusMsg = "Semantic search unavailable"
 					m.statusIsError = true
 				}
+				if m.semanticHybridEnabled && !m.semanticHybridReady && !m.semanticHybridBuilding {
+					m.semanticHybridBuilding = true
+					cmds = append(cmds, BuildHybridMetricsCmd(m.issues))
+				}
 			} else {
 				m.list.Filter = list.DefaultFilter
 				m.statusMsg = "Fuzzy search enabled"
+				m.clearSemanticScores()
 			}
 
 			// Refresh the current list filter results immediately.
@@ -1568,6 +1764,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+			m.updateListDelegate()
 			return m, tea.Batch(cmds...)
 		}
 
@@ -1680,6 +1877,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focused = focusList
 					return m, nil
 				}
+				// Close label dashboard if open
+				if m.focused == focusLabelDashboard {
+					m.focused = focusList
+					return m, nil
+				}
 				// At main list - first ESC clears filters, second shows quit confirm
 				if m.hasActiveFilters() {
 					m.clearAllFilters()
@@ -1774,12 +1976,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Toggle priority hints
 				m.showPriorityHints = !m.showPriorityHints
 				// Update delegate with new state
-				m.list.SetDelegate(IssueDelegate{
-					Theme:             m.theme,
-					ShowPriorityHints: m.showPriorityHints,
-					PriorityHints:     m.priorityHints,
-					WorkspaceMode:     m.workspaceMode,
-				})
+				m.updateListDelegate()
 				// Show explanatory status message
 				if m.showPriorityHints {
 					count := len(m.priorityHints)
@@ -2118,12 +2315,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderer.SetWidthWithTheme(msg.Width, m.theme)
 		}
 
-		m.list.SetDelegate(IssueDelegate{
-			Theme:             m.theme,
-			ShowPriorityHints: m.showPriorityHints,
-			PriorityHints:     m.priorityHints,
-			WorkspaceMode:     m.workspaceMode,
-		})
+		m.updateListDelegate()
 
 		// Resize label dashboard table and modal overlay sizing
 		m.labelDashboard.SetSize(m.width, bodyHeight)
@@ -2141,6 +2333,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list, cmd = m.list.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+		currentTerm := m.list.FilterInput.Value()
+		if currentTerm != m.lastSearchTerm {
+			m.lastSearchTerm = currentTerm
+			if m.semanticSearchEnabled {
+				m.clearSemanticScores()
+			}
+		}
+		if m.semanticSearchEnabled && m.semanticHybridEnabled && m.list.FilterState() != list.Unfiltered {
+			if strings.TrimSpace(currentTerm) != "" {
+				m.applySemanticScores(currentTerm)
+			}
+		}
+		m.updateListDelegate()
 	}
 
 	// Update viewport if list selection changed in split view
@@ -3438,7 +3643,7 @@ func (m *Model) renderHelpOverlay() string {
 			BorderStyle(lipgloss.Border{Bottom: "─"}).
 			BorderBottom(true).
 			BorderForeground(color).
-			Width(colWidth - 4).
+			Width(colWidth-4).
 			Padding(0, 1)
 
 		keyStyle := t.Renderer.NewStyle().
@@ -4145,6 +4350,29 @@ func (m *Model) renderFooter() string {
 		Padding(0, 1).
 		Render(fmt.Sprintf("%s %s", filterIcon, filterTxt))
 
+	// Search mode badge when filtering
+	searchBadge := ""
+	if m.list.FilterState() != list.Unfiltered {
+		mode := "fuzzy"
+		if m.semanticSearchEnabled {
+			mode = "semantic"
+			if m.semanticIndexBuilding {
+				mode = "semantic (indexing)"
+			}
+			if m.semanticHybridEnabled {
+				mode = fmt.Sprintf("hybrid/%s", m.semanticHybridPreset)
+				if m.semanticHybridBuilding {
+					mode = fmt.Sprintf("hybrid/%s (metrics)", m.semanticHybridPreset)
+				}
+			}
+		}
+		searchBadge = lipgloss.NewStyle().
+			Background(ColorBgHighlight).
+			Foreground(ColorSecondary).
+			Padding(0, 1).
+			Render(fmt.Sprintf("🔎 %s", mode))
+	}
+
 	// Sort badge - only show when not default (bv-3ita)
 	sortBadge := ""
 	if m.sortMode != SortDefault {
@@ -4376,6 +4604,9 @@ func (m *Model) renderFooter() string {
 			}
 		}
 		keyHints = append(keyHints, keyStyle.Render("esc")+" cancel", keyStyle.Render("ctrl+s")+" "+mode, keyStyle.Render("⏎")+" select")
+		if m.semanticSearchEnabled {
+			keyHints = append(keyHints, keyStyle.Render("H")+" hybrid", keyStyle.Render("alt+h")+" preset")
+		}
 	} else if m.showTimeTravelPrompt {
 		keyHints = append(keyHints, keyStyle.Render("⏎")+" compare", keyStyle.Render("esc")+" cancel")
 	} else {
@@ -4410,6 +4641,9 @@ func (m *Model) renderFooter() string {
 	// ASSEMBLE FOOTER with proper spacing
 	// ─────────────────────────────────────────────────────────────────────────
 	leftWidth := lipgloss.Width(filterBadge) + lipgloss.Width(labelHint) + lipgloss.Width(statsSection)
+	if searchBadge != "" {
+		leftWidth += lipgloss.Width(searchBadge) + 1
+	}
 	if sortBadge != "" {
 		leftWidth += lipgloss.Width(sortBadge) + 1
 	}
@@ -4439,6 +4673,9 @@ func (m *Model) renderFooter() string {
 	// Build the footer
 	var parts []string
 	parts = append(parts, filterBadge)
+	if searchBadge != "" {
+		parts = append(parts, searchBadge)
+	}
 	if sortBadge != "" {
 		parts = append(parts, sortBadge)
 	}
@@ -4461,6 +4698,19 @@ func (m *Model) renderFooter() string {
 	parts = append(parts, statsSection, filler, countBadge, keysSection)
 
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, parts...)
+}
+
+func nextHybridPreset(current search.PresetName) search.PresetName {
+	presets := search.ListPresets()
+	if len(presets) == 0 {
+		return search.PresetDefault
+	}
+	for i, preset := range presets {
+		if preset == current {
+			return presets[(i+1)%len(presets)]
+		}
+	}
+	return presets[0]
 }
 
 // getDiffStatus returns the diff status for an issue if time-travel mode is active
@@ -4900,6 +5150,23 @@ func (m *Model) updateViewportContent() {
 		sb.WriteString("\n")
 	}
 
+	// Search Scores (hybrid mode)
+	if m.semanticSearchEnabled && m.semanticHybridEnabled && issueItem.SearchScoreSet && m.list.FilterState() != list.Unfiltered {
+		sb.WriteString("### 🔎 Search Scores\n")
+		sb.WriteString(fmt.Sprintf("- **Hybrid Score:** %.3f\n", issueItem.SearchScore))
+		sb.WriteString(fmt.Sprintf("- **Text Score:** %.3f\n", issueItem.SearchTextScore))
+		if len(issueItem.SearchComponents) > 0 {
+			sb.WriteString("- **Components:**\n")
+			order := []string{"pagerank", "status", "impact", "priority", "recency"}
+			for _, key := range order {
+				if val, ok := issueItem.SearchComponents[key]; ok {
+					sb.WriteString(fmt.Sprintf("  - %s: %.3f\n", key, val))
+				}
+			}
+		}
+		sb.WriteString("\n")
+	}
+
 	// Graph Analysis (using thread-safe accessors)
 	pr := m.analysis.GetPageRankScore(item.ID)
 	bt := m.analysis.GetBetweennessScore(item.ID)
@@ -5110,12 +5377,7 @@ func (m *Model) EnableWorkspaceMode(info WorkspaceInfo) {
 	}
 
 	// Update delegate to show repo badges
-	m.list.SetDelegate(IssueDelegate{
-		Theme:             m.theme,
-		ShowPriorityHints: m.showPriorityHints,
-		PriorityHints:     m.priorityHints,
-		WorkspaceMode:     m.workspaceMode,
-	})
+	m.updateListDelegate()
 }
 
 // IsWorkspaceMode returns whether workspace mode is active
