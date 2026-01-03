@@ -2861,8 +2861,8 @@ Reliability is key. `bv` doesn't assume a perfect environment; it actively handl
 
 ### 1. Intelligent Path Discovery
 The loader (`pkg/loader/loader.go`) doesn't just blindly open `.beads/beads.jsonl`. It employs a priority-based discovery algorithm:
-1.  **Canonical:** Checks for `beads.jsonl`.
-2.  **Legacy:** Fallback to `issues.jsonl` for older repos.
+1.  **Canonical:** Checks for `issues.jsonl` (preferred by beads upstream).
+2.  **Legacy:** Fallback to `beads.jsonl` for backward compatibility.
 3.  **Base:** Checks `beads.base.jsonl` (used by `bd` in daemon mode).
 4.  **Validation:** It skips temporary files like `*.backup` or `deletions.jsonl` to prevent displaying corrupted state.
 
@@ -3165,7 +3165,7 @@ Copyright (c) 2025 Jeffrey Emanuel
 
 ## 🧷 Robustness & Self-Healing
 - Loader skips malformed lines with warnings, strips UTF-8 BOM, tolerates large lines (10MB).
-- Beads file discovery order: beads.jsonl → beads.base.jsonl → issues.jsonl; skips backups/merge artifacts/deletions manifests.
+- Beads file discovery order: issues.jsonl → beads.jsonl → beads.base.jsonl; skips backups/merge artifacts/deletions manifests.
 - Live reload is debounced; update check is non-blocking with graceful failure on network issues.
 
 ## 🔗 Integrating with CI & Agents

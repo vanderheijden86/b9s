@@ -4,11 +4,13 @@ This guide outlines the best practices for Go development within this project, m
 
 ## 1. Project Structure
 - **cmd/**: Contains the main applications. Each subdirectory should be a main package (e.g., `cmd/bv/main.go`).
-- **pkg/**: Library code that can be imported by other projects.
-- **internal/**: Private library code that should not be imported by outside projects. Use this for core logic specific to the application.
-- **internal/ui/**: User Interface components (Bubble Tea models, views).
-- **internal/model/**: Domain models and data structures.
-- **internal/config/**: Configuration loading and management.
+- **pkg/**: Library code organized by domain. This project uses `pkg/` for all packages:
+  - **pkg/ui/**: User Interface components (Bubble Tea models, views).
+  - **pkg/model/**: Domain models and data structures.
+  - **pkg/analysis/**: Graph analysis and metrics computation.
+  - **pkg/loader/**: Beads file discovery and parsing.
+  - **pkg/export/**: Export functionality (Markdown, HTML, SQLite).
+- **tests/**: End-to-end and integration tests.
 
 ## 2. Code Style
 - **Formatting**: Always use `gofmt` (or `goimports`).

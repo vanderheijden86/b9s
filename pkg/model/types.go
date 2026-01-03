@@ -204,7 +204,10 @@ func (d DependencyType) IsValid() bool {
 	return false
 }
 
-// IsBlocking returns true if this dependency type represents a blocking relationship
+// IsBlocking returns true if this dependency type represents a blocking relationship.
+// Note: An empty string ("") is treated as blocking for backward compatibility with
+// legacy beads data that predates the typed dependency system. This means dependencies
+// created without an explicit type will block by default.
 func (d DependencyType) IsBlocking() bool {
 	return d == "" || d == DepBlocks
 }
