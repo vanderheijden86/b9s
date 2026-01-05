@@ -5987,6 +5987,14 @@ func (m *Model) openInEditor() {
 		return
 	}
 
+	// Recompute editorBase if it was auto-detected (user didn't set EDITOR/VISUAL)
+	if editorBase == "" {
+		editorCmd = strings.Fields(editor)
+		if len(editorCmd) > 0 {
+			editorBase = filepath.Base(editorCmd[0])
+		}
+	}
+
 	// Launch GUI editor in background
 	// Handle EDITOR with arguments (e.g., "cursor -w", "code --wait") by using shell
 	var cmd *exec.Cmd
