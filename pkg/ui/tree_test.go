@@ -988,3 +988,180 @@ func TestSetBeadsDir(t *testing.T) {
 		t.Errorf("Expected beadsDir to be /custom/path, got %q", tree.beadsDir)
 	}
 }
+
+// =============================================================================
+// loadState tests (bv-afcm)
+// =============================================================================
+
+// TestLoadState tests that loadState correctly restores expand/collapse state
+func TestLoadState(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Create a state file that makes child-1 collapsed (non-default for depth 1)
+	// and grandchild-1 expanded (non-default for depth 2)
+	state := TreeState{
+		Version: TreeStateVersion,
+		Expanded: map[string]bool{
+			"child-1":      false, // collapsed (non-default for depth 1)
+			"grandchild-1": true,  // expanded (non-default for depth 2)
+		},
+	}
+	data, _ := json.MarshalIndent(state, "", "  ")
+	statePath := filepath.Join(beadsDir, "tree-state.json")
+	if err := os.WriteFile(statePath, data, 0644); err != nil {
+		t.Fatalf("Failed to write state file: %v", err)
+	}
+
+	// Create issues
+	issues := []model.Issue{
+		{ID: "root-1", Title: "Root 1", Status: model.StatusOpen, IssueType: model.TypeEpic},
+		{ID: "child-1", Title: "Child 1", Status: model.StatusOpen, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{{IssueID: "child-1", DependsOnID: "root-1", Type: model.DepParentChild}}},
+		{ID: "grandchild-1", Title: "Grandchild 1", Status: model.StatusOpen, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{{IssueID: "grandchild-1", DependsOnID: "child-1", Type: model.DepParentChild}}},
+	}
+
+	// Build tree with beadsDir set
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	tree := NewTreeModel(theme)
+	tree.SetBeadsDir(beadsDir)
+	tree.Build(issues)
+
+	// Verify state was loaded correctly
+	child1 := tree.issueMap["child-1"]
+	if child1 == nil {
+		t.Fatal("child-1 not found in issueMap")
+	}
+	if child1.Expanded {
+		t.Error("Expected child-1 to be collapsed (from state file)")
+	}
+
+	grandchild1 := tree.issueMap["grandchild-1"]
+	if grandchild1 == nil {
+		t.Fatal("grandchild-1 not found in issueMap")
+	}
+	if !grandchild1.Expanded {
+		t.Error("Expected grandchild-1 to be expanded (from state file)")
+	}
+
+	// root-1 should still be expanded (default for depth 0, no override in state)
+	root1 := tree.issueMap["root-1"]
+	if root1 == nil {
+		t.Fatal("root-1 not found in issueMap")
+	}
+	if !root1.Expanded {
+		t.Error("Expected root-1 to be expanded (default behavior)")
+	}
+}
+
+// TestLoadStateNoFile tests that missing state file uses defaults
+func TestLoadStateNoFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	// Intentionally NOT creating state file
+
+	issues := []model.Issue{
+		{ID: "root", Title: "Root", Status: model.StatusOpen, IssueType: model.TypeEpic},
+		{ID: "child", Title: "Child", Status: model.StatusOpen, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{{IssueID: "child", DependsOnID: "root", Type: model.DepParentChild}}},
+	}
+
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	tree := NewTreeModel(theme)
+	tree.SetBeadsDir(beadsDir)
+	tree.Build(issues)
+
+	// Should use defaults without error
+	if !tree.IsBuilt() {
+		t.Error("Tree should be built even without state file")
+	}
+
+	// Default: root (depth 0) and child (depth 1) should be expanded
+	if !tree.issueMap["root"].Expanded {
+		t.Error("Expected root to be expanded (default for depth 0)")
+	}
+	if !tree.issueMap["child"].Expanded {
+		t.Error("Expected child to be expanded (default for depth 1)")
+	}
+}
+
+// TestLoadStateCorrupted tests that corrupted state file uses defaults
+func TestLoadStateCorrupted(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Write invalid JSON
+	statePath := filepath.Join(beadsDir, "tree-state.json")
+	if err := os.WriteFile(statePath, []byte("not valid json {"), 0644); err != nil {
+		t.Fatalf("Failed to write corrupted state file: %v", err)
+	}
+
+	issues := []model.Issue{
+		{ID: "root", Title: "Root", Status: model.StatusOpen, IssueType: model.TypeEpic},
+	}
+
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	tree := NewTreeModel(theme)
+	tree.SetBeadsDir(beadsDir)
+
+	// Should not panic
+	tree.Build(issues)
+
+	// Should use defaults
+	if !tree.IsBuilt() {
+		t.Error("Tree should be built despite corrupted state file")
+	}
+	if !tree.issueMap["root"].Expanded {
+		t.Error("Expected root to be expanded (default) after corrupted state file")
+	}
+}
+
+// TestLoadStateStaleIDs tests that stale IDs in state file are ignored
+func TestLoadStateStaleIDs(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatalf("Failed to create beads dir: %v", err)
+	}
+
+	// Create state file with IDs that don't exist
+	state := TreeState{
+		Version: TreeStateVersion,
+		Expanded: map[string]bool{
+			"nonexistent-1": true,
+			"nonexistent-2": false,
+			"root":          false, // This one exists
+		},
+	}
+	data, _ := json.MarshalIndent(state, "", "  ")
+	statePath := filepath.Join(beadsDir, "tree-state.json")
+	if err := os.WriteFile(statePath, data, 0644); err != nil {
+		t.Fatalf("Failed to write state file: %v", err)
+	}
+
+	issues := []model.Issue{
+		{ID: "root", Title: "Root", Status: model.StatusOpen, IssueType: model.TypeEpic},
+	}
+
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	tree := NewTreeModel(theme)
+	tree.SetBeadsDir(beadsDir)
+	tree.Build(issues)
+
+	// Should not panic, should build successfully
+	if !tree.IsBuilt() {
+		t.Error("Tree should be built despite stale IDs in state file")
+	}
+
+	// The existing ID should have its state applied
+	if tree.issueMap["root"].Expanded {
+		t.Error("Expected root to be collapsed (from state file)")
+	}
+}

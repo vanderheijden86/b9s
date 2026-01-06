@@ -122,6 +122,41 @@ func (t *TreeModel) saveState() {
 	}
 }
 
+// loadState restores expand/collapse state from disk (bv-afcm).
+// If the file doesn't exist or is corrupted, defaults are used silently.
+func (t *TreeModel) loadState() {
+	path := TreeStatePath(t.beadsDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// File doesn't exist = first run, use defaults
+		return
+	}
+
+	var state TreeState
+	if err := json.Unmarshal(data, &state); err != nil {
+		log.Printf("warning: invalid tree state file, using defaults: %v", err)
+		return
+	}
+
+	// Apply loaded state to nodes
+	t.applyState(&state)
+}
+
+// applyState sets expand state on nodes based on loaded state (bv-afcm).
+// Unknown IDs in state are silently ignored (stale IDs handled by bv-0jaz).
+func (t *TreeModel) applyState(state *TreeState) {
+	if state == nil || len(state.Expanded) == 0 {
+		return
+	}
+
+	for id, expanded := range state.Expanded {
+		if node, ok := t.issueMap[id]; ok {
+			node.Expanded = expanded
+		}
+		// If ID not found, it's stale - ignore
+	}
+}
+
 // TreeViewMode determines what relationships are displayed
 type TreeViewMode int
 
@@ -257,6 +292,10 @@ func (t *TreeModel) Build(issues []model.Issue) {
 	// The View() will handle displaying a helpful message if needed
 
 	// Step 6: Build the flat list for navigation
+	t.rebuildFlatList()
+
+	// Step 7: Load persisted state and rebuild flat list (bv-afcm)
+	t.loadState()
 	t.rebuildFlatList()
 
 	t.built = true
