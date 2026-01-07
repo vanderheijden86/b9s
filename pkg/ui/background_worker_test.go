@@ -579,3 +579,48 @@ func TestHashPrefix(t *testing.T) {
 		})
 	}
 }
+
+func TestBackgroundWorker_ConcurrentTrigger(t *testing.T) {
+	// Test that concurrent TriggerRefresh calls don't cause duplicate processing
+	tmpDir := t.TempDir()
+	beadsPath := filepath.Join(tmpDir, "beads.jsonl")
+
+	content := `{"id":"test-1","title":"Test","status":"open","priority":1,"issue_type":"task"}` + "\n"
+	if err := os.WriteFile(beadsPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	cfg := WorkerConfig{
+		BeadsPath:     beadsPath,
+		DebounceDelay: 50 * time.Millisecond,
+	}
+
+	worker, err := NewBackgroundWorker(cfg)
+	if err != nil {
+		t.Fatalf("NewBackgroundWorker failed: %v", err)
+	}
+	defer worker.Stop()
+
+	if err := worker.Start(); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	// Fire multiple TriggerRefresh calls concurrently
+	// The fix ensures only one process() runs at a time, others mark dirty
+	for i := 0; i < 5; i++ {
+		go worker.TriggerRefresh()
+	}
+
+	// Wait for processing to complete
+	time.Sleep(400 * time.Millisecond)
+
+	// Worker should still be in idle state (not stuck in processing)
+	if worker.State() != WorkerIdle {
+		t.Errorf("Expected idle state after concurrent triggers, got %v", worker.State())
+	}
+
+	// Should have a valid snapshot
+	if worker.GetSnapshot() == nil {
+		t.Error("Expected snapshot after concurrent triggers")
+	}
+}

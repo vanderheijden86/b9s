@@ -225,7 +225,12 @@ func (w *BackgroundWorker) processLoop() {
 // process builds a new snapshot from the current file.
 func (w *BackgroundWorker) process() {
 	w.mu.Lock()
-	if w.state == WorkerStopped {
+	if w.state != WorkerIdle {
+		// Already stopped or processing
+		if w.state == WorkerProcessing {
+			// Mark dirty so current processor will re-run when done
+			w.dirty = true
+		}
 		w.mu.Unlock()
 		return
 	}
