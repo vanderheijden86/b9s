@@ -164,6 +164,11 @@ func ApproxBetweenness(g *simple.DirectedGraph, sampleSize int, seed int64) Betw
 	// Ensure deterministic ordering before sampling; gonum's Nodes may be map-backed.
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID() < nodes[j].ID() })
 
+	// Clamp sampleSize to valid range [1, n] to prevent division by zero and negative slice indices
+	if sampleSize < 1 {
+		sampleSize = 1
+	}
+
 	result := BetweennessResult{
 		Scores:     make(map[int64]float64),
 		Mode:       BetweennessApproximate,

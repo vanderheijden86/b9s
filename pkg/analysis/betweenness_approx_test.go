@@ -68,6 +68,39 @@ func TestApproxBetweenness_EmptyGraph(t *testing.T) {
 	}
 }
 
+func TestApproxBetweenness_ZeroSampleSize(t *testing.T) {
+	// sampleSize=0 should not cause division by zero; should be clamped to 1
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen},
+		{ID: "C", Status: model.StatusOpen},
+	}
+	analyzer := NewAnalyzer(issues)
+
+	// This should not panic
+	result := ApproxBetweenness(analyzer.g, 0, 42)
+
+	if result.SampleSize < 1 {
+		t.Errorf("Expected sample size to be clamped to at least 1, got %d", result.SampleSize)
+	}
+}
+
+func TestApproxBetweenness_NegativeSampleSize(t *testing.T) {
+	// Negative sampleSize should not cause panic; should be clamped to 1
+	issues := []model.Issue{
+		{ID: "A", Status: model.StatusOpen},
+		{ID: "B", Status: model.StatusOpen},
+	}
+	analyzer := NewAnalyzer(issues)
+
+	// This should not panic
+	result := ApproxBetweenness(analyzer.g, -5, 42)
+
+	if result.SampleSize < 1 {
+		t.Errorf("Expected sample size to be clamped to at least 1, got %d", result.SampleSize)
+	}
+}
+
 func TestRecommendSampleSize(t *testing.T) {
 	tests := []struct {
 		nodeCount   int
