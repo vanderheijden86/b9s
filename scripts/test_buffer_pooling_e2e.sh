@@ -124,6 +124,12 @@ test_allocation_threshold() {
     # Extract memory/op (field before "B/op")
     local mem_bytes
     mem_bytes=$(echo "$bench_output" | grep "BenchmarkApproxBetweenness_500nodes_Sample100" | awk '{for(i=1;i<=NF;i++) if($i ~ /B\/op/) print $(i-1)}' | head -1)
+
+    if [[ -z "$mem_bytes" ]]; then
+        log_fail "Could not extract memory bytes from benchmark"
+        return 1
+    fi
+
     local mem_mb=$((mem_bytes / 1048576))
 
     log "Memory per operation: ${mem_mb}MB (threshold: ${MEM_THRESHOLD_MB}MB)"
