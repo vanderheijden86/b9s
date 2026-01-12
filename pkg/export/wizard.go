@@ -7,6 +7,7 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,6 +85,29 @@ func newForm(groups ...*huh.Group) *huh.Form {
 	return form
 }
 
+// nopCloser wraps an io.Reader to implement io.ReadCloser with a no-op Close.
+type nopCloser struct {
+	io.Reader
+}
+
+func (nopCloser) Close() error { return nil }
+
+// newReadCloserFromReader wraps an io.Reader as an *os.File-compatible ReadCloser.
+// Note: This creates a temporary wrapper - the returned value is not actually an *os.File,
+// but can be used with huh's accessible mode which only needs io.Reader.
+func newReadCloserFromReader(r io.Reader) *os.File {
+	// Create a pipe and copy data into it
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		return os.Stdin // Fallback to original stdin
+	}
+	go func() {
+		io.Copy(pw, r)
+		pw.Close()
+	}()
+	return pr
+}
+
 // offerSavedConfig asks if the user wants to use previously saved settings
 func (w *Wizard) offerSavedConfig(saved *WizardConfig) (bool, error) {
 	fmt.Println("Found previous deployment configuration:")
@@ -133,18 +157,47 @@ func (w *Wizard) Run() (*WizardResult, error) {
 	// Always print banner first (tests and users expect to see it)
 	w.printBanner()
 
-	// Early exit if stdin is not a terminal and is an empty regular file.
-	// Note: We only check regular files because stat.Size() is always 0 for pipes,
-	// even when they have data available to read. For pipes, we let huh handle the
-	// empty input case (it will return an error or timeout).
+	// Early exit if stdin is not a terminal and is empty/closed.
 	if !isTerminal() {
 		stat, err := os.Stdin.Stat()
 		if err == nil {
 			mode := stat.Mode()
-			// Only check size for regular files, not pipes or devices
-			isRegularFile := mode.IsRegular()
-			if isRegularFile && stat.Size() == 0 {
+			// For regular files, check if empty
+			if mode.IsRegular() && stat.Size() == 0 {
 				return nil, fmt.Errorf("wizard requires interactive input; stdin is empty")
+			}
+			// For pipes (e.g., strings.NewReader), check for immediate EOF.
+			// This prevents hanging forever when stdin is a pipe that returns EOF immediately.
+			// We use a goroutine with timeout to detect this case without blocking the main thread.
+			isPipe := (mode & os.ModeCharDevice) == 0
+			if isPipe && !mode.IsRegular() {
+				// Read all available stdin into a buffer to check for EOF
+				// This is necessary because we can't "peek" at stdin in Go
+				inputCh := make(chan []byte, 1)
+				errCh := make(chan error, 1)
+				go func() {
+					data, err := io.ReadAll(os.Stdin)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					inputCh <- data
+				}()
+
+				select {
+				case data := <-inputCh:
+					if len(data) == 0 {
+						return nil, fmt.Errorf("wizard requires interactive input; stdin is closed")
+					}
+					// Replace stdin with a reader containing the data we read
+					// This ensures the data isn't lost
+					os.Stdin = newReadCloserFromReader(strings.NewReader(string(data)))
+				case err := <-errCh:
+					return nil, fmt.Errorf("wizard requires interactive input; stdin error: %w", err)
+				case <-time.After(100 * time.Millisecond):
+					// Timeout - stdin might be waiting for input that will come later
+					// This is not an error case, continue normally
+				}
 			}
 		}
 	}
