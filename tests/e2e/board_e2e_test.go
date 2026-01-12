@@ -45,7 +45,7 @@ func TestBoardTUIWorkflow(t *testing.T) {
 		"BV_TUI_AUTOCLOSE_MS=1500", // Auto-close after 1.5s
 	)
 
-	out, err := cmd.CombinedOutput()
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("skipping Board TUI test: timed out; output:\n%s", out)
 	}
@@ -315,9 +315,9 @@ func TestBoardWithDependencies(t *testing.T) {
 				} `json:"counts"`
 			} `json:"project_health"`
 			BlockersToClear []struct {
-				ID           string   `json:"id"`
-				UnblocksIDs  []string `json:"unblocks_ids"`
-				UnblocksCount int     `json:"unblocks_count"`
+				ID            string   `json:"id"`
+				UnblocksIDs   []string `json:"unblocks_ids"`
+				UnblocksCount int      `json:"unblocks_count"`
 			} `json:"blockers_to_clear"`
 		} `json:"triage"`
 	}

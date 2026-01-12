@@ -417,7 +417,8 @@ func TestSwimlaneTUIStartsWithMixedData(t *testing.T) {
 		"BV_TUI_AUTOCLOSE_MS=1500",
 	)
 
-	out, err := cmd.CombinedOutput()
+	ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("TUI test timed out; output:\n%s", out)
 	}

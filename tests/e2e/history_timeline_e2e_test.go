@@ -269,7 +269,8 @@ func TestTimelineTUIToggleWithTimeout(t *testing.T) {
 		"BV_TUI_AUTOCLOSE_MS=2000", // Auto-close after 2s
 	)
 
-	out, err := cmd.CombinedOutput()
+	ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("skipping timeline TUI test: timed out (CI environment); output:\n%s", out)
 	}

@@ -43,7 +43,8 @@ func TestCassModalGracefulDegradation(t *testing.T) {
 		"BV_NO_CASS=1",             // Explicitly disable Cass lookup
 	)
 
-	out, err := cmd.CombinedOutput()
+	ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("skipping Cass graceful degradation test: timed out; output:\n%s", out)
 	}
@@ -90,7 +91,8 @@ func TestCassModalNoCrashOnVKeyWithoutCass(t *testing.T) {
 		"BV_NO_CASS=1",
 	)
 
-	out, err := cmd.CombinedOutput()
+	ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("skipping V key test: timed out; output:\n%s", out)
 	}
@@ -128,7 +130,8 @@ func TestCassDetectionEnvironmentVariable(t *testing.T) {
 		"BV_NO_CASS=1",
 	)
 
-	out, err := cmd.CombinedOutput()
+	ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("skipping env var test: timed out; output:\n%s", out)
 	}
@@ -200,7 +203,8 @@ func TestCassStatusBarIndicator(t *testing.T) {
 		"BV_NO_CASS=1",
 	)
 
-	out, err := cmd.CombinedOutput()
+	ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Skipf("skipping status bar test: timed out; output:\n%s", out)
 	}
@@ -254,7 +258,8 @@ func TestMultipleViewsWithoutCass(t *testing.T) {
 			"BV_NO_CASS=1",
 		)
 
-		out, err := cmd.CombinedOutput()
+		ensureCmdStdinCloses(t, ctx, cmd, 3*time.Second)
+		out, err := runCmdToFile(t, cmd)
 		if ctx.Err() == context.DeadlineExceeded {
 			t.Skipf("skipping list view test: timed out; output:\n%s", out)
 		}
