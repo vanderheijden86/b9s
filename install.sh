@@ -31,7 +31,14 @@ default_install_dir() {
         return
     fi
 
-    # Prefer writable Homebrew/standard prefixes on macOS first
+    # Prefer user-local bin directory to avoid requiring root privileges
+    local user_local_bin="${HOME}/.local/bin"
+    if [ -d "$user_local_bin" ] && [ -w "$user_local_bin" ]; then
+        echo "$user_local_bin"
+        return
+    fi
+
+    # Try writable Homebrew/standard prefixes on macOS
     for dir in /usr/local/bin /opt/homebrew/bin /opt/local/bin; do
         if [ -d "$dir" ] && [ -w "$dir" ]; then
             echo "$dir"
@@ -48,7 +55,29 @@ default_install_dir() {
         fi
     done
 
-    echo "/usr/local/bin"
+    # Last resort: use ~/.local/bin (will be created if needed)
+    # This avoids requiring root privileges by default
+    echo "$user_local_bin"
+}
+
+is_dir_in_path() {
+    local dir="$1"
+    case ":${PATH}:" in
+        *":${dir}:"*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+check_path_and_warn() {
+    local dir="$1"
+    if ! is_dir_in_path "$dir"; then
+        print_warn "$dir is not in your PATH"
+        echo ""
+        echo "To add it, add this line to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+        echo ""
+        echo "  export PATH=\"$dir:\$PATH\""
+        echo ""
+    fi
 }
 
 INSTALL_DIR="$(default_install_dir)"
@@ -544,6 +573,7 @@ main() {
     platform=$(detect_platform) || {
         print_warn "Could not detect platform, will try building from source"
         try_go_install
+        check_path_and_warn "$INSTALL_DIR"
         exit 0
     }
 
@@ -551,6 +581,7 @@ main() {
 
     # First, try to download pre-built binary
     if try_binary_install "$platform"; then
+        check_path_and_warn "$INSTALL_DIR"
         print_info "Run '$BIN_NAME' in any beads project to view issues."
         echo ""
         echo "Tip: You can also install via Homebrew:"
@@ -562,6 +593,7 @@ main() {
     print_info "Pre-built binary not available, falling back to source build..."
     try_go_install
 
+    check_path_and_warn "$INSTALL_DIR"
     print_info "Run '$BIN_NAME' in any beads project to view issues."
     echo ""
     echo "Tip: You can also install via Homebrew:"
