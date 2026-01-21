@@ -16,7 +16,12 @@ func TestStatus_IsValid(t *testing.T) {
 		{"Open", StatusOpen, true},
 		{"InProgress", StatusInProgress, true},
 		{"Blocked", StatusBlocked, true},
+		{"Deferred", StatusDeferred, true},
+		{"Pinned", StatusPinned, true},
+		{"Hooked", StatusHooked, true},
+		{"Review", StatusReview, true},
 		{"Closed", StatusClosed, true},
+		{"Tombstone", StatusTombstone, true},
 		{"Invalid", "unknown", false},
 		{"Empty", "", false},
 	}

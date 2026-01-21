@@ -50,6 +50,7 @@ var (
 	ColorStatusDeferred   = lipgloss.AdaptiveColor{Light: "#B06800", Dark: "#FFB86C"} // Orange - on ice
 	ColorStatusPinned     = lipgloss.AdaptiveColor{Light: "#0066CC", Dark: "#6699FF"} // Blue - persistent
 	ColorStatusHooked     = lipgloss.AdaptiveColor{Light: "#008080", Dark: "#00CED1"} // Teal - agent-attached
+	ColorStatusReview     = lipgloss.AdaptiveColor{Light: "#6B47D9", Dark: "#BD93F9"} // Purple - awaiting review
 	ColorStatusClosed     = lipgloss.AdaptiveColor{Light: "#555555", Dark: "#6272A4"}
 	ColorStatusTombstone  = lipgloss.AdaptiveColor{Light: "#888888", Dark: "#44475A"} // Muted gray - deleted
 
@@ -60,6 +61,7 @@ var (
 	ColorStatusDeferredBg   = lipgloss.AdaptiveColor{Light: "#FFE8CC", Dark: "#3D2A1A"} // Orange bg
 	ColorStatusPinnedBg     = lipgloss.AdaptiveColor{Light: "#CCE5FF", Dark: "#1A2A44"} // Blue bg
 	ColorStatusHookedBg     = lipgloss.AdaptiveColor{Light: "#CCFFFF", Dark: "#1A3D3D"} // Teal bg
+	ColorStatusReviewBg     = lipgloss.AdaptiveColor{Light: "#E8DDFF", Dark: "#2A1A44"} // Purple bg
 	ColorStatusClosedBg     = lipgloss.AdaptiveColor{Light: "#E2E3E5", Dark: "#2A2A3D"}
 	ColorStatusTombstoneBg  = lipgloss.AdaptiveColor{Light: "#D0D0D0", Dark: "#1E1F29"} // Dark bg
 
@@ -150,6 +152,8 @@ func RenderStatusBadge(status string) string {
 		fg, bg, label = ColorStatusPinned, ColorStatusPinnedBg, "PIN"
 	case "hooked":
 		fg, bg, label = ColorStatusHooked, ColorStatusHookedBg, "HOOK"
+	case "review":
+		fg, bg, label = ColorStatusReview, ColorStatusReviewBg, "REVW"
 	case "closed":
 		fg, bg, label = ColorStatusClosed, ColorStatusClosedBg, "DONE"
 	case "tombstone":
