@@ -148,6 +148,11 @@ bv is a graph-aware triage engine for Beads projects (.beads/beads.jsonl). Inste
 bv --robot-triage        # THE MEGA-COMMAND: start here
 bv --robot-next          # Minimal: just the single top pick + claim command
 
+# Token-optimized output (TOON) for lower LLM context usage:
+bv --robot-triage --format toon
+export BV_OUTPUT_FORMAT=toon
+bv --robot-next
+
 #### Other Commands
 
 **Planning:**

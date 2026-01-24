@@ -29,6 +29,7 @@ require (
 )
 
 require (
+	github.com/Dicklesworthstone/toon-go v0.0.0-20260124164058-e044b09590e8 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect

@@ -305,3 +305,6 @@ modernc.org/sqlite/vtab
 # pgregory.net/rapid v1.2.0
 ## explicit; go 1.18
 pgregory.net/rapid
+# github.com/Dicklesworthstone/toon-go v0.0.0-20260124164058-e044b09590e8
+## explicit; go 1.21
+github.com/Dicklesworthstone/toon-go

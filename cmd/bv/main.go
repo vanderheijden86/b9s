@@ -21,6 +21,7 @@ import (
 
 	json "github.com/goccy/go-json"
 
+	toon "github.com/Dicklesworthstone/toon-go"
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
@@ -55,6 +56,7 @@ func main() {
 	yesFlag := flag.Bool("yes", false, "Skip confirmation prompts (use with --update)")
 	exportFile := flag.String("export-md", "", "Export issues to a Markdown file (e.g., report.md)")
 	robotHelp := flag.Bool("robot-help", false, "Show AI agent help")
+	outputFormat := flag.String("format", "", "Structured output format for --robot-* commands: json or toon")
 	robotInsights := flag.Bool("robot-insights", false, "Output graph analysis and insights as JSON for AI agents")
 	robotPlan := flag.Bool("robot-plan", false, "Output dependency-respecting execution plan as JSON for AI agents")
 	robotPriority := flag.Bool("robot-priority", false, "Output priority recommendations as JSON for AI agents")
@@ -281,6 +283,14 @@ func main() {
 		envRobot = true
 	}
 
+	// Structured output format for --robot-* commands.
+	robotOutputFormat = resolveRobotOutputFormat(*outputFormat)
+	robotToonEncodeOptions = resolveToonEncodeOptionsFromEnv()
+	if robotOutputFormat != "json" && robotOutputFormat != "toon" {
+		fmt.Fprintf(os.Stderr, "Invalid --format %q (expected json|toon)\n", robotOutputFormat)
+		os.Exit(2)
+	}
+
 	// Handle -r shorthand
 	if *recipeShort != "" && *recipeName == "" {
 		*recipeName = *recipeShort
@@ -298,6 +308,11 @@ func main() {
 		fmt.Println("====================================")
 		fmt.Println("This tool provides structural analysis of the issue tracker graph (DAG).")
 		fmt.Println("Use these commands to understand project state without parsing raw JSONL.")
+		fmt.Println("")
+		fmt.Println("Output format:")
+		fmt.Println("  --format json|toon")
+		fmt.Println("      Structured output encoding for --robot-* commands (default: json).")
+		fmt.Println("      Env: BV_OUTPUT_FORMAT, TOON_DEFAULT_FORMAT.")
 		fmt.Println("")
 		fmt.Println("Commands:")
 		fmt.Println("  --robot-plan")
@@ -2544,8 +2559,8 @@ func main() {
 		opts := analysis.TriageOptions{
 			GroupByTrack:  *robotTriageByTrack,
 			GroupByLabel:  *robotTriageByLabel,
-			WaitForPhase2: true,  // Triage needs full graph metrics
-			UseFastConfig: true,  // Use minimal Phase 2 config for robot mode (bv-t1js)
+			WaitForPhase2: true, // Triage needs full graph metrics
+			UseFastConfig: true, // Use minimal Phase 2 config for robot mode (bv-t1js)
 			History:       historyReport,
 		}
 		triage := analysis.ComputeTriageWithOptions(issues, opts)
@@ -6580,13 +6595,88 @@ func generateHistoryForExport(issues []model.Issue) (*TimeTravelHistory, error) 
 	}, nil
 }
 
-// newRobotEncoder creates a JSON encoder for robot mode output.
+var robotOutputFormat = "json"
+var robotToonEncodeOptions = toon.DefaultEncodeOptions()
+
+type robotEncoder interface {
+	Encode(v any) error
+}
+
+type toonRobotEncoder struct {
+	w io.Writer
+}
+
+func (e *toonRobotEncoder) Encode(v any) error {
+	if !toon.Available() {
+		fmt.Fprintln(os.Stderr, "warning: tru not available; falling back to JSON")
+		return newJSONRobotEncoder(e.w).Encode(v)
+	}
+
+	out, err := toon.EncodeWithOptions(v, robotToonEncodeOptions)
+	if err != nil {
+		return err
+	}
+
+	// json.Encoder.Encode always terminates with a newline; match that behavior for TOON.
+	out = strings.TrimRight(out, "\n")
+	_, err = io.WriteString(e.w, out+"\n")
+	return err
+}
+
+// newJSONRobotEncoder creates a JSON encoder for robot mode output.
 // By default, output is compact (no indentation) for performance.
 // Set BV_PRETTY_JSON=1 to enable pretty-printing for human readability.
-func newRobotEncoder(w io.Writer) *json.Encoder {
+func newJSONRobotEncoder(w io.Writer) *json.Encoder {
 	encoder := json.NewEncoder(w)
 	if os.Getenv("BV_PRETTY_JSON") == "1" {
 		encoder.SetIndent("", "  ")
 	}
 	return encoder
+}
+
+// newRobotEncoder creates an encoder for robot mode output.
+//
+// Default output is JSON. Use `--format toon` (or BV_OUTPUT_FORMAT/TOON_DEFAULT_FORMAT)
+// to emit TOON for agent-friendly token savings.
+func newRobotEncoder(w io.Writer) robotEncoder {
+	if robotOutputFormat == "toon" {
+		return &toonRobotEncoder{w: w}
+	}
+	return newJSONRobotEncoder(w)
+}
+
+func resolveRobotOutputFormat(cli string) string {
+	format := strings.TrimSpace(cli)
+	if format == "" {
+		format = strings.TrimSpace(os.Getenv("BV_OUTPUT_FORMAT"))
+	}
+	if format == "" {
+		format = strings.TrimSpace(os.Getenv("TOON_DEFAULT_FORMAT"))
+	}
+	if format == "" {
+		format = "json"
+	}
+	return strings.ToLower(format)
+}
+
+func resolveToonEncodeOptionsFromEnv() toon.EncodeOptions {
+	opts := toon.DefaultEncodeOptions()
+
+	if v := strings.TrimSpace(os.Getenv("TOON_KEY_FOLDING")); v != "" {
+		opts.KeyFolding = v
+	}
+	if v := strings.TrimSpace(os.Getenv("TOON_INDENT")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			// Be conservative; tru supports 0..=16 but clamp to avoid surprising output.
+			if n < 0 {
+				n = 0
+			}
+			if n > 16 {
+				n = 16
+			}
+			opts.Indent = n
+		}
+	}
+
+	return opts
 }

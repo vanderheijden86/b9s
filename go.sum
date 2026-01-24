@@ -3,6 +3,8 @@ git.sr.ht/~sbinet/cmpimg v0.1.0/go.mod h1:FU12psLbF4TfNXkKH2ZZQ29crIqoiqTZmeQ7dk
 git.sr.ht/~sbinet/gg v0.7.0 h1:YmNf7YKd7diDMTPm86hZa1EM3pbkOyD/zzjl0LZUdNM=
 git.sr.ht/~sbinet/gg v0.7.0/go.mod h1:VYeli15tpMM4EvqlivlVbbyvWZlOU+EZn4XZmfBGUdM=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/Dicklesworthstone/toon-go v0.0.0-20260124164058-e044b09590e8 h1:HWYvKhXn1vV2/qpbbvUTvq+0hG5r1Tjk9OKQA3r/Dgc=
+github.com/Dicklesworthstone/toon-go v0.0.0-20260124164058-e044b09590e8/go.mod h1:fHGMu3RfpAj0hE4jPuaHNWCXivwW4m4bytcTW5xyLBk=
 github.com/MakeNowJust/heredoc v1.0.0 h1:cXCdzVdstXyiTqTvfqk9SDHpKNjxuom+DOlyEeQ4pzQ=
 github.com/MakeNowJust/heredoc v1.0.0/go.mod h1:mG5amYoWBHf8vpLOuehzbGGw0EHxpZZ6lCpQ4fNJ8LE=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=
