@@ -158,6 +158,7 @@ func (s *ShortcutsSidebar) allSections() []shortcutSection {
 				{"h/l", "Columns ←/→"},
 				{"j/k", "Items ↓/↑"},
 				{"Tab", "Toggle detail"},
+				{"y", "Copy ID"},
 				{"^j/^k", "Scroll detail"},
 				{"Enter", "Full view"},
 			},
@@ -179,6 +180,7 @@ func (s *ShortcutsSidebar) allSections() []shortcutSection {
 			items: []shortcutItem{
 				{"t/T", "Time-travel"},
 				{"x", "Export .md"},
+				{"y", "Copy ID"},
 				{"C", "Copy"},
 				{"O", "Open in $EDITOR"},
 				{"'", "Recipe picker"},
