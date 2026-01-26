@@ -243,6 +243,9 @@ func liveReloadMiddleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(irw, r)
+
+		// Ensure any buffered content is flushed (handles HTML without </html>)
+		irw.Flush()
 	})
 }
 
