@@ -644,3 +644,269 @@ func SuggestRepoName(bundlePath string) string {
 
 	return name
 }
+
+// GitHubActionsWorkflowContent returns the content for a static site deployment workflow.
+// This workflow triggers on push to main and uses GitHub's official Pages actions.
+const GitHubActionsWorkflowContent = `name: Deploy static content to Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+`
+
+// WriteGitHubActionsWorkflow creates the .github/workflows/static.yml file in the bundle.
+// This ensures GitHub Pages deployment always triggers via an explicit workflow,
+// not relying on the built-in Pages workflow which may not auto-trigger.
+func WriteGitHubActionsWorkflow(bundlePath string) error {
+	workflowDir := filepath.Join(bundlePath, ".github", "workflows")
+	if err := os.MkdirAll(workflowDir, 0755); err != nil {
+		return fmt.Errorf("create workflow directory: %w", err)
+	}
+
+	workflowPath := filepath.Join(workflowDir, "static.yml")
+	if err := os.WriteFile(workflowPath, []byte(GitHubActionsWorkflowContent), 0644); err != nil {
+		return fmt.Errorf("write workflow file: %w", err)
+	}
+
+	return nil
+}
+
+// GitHubActionsStatus represents the status of GitHub Actions for a repository.
+type GitHubActionsStatus struct {
+	WorkflowRunning  bool
+	WorkflowQueued   bool
+	LastRunStatus    string
+	LastRunCreatedAt string
+	PossiblyRateLimited bool
+}
+
+// CheckGitHubActionsStatus checks if GitHub Actions is working properly for a repository.
+// It detects stuck/queued workflows that might indicate rate limiting.
+func CheckGitHubActionsStatus(repoFullName string) (*GitHubActionsStatus, error) {
+	status := &GitHubActionsStatus{}
+
+	// Get the latest workflow run
+	cmd := exec.Command("gh", "api",
+		fmt.Sprintf("repos/%s/actions/runs", repoFullName),
+		"--jq", ".workflow_runs[0] | {status: .status, conclusion: .conclusion, created_at: .created_at}")
+	output, err := cmd.Output()
+	if err != nil {
+		// No workflow runs yet - that's OK
+		return status, nil
+	}
+
+	// Parse the JSON output
+	var run struct {
+		Status    string `json:"status"`
+		Conclusion string `json:"conclusion"`
+		CreatedAt string `json:"created_at"`
+	}
+	if err := json.Unmarshal(output, &run); err != nil {
+		return status, nil // Can't parse, assume OK
+	}
+
+	status.LastRunStatus = run.Status
+	status.LastRunCreatedAt = run.CreatedAt
+
+	if run.Status == "queued" {
+		status.WorkflowQueued = true
+		// Check if it's been queued for more than 2 minutes - might be rate limited
+		createdAt, err := time.Parse(time.RFC3339, run.CreatedAt)
+		if err == nil && time.Since(createdAt) > 2*time.Minute {
+			status.PossiblyRateLimited = true
+		}
+	} else if run.Status == "in_progress" {
+		status.WorkflowRunning = true
+	}
+
+	return status, nil
+}
+
+// SwitchToLegacyDeployment switches GitHub Pages from workflow-based to legacy branch-based deployment.
+// This is useful when GitHub Actions is rate-limited or the workflow isn't triggering.
+// Returns the gh-pages branch name that should be pushed to.
+func SwitchToLegacyDeployment(repoFullName string) error {
+	fmt.Println("  -> Switching to legacy branch-based deployment...")
+
+	// Update Pages source to use gh-pages branch with legacy build type
+	// The GitHub API expects source as an object: {"source": {"branch": "gh-pages", "path": "/"}}
+	cmd := exec.Command("gh", "api", "-X", "PUT",
+		fmt.Sprintf("repos/%s/pages", repoFullName),
+		"-f", "source[branch]=gh-pages",
+		"-f", "source[path]=/")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Check if it's just telling us the config is already set
+		if strings.Contains(string(output), "already") || strings.Contains(string(output), "422") {
+			return nil
+		}
+		return fmt.Errorf("failed to switch to legacy deployment: %s", strings.TrimSpace(string(output)))
+	}
+
+	return nil
+}
+
+// PushToGHPagesBranch creates and pushes to the gh-pages branch for legacy deployment.
+func PushToGHPagesBranch(bundlePath string, repoFullName string) error {
+	fmt.Println("  -> Creating gh-pages branch...")
+
+	// Create orphan gh-pages branch
+	commands := []struct {
+		args []string
+		desc string
+	}{
+		{[]string{"checkout", "--orphan", "gh-pages"}, "Creating gh-pages branch"},
+		{[]string{"add", "."}, "Staging files"},
+		{[]string{"commit", "-m", "Deploy via legacy gh-pages branch"}, "Creating commit"},
+	}
+
+	for _, c := range commands {
+		cmd := exec.Command("git", c.args...)
+		cmd.Dir = bundlePath
+		if output, err := cmd.CombinedOutput(); err != nil {
+			// Skip if branch already exists
+			if strings.Contains(string(output), "already exists") {
+				// Checkout existing branch and force update
+				checkoutCmd := exec.Command("git", "checkout", "gh-pages")
+				checkoutCmd.Dir = bundlePath
+				checkoutCmd.Run()
+				continue
+			}
+			// Skip commit error if nothing to commit
+			if c.args[0] == "commit" && strings.Contains(string(output), "nothing to commit") {
+				continue
+			}
+			return fmt.Errorf("%s failed: %s", c.args[0], strings.TrimSpace(string(output)))
+		}
+	}
+
+	// Push gh-pages branch
+	fmt.Println("  -> Pushing gh-pages branch...")
+	pushCmd := exec.Command("git", "push", "-u", "origin", "gh-pages", "--force")
+	pushCmd.Dir = bundlePath
+	if output, err := pushCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("push gh-pages failed: %s", strings.TrimSpace(string(output)))
+	}
+
+	return nil
+}
+
+// VerifyGitHubPagesDeployment polls the live site to verify deployment succeeded.
+// It checks that meta.json is accessible and contains the expected issue count.
+func VerifyGitHubPagesDeployment(pagesURL string, expectedIssueCount int, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = 90 * time.Second
+	}
+
+	metaURL := strings.TrimSuffix(pagesURL, "/") + "/data/meta.json"
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+
+	fmt.Printf("  -> Verifying deployment at %s...\n", pagesURL)
+
+	for time.Now().Before(deadline) {
+		// Use curl to fetch meta.json (more reliable than Go's http client for this)
+		cmd := exec.Command("curl", "-sf", "--max-time", "10", metaURL)
+		output, err := cmd.Output()
+		if err != nil {
+			lastErr = fmt.Errorf("fetch failed: %w", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		// Parse meta.json
+		var meta struct {
+			IssueCount int `json:"issue_count"`
+		}
+		if err := json.Unmarshal(output, &meta); err != nil {
+			lastErr = fmt.Errorf("parse failed: %w", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		// Check issue count matches expected
+		if expectedIssueCount > 0 && meta.IssueCount != expectedIssueCount {
+			// Data mismatch - might be stale cache
+			fmt.Printf("  ⚠ Warning: Live site shows %d issues, expected %d (CDN may be caching stale data)\n",
+				meta.IssueCount, expectedIssueCount)
+			return nil // Not a fatal error, just a warning
+		}
+
+		fmt.Printf("  ✓ Deployment verified: %d issues live\n", meta.IssueCount)
+		return nil
+	}
+
+	if lastErr != nil {
+		fmt.Printf("  ⚠ Could not verify deployment (site may still be building): %v\n", lastErr)
+	}
+	return nil // Don't fail on verification timeout
+}
+
+// DeployToGitHubPagesWithFallback performs deployment with automatic fallback to legacy mode
+// if workflow-based deployment fails or is rate-limited.
+func DeployToGitHubPagesWithFallback(config GitHubDeployConfig, expectedIssueCount int) (*GitHubDeployResult, error) {
+	// First, try normal deployment
+	// Note: The GitHub Actions workflow should already be in the bundle
+	// (added by CopyEmbeddedAssets or the wizard before deployment)
+	result, err := DeployToGitHubPages(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wait a moment for Pages to process
+	time.Sleep(5 * time.Second)
+
+	// Check if workflow deployment is working
+	actionsStatus, _ := CheckGitHubActionsStatus(result.RepoFullName)
+	if actionsStatus.PossiblyRateLimited {
+		fmt.Println("\n  ⚠ GitHub Actions appears to be rate-limited (workflow stuck in queue)")
+		fmt.Println("  -> Attempting fallback to legacy branch-based deployment...")
+
+		// Try legacy deployment
+		if err := SwitchToLegacyDeployment(result.RepoFullName); err != nil {
+			fmt.Printf("  Warning: Could not switch to legacy mode: %v\n", err)
+		} else {
+			if err := PushToGHPagesBranch(config.BundlePath, result.RepoFullName); err != nil {
+				fmt.Printf("  Warning: Legacy push failed: %v\n", err)
+			} else {
+				fmt.Println("  ✓ Fallback to legacy deployment succeeded")
+			}
+		}
+	}
+
+	// Verify deployment if we have expected issue count
+	if expectedIssueCount > 0 {
+		VerifyGitHubPagesDeployment(result.PagesURL, expectedIssueCount, 90*time.Second)
+	}
+
+	return result, nil
+}

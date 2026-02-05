@@ -5565,6 +5565,13 @@ func copyViewerAssets(outputDir, title string) error {
 		}
 	}
 
+	// Always add GitHub Actions workflow for reliable Pages deployment
+	// This ensures the workflow is in the bundle regardless of deployment target
+	if err := export.WriteGitHubActionsWorkflow(outputDir); err != nil {
+		// Non-fatal - just log a warning
+		fmt.Printf("  Warning: Could not add GitHub Actions workflow: %v\n", err)
+	}
+
 	return nil
 }
 
@@ -6141,8 +6148,8 @@ func runPagesWizard(beadsPath string) error {
 			}
 			wizard.PrintSuccess(result)
 		} else {
-			// Perform deployment
-			result, err := wizard.PerformDeploy()
+			// Perform deployment with issue count for verification
+			result, err := wizard.PerformDeployWithIssueCount(len(exportIssues))
 			if err != nil {
 				return err
 			}

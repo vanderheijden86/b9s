@@ -7,6 +7,7 @@ package export
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // Package-level compiled regexes for Cloudflare operations (avoids recompilation per call)
@@ -466,4 +468,246 @@ func OpenCloudflareInBrowser(projectName string) error {
 	}
 
 	return cmd.Start()
+}
+
+// CloudflareProjectExists checks if a Cloudflare Pages project exists.
+func CloudflareProjectExists(projectName string) (bool, error) {
+	// Try to get project info - if it fails with "not found", project doesn't exist
+	cmd := exec.Command("wrangler", "pages", "project", "list")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to list projects: %w", err)
+	}
+
+	// Check if project name appears in the output
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && fields[0] == projectName {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// CreateCloudflareProject creates a new Cloudflare Pages project.
+func CreateCloudflareProject(projectName string, productionBranch string) error {
+	if productionBranch == "" {
+		productionBranch = "main"
+	}
+
+	fmt.Printf("  -> Creating Cloudflare Pages project: %s...\n", projectName)
+
+	cmd := exec.Command("wrangler", "pages", "project", "create", projectName,
+		"--production-branch", productionBranch)
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	if err != nil {
+		// Check if project already exists (not an error)
+		if strings.Contains(outputStr, "already exists") ||
+			strings.Contains(outputStr, "A project with this name already exists") {
+			fmt.Println("  -> Project already exists")
+			return nil
+		}
+		return fmt.Errorf("failed to create project: %s", strings.TrimSpace(outputStr))
+	}
+
+	fmt.Printf("  ✓ Project created: https://%s.pages.dev/\n", projectName)
+	return nil
+}
+
+// EnsureCloudflareProject ensures a Cloudflare Pages project exists, creating it if necessary.
+func EnsureCloudflareProject(projectName string, productionBranch string) error {
+	exists, err := CloudflareProjectExists(projectName)
+	if err != nil {
+		// Can't check, try to create anyway
+		return CreateCloudflareProject(projectName, productionBranch)
+	}
+
+	if !exists {
+		return CreateCloudflareProject(projectName, productionBranch)
+	}
+
+	return nil
+}
+
+// VerifyCloudflareDeployment polls the live site to verify deployment succeeded.
+func VerifyCloudflareDeployment(deployURL string, expectedIssueCount int, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = 30 * time.Second // Cloudflare is usually faster
+	}
+
+	metaURL := strings.TrimSuffix(deployURL, "/") + "/data/meta.json"
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+
+	fmt.Printf("  -> Verifying deployment at %s...\n", deployURL)
+
+	for time.Now().Before(deadline) {
+		cmd := exec.Command("curl", "-sf", "--max-time", "10", metaURL)
+		output, err := cmd.Output()
+		if err != nil {
+			lastErr = fmt.Errorf("fetch failed: %w", err)
+			time.Sleep(3 * time.Second)
+			continue
+		}
+
+		// Parse meta.json
+		var meta struct {
+			IssueCount int `json:"issue_count"`
+		}
+		if err := json.Unmarshal(output, &meta); err != nil {
+			lastErr = fmt.Errorf("parse failed: %w", err)
+			time.Sleep(3 * time.Second)
+			continue
+		}
+
+		// Check issue count matches expected
+		if expectedIssueCount > 0 && meta.IssueCount != expectedIssueCount {
+			fmt.Printf("  ⚠ Warning: Live site shows %d issues, expected %d\n",
+				meta.IssueCount, expectedIssueCount)
+			return nil
+		}
+
+		fmt.Printf("  ✓ Deployment verified: %d issues live\n", meta.IssueCount)
+		return nil
+	}
+
+	if lastErr != nil {
+		fmt.Printf("  ⚠ Could not verify deployment: %v\n", lastErr)
+	}
+	return nil
+}
+
+// DeployToCloudflareWithAutoCreate performs deployment with automatic project creation.
+func DeployToCloudflareWithAutoCreate(config CloudflareDeployConfig, expectedIssueCount int) (*CloudflareDeployResult, error) {
+	// Set default branch
+	if config.Branch == "" {
+		config.Branch = "main"
+	}
+
+	// 1. Check wrangler CLI status
+	status, err := CheckWranglerStatus()
+	if err != nil {
+		return nil, fmt.Errorf("failed to check wrangler status: %w", err)
+	}
+
+	// 2. Handle missing wrangler CLI
+	if !status.Installed {
+		if !status.NPMInstalled {
+			fmt.Println("\nNode.js/npm is required to install wrangler.")
+			fmt.Println("Download from: https://nodejs.org/")
+			return nil, fmt.Errorf("npm is required to install wrangler CLI")
+		}
+
+		ShowWranglerInstallInstructions()
+
+		if config.SkipConfirmation {
+			return nil, fmt.Errorf("wrangler CLI is required - run 'npm install -g wrangler' first")
+		}
+
+		if !cloudflareConfirmPrompt("Would you like to install wrangler now?") {
+			return nil, fmt.Errorf("wrangler CLI is required for Cloudflare Pages deployment")
+		}
+
+		if err := AttemptWranglerInstall(); err != nil {
+			return nil, err
+		}
+
+		// Re-check status
+		status, _ = CheckWranglerStatus()
+		if !status.Installed {
+			return nil, fmt.Errorf("wrangler installation failed")
+		}
+	}
+
+	// 3. Handle missing authentication
+	if !status.Authenticated {
+		fmt.Println("\nYou are not authenticated with Cloudflare.")
+		if config.SkipConfirmation {
+			return nil, fmt.Errorf("cloudflare authentication required - run 'wrangler login' first")
+		}
+		if !cloudflareConfirmPrompt("Would you like to authenticate now?") {
+			return nil, fmt.Errorf("cloudflare authentication required")
+		}
+		if err := AuthenticateWrangler(); err != nil {
+			return nil, err
+		}
+		// Re-check status
+		status, _ = CheckWranglerStatus()
+		if !status.Authenticated {
+			return nil, fmt.Errorf("authentication failed")
+		}
+	}
+
+	// 4. Show account info
+	if !config.SkipConfirmation && status.AccountName != "" {
+		fmt.Printf("\nCloudflare account: %s\n", status.AccountName)
+		if status.AccountID != "" {
+			fmt.Printf("Account ID: %s\n", status.AccountID)
+		}
+		if !cloudflareConfirmPrompt("Deploy to this account?") {
+			return nil, fmt.Errorf("deployment cancelled")
+		}
+	}
+
+	// 5. Verify bundle path exists
+	if _, err := os.Stat(config.BundlePath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("bundle path does not exist: %s", config.BundlePath)
+	}
+
+	// 6. Ensure project exists (auto-create if not)
+	if err := EnsureCloudflareProject(config.ProjectName, config.Branch); err != nil {
+		return nil, fmt.Errorf("failed to ensure project exists: %w", err)
+	}
+
+	// 7. Generate _headers file for Cloudflare
+	fmt.Println("\n  -> Generating _headers file...")
+	if err := GenerateHeadersFile(config.BundlePath); err != nil {
+		// Non-fatal, just warn
+		fmt.Printf("  Warning: %v\n", err)
+	}
+
+	// 8. Deploy to Cloudflare Pages
+	fmt.Printf("\n  -> Deploying to Cloudflare Pages (project: %s)...\n", config.ProjectName)
+
+	cmd := exec.Command("wrangler", "pages", "deploy",
+		config.BundlePath,
+		"--project-name", config.ProjectName,
+		"--branch", config.Branch,
+		"--commit-dirty=true", // Don't warn about uncommitted changes in bundle
+	)
+
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	if err != nil {
+		return nil, fmt.Errorf("deployment failed: %s\n%s", err, outputStr)
+	}
+
+	// 9. Parse deployment result
+	deployURL := parseCloudflareURL(outputStr)
+	deployID := parseDeploymentID(outputStr)
+
+	if deployURL == "" {
+		// Try to construct URL from project name
+		deployURL = fmt.Sprintf("https://%s.pages.dev", config.ProjectName)
+	}
+
+	fmt.Println("  -> Deployment complete!")
+
+	result := &CloudflareDeployResult{
+		ProjectName:  config.ProjectName,
+		URL:          deployURL,
+		DeploymentID: deployID,
+	}
+
+	// 10. Verify deployment
+	if expectedIssueCount > 0 {
+		VerifyCloudflareDeployment(deployURL, expectedIssueCount, 30*time.Second)
+	}
+
+	return result, nil
 }

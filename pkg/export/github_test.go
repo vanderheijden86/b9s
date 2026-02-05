@@ -3,6 +3,7 @@ package export
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -242,5 +243,66 @@ func TestSuggestRepoName_RegularDir(t *testing.T) {
 	result := SuggestRepoName(subDir)
 	if result != "my-static-site" {
 		t.Errorf("Expected 'my-static-site', got %s", result)
+	}
+}
+
+func TestWriteGitHubActionsWorkflow(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Write the workflow
+	if err := WriteGitHubActionsWorkflow(tmpDir); err != nil {
+		t.Fatalf("WriteGitHubActionsWorkflow failed: %v", err)
+	}
+
+	// Check that the workflow file exists
+	workflowPath := filepath.Join(tmpDir, ".github", "workflows", "static.yml")
+	if _, err := os.Stat(workflowPath); os.IsNotExist(err) {
+		t.Errorf("Workflow file was not created at %s", workflowPath)
+	}
+
+	// Read and verify content
+	content, err := os.ReadFile(workflowPath)
+	if err != nil {
+		t.Fatalf("Failed to read workflow file: %v", err)
+	}
+
+	// Verify key workflow elements
+	contentStr := string(content)
+	checks := []string{
+		"name: Deploy static content to Pages",
+		"push:",
+		"branches: [\"main\"]",
+		"workflow_dispatch:",
+		"actions/checkout@v4",
+		"actions/configure-pages@v5",
+		"actions/upload-pages-artifact@v3",
+		"actions/deploy-pages@v4",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(contentStr, check) {
+			t.Errorf("Workflow missing expected content: %s", check)
+		}
+	}
+}
+
+func TestGitHubActionsWorkflowContent(t *testing.T) {
+	// Verify the workflow content is valid YAML-like structure
+	content := GitHubActionsWorkflowContent
+
+	// Check required fields
+	requiredFields := []string{
+		"name:",
+		"on:",
+		"permissions:",
+		"jobs:",
+		"deploy:",
+		"steps:",
+	}
+
+	for _, field := range requiredFields {
+		if !strings.Contains(content, field) {
+			t.Errorf("GitHubActionsWorkflowContent missing required field: %s", field)
+		}
 	}
 }

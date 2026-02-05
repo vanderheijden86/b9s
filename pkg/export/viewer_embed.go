@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// Note: WriteGitHubActionsWorkflow is defined in github.go
+
 // ViewerAssetsFS embeds the viewer_assets directory for static site export.
 // This allows the bv binary to include all necessary HTML/JS/CSS assets
 // without requiring them to exist on the filesystem.
@@ -23,7 +25,7 @@ var ViewerAssetsFS embed.FS
 // If title is provided, it replaces "Beads Viewer" in index.html.
 func CopyEmbeddedAssets(outputDir, title string) error {
 	// Walk the embedded filesystem and copy all files
-	return fs.WalkDir(ViewerAssetsFS, "viewer_assets", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(ViewerAssetsFS, "viewer_assets", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -68,6 +70,19 @@ func CopyEmbeddedAssets(outputDir, title string) error {
 		// Write the file
 		return os.WriteFile(destPath, content, 0644)
 	})
+
+	if err != nil {
+		return err
+	}
+
+	// Always add GitHub Actions workflow for reliable Pages deployment
+	// This ensures deployments trigger even if the built-in Pages workflow doesn't auto-trigger
+	if wfErr := WriteGitHubActionsWorkflow(outputDir); wfErr != nil {
+		// Non-fatal - just log a warning (fmt is already imported via other usage)
+		fmt.Printf("  Warning: Could not add GitHub Actions workflow: %v\n", wfErr)
+	}
+
+	return nil
 }
 
 // replaceTitle replaces the default title in HTML content with the provided title.
@@ -126,4 +141,10 @@ func HasEmbeddedAssets() bool {
 	// Check if we can read the index.html from the embedded FS
 	_, err := ViewerAssetsFS.ReadFile("viewer_assets/index.html")
 	return err == nil
+}
+
+// AddGitHubWorkflowToBundle adds the GitHub Actions workflow to an exported bundle.
+// This should be called after CopyEmbeddedAssets to ensure the workflow is present.
+func AddGitHubWorkflowToBundle(outputDir string) error {
+	return WriteGitHubActionsWorkflow(outputDir)
 }

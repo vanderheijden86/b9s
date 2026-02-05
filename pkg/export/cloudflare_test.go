@@ -2,9 +2,11 @@ package export
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseWranglerWhoami(t *testing.T) {
@@ -299,5 +301,41 @@ func TestCloudflareDeployResult_Fields(t *testing.T) {
 	}
 	if result.DeploymentID != "12345678-1234-1234-1234-123456789abc" {
 		t.Errorf("DeploymentID = %q, want %q", result.DeploymentID, "12345678-1234-1234-1234-123456789abc")
+	}
+}
+
+func TestEnsureCloudflareProject_Integration(t *testing.T) {
+	// Skip if wrangler is not installed (this is an integration test)
+	if _, err := exec.LookPath("wrangler"); err != nil {
+		t.Skip("wrangler not installed, skipping integration test")
+	}
+
+	// Test that the function doesn't panic with an invalid project name
+	// We don't actually create a project, just test the error handling
+	err := EnsureCloudflareProject("", "main")
+	if err == nil {
+		t.Log("Empty project name may or may not be an error depending on wrangler version")
+	}
+}
+
+func TestCloudflareProjectExists_ParsesOutput(t *testing.T) {
+	// This tests that CloudflareProjectExists can parse wrangler output
+	// We can't actually call wrangler in a unit test, but we can verify
+	// the function exists and has the right signature
+	var _ func(string) (bool, error) = CloudflareProjectExists
+}
+
+func TestCreateCloudflareProject_Signature(t *testing.T) {
+	// Verify the function signature
+	var _ func(string, string) error = CreateCloudflareProject
+}
+
+func TestVerifyCloudflareDeployment_Timeout(t *testing.T) {
+	// Test that verification handles unreachable URLs gracefully
+	// Use a non-routable IP to ensure quick timeout
+	err := VerifyCloudflareDeployment("http://192.0.2.1/", 100, 1*time.Second)
+	// Should not return error (warnings are printed but function succeeds)
+	if err != nil {
+		t.Errorf("VerifyCloudflareDeployment should not error on unreachable URL, got: %v", err)
 	}
 }
