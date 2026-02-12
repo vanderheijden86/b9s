@@ -11,6 +11,7 @@ import (
 // Content should fit on one screen (~20 lines) without scrolling.
 var ContextHelpContent = map[Context]string{
 	ContextList:           contextHelpList,
+	ContextTree:           contextHelpTree,
 	ContextGraph:          contextHelpGraph,
 	ContextBoard:          contextHelpBoard,
 	ContextInsights:       contextHelpInsights,
@@ -114,6 +115,26 @@ const contextHelpList = `## List View
 **Actions**
   U         Self-update bv
   V         Preview cass sessions`
+
+const contextHelpTree = `## Tree View
+
+**Navigation**
+  j/k       Move up/down
+  h/←       Collapse or go to parent
+  l/→       Expand or go to child
+  Enter/^↵  Toggle expand/collapse
+  g/G       Jump to top/bottom
+
+**Expand/Collapse**
+  X         Expand all nodes
+  Z         Collapse all nodes
+
+**Filtering**
+  o/c/r/a   Open/closed/ready/all
+  Esc       Clear filter (or exit)
+  s         Cycle sort mode
+  /         Search tree
+  n/N       Next/prev match`
 
 const contextHelpGraph = `## Graph View
 

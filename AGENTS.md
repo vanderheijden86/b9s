@@ -1,3 +1,5 @@
+> **PREREQUISITE**: Read and follow `~/.cursor/AGENTS.md` first. It contains baseline instructions (beads workflow, commit strategy, progress reporting) that apply to ALL projects. The instructions below are project-specific and supplement those global rules.
+
 # AGENTS.md — beads_viewer
 
 ## RULE 0 - THE FUNDAMENTAL OVERRIDE PEROGATIVE
@@ -398,6 +400,56 @@ go test ./... -race                     # With race detector
 go test ./... -cover                    # With coverage
 go test -run TestSpecificName ./pkg/... # Run specific test
 ```
+
+### Test-Driven Development (TDD) — Mandatory for Bug Fixes & Features
+
+**All bug fixes and new features MUST follow test-driven development.** No exceptions.
+
+#### The Cycle: RED → GREEN → REFACTOR
+
+1. **RED — Write a failing test first**
+   - Write the smallest test that demonstrates the desired behavior or reproduces the bug.
+   - Run it. It MUST fail. If it passes, you're testing existing behavior — fix the test.
+   - Verify the failure is for the expected reason (missing feature, not a typo).
+
+2. **GREEN — Write minimal code to pass**
+   - Write the simplest implementation that makes the test pass.
+   - Don't add features, refactor, or "improve" beyond what the test requires.
+   - Run all tests — the new test passes AND no regressions.
+
+3. **REFACTOR — Clean up (optional)**
+   - Remove duplication, improve names, extract helpers.
+   - Keep all tests green throughout.
+
+#### Rules
+
+- **No production code without a failing test first.** If you wrote code before the test, delete it and start over.
+- **One behavior per test.** If the test name contains "and", split it.
+- **Verify both RED and GREEN.** You must run the test suite at each phase — never skip.
+- **Bug fixes require a regression test.** The test must fail before the fix and pass after.
+
+#### Example: Bug Fix Workflow
+
+```bash
+# 1. RED: Write failing test
+go test ./pkg/ui/ -run "TestTreeViewPageIndicator" -v
+# FAIL: position indicator not found
+
+# 2. GREEN: Implement minimal fix
+# (edit tree.go to add page indicator)
+go test ./pkg/ui/ -run "TestTreeViewPageIndicator" -v
+# PASS
+
+# 3. Verify no regressions
+go test ./pkg/ui/ -timeout 120s
+# ok
+```
+
+#### When NOT Using TDD (requires explicit permission)
+
+- Throwaway prototypes
+- Generated code
+- Configuration-only changes
 
 ### Test Patterns
 

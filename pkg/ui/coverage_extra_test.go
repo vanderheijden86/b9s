@@ -171,40 +171,40 @@ func TestHandleListKeysFiltersAndTimeTravelPrompt(t *testing.T) {
 	m.focused = focusList
 	m.isSplitView = false
 
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("o")})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("o")})
 	if m.currentFilter != "open" {
 		t.Fatalf("expected filter 'open', got %s", m.currentFilter)
 	}
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
 	if m.currentFilter != "closed" {
 		t.Fatalf("expected filter 'closed', got %s", m.currentFilter)
 	}
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	if m.currentFilter != "ready" {
 		t.Fatalf("expected filter 'ready', got %s", m.currentFilter)
 	}
 
 	// Paging up/down
 	m.list.Select(0)
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlD})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlD})
 	if m.list.Index() == 0 {
 		t.Fatalf("ctrl+d should move selection down")
 	}
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
 	if m.list.Index() != 0 {
 		t.Fatalf("ctrl+u should move selection up")
 	}
 
 	// Enter should flip showDetails in mobile view
 	m.showDetails = false
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
 	if !m.showDetails {
 		t.Fatalf("enter should show details when not split view")
 	}
 
 	// Time-travel prompt toggling
 	m.timeTravelMode = false
-	m = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
+	m, _ = m.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
 	if !m.showTimeTravelPrompt || m.focused != focusTimeTravelInput {
 		t.Fatalf("time-travel prompt not activated")
 	}

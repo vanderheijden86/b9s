@@ -23,6 +23,7 @@ func TestContextHelpContentMap(t *testing.T) {
 		ContextRecipePicker,
 		ContextHelp,
 		ContextTimeTravel,
+		ContextTree,
 		ContextLabelDashboard,
 		ContextAttention,
 		ContextAgentPrompt,

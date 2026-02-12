@@ -149,6 +149,16 @@ func TestCurrentContext_Views(t *testing.T) {
 			setup:    func(m *Model) { m.isSprintView = true },
 			expected: ContextSprint,
 		},
+		{
+			name:     "tree view via focus",
+			setup:    func(m *Model) { m.focused = focusTree },
+			expected: ContextTree,
+		},
+		{
+			name:     "tree view via flag",
+			setup:    func(m *Model) { m.treeViewActive = true },
+			expected: ContextTree,
+		},
 	}
 
 	for _, tt := range tests {
@@ -280,8 +290,9 @@ func TestContext_IsOverlay(t *testing.T) {
 func TestContext_IsView(t *testing.T) {
 	views := []Context{
 		ContextInsights, ContextFlowMatrix, ContextGraph, ContextBoard,
-		ContextActionable, ContextHistory, ContextSprint, ContextLabelDashboard,
-		ContextAttention, ContextSplit, ContextDetail, ContextTimeTravel,
+		ContextActionable, ContextHistory, ContextSprint, ContextTree,
+		ContextLabelDashboard, ContextAttention, ContextSplit, ContextDetail,
+		ContextTimeTravel,
 	}
 
 	for _, c := range views {

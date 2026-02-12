@@ -1517,8 +1517,8 @@ func TestPositionIndicatorShown(t *testing.T) {
 
 	output := tree.View()
 
-	// height=10, 100 nodes -> effective=8. Position indicator: "[1-8 of 100]"
-	if !strings.Contains(output, "[1-8 of 100]") {
+	// height=10, 100 nodes -> effective=8. Position indicator: "Page 1/13 (1-8 of 100)"
+	if !strings.Contains(output, "Page 1/13 (1-8 of 100)") {
 		t.Errorf("position indicator not found in output, got:\n%s", output)
 	}
 }
@@ -1545,10 +1545,10 @@ func TestPositionIndicatorMiddle(t *testing.T) {
 
 	output := tree.View()
 
-	// Should contain updated position indicator
+	// Should contain updated position indicator with Page format
 	// The offset should be adjusted so cursor 50 is visible
-	if !strings.Contains(output, " of 100]") {
-		t.Errorf("position indicator with 'of 100' not found, got:\n%s", output)
+	if !strings.Contains(output, "of 100)") {
+		t.Errorf("position indicator with 'of 100)' not found, got:\n%s", output)
 	}
 }
 
@@ -1593,8 +1593,8 @@ func TestPositionIndicatorAtEnd(t *testing.T) {
 
 	output := tree.View()
 
-	// height=10, 100 nodes -> effective=8. Last window: "[93-100 of 100]"
-	if !strings.Contains(output, "[93-100 of 100]") {
+	// height=10, 100 nodes -> effective=8. Last window shows "93-100 of 100" with page info
+	if !strings.Contains(output, "93-100 of 100)") {
 		t.Errorf("position indicator at end not found, got:\n%s", output)
 	}
 }

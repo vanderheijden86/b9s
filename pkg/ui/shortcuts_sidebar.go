@@ -152,6 +152,21 @@ func (s *ShortcutsSidebar) allSections() []shortcutSection {
 			},
 		},
 		{
+			title:    "Tree View",
+			contexts: []string{"tree"},
+			items: []shortcutItem{
+				{"j/k", "Move ↓/↑"},
+				{"h/←", "Collapse/parent"},
+				{"l/→", "Expand/child"},
+				{"Enter/^↵", "Toggle expand"},
+				{"X/Z", "Expand/collapse all"},
+				{"o/c/r/a", "Filter: o/c/r/all"},
+				{"s", "Cycle sort"},
+				{"/", "Search tree"},
+				{"n/N", "Next/prev match"},
+			},
+		},
+		{
 			title:    "Board",
 			contexts: []string{"board"},
 			items: []shortcutItem{
@@ -324,6 +339,8 @@ func ContextFromFocus(f focus) string {
 		return "history"
 	case focusActionable:
 		return "actionable"
+	case focusTree:
+		return "tree"
 	case focusLabelDashboard:
 		return "label"
 	default:

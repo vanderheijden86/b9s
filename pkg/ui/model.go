@@ -1114,6 +1114,7 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+	var listKeyConsumed bool // set by handleListKeys when key was handled (bd-kob)
 
 	if m.backgroundWorker != nil {
 		switch msg.(type) {
@@ -2787,6 +2788,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focused = focusList
 					return m, nil
 				}
+				// Tree view: first ESC clears tree filter, second exits tree view (bd-kob)
+				if m.treeViewActive || m.focused == focusTree {
+					if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
+						m.tree.ApplyFilter("all")
+						m.syncTreeToDetail()
+					} else {
+						m.treeViewActive = false
+						m.focused = focusList
+					}
+					return m, nil
+				}
 				// At main list - first ESC clears filters, second shows quit confirm
 				if m.hasActiveFilters() {
 					m.clearAllFilters()
@@ -2848,6 +2860,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "g":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'g' for jump-to-top (bd-mwi)
+				}
 				// Toggle graph view
 				m.clearAttentionOverlay()
 				m.isGraphView = !m.isGraphView
@@ -2863,6 +2878,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "a":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'a' for all-filter (bd-mwi)
+				}
 				// Toggle actionable view
 				m.clearAttentionOverlay()
 				m.isActionableView = !m.isActionableView
@@ -2962,6 +2980,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "h":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'h' for collapse/parent (bd-mwi)
+				}
 				// Toggle history view
 				m.clearAttentionOverlay()
 				m.isHistoryView = !m.isHistoryView
@@ -3097,6 +3118,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "l":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'l' for expand/child (bd-mwi)
+				}
 				// Open label picker for quick filter (bv-126)
 				if len(m.issues) == 0 {
 					return m, nil
@@ -3181,7 +3205,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m = m.handleFlowMatrixKeys(msg)
 
 			case focusList:
-				m = m.handleListKeys(msg)
+				m, listKeyConsumed = m.handleListKeys(msg)
 
 			case focusDetail:
 				m.viewport, cmd = m.viewport.Update(msg)
@@ -3309,8 +3333,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// (we handle sizing ourselves to account for header/footer)
 	// Only forward keyboard messages to list when list has focus (bv-hmkz fix)
 	// This prevents j/k keys in detail view from changing list selection
+	// Skip forwarding when handleListKeys already consumed the key (bd-kob fix)
+	// to prevent filter shortcut keys (o/c/r/a etc.) from starting the
+	// built-in fuzzy search, which captures arrow keys and escape.
 	if m.focused == focusList {
-		if _, isWindowSize := msg.(tea.WindowSizeMsg); !isWindowSize {
+		if _, isWindowSize := msg.(tea.WindowSizeMsg); !isWindowSize && !listKeyConsumed {
 			m.list, cmd = m.list.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -3638,11 +3665,20 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "enter", " ":
 		m.tree.ToggleExpand()
 		m.syncTreeToDetail()
-	case "h", "left":
+	case "ctrl+a":
+		m.tree.ToggleExpandCollapseAll()
+		m.syncTreeToDetail()
+	case "h":
 		m.tree.CollapseOrJumpToParent()
 		m.syncTreeToDetail()
-	case "l", "right":
+	case "l":
 		m.tree.ExpandOrMoveToChild()
+		m.syncTreeToDetail()
+	case "left":
+		m.tree.PageBackwardFull()
+		m.syncTreeToDetail()
+	case "right":
+		m.tree.PageForwardFull()
 		m.syncTreeToDetail()
 	case "g":
 		// Jump to top (vim-style)
@@ -3692,8 +3728,17 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Filter: all issues (bd-5nw)
 		m.tree.ApplyFilter("all")
 		m.syncTreeToDetail()
-	case "E", "esc":
-		// Return to list view
+	case "esc":
+		// First escape clears tree filter, second exits tree view (bd-kob)
+		if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
+			m.tree.ApplyFilter("all")
+			m.syncTreeToDetail()
+		} else {
+			m.treeViewActive = false
+			m.focused = focusList
+		}
+	case "E":
+		// Always return to list view
 		m.treeViewActive = false
 		m.focused = focusList
 	}
@@ -4261,8 +4306,10 @@ func (m Model) handleInsightsKeys(msg tea.KeyMsg) Model {
 	return m
 }
 
-// handleListKeys handles keyboard input when the list is focused
-func (m Model) handleListKeys(msg tea.KeyMsg) Model {
+// handleListKeys handles keyboard input when the list is focused.
+// Returns (model, consumed) where consumed=true means the key was handled
+// and should NOT be forwarded to the bubbles/list component (bd-kob).
+func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 	switch msg.String() {
 	case "enter":
 		if !m.isSplitView {
@@ -4271,12 +4318,15 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			m.viewport.GotoTop() // Reset scroll position for new issue
 			m.updateViewportContent()
 		}
+		return m, true
 	case "home":
 		m.list.Select(0)
+		return m, true
 	case "G", "end":
 		if len(m.list.Items()) > 0 {
 			m.list.Select(len(m.list.Items()) - 1)
 		}
+		return m, true
 	case "ctrl+d":
 		// Page down
 		itemCount := len(m.list.Items())
@@ -4288,6 +4338,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			}
 			m.list.Select(newIdx)
 		}
+		return m, true
 	case "ctrl+u":
 		// Page up
 		if len(m.list.Items()) > 0 {
@@ -4298,18 +4349,23 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			}
 			m.list.Select(newIdx)
 		}
+		return m, true
 	case "o":
 		m.currentFilter = "open"
 		m.applyFilter()
+		return m, true
 	case "c":
 		m.currentFilter = "closed"
 		m.applyFilter()
+		return m, true
 	case "r":
 		m.currentFilter = "ready"
 		m.applyFilter()
+		return m, true
 	case "a":
 		m.currentFilter = "all"
 		m.applyFilter()
+		return m, true
 	case "t":
 		// Toggle time-travel mode off, or show prompt for custom revision
 		if m.timeTravelMode {
@@ -4321,6 +4377,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			m.timeTravelInput.Focus()
 			m.focused = focusTimeTravelInput
 		}
+		return m, true
 	case "T":
 		// Quick time-travel with default HEAD~5
 		if m.timeTravelMode {
@@ -4328,32 +4385,40 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 		} else {
 			m.enterTimeTravelMode("HEAD~5")
 		}
+		return m, true
 	case "C":
 		// Copy selected issue to clipboard
 		m.copyIssueToClipboard()
+		return m, true
 	case "O":
 		// Open beads.jsonl in editor
 		m.openInEditor()
+		return m, true
 	case "h":
 		// Toggle history view
 		if !m.isHistoryView {
 			m.enterHistoryView()
 		}
+		return m, true
 	case "S":
 		// Apply triage recipe - sort by triage score (bv-151)
 		if r := m.recipeLoader.Get("triage"); r != nil {
 			m.setActiveRecipe(r)
 			m.applyRecipe(r)
 		}
+		return m, true
 	case "s":
 		// Cycle sort mode (bv-3ita)
 		m.cycleSortMode()
+		return m, true
 	case "V":
 		// Show cass session preview modal (bv-5bqh)
 		m.showCassSessionModal()
+		return m, true
 	case "U":
 		// Show self-update modal (bv-182)
 		m.showSelfUpdateModal()
+		return m, true
 	case "y":
 		// Copy ID to clipboard (consistent with board view - bv-yg39)
 		selectedItem := m.list.SelectedItem()
@@ -4369,8 +4434,9 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 				m.statusIsError = false
 			}
 		}
+		return m, true
 	}
-	return m
+	return m, false
 }
 
 // handleTimeTravelInputKeys handles keyboard input for the time-travel revision prompt
@@ -4940,6 +5006,7 @@ func (m *Model) renderHelpOverlay() string {
 	}
 
 	viewsSection := []struct{ key, desc string }{
+		{"E", "Tree view"},
 		{"b", "Kanban board"},
 		{"g", "Graph view"},
 		{"i", "Insights"},
@@ -5008,6 +5075,18 @@ func (m *Model) renderHelpOverlay() string {
 		{"O", "Open in editor"},
 	}
 
+	treeSection := []struct{ key, desc string }{
+		{"j/k/↕", "Move up/down"},
+		{"h/←", "Collapse / parent"},
+		{"l/→", "Expand / child"},
+		{"Enter", "Toggle expand"},
+		{"X/Z", "Expand / collapse all"},
+		{"o/c/r/a", "Filter: open/closed/ready/all"},
+		{"s", "Cycle sort mode"},
+		{"/", "Search tree"},
+		{"n/N", "Next/prev match"},
+	}
+
 	statusSection := []struct{ key, desc string }{
 		{"◌ metrics", "Phase 2 metrics computing"},
 		{"⚠ age", "Snapshot getting stale"},
@@ -5018,16 +5097,20 @@ func (m *Model) renderHelpOverlay() string {
 		{"polling", "Live reload uses polling"},
 	}
 
-	// Build panels
+	// Build panels - ordered for balanced 3-column layout (4-4-2 split)
+	// Col 1: Nav(8)+Views(9)+Global(7)+History(5) = 29
+	// Col 2: Tree(9)+Graph(4)+Insights(6)+Status(7) = 26
+	// Col 3: Filters(10)+Actions(8) = 18
 	panels := []string{
 		renderPanel("Navigation", "🧭", 0, navSection),
 		renderPanel("Views", "👁", 1, viewsSection),
 		renderPanel("Global", "🌐", 2, globalSection),
-		renderPanel("Filters & Sort", "🔍", 3, filterSection),
-		renderPanel("Graph View", "📊", 4, graphSection),
-		renderPanel("Insights", "💡", 5, insightsSection),
+		renderPanel("History", "📜", 3, historySection),
+		renderPanel("Tree View", "🌳", 4, treeSection),
+		renderPanel("Graph View", "📊", 5, graphSection),
+		renderPanel("Insights", "💡", 0, insightsSection),
 		renderPanel("Status", "🩺", 2, statusSection),
-		renderPanel("History", "📜", 0, historySection),
+		renderPanel("Filters & Sort", "🔍", 3, filterSection),
 		renderPanel("Actions", "⚡", 1, actionsSection),
 	}
 
@@ -7346,6 +7429,16 @@ func (m Model) IsActionableView() bool {
 // IsHistoryView returns true if the history view is active (bv-5e5q).
 func (m Model) IsHistoryView() bool {
 	return m.isHistoryView
+}
+
+// TreeSelectedID returns the ID of the currently selected tree node, or "".
+func (m Model) TreeSelectedID() string {
+	return m.tree.GetSelectedID()
+}
+
+// TreeNodeCount returns the number of visible nodes in the tree.
+func (m Model) TreeNodeCount() int {
+	return m.tree.NodeCount()
 }
 
 // exportToMarkdown exports all issues to a Markdown file with auto-generated filename

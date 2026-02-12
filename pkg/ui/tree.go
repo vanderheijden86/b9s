@@ -688,7 +688,7 @@ func (t *TreeModel) View() string {
 }
 
 // renderPositionIndicator renders the scroll position indicator (bv-2nax).
-// Shows the current visible range in the format "[start-end of total]".
+// Shows page-based format "Page X/Y (start-end of total)" matching list view.
 // Uses 1-indexed numbers for user-friendly display.
 func (t *TreeModel) renderPositionIndicator(start, end int) string {
 	total := len(t.flatList)
@@ -696,10 +696,60 @@ func (t *TreeModel) renderPositionIndicator(start, end int) string {
 	displayStart := start + 1
 	displayEnd := end
 
-	indicator := fmt.Sprintf(" [%d-%d of %d]", displayStart, displayEnd, total)
+	pageSize := t.effectiveVisibleCount()
+	currentPage, totalPages := t.pageInfo(pageSize)
+
+	indicator := fmt.Sprintf(" Page %d/%d (%d-%d of %d)", currentPage, totalPages, displayStart, displayEnd, total)
 	return t.theme.Renderer.NewStyle().
 		Foreground(t.theme.Muted).
 		Render(indicator)
+}
+
+// pageInfo returns the current page number and total pages based on visible count.
+func (t *TreeModel) pageInfo(pageSize int) (currentPage, totalPages int) {
+	total := len(t.flatList)
+	if pageSize <= 0 {
+		pageSize = 1
+	}
+	totalPages = (total + pageSize - 1) / pageSize
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	currentPage = (t.viewportOffset / pageSize) + 1
+	if currentPage > totalPages {
+		currentPage = totalPages
+	}
+	return currentPage, totalPages
+}
+
+// PageForwardFull moves the viewport forward by a full page of items.
+func (t *TreeModel) PageForwardFull() {
+	pageSize := t.effectiveVisibleCount()
+	if pageSize < 1 {
+		pageSize = 1
+	}
+	total := len(t.flatList)
+	t.cursor += pageSize
+	if t.cursor >= total {
+		t.cursor = total - 1
+	}
+	if t.cursor < 0 {
+		t.cursor = 0
+	}
+	t.ensureCursorVisible()
+}
+
+// PageBackwardFull moves the viewport backward by a full page of items.
+func (t *TreeModel) PageBackwardFull() {
+	pageSize := t.effectiveVisibleCount()
+	if pageSize < 1 {
+		pageSize = 1
+	}
+	t.cursor -= pageSize
+	if t.cursor < 0 {
+		t.cursor = 0
+	}
+	t.ensureCursorVisible()
 }
 
 // renderEmptyState renders the view when there are no issues.
@@ -1047,6 +1097,39 @@ func (t *TreeModel) ExpandAll() {
 	t.rebuildFlatList()
 	t.saveState() // Persist expand/collapse state (bv-19vz)
 	t.ensureCursorVisible()
+}
+
+// ToggleExpandCollapseAll toggles between expand-all and collapse-all.
+// If any expandable node is collapsed, expands all. Otherwise collapses all.
+func (t *TreeModel) ToggleExpandCollapseAll() {
+	if t.hasAnyCollapsed() {
+		t.ExpandAll()
+	} else {
+		t.CollapseAll()
+	}
+}
+
+// hasAnyCollapsed returns true if any node with children is collapsed.
+func (t *TreeModel) hasAnyCollapsed() bool {
+	for _, root := range t.roots {
+		if t.nodeHasCollapsed(root) {
+			return true
+		}
+	}
+	return false
+}
+
+// nodeHasCollapsed recursively checks if a node or its descendants are collapsed.
+func (t *TreeModel) nodeHasCollapsed(node *IssueTreeNode) bool {
+	if len(node.Children) > 0 && !node.Expanded {
+		return true
+	}
+	for _, child := range node.Children {
+		if t.nodeHasCollapsed(child) {
+			return true
+		}
+	}
+	return false
 }
 
 // CollapseAll collapses all nodes in the tree.
