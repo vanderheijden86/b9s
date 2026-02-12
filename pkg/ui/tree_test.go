@@ -1858,3 +1858,377 @@ func TestTreeSetGlobalIssueMap(t *testing.T) {
 		t.Error("expected test-1 in globalIssueMap")
 	}
 }
+
+// =============================================================================
+// Bookmark tests (bd-k4n)
+// =============================================================================
+
+// TestTreeToggleBookmark verifies toggling a bookmark on/off for the selected node
+func TestTreeToggleBookmark(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+		{ID: "issue-2", Title: "Issue 2", Priority: 2, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// Initially no bookmarks
+	if len(tree.TreeBookmarkedIDs()) != 0 {
+		t.Errorf("expected 0 bookmarks initially, got %d", len(tree.TreeBookmarkedIDs()))
+	}
+
+	// Toggle bookmark on issue-1 (cursor is on first item)
+	tree.ToggleBookmark()
+	bookmarks := tree.TreeBookmarkedIDs()
+	if len(bookmarks) != 1 || bookmarks[0] != "issue-1" {
+		t.Errorf("expected [issue-1] bookmarked, got %v", bookmarks)
+	}
+
+	// Toggle again to remove bookmark
+	tree.ToggleBookmark()
+	if len(tree.TreeBookmarkedIDs()) != 0 {
+		t.Errorf("expected 0 bookmarks after toggle off, got %d", len(tree.TreeBookmarkedIDs()))
+	}
+}
+
+// TestTreeCycleBookmarks verifies cycling through bookmarked nodes with 'B'
+func TestTreeCycleBookmarks(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-0", Title: "Issue 0", Priority: 1, IssueType: model.TypeTask},
+		{ID: "issue-1", Title: "Issue 1", Priority: 2, IssueType: model.TypeTask},
+		{ID: "issue-2", Title: "Issue 2", Priority: 3, IssueType: model.TypeTask},
+		{ID: "issue-3", Title: "Issue 3", Priority: 4, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// Bookmark issue-1 and issue-3
+	tree.MoveDown() // cursor on issue-1
+	tree.ToggleBookmark()
+	tree.MoveDown() // cursor on issue-2
+	tree.MoveDown() // cursor on issue-3
+	tree.ToggleBookmark()
+
+	// Go back to top
+	tree.JumpToTop()
+	if tree.GetSelectedID() != "issue-0" {
+		t.Fatalf("expected cursor on issue-0, got %s", tree.GetSelectedID())
+	}
+
+	// Cycle to next bookmark -> should jump to issue-1
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-1" {
+		t.Errorf("expected cursor on issue-1 after first CycleBookmark, got %s", tree.GetSelectedID())
+	}
+
+	// Cycle again -> should jump to issue-3
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-3" {
+		t.Errorf("expected cursor on issue-3 after second CycleBookmark, got %s", tree.GetSelectedID())
+	}
+
+	// Cycle again -> should wrap around to issue-1
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-1" {
+		t.Errorf("expected cursor on issue-1 after wrap CycleBookmark, got %s", tree.GetSelectedID())
+	}
+}
+
+// TestTreeCycleBookmarkEmpty verifies CycleBookmark does nothing with no bookmarks
+func TestTreeCycleBookmarkEmpty(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-0", Title: "Issue 0", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// No bookmarks - CycleBookmark should not crash and cursor stays
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-0" {
+		t.Errorf("expected cursor on issue-0 (unchanged), got %s", tree.GetSelectedID())
+	}
+}
+
+// TestTreeBookmarkIndicatorInView verifies bookmarked nodes show a visual indicator
+func TestTreeBookmarkIndicatorInView(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Bookmarked Issue", Priority: 1, IssueType: model.TypeTask},
+		{ID: "issue-2", Title: "Normal Issue", Priority: 2, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.SetSize(120, 20)
+
+	// Bookmark issue-1
+	tree.ToggleBookmark()
+
+	view := tree.View()
+
+	// The bookmarked node should have a star indicator
+	if !strings.Contains(view, "\u2605") { // ★ character
+		t.Errorf("expected bookmark indicator (★) in view for bookmarked node, got:\n%s", view)
+	}
+}
+
+// TestTreeBookmarkPersistence verifies bookmarks are saved/loaded from tree-state.json
+func TestTreeBookmarkPersistence(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+
+	issues := []model.Issue{
+		{ID: "root-1", Title: "Root 1", Status: model.StatusOpen, IssueType: model.TypeEpic},
+		{ID: "child-1", Title: "Child 1", Status: model.StatusOpen, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{{IssueID: "child-1", DependsOnID: "root-1", Type: model.DepParentChild}}},
+	}
+
+	// Build tree with bookmark
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	tree := NewTreeModel(theme)
+	tree.SetBeadsDir(beadsDir)
+	tree.Build(issues)
+
+	// Bookmark root-1
+	tree.ToggleBookmark()
+
+	// Read state file and verify bookmarks field
+	statePath := filepath.Join(beadsDir, "tree-state.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("Failed to read state file: %v", err)
+	}
+
+	// The state file should contain a bookmarks field
+	if !strings.Contains(string(data), "bookmarks") {
+		t.Errorf("expected 'bookmarks' in state file, got:\n%s", string(data))
+	}
+
+	// Build a new tree from same issues and verify bookmark is restored
+	tree2 := NewTreeModel(theme)
+	tree2.SetBeadsDir(beadsDir)
+	tree2.Build(issues)
+
+	bookmarks := tree2.TreeBookmarkedIDs()
+	if len(bookmarks) != 1 || bookmarks[0] != "root-1" {
+		t.Errorf("expected [root-1] restored from persistence, got %v", bookmarks)
+	}
+}
+
+// TestTreeBookmarkNoEffectOnEmpty verifies ToggleBookmark on empty tree doesn't crash
+func TestTreeBookmarkNoEffectOnEmpty(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(nil)
+
+	// Should not panic
+	tree.ToggleBookmark()
+	tree.CycleBookmark()
+
+	if len(tree.TreeBookmarkedIDs()) != 0 {
+		t.Error("expected 0 bookmarks on empty tree")
+	}
+}
+
+// =============================================================================
+// Follow mode tests (bd-c0c)
+// =============================================================================
+
+// TestTreeFollowModeToggle verifies 'F' toggles follow mode
+func TestTreeFollowModeToggle(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(nil)
+
+	if tree.GetFollowMode() {
+		t.Error("expected follow mode off initially")
+	}
+
+	tree.ToggleFollowMode()
+	if !tree.GetFollowMode() {
+		t.Error("expected follow mode on after toggle")
+	}
+
+	tree.ToggleFollowMode()
+	if tree.GetFollowMode() {
+		t.Error("expected follow mode off after second toggle")
+	}
+}
+
+// TestTreeFollowModeDetectsNewIssue verifies auto-reveal when a new issue appears
+func TestTreeFollowModeDetectsNewIssue(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.ToggleFollowMode()
+
+	// Establish baseline
+	oldIDs := []string{"epic-1", "task-1"}
+	tree.DetectAndFollowChanges(oldIDs)
+
+	// Simulate adding a new issue
+	newIssues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-new", Title: "New Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-new", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+	tree.Build(newIssues)
+
+	newIDs := []string{"epic-1", "task-1", "task-new"}
+	followedID := tree.DetectAndFollowChanges(newIDs)
+
+	if followedID != "task-new" {
+		t.Errorf("expected follow to reveal task-new, got %q", followedID)
+	}
+	if tree.GetSelectedID() != "task-new" {
+		t.Errorf("expected cursor on task-new after follow, got %s", tree.GetSelectedID())
+	}
+}
+
+// TestTreeFollowModeOffDoesNotFollow verifies no auto-reveal when follow mode is off
+func TestTreeFollowModeOffDoesNotFollow(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// Follow mode is off (default)
+	oldIDs := []string{"issue-1"}
+	tree.DetectAndFollowChanges(oldIDs)
+
+	// Add new issue
+	newIssues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+		{ID: "issue-2", Title: "Issue 2", Priority: 2, IssueType: model.TypeTask},
+	}
+	tree.Build(newIssues)
+
+	newIDs := []string{"issue-1", "issue-2"}
+	followedID := tree.DetectAndFollowChanges(newIDs)
+
+	if followedID != "" {
+		t.Errorf("expected no follow when mode is off, got %q", followedID)
+	}
+}
+
+// TestTreeFollowModeNoChangeNoFollow verifies no action when issue list is unchanged
+func TestTreeFollowModeNoChangeNoFollow(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.ToggleFollowMode()
+
+	ids := []string{"issue-1"}
+	tree.DetectAndFollowChanges(ids)
+
+	// Same IDs again — no change
+	followedID := tree.DetectAndFollowChanges(ids)
+	if followedID != "" {
+		t.Errorf("expected no follow when IDs unchanged, got %q", followedID)
+	}
+}
+
+// TestTreeFollowModeIndicatorInView verifies [FOLLOW] badge when follow mode is active
+func TestTreeFollowModeIndicatorInView(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	// No follow mode -> no badge
+	view := tree.View()
+	if strings.Contains(view, "FOLLOW") {
+		t.Error("expected no FOLLOW badge when follow mode is off")
+	}
+
+	// Enable follow mode
+	tree.ToggleFollowMode()
+	view = tree.View()
+	if !strings.Contains(view, "FOLLOW") {
+		t.Errorf("expected FOLLOW badge when follow mode is on, got:\n%s", view)
+	}
+}
+
+// TestTreeFollowModeExpandsCollapsedParent verifies auto-expand of collapsed parents
+func TestTreeFollowModeExpandsCollapsedParent(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.ToggleFollowMode()
+
+	// Collapse the parent
+	tree.CollapseAll()
+	if tree.NodeCount() != 1 {
+		t.Fatalf("expected 1 node after collapse, got %d", tree.NodeCount())
+	}
+
+	// Establish baseline
+	oldIDs := []string{"epic-1", "task-1"}
+	tree.DetectAndFollowChanges(oldIDs)
+
+	// Add a child under epic-1
+	newIssues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-new", Title: "New Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-new", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+	tree.Build(newIssues)
+
+	newIDs := []string{"epic-1", "task-1", "task-new"}
+	followedID := tree.DetectAndFollowChanges(newIDs)
+
+	if followedID != "task-new" {
+		t.Errorf("expected follow to reveal task-new, got %q", followedID)
+	}
+	// Parent should have been expanded to make task-new visible
+	if tree.NodeCount() < 3 {
+		t.Errorf("expected at least 3 visible nodes (parent expanded), got %d", tree.NodeCount())
+	}
+}

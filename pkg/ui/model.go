@@ -2846,6 +2846,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "b":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'b' for bookmarks (bd-k4n)
+				}
 				m.clearAttentionOverlay()
 				m.isBoardView = !m.isBoardView
 				m.isGraphView = false
@@ -3728,6 +3731,16 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Filter: all issues (bd-5nw)
 		m.tree.ApplyFilter("all")
 		m.syncTreeToDetail()
+	case "b":
+		// Toggle bookmark on current node (bd-k4n)
+		m.tree.ToggleBookmark()
+	case "B":
+		// Cycle through bookmarked nodes (bd-k4n)
+		m.tree.CycleBookmark()
+		m.syncTreeToDetail()
+	case "F":
+		// Toggle follow mode (bd-c0c)
+		m.tree.ToggleFollowMode()
 	case "esc":
 		// First escape clears tree filter, second exits tree view (bd-kob)
 		if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
@@ -7439,6 +7452,16 @@ func (m Model) TreeSelectedID() string {
 // TreeNodeCount returns the number of visible nodes in the tree.
 func (m Model) TreeNodeCount() int {
 	return m.tree.NodeCount()
+}
+
+// TreeBookmarkedIDs returns the IDs of bookmarked tree nodes (bd-k4n).
+func (m Model) TreeBookmarkedIDs() []string {
+	return m.tree.TreeBookmarkedIDs()
+}
+
+// TreeFollowMode returns whether follow mode is active (bd-c0c).
+func (m Model) TreeFollowMode() bool {
+	return m.tree.GetFollowMode()
 }
 
 // exportToMarkdown exports all issues to a Markdown file with auto-generated filename
