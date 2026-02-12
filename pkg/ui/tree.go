@@ -186,7 +186,9 @@ type TreeModel struct {
 	width          int                       // Available width
 	height         int                       // Available height
 	viewportOffset int                       // Index of first visible node (bv-r4ng)
-	sortMode       SortMode                  // Current sort mode for tree siblings (bd-adf)
+	sortMode       SortMode                  // Current sort mode for tree siblings (bd-adf) — legacy, kept for CycleSortMode compat
+	sortField      SortField                 // Current sort field (bd-x3l)
+	sortDirection  SortDirection             // Current sort direction (bd-x3l)
 
 	// Build state
 	built    bool   // Has tree been built?
@@ -200,6 +202,13 @@ type TreeModel struct {
 	filterMatches    map[string]bool         // Issue IDs that match the filter
 	contextAncestors map[string]bool         // Ancestor IDs shown for context (dimmed)
 	globalIssueMap   map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
+
+	// PageRank scores for sort-by-pagerank (bd-x3l)
+	pageRankScores map[string]float64 // Issue ID -> PageRank score (set externally)
+
+	// Sort popup state (bd-t4e)
+	sortPopupOpen   bool // Is the sort popup overlay visible?
+	sortPopupCursor int  // Currently highlighted field index in the popup
 
 	// Search state (bd-uus)
 	searchMode       bool             // Is search input active?
@@ -484,26 +493,60 @@ func issueTypeOrder(t model.IssueType) int {
 	}
 }
 
-// CycleSortMode advances to the next sort mode and re-sorts the tree (bd-adf).
+// CycleSortMode advances to the next sort field and re-sorts the tree (bd-adf).
+// This preserves the legacy cycling behavior: each press advances to the next field
+// with its default direction. Kept for backwards compatibility.
 func (t *TreeModel) CycleSortMode() {
-	t.sortMode = (t.sortMode + 1) % numSortModes
+	t.sortField = (t.sortField + 1) % NumSortFields
+	t.sortDirection = t.sortField.DefaultDirection()
 	t.sortAllSiblings()
 	t.rebuildFlatList()
 }
 
-// GetSortMode returns the current sort mode (bd-adf).
+// GetSortMode returns the current sort mode for legacy callers (bd-adf).
+// Maps the new SortField/SortDirection to the old SortMode enum.
 func (t *TreeModel) GetSortMode() SortMode {
-	return t.sortMode
+	switch t.sortField {
+	case SortFieldCreated:
+		if t.sortDirection == SortAscending {
+			return SortCreatedAsc
+		}
+		return SortCreatedDesc
+	case SortFieldPriority:
+		return SortPriority
+	case SortFieldUpdated:
+		return SortUpdated
+	default:
+		return SortDefault
+	}
+}
+
+// SetSort sets the sort field and direction, re-sorts the tree, and rebuilds the flat list (bd-x3l).
+func (t *TreeModel) SetSort(field SortField, dir SortDirection) {
+	t.sortField = field
+	t.sortDirection = dir
+	t.sortAllSiblings()
+	t.rebuildFlatList()
+}
+
+// GetSortField returns the current sort field (bd-x3l).
+func (t *TreeModel) GetSortField() SortField {
+	return t.sortField
+}
+
+// GetSortDirection returns the current sort direction (bd-x3l).
+func (t *TreeModel) GetSortDirection() SortDirection {
+	return t.sortDirection
 }
 
 // sortAllSiblings walks the entire tree and sorts children at each level (bd-adf).
 func (t *TreeModel) sortAllSiblings() {
-	t.sortNodesBySortMode(t.roots)
+	t.sortNodesByFieldDirection(t.roots)
 	var walk func(nodes []*IssueTreeNode)
 	walk = func(nodes []*IssueTreeNode) {
 		for _, node := range nodes {
 			if len(node.Children) > 1 {
-				t.sortNodesBySortMode(node.Children)
+				t.sortNodesByFieldDirection(node.Children)
 			}
 			walk(node.Children)
 		}
@@ -511,11 +554,13 @@ func (t *TreeModel) sortAllSiblings() {
 	walk(t.roots)
 }
 
-// sortNodesBySortMode sorts a slice of sibling nodes using the current sortMode (bd-adf).
-func (t *TreeModel) sortNodesBySortMode(nodes []*IssueTreeNode) {
+// sortNodesByFieldDirection sorts a slice of sibling nodes using the current
+// sortField and sortDirection (bd-x3l). Replaces sortNodesBySortMode.
+func (t *TreeModel) sortNodesByFieldDirection(nodes []*IssueTreeNode) {
 	if len(nodes) <= 1 {
 		return
 	}
+	asc := t.sortDirection == SortAscending
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i] == nil || nodes[j] == nil {
 			return nodes[i] != nil
@@ -524,28 +569,209 @@ func (t *TreeModel) sortNodesBySortMode(nodes []*IssueTreeNode) {
 		if a == nil || b == nil {
 			return a != nil
 		}
-		switch t.sortMode {
-		case SortCreatedAsc:
-			return a.CreatedAt.Before(b.CreatedAt)
-		case SortCreatedDesc:
-			return a.CreatedAt.After(b.CreatedAt)
-		case SortPriority:
-			return a.Priority < b.Priority
-		case SortUpdated:
-			return a.UpdatedAt.After(b.UpdatedAt)
-		default:
-			// Default: priority, type, created (same as existing sortNodes)
-			if a.Priority != b.Priority {
-				return a.Priority < b.Priority
-			}
-			aOrder := issueTypeOrder(a.IssueType)
-			bOrder := issueTypeOrder(b.IssueType)
-			if aOrder != bOrder {
-				return aOrder < bOrder
-			}
+		less := t.compareByField(a, b)
+		if asc {
+			return less
+		}
+		// For descending, reverse the comparison (but handle equality: use stable tiebreak)
+		greater := t.compareByField(b, a)
+		return greater
+	})
+}
+
+// compareByField returns true if a should sort before b for the current sortField
+// in ascending order. Used by sortNodesByFieldDirection.
+func (t *TreeModel) compareByField(a, b *model.Issue) bool {
+	switch t.sortField {
+	case SortFieldCreated:
+		if !a.CreatedAt.Equal(b.CreatedAt) {
 			return a.CreatedAt.Before(b.CreatedAt)
 		}
-	})
+	case SortFieldUpdated:
+		if !a.UpdatedAt.Equal(b.UpdatedAt) {
+			return a.UpdatedAt.Before(b.UpdatedAt)
+		}
+	case SortFieldPriority:
+		if a.Priority != b.Priority {
+			return a.Priority < b.Priority
+		}
+	case SortFieldTitle:
+		if a.Title != b.Title {
+			return a.Title < b.Title
+		}
+	case SortFieldStatus:
+		if a.Status != b.Status {
+			return statusOrder(a.Status) < statusOrder(b.Status)
+		}
+	case SortFieldType:
+		aOrder := issueTypeOrder(a.IssueType)
+		bOrder := issueTypeOrder(b.IssueType)
+		if aOrder != bOrder {
+			return aOrder < bOrder
+		}
+	case SortFieldDepsCount:
+		aDeps := len(a.Dependencies)
+		bDeps := len(b.Dependencies)
+		if aDeps != bDeps {
+			return aDeps < bDeps
+		}
+	case SortFieldPageRank:
+		// PageRank is stored externally in graph analysis, not on Issue directly.
+		// Use the pageRankScores map if available; otherwise equal (falls to tiebreak).
+		aRank := t.getPageRank(a.ID)
+		bRank := t.getPageRank(b.ID)
+		if aRank != bRank {
+			return aRank < bRank
+		}
+	default:
+		// Default sort: priority, then type, then created
+		if a.Priority != b.Priority {
+			return a.Priority < b.Priority
+		}
+		aOrder := issueTypeOrder(a.IssueType)
+		bOrder := issueTypeOrder(b.IssueType)
+		if aOrder != bOrder {
+			return aOrder < bOrder
+		}
+		return a.CreatedAt.Before(b.CreatedAt)
+	}
+	// Tiebreak: fall back to ID for stable ordering
+	return a.ID < b.ID
+}
+
+// statusOrder returns a numeric order for issue statuses.
+// Lower numbers sort first: open → in_progress → blocked → closed → tombstone
+func statusOrder(s model.Status) int {
+	switch s {
+	case model.StatusOpen:
+		return 0
+	case model.StatusInProgress:
+		return 1
+	case model.StatusBlocked:
+		return 2
+	case model.StatusClosed:
+		return 3
+	case model.StatusTombstone:
+		return 4
+	default:
+		return 5
+	}
+}
+
+// ── Sort popup methods (bd-t4e) ──
+
+// IsSortPopupOpen returns whether the sort popup overlay is visible.
+func (t *TreeModel) IsSortPopupOpen() bool {
+	return t.sortPopupOpen
+}
+
+// OpenSortPopup opens the sort popup overlay, positioning the cursor on the current sort field.
+func (t *TreeModel) OpenSortPopup() {
+	t.sortPopupOpen = true
+	t.sortPopupCursor = int(t.sortField)
+}
+
+// CloseSortPopup closes the sort popup overlay without changing the sort.
+func (t *TreeModel) CloseSortPopup() {
+	t.sortPopupOpen = false
+}
+
+// SortPopupCursor returns the currently highlighted field index in the popup.
+func (t *TreeModel) SortPopupCursor() int {
+	return t.sortPopupCursor
+}
+
+// SortPopupDown moves the popup cursor down one field.
+func (t *TreeModel) SortPopupDown() {
+	if t.sortPopupCursor < int(NumSortFields)-1 {
+		t.sortPopupCursor++
+	}
+}
+
+// SortPopupUp moves the popup cursor up one field.
+func (t *TreeModel) SortPopupUp() {
+	if t.sortPopupCursor > 0 {
+		t.sortPopupCursor--
+	}
+}
+
+// SortPopupSelect applies the highlighted sort field. If the selected field is
+// already the current sort field, toggle the direction. Otherwise, set the new
+// field with its default direction. Closes the popup.
+func (t *TreeModel) SortPopupSelect() {
+	selectedField := SortField(t.sortPopupCursor)
+	if selectedField == t.sortField {
+		// Toggle direction
+		t.sortDirection = t.sortDirection.Toggle()
+	} else {
+		// New field with default direction
+		t.sortField = selectedField
+		t.sortDirection = selectedField.DefaultDirection()
+	}
+	t.sortAllSiblings()
+	t.rebuildFlatList()
+	t.sortPopupOpen = false
+}
+
+// RenderSortPopup renders the sort popup overlay as a string (bd-t4e).
+// Shows all sort fields with the current one marked with a direction indicator.
+func (t *TreeModel) RenderSortPopup() string {
+	if !t.sortPopupOpen {
+		return ""
+	}
+
+	r := t.theme.Renderer
+	var sb strings.Builder
+
+	// Title
+	titleStyle := r.NewStyle().
+		Foreground(t.theme.Primary).
+		Bold(true)
+	sb.WriteString(titleStyle.Render("Sort by:"))
+	sb.WriteString("\n")
+
+	for i := SortField(0); i < NumSortFields; i++ {
+		isSelected := int(i) == t.sortPopupCursor
+		isCurrent := i == t.sortField
+
+		// Build the line
+		var line string
+		indicator := "  " // 2 chars for alignment
+		if isCurrent {
+			indicator = t.sortDirection.Indicator() + " "
+		}
+
+		label := indicator + i.String()
+
+		if isSelected {
+			style := r.NewStyle().
+				Foreground(t.theme.Primary).
+				Bold(true)
+			line = style.Render("▸ " + label)
+		} else {
+			style := r.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"})
+			line = style.Render("  " + label)
+		}
+
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+// SetPageRankScores sets externally-computed PageRank scores for sort-by-pagerank (bd-x3l).
+func (t *TreeModel) SetPageRankScores(scores map[string]float64) {
+	t.pageRankScores = scores
+}
+
+// getPageRank returns the PageRank score for an issue ID, or 0 if not available.
+func (t *TreeModel) getPageRank(id string) float64 {
+	if t.pageRankScores == nil {
+		return 0
+	}
+	return t.pageRankScores[id]
 }
 
 // SetGlobalIssueMap provides the global issue map for blocker resolution in filters (bd-e3w).

@@ -98,6 +98,94 @@ func (s SortMode) String() string {
 	}
 }
 
+// SortField represents which field to sort by (bd-x3l).
+// This replaces the per-mode enum with a field+direction approach.
+type SortField int
+
+const (
+	SortFieldPriority  SortField = iota // Priority (P0, P1, ...)
+	SortFieldCreated                    // Creation date
+	SortFieldUpdated                    // Last update date
+	SortFieldTitle                      // Issue title (alphabetical)
+	SortFieldStatus                     // Issue status
+	SortFieldType                       // Issue type (epic, feature, task, ...)
+	SortFieldDepsCount                  // Number of dependencies
+	SortFieldPageRank                   // PageRank score
+	NumSortFields                       // Sentinel: total number of sort fields
+)
+
+// String returns a human-readable label for the sort field.
+func (f SortField) String() string {
+	switch f {
+	case SortFieldPriority:
+		return "Priority"
+	case SortFieldCreated:
+		return "Created"
+	case SortFieldUpdated:
+		return "Updated"
+	case SortFieldTitle:
+		return "Title"
+	case SortFieldStatus:
+		return "Status"
+	case SortFieldType:
+		return "Type"
+	case SortFieldDepsCount:
+		return "Deps"
+	case SortFieldPageRank:
+		return "PageRank"
+	default:
+		return "Unknown"
+	}
+}
+
+// DefaultDirection returns the natural default sort direction for this field.
+func (f SortField) DefaultDirection() SortDirection {
+	switch f {
+	case SortFieldPriority:
+		return SortAscending // P0 first
+	case SortFieldTitle:
+		return SortAscending // A-Z
+	case SortFieldStatus:
+		return SortAscending // open before closed
+	case SortFieldType:
+		return SortAscending // epic before chore
+	default:
+		return SortDescending // newest/highest first for dates, counts, scores
+	}
+}
+
+// SortDirection represents ascending or descending sort order (bd-x3l).
+type SortDirection int
+
+const (
+	SortAscending  SortDirection = iota // ▲ ascending
+	SortDescending                      // ▼ descending
+)
+
+// String returns a human-readable label for the sort direction.
+func (d SortDirection) String() string {
+	if d == SortAscending {
+		return "Ascending"
+	}
+	return "Descending"
+}
+
+// Indicator returns the arrow indicator for the sort direction.
+func (d SortDirection) Indicator() string {
+	if d == SortAscending {
+		return "▲"
+	}
+	return "▼"
+}
+
+// Toggle returns the opposite direction.
+func (d SortDirection) Toggle() SortDirection {
+	if d == SortAscending {
+		return SortDescending
+	}
+	return SortAscending
+}
+
 // LabelGraphAnalysisResult holds label-specific graph analysis results (bv-109)
 type LabelGraphAnalysisResult struct {
 	Label        string
@@ -2788,6 +2876,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focused = focusList
 					return m, nil
 				}
+				// Tree view: sort popup takes precedence over filter/exit (bd-t4e)
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSortPopupOpen() {
+					m.tree.CloseSortPopup()
+					return m, nil
+				}
+				// Tree view: search mode escape (bd-wf8) takes precedence
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSearchMode() {
+					m.tree.ClearSearch()
+					return m, nil
+				}
 				// Tree view: first ESC clears tree filter, second exits tree view (bd-kob)
 				if m.treeViewActive || m.focused == focusTree {
 					if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
@@ -3634,6 +3732,22 @@ func (m *Model) syncTreeToDetail() {
 
 // handleTreeKeys handles keyboard input when tree view is focused (bv-gllx)
 func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
+	// Sort popup mode: forward input to sort popup (bd-t4e)
+	if m.tree.IsSortPopupOpen() {
+		switch msg.String() {
+		case "j", "down":
+			m.tree.SortPopupDown()
+		case "k", "up":
+			m.tree.SortPopupUp()
+		case "enter":
+			m.tree.SortPopupSelect()
+			m.syncTreeToDetail()
+		case "esc", "s":
+			m.tree.CloseSortPopup()
+		}
+		return m
+	}
+
 	// Search mode: forward input to tree search (bd-wf8)
 	if m.tree.IsSearchMode() {
 		switch msg.String() {
@@ -3698,9 +3812,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		m.tree.PageUp()
 		m.syncTreeToDetail()
 	case "s":
-		// Cycle tree sort mode (bd-tfn)
-		m.tree.CycleSortMode()
-		m.syncTreeToDetail()
+		// Open sort popup menu (bd-t4e, replaces cycle sort bd-tfn)
+		m.tree.OpenSortPopup()
 	case "/":
 		// Enter search mode (bd-wf8)
 		m.tree.EnterSearchMode()
@@ -5747,19 +5860,29 @@ func (m *Model) renderFooter() string {
 			Render(fmt.Sprintf("🔎 %s", mode))
 	}
 
-	// Sort badge - only show when not default (bv-3ita, bd-tfn)
-	// Show tree sort mode when in tree view, list sort mode otherwise
+	// Sort badge - only show when not default (bv-3ita, bd-tfn, bd-x3l)
+	// Show tree sort field+direction when in tree view, list sort mode otherwise
 	sortBadge := ""
-	activeSortMode := m.sortMode
 	if m.focused == focusTree || m.treeViewActive {
-		activeSortMode = m.tree.GetSortMode()
-	}
-	if activeSortMode != SortDefault {
-		sortBadge = lipgloss.NewStyle().
-			Background(ColorBgHighlight).
-			Foreground(ColorSecondary).
-			Padding(0, 1).
-			Render(fmt.Sprintf("↕ %s", activeSortMode.String()))
+		field := m.tree.GetSortField()
+		dir := m.tree.GetSortDirection()
+		// Show badge when not default sort (priority ascending)
+		if field != SortFieldPriority || dir != SortAscending {
+			sortBadge = lipgloss.NewStyle().
+				Background(ColorBgHighlight).
+				Foreground(ColorSecondary).
+				Padding(0, 1).
+				Render(fmt.Sprintf("%s %s", field.String(), dir.Indicator()))
+		}
+	} else {
+		activeSortMode := m.sortMode
+		if activeSortMode != SortDefault {
+			sortBadge = lipgloss.NewStyle().
+				Background(ColorBgHighlight).
+				Foreground(ColorSecondary).
+				Padding(0, 1).
+				Render(fmt.Sprintf("↕ %s", activeSortMode.String()))
+		}
 	}
 
 	labelHint := lipgloss.NewStyle().
@@ -7439,6 +7562,21 @@ func (m Model) TreeSelectedID() string {
 // TreeNodeCount returns the number of visible nodes in the tree.
 func (m Model) TreeNodeCount() int {
 	return m.tree.NodeCount()
+}
+
+// TreeSortPopupOpen returns whether the sort popup is open in the tree view (bd-t4e).
+func (m Model) TreeSortPopupOpen() bool {
+	return m.tree.IsSortPopupOpen()
+}
+
+// TreeSortField returns the current sort field of the tree view (bd-x3l).
+func (m Model) TreeSortField() SortField {
+	return m.tree.GetSortField()
+}
+
+// TreeSortDirection returns the current sort direction of the tree view (bd-x3l).
+func (m Model) TreeSortDirection() SortDirection {
+	return m.tree.GetSortDirection()
 }
 
 // exportToMarkdown exports all issues to a Markdown file with auto-generated filename
