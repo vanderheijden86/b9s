@@ -186,6 +186,7 @@ type TreeModel struct {
 	width          int                       // Available width
 	height         int                       // Available height
 	viewportOffset int                       // Index of first visible node (bv-r4ng)
+	sortMode       SortMode                  // Current sort mode for tree siblings (bd-adf)
 
 	// Build state
 	built    bool   // Has tree been built?
@@ -193,6 +194,19 @@ type TreeModel struct {
 
 	// Persistence state (bv-19vz)
 	beadsDir string // Directory containing .beads (for tree-state.json)
+
+	// Filter state (bd-e3w)
+	currentFilter    string                  // "all", "open", "closed", "ready"
+	filterMatches    map[string]bool         // Issue IDs that match the filter
+	contextAncestors map[string]bool         // Ancestor IDs shown for context (dimmed)
+	globalIssueMap   map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
+
+	// Search state (bd-uus)
+	searchMode       bool             // Is search input active?
+	searchQuery      string           // Current search query
+	searchMatches    []*IssueTreeNode // Nodes matching search
+	searchMatchIndex int              // Current match index for n/N cycling
+	searchMatchIDs   map[string]bool  // Quick lookup for highlighting
 }
 
 // NewTreeModel creates an empty tree model
@@ -470,16 +484,166 @@ func issueTypeOrder(t model.IssueType) int {
 	}
 }
 
-// View renders the tree view.
+// CycleSortMode advances to the next sort mode and re-sorts the tree (bd-adf).
+func (t *TreeModel) CycleSortMode() {
+	t.sortMode = (t.sortMode + 1) % numSortModes
+	t.sortAllSiblings()
+	t.rebuildFlatList()
+}
+
+// GetSortMode returns the current sort mode (bd-adf).
+func (t *TreeModel) GetSortMode() SortMode {
+	return t.sortMode
+}
+
+// sortAllSiblings walks the entire tree and sorts children at each level (bd-adf).
+func (t *TreeModel) sortAllSiblings() {
+	t.sortNodesBySortMode(t.roots)
+	var walk func(nodes []*IssueTreeNode)
+	walk = func(nodes []*IssueTreeNode) {
+		for _, node := range nodes {
+			if len(node.Children) > 1 {
+				t.sortNodesBySortMode(node.Children)
+			}
+			walk(node.Children)
+		}
+	}
+	walk(t.roots)
+}
+
+// sortNodesBySortMode sorts a slice of sibling nodes using the current sortMode (bd-adf).
+func (t *TreeModel) sortNodesBySortMode(nodes []*IssueTreeNode) {
+	if len(nodes) <= 1 {
+		return
+	}
+	sort.Slice(nodes, func(i, j int) bool {
+		if nodes[i] == nil || nodes[j] == nil {
+			return nodes[i] != nil
+		}
+		a, b := nodes[i].Issue, nodes[j].Issue
+		if a == nil || b == nil {
+			return a != nil
+		}
+		switch t.sortMode {
+		case SortCreatedAsc:
+			return a.CreatedAt.Before(b.CreatedAt)
+		case SortCreatedDesc:
+			return a.CreatedAt.After(b.CreatedAt)
+		case SortPriority:
+			return a.Priority < b.Priority
+		case SortUpdated:
+			return a.UpdatedAt.After(b.UpdatedAt)
+		default:
+			// Default: priority, type, created (same as existing sortNodes)
+			if a.Priority != b.Priority {
+				return a.Priority < b.Priority
+			}
+			aOrder := issueTypeOrder(a.IssueType)
+			bOrder := issueTypeOrder(b.IssueType)
+			if aOrder != bOrder {
+				return aOrder < bOrder
+			}
+			return a.CreatedAt.Before(b.CreatedAt)
+		}
+	})
+}
+
+// SetGlobalIssueMap provides the global issue map for blocker resolution in filters (bd-e3w).
+func (t *TreeModel) SetGlobalIssueMap(m map[string]*model.Issue) {
+	t.globalIssueMap = m
+}
+
+// GetFilter returns the current filter string (bd-e3w).
+func (t *TreeModel) GetFilter() string {
+	return t.currentFilter
+}
+
+// ApplyFilter sets the current filter and rebuilds the visible flat list (bd-e3w).
+func (t *TreeModel) ApplyFilter(filter string) {
+	t.currentFilter = filter
+	if filter == "" || filter == "all" {
+		t.currentFilter = "all"
+		t.filterMatches = nil
+		t.contextAncestors = nil
+		t.rebuildFlatList()
+		return
+	}
+
+	t.filterMatches = make(map[string]bool)
+	t.contextAncestors = make(map[string]bool)
+
+	// Mark matching nodes
+	for id, node := range t.issueMap {
+		if t.nodeMatchesFilter(node) {
+			t.filterMatches[id] = true
+			// Mark all ancestors as context
+			ancestor := node.Parent
+			for ancestor != nil {
+				if ancestor.Issue != nil {
+					t.contextAncestors[ancestor.Issue.ID] = true
+				}
+				ancestor = ancestor.Parent
+			}
+		}
+	}
+
+	t.rebuildFlatList()
+}
+
+// nodeMatchesFilter checks if a single node matches the current filter (bd-e3w).
+func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
+	if node == nil || node.Issue == nil {
+		return false
+	}
+	issue := node.Issue
+	switch t.currentFilter {
+	case "open":
+		return !isClosedLikeStatus(issue.Status)
+	case "closed":
+		return isClosedLikeStatus(issue.Status)
+	case "ready":
+		if isClosedLikeStatus(issue.Status) || issue.Status == model.StatusBlocked {
+			return false
+		}
+		for _, dep := range issue.Dependencies {
+			if dep == nil || !dep.Type.IsBlocking() {
+				continue
+			}
+			if blocker, exists := t.globalIssueMap[dep.DependsOnID]; exists && !isClosedLikeStatus(blocker.Status) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
+}
+
+// IsFilterDimmed returns true if the node is a context ancestor (shown dimmed)
+// rather than a direct filter match (bd-05v).
+func (t *TreeModel) IsFilterDimmed(node *IssueTreeNode) bool {
+	if node == nil || node.Issue == nil || t.filterMatches == nil {
+		return false
+	}
+	id := node.Issue.ID
+	return t.contextAncestors[id] && !t.filterMatches[id]
+}
+
+// View renders the tree view with a header row and windowed node rendering.
 // Implementation for bv-1371, updated for windowed rendering (bv-db02).
 // Only renders visible nodes based on viewportOffset and height for O(viewport)
 // performance instead of O(n) where n is total nodes.
+// The header row is included in the output and accounted for in the visible range.
 func (t *TreeModel) View() string {
 	if !t.built || len(t.flatList) == 0 {
 		return t.renderEmptyState()
 	}
 
 	var sb strings.Builder
+
+	// Prepend the column header row (bd-0ex, bd-s2k)
+	sb.WriteString(t.RenderHeader())
+	sb.WriteString("\n")
 
 	// Get visible range - O(1) calculation based on viewportOffset and height
 	start, end := t.visibleRange()
@@ -497,6 +661,10 @@ func (t *TreeModel) View() string {
 		if isSelected {
 			// Highlight selected row using theme's Selected style
 			line = t.theme.Selected.Render(line)
+		} else if t.IsFilterDimmed(node) {
+			// Context ancestors shown with muted/faint styling (bd-05v)
+			dimStyle := t.theme.Renderer.NewStyle().Foreground(t.theme.Muted).Faint(true)
+			line = dimStyle.Render(line)
 		}
 
 		sb.WriteString(line)
@@ -508,6 +676,12 @@ func (t *TreeModel) View() string {
 	if len(t.flatList) > t.height && t.height > 0 {
 		indicator := t.renderPositionIndicator(start, end)
 		sb.WriteString(indicator)
+	}
+
+	// Show search bar when search mode is active (bd-wf8)
+	if t.searchMode {
+		sb.WriteString("\n")
+		sb.WriteString(t.renderSearchBar())
 	}
 
 	return sb.String()
@@ -553,7 +727,25 @@ func (t *TreeModel) renderEmptyState() string {
 	return sb.String()
 }
 
-// renderNode renders a single tree node with tree characters and styling.
+// RenderHeader returns a styled header row for the tree view, matching the main
+// list view's column header style: primary background, bold white/dark foreground.
+// Layout: "  TYPE PRI STATUS      ID                     TITLE"
+func (t *TreeModel) RenderHeader() string {
+	width := t.width
+	if width <= 0 {
+		width = 80
+	}
+	headerStyle := t.theme.Renderer.NewStyle().
+		Background(t.theme.Primary).
+		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Bold(true).
+		Width(width)
+
+	return headerStyle.Render("  TYPE PRI STATUS      ID                     TITLE")
+}
+
+// renderNode renders a single tree node with column-aligned layout matching the
+// main list delegate: [tree-prefix] [expand] [type] [prio-badge] [status-badge] [ID] [title] [age]
 func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool) string {
 	if node == nil || node.Issue == nil {
 		return ""
@@ -561,59 +753,126 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool) string {
 
 	issue := node.Issue
 	r := t.theme.Renderer
-	var sb strings.Builder
+	width := t.width
+	if width <= 0 {
+		width = 80
+	}
+	// Reduce width by 1 to prevent terminal wrapping on the exact edge
+	width = width - 1
 
-	// Build the tree prefix (indentation + branch characters)
+	var leftSide strings.Builder
+
+	// ── Tree prefix (indentation + branch characters) ──
 	prefix := t.buildTreePrefix(node)
-	sb.WriteString(prefix)
+	leftSide.WriteString(prefix)
+	prefixWidth := lipgloss.Width(prefix)
 
-	// Expand/collapse indicator
+	// ── Expand/collapse indicator ──
 	indicator := t.getExpandIndicator(node)
 	indicatorStyle := r.NewStyle().Foreground(t.theme.Secondary)
-	sb.WriteString(indicatorStyle.Render(indicator))
-	sb.WriteString(" ")
+	leftSide.WriteString(indicatorStyle.Render(indicator))
+	leftSide.WriteString(" ")
 
-	// Type icon
+	// ── Type icon with color ──
 	icon, iconColor := t.theme.GetTypeIcon(string(issue.IssueType))
-	iconStyle := r.NewStyle().Foreground(iconColor)
-	sb.WriteString(iconStyle.Render(icon))
-	sb.WriteString(" ")
+	iconDisplayWidth := lipgloss.Width(icon)
+	leftSide.WriteString(r.NewStyle().Foreground(iconColor).Render(icon))
+	leftSide.WriteString(" ")
 
-	// Priority badge (P0, P1, P2, etc.)
-	prioText := fmt.Sprintf("P%d", issue.Priority)
-	prioStyle := r.NewStyle().Bold(true)
-	if issue.Priority <= 1 {
-		prioStyle = prioStyle.Foreground(t.theme.Primary)
+	// ── Priority badge (polished, matching delegate) ──
+	prioBadge := RenderPriorityBadge(issue.Priority)
+	prioBadgeWidth := lipgloss.Width(prioBadge)
+	leftSide.WriteString(prioBadge)
+	leftSide.WriteString(" ")
+
+	// ── Status badge (polished, matching delegate) ──
+	statusBadge := RenderStatusBadge(string(issue.Status))
+	statusBadgeWidth := lipgloss.Width(statusBadge)
+	leftSide.WriteString(statusBadge)
+	leftSide.WriteString(" ")
+
+	// ── Issue ID ──
+	idStr := issue.ID
+	idWidth := lipgloss.Width(idStr)
+	if idWidth > 35 {
+		idWidth = 35
+		idStr = truncateRunesHelper(idStr, 35, "…")
+	}
+	idStyle := t.theme.SecondaryText
+	if isSelected {
+		idStyle = idStyle.Bold(true)
+	}
+	leftSide.WriteString(idStyle.Render(idStr))
+	leftSide.WriteString(" ")
+
+	// ── Calculate fixed widths ──
+	// prefix + indicator(1) + space(1) + icon(measured) + space(1) + prio(measured) + space(1)
+	// + status(measured) + space(1) + id(measured) + space(1)
+	fixedWidth := prefixWidth + 1 + 1 + iconDisplayWidth + 1 + prioBadgeWidth + 1 + statusBadgeWidth + 1 + idWidth + 1
+
+	// ── Right side: age column ──
+	rightWidth := 0
+	var rightParts []string
+	if width > 60 {
+		ageStr := FormatTimeRel(issue.CreatedAt)
+		rightParts = append(rightParts, t.theme.MutedText.Render(fmt.Sprintf("%8s", ageStr)))
+		rightWidth += 9
+	}
+
+	// ── Title (fills remaining space) ──
+	titleWidth := width - fixedWidth - rightWidth - 2
+	if titleWidth < 5 {
+		titleWidth = 5
+	}
+
+	title := truncateRunesHelper(issue.Title, titleWidth, "…")
+	// Pad title to fill space
+	currentTitleWidth := lipgloss.Width(title)
+	if currentTitleWidth < titleWidth {
+		title = title + strings.Repeat(" ", titleWidth-currentTitleWidth)
+	}
+
+	// ── Search match highlighting (bd-nkt) ──
+	isSearchMatch := t.searchMatchIDs != nil && t.searchMatchIDs[node.Issue.ID]
+	isCurrentMatch := isSearchMatch && len(t.searchMatches) > 0 &&
+		t.searchMatchIndex < len(t.searchMatches) &&
+		t.searchMatches[t.searchMatchIndex] == node
+
+	titleStyle := r.NewStyle()
+	if isSelected {
+		titleStyle = titleStyle.Foreground(t.theme.Primary).Bold(true)
+	} else if isCurrentMatch {
+		// Current search match: bright yellow foreground + bold
+		titleStyle = titleStyle.
+			Foreground(lipgloss.AdaptiveColor{Light: "#7A5600", Dark: "#F1FA8C"}).
+			Bold(true)
+	} else if isSearchMatch {
+		// Other search matches: orange foreground
+		titleStyle = titleStyle.
+			Foreground(lipgloss.AdaptiveColor{Light: "#B06800", Dark: "#FFB86C"})
 	} else {
-		prioStyle = prioStyle.Foreground(t.theme.Muted)
+		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"})
 	}
-	sb.WriteString(prioStyle.Render(prioText))
-	sb.WriteString(" ")
+	leftSide.WriteString(titleStyle.Render(title))
 
-	// Issue ID
-	idStyle := r.NewStyle().Foreground(t.theme.Highlight)
-	sb.WriteString(idStyle.Render(issue.ID))
-	sb.WriteString(" ")
+	// ── Right side ──
+	rightSide := strings.Join(rightParts, " ")
 
-	// Title (truncated if needed)
-	title := issue.Title
-	// Use lipgloss.Width for proper display width (handles ANSI codes + Unicode)
-	maxTitleLen := t.width - lipgloss.Width(prefix) - 25 // Account for prefix, indicator, icon, priority, ID
-	if maxTitleLen < 20 {
-		maxTitleLen = 20
+	// ── Combine: left + padding + right ──
+	leftLen := lipgloss.Width(leftSide.String())
+	rightLen := lipgloss.Width(rightSide)
+	padding := width - leftLen - rightLen
+	if padding < 0 {
+		padding = 0
 	}
-	title = t.truncateTitle(title, maxTitleLen)
 
-	// Title uses base style foreground
-	sb.WriteString(title)
+	row := leftSide.String() + strings.Repeat(" ", padding) + rightSide
 
-	// Status indicator (colored dot at end)
-	statusColor := t.theme.GetStatusColor(string(issue.Status))
-	statusDot := " " + GetStatusIcon(string(issue.Status))
-	statusStyle := r.NewStyle().Foreground(statusColor)
-	sb.WriteString(statusStyle.Render(statusDot))
+	// Apply row width clamping
+	rowStyle := r.NewStyle().Width(width).MaxWidth(width)
+	row = rowStyle.Render(row)
 
-	return sb.String()
+	return row
 }
 
 // buildTreePrefix builds the indentation and branch characters for a node.
@@ -914,16 +1173,14 @@ func (t *TreeModel) PageUp() {
 // visibleRange returns the start and end indices of nodes to render (bv-r4ng).
 // The range [start, end) covers nodes visible in the viewport.
 // This is an O(1) calculation based on viewportOffset and height.
+// Uses effectiveVisibleCount() which reserves space for the header row (bd-s2k)
+// and position indicator when scrolling is needed.
 func (t *TreeModel) visibleRange() (start, end int) {
 	if len(t.flatList) == 0 {
 		return 0, 0
 	}
 
-	// Each node renders as 1 line
-	visibleCount := t.height
-	if visibleCount <= 0 {
-		visibleCount = 20 // Default
-	}
+	visibleCount := t.effectiveVisibleCount()
 
 	// Start with the viewport offset, clamped to non-negative
 	start = t.viewportOffset
@@ -979,7 +1236,12 @@ func (t *TreeModel) setExpandedRecursive(node *IssueTreeNode, expanded bool) {
 }
 
 // rebuildFlatList rebuilds the flattened list of visible nodes.
+// When a filter is active, dispatches to rebuildFilteredFlatList (bd-e3w).
 func (t *TreeModel) rebuildFlatList() {
+	if t.currentFilter != "" && t.currentFilter != "all" && t.filterMatches != nil {
+		t.rebuildFilteredFlatList()
+		return
+	}
 	t.flatList = t.flatList[:0]
 	for _, root := range t.roots {
 		t.appendVisible(root)
@@ -1006,6 +1268,48 @@ func (t *TreeModel) appendVisible(node *IssueTreeNode) {
 	}
 }
 
+// rebuildFilteredFlatList builds the flat list showing only matching nodes and
+// their context ancestors (bd-e3w).
+func (t *TreeModel) rebuildFilteredFlatList() {
+	t.flatList = t.flatList[:0]
+	for _, root := range t.roots {
+		t.appendFilteredVisible(root)
+	}
+	if t.cursor >= len(t.flatList) {
+		t.cursor = len(t.flatList) - 1
+	}
+	if t.cursor < 0 {
+		t.cursor = 0
+	}
+}
+
+// appendFilteredVisible adds a node to the flat list only if it matches the
+// filter or is a context ancestor of a matching node. Context ancestors are
+// traversed even if not explicitly expanded to ensure matching descendants
+// remain visible (bd-e3w).
+func (t *TreeModel) appendFilteredVisible(node *IssueTreeNode) {
+	if node == nil || node.Issue == nil {
+		return
+	}
+	id := node.Issue.ID
+	isMatch := t.filterMatches[id]
+	isContext := t.contextAncestors[id]
+
+	if !isMatch && !isContext {
+		return
+	}
+
+	t.flatList = append(t.flatList, node)
+
+	// Context ancestors show their children even if not explicitly expanded
+	// to ensure matching descendants are visible
+	if node.Expanded || isContext {
+		for _, child := range node.Children {
+			t.appendFilteredVisible(child)
+		}
+	}
+}
+
 // IsBuilt returns whether the tree has been built.
 func (t *TreeModel) IsBuilt() bool {
 	return t.built
@@ -1021,6 +1325,24 @@ func (t *TreeModel) RootCount() int {
 	return len(t.roots)
 }
 
+// effectiveVisibleCount returns the number of node lines that can be displayed,
+// accounting for the header row and position indicator. This keeps
+// ensureCursorVisible and visibleRange in sync (bd-s2k).
+func (t *TreeModel) effectiveVisibleCount() int {
+	visibleCount := t.height - 1 // subtract 1 for header row
+	if visibleCount <= 0 {
+		visibleCount = 19 // Default: 20 minus 1 for header
+	}
+	// Reserve 1 more line for the position indicator when scrolling is needed
+	if len(t.flatList) > visibleCount {
+		visibleCount--
+	}
+	if visibleCount < 1 {
+		visibleCount = 1
+	}
+	return visibleCount
+}
+
 // ensureCursorVisible adjusts viewportOffset so the cursor is visible (bv-lnc4).
 // This method should be called after any cursor movement to maintain
 // cursor-follows-viewport behavior. It implements cursor-at-edge scrolling:
@@ -1030,10 +1352,7 @@ func (t *TreeModel) ensureCursorVisible() {
 		return
 	}
 
-	visibleCount := t.height
-	if visibleCount <= 0 {
-		visibleCount = 20 // Default
-	}
+	visibleCount := t.effectiveVisibleCount()
 
 	// Cursor above viewport - scroll up to show cursor at top
 	if t.cursor < t.viewportOffset {
@@ -1061,4 +1380,159 @@ func (t *TreeModel) ensureCursorVisible() {
 // GetViewportOffset returns the current viewport offset (for testing/debugging).
 func (t *TreeModel) GetViewportOffset() int {
 	return t.viewportOffset
+}
+
+// ── Search methods (bd-uus) ──
+
+// EnterSearchMode activates the search input bar.
+func (t *TreeModel) EnterSearchMode() {
+	t.searchMode = true
+	t.searchQuery = ""
+	t.searchMatches = nil
+	t.searchMatchIDs = nil
+	t.searchMatchIndex = 0
+}
+
+// ExitSearchMode deactivates the search input bar but keeps matches highlighted.
+func (t *TreeModel) ExitSearchMode() {
+	t.searchMode = false
+}
+
+// ClearSearch deactivates search mode and removes all match state.
+func (t *TreeModel) ClearSearch() {
+	t.searchMode = false
+	t.searchQuery = ""
+	t.searchMatches = nil
+	t.searchMatchIDs = nil
+	t.searchMatchIndex = 0
+}
+
+// IsSearchMode returns whether the search input bar is active.
+func (t *TreeModel) IsSearchMode() bool { return t.searchMode }
+
+// SearchQuery returns the current search query string.
+func (t *TreeModel) SearchQuery() string { return t.searchQuery }
+
+// SearchMatchCount returns the number of nodes matching the current search.
+func (t *TreeModel) SearchMatchCount() int { return len(t.searchMatches) }
+
+// SearchMatchIndex returns the 0-based index of the currently focused match.
+func (t *TreeModel) SearchMatchIndex() int { return t.searchMatchIndex }
+
+// SearchAddChar appends a character to the search query and re-executes the search.
+func (t *TreeModel) SearchAddChar(ch rune) {
+	t.searchQuery += string(ch)
+	t.executeSearch()
+}
+
+// SearchBackspace removes the last character from the search query.
+// If the query becomes empty, matches are cleared.
+func (t *TreeModel) SearchBackspace() {
+	if len(t.searchQuery) > 0 {
+		runes := []rune(t.searchQuery)
+		t.searchQuery = string(runes[:len(runes)-1])
+	}
+	if t.searchQuery == "" {
+		t.searchMatches = nil
+		t.searchMatchIDs = nil
+		t.searchMatchIndex = 0
+		return
+	}
+	t.executeSearch()
+}
+
+// executeSearch walks ALL nodes (including collapsed ones) and builds the match list.
+// Auto-expands ancestors of the first match and navigates to it.
+func (t *TreeModel) executeSearch() {
+	t.searchMatches = nil
+	t.searchMatchIDs = make(map[string]bool)
+	t.searchMatchIndex = 0
+
+	if t.searchQuery == "" {
+		return
+	}
+
+	query := strings.ToLower(t.searchQuery)
+
+	// Walk ALL nodes (including collapsed ones)
+	var walk func(node *IssueTreeNode)
+	walk = func(node *IssueTreeNode) {
+		if node == nil || node.Issue == nil {
+			return
+		}
+		if strings.Contains(strings.ToLower(node.Issue.Title), query) ||
+			strings.Contains(strings.ToLower(node.Issue.ID), query) {
+			t.searchMatches = append(t.searchMatches, node)
+			t.searchMatchIDs[node.Issue.ID] = true
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	for _, root := range t.roots {
+		walk(root)
+	}
+
+	// Auto-expand and navigate to first match
+	if len(t.searchMatches) > 0 {
+		t.expandPathToNode(t.searchMatches[0])
+		t.rebuildFlatList()
+		t.SelectByID(t.searchMatches[0].Issue.ID)
+		t.ensureCursorVisible()
+	}
+}
+
+// NextSearchMatch cycles forward through search matches (n key).
+func (t *TreeModel) NextSearchMatch() {
+	if len(t.searchMatches) == 0 {
+		return
+	}
+	t.searchMatchIndex = (t.searchMatchIndex + 1) % len(t.searchMatches)
+	match := t.searchMatches[t.searchMatchIndex]
+	t.expandPathToNode(match)
+	t.rebuildFlatList()
+	t.SelectByID(match.Issue.ID)
+	t.ensureCursorVisible()
+}
+
+// PrevSearchMatch cycles backward through search matches (N key).
+func (t *TreeModel) PrevSearchMatch() {
+	if len(t.searchMatches) == 0 {
+		return
+	}
+	t.searchMatchIndex--
+	if t.searchMatchIndex < 0 {
+		t.searchMatchIndex = len(t.searchMatches) - 1
+	}
+	match := t.searchMatches[t.searchMatchIndex]
+	t.expandPathToNode(match)
+	t.rebuildFlatList()
+	t.SelectByID(match.Issue.ID)
+	t.ensureCursorVisible()
+}
+
+// expandPathToNode expands all ancestors so the node becomes visible.
+func (t *TreeModel) expandPathToNode(node *IssueTreeNode) {
+	ancestor := node.Parent
+	for ancestor != nil {
+		ancestor.Expanded = true
+		ancestor = ancestor.Parent
+	}
+}
+
+// renderSearchBar renders the search input bar shown at the bottom of the tree view.
+func (t *TreeModel) renderSearchBar() string {
+	r := t.theme.Renderer
+	searchStyle := r.NewStyle().
+		Foreground(t.theme.Primary).
+		Bold(true)
+
+	matchInfo := ""
+	if len(t.searchMatches) > 0 {
+		matchInfo = fmt.Sprintf(" [%d/%d]", t.searchMatchIndex+1, len(t.searchMatches))
+	} else if t.searchQuery != "" {
+		matchInfo = " [no matches]"
+	}
+
+	return searchStyle.Render(fmt.Sprintf("/%s%s", t.searchQuery, matchInfo))
 }

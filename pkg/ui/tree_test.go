@@ -747,6 +747,15 @@ func TestTreeStateVersion(t *testing.T) {
 // =============================================================================
 
 func TestVisibleRange(t *testing.T) {
+	// effectiveVisibleCount logic:
+	//   visibleCount = height - 1 (for header); default 19 when height <= 0
+	//   if flatList > visibleCount: visibleCount-- (for position indicator)
+	//   minimum 1
+	//
+	// height=10 => 9 nodes; with indicator (100 > 9) => 8
+	// height=10, 5 nodes => 9 nodes capacity, 5 < 9 so no indicator => 9 (but clamped to 5)
+	// height=10, 10 nodes => 9, 10 > 9 so indicator => 8
+	// height=0 => default 19; with indicator (100 > 19) => 18
 	tests := []struct {
 		name      string
 		nodeCount int
@@ -756,17 +765,17 @@ func TestVisibleRange(t *testing.T) {
 		wantEnd   int
 	}{
 		{"empty tree", 0, 10, 0, 0, 0},
-		{"fewer nodes than viewport", 5, 10, 0, 0, 5},
-		{"exact fit", 10, 10, 0, 0, 10},
-		{"offset at start", 100, 10, 0, 0, 10},
-		{"offset in middle", 100, 10, 45, 45, 55},
-		{"offset near end", 100, 10, 90, 90, 100},
-		{"offset past end clamps", 100, 10, 95, 90, 100},
-		{"zero height uses default 20", 100, 0, 0, 0, 20},
-		{"negative height uses default 20", 100, -5, 0, 0, 20},
+		{"fewer nodes than viewport", 5, 10, 0, 0, 5},                          // 5 < 9, no indicator
+		{"exact fit", 10, 10, 0, 0, 8},                                         // 10 > 9 => indicator => 8
+		{"offset at start", 100, 10, 0, 0, 8},                                  // 100 > 9 => indicator => 8
+		{"offset in middle", 100, 10, 45, 45, 53},                              // 8 nodes visible
+		{"offset near end", 100, 10, 92, 92, 100},                              // last 8
+		{"offset past end clamps", 100, 10, 95, 92, 100},                       // clamped to 92
+		{"zero height uses default 19 minus indicator", 100, 0, 0, 0, 18},      // 19-1=18
+		{"negative height uses default 19 minus indicator", 100, -5, 0, 0, 18}, // 19-1=18
 		{"single node", 1, 10, 0, 0, 1},
-		{"negative offset clamps to start", 100, 10, -5, 0, 10},
-		{"negative offset small list", 5, 10, -5, 0, 5},
+		{"negative offset clamps to start", 100, 10, -5, 0, 8}, // 8 nodes visible
+		{"negative offset small list", 5, 10, -5, 0, 5},        // no indicator
 	}
 
 	for _, tt := range tests {
@@ -817,10 +826,11 @@ func TestVisibleRangePerformance(t *testing.T) {
 	tree.viewportOffset = 50000
 
 	// Should complete instantly (O(1))
+	// height=20 => 19 - 1 (indicator for 100000 nodes) = 18
 	start, end := tree.visibleRange()
 
-	if start != 50000 || end != 50020 {
-		t.Errorf("visibleRange() = (%d, %d), want (50000, 50020)", start, end)
+	if start != 50000 || end != 50018 {
+		t.Errorf("visibleRange() = (%d, %d), want (50000, 50018)", start, end)
 	}
 }
 
@@ -1173,6 +1183,9 @@ func TestLoadStateStaleIDs(t *testing.T) {
 // =============================================================================
 
 // TestEnsureCursorVisible verifies the cursor-follows-viewport behavior
+// Note: effectiveVisibleCount = height-1 (header), then -1 more if flatList > that
+// For height=10, 100 nodes: effective = 10-1-1 = 8
+// For height=0, 100 nodes: effective = 19-1 = 18
 func TestEnsureCursorVisible(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1184,17 +1197,17 @@ func TestEnsureCursorVisible(t *testing.T) {
 	}{
 		{"cursor at start, offset at start", 100, 10, 0, 0, 0},
 		{"cursor in visible range", 100, 10, 5, 0, 0},
-		{"cursor below viewport - scroll down", 100, 10, 15, 0, 6},
+		{"cursor below viewport - scroll down", 100, 10, 15, 0, 8},
 		{"cursor above viewport - scroll up", 100, 10, 0, 10, 0},
-		{"cursor at viewport bottom edge", 100, 10, 9, 0, 0},
-		{"cursor just past viewport bottom", 100, 10, 10, 0, 1},
-		{"cursor at end of list", 100, 10, 99, 0, 90},
+		{"cursor at viewport bottom edge", 100, 10, 9, 0, 2},
+		{"cursor just past viewport bottom", 100, 10, 10, 0, 3},
+		{"cursor at end of list", 100, 10, 99, 0, 92},
 		{"offset already correct", 100, 10, 50, 45, 45},
 		{"empty list", 0, 10, 0, 0, 0},
 		{"single node", 1, 10, 0, 0, 0},
 		{"fewer nodes than viewport", 5, 10, 3, 0, 0},
-		{"zero height uses default 20", 100, 0, 25, 0, 6},
-		{"large cursor with max offset clamping", 100, 10, 95, 0, 86},
+		{"zero height uses default", 100, 0, 25, 0, 8},
+		{"large cursor with max offset clamping", 100, 10, 95, 0, 88},
 	}
 
 	for _, tt := range tests {
@@ -1220,14 +1233,11 @@ func TestEnsureCursorVisible(t *testing.T) {
 
 			// Verify cursor is now within visible range (unless empty)
 			if tt.nodeCount > 0 {
-				visibleCount := tt.height
-				if visibleCount <= 0 {
-					visibleCount = 20
-				}
+				visibleCount := tree.effectiveVisibleCount()
 				if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+visibleCount {
 					// This check needs adjustment for edge case where list is smaller than viewport
 					if tt.nodeCount > visibleCount && tree.cursor >= tree.viewportOffset+visibleCount {
-						t.Errorf("cursor %d not visible with offset %d and height %d",
+						t.Errorf("cursor %d not visible with offset %d and effectiveVisible %d",
 							tree.cursor, tree.viewportOffset, visibleCount)
 					}
 				}
@@ -1285,9 +1295,10 @@ func TestNavigationCallsEnsureCursorVisible(t *testing.T) {
 	if tree.viewportOffset == 0 {
 		t.Error("viewportOffset should have scrolled down")
 	}
-	// Cursor should be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
-		t.Errorf("cursor %d not visible with offset %d", tree.cursor, tree.viewportOffset)
+	// Cursor should be visible (using effectiveVisibleCount)
+	effVis := tree.effectiveVisibleCount()
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+effVis {
+		t.Errorf("cursor %d not visible with offset %d (effective %d)", tree.cursor, tree.viewportOffset, effVis)
 	}
 
 	// Test JumpToBottom
@@ -1296,7 +1307,7 @@ func TestNavigationCallsEnsureCursorVisible(t *testing.T) {
 		t.Errorf("cursor should be 49 after JumpToBottom, got %d", tree.cursor)
 	}
 	// Cursor should still be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+effVis {
 		t.Errorf("cursor %d not visible after JumpToBottom with offset %d", tree.cursor, tree.viewportOffset)
 	}
 
@@ -1312,7 +1323,7 @@ func TestNavigationCallsEnsureCursorVisible(t *testing.T) {
 	// Test PageDown
 	tree.PageDown()
 	// Cursor should be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+effVis {
 		t.Errorf("cursor %d not visible after PageDown with offset %d", tree.cursor, tree.viewportOffset)
 	}
 }
@@ -1354,10 +1365,10 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 	output := tree.View()
 	lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
 
-	// Should have exactly 11 lines: 10 content lines + 1 position indicator (bv-2nax)
-	// The position indicator shows "[start-end of total]" when scrolling is needed
-	if len(lines) != 11 {
-		t.Errorf("expected 11 lines (10 content + 1 indicator), got %d", len(lines))
+	// With height=10, effectiveVisibleCount = 10-1(header)-1(indicator) = 8 nodes visible.
+	// Output: 1 header + 8 node lines + 1 position indicator = 10 lines total.
+	if len(lines) != 10 {
+		t.Errorf("expected 10 lines (1 header + 8 content + 1 indicator), got %d", len(lines))
 	}
 
 	// Should contain node 50's content (issue-50)
@@ -1365,9 +1376,9 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 		t.Error("first visible node (issue-50) not rendered")
 	}
 
-	// Should contain node 59's content (last visible)
-	if !strings.Contains(output, "issue-59") {
-		t.Error("last visible node (issue-59) not rendered")
+	// Should contain node 57's content (last visible: 50+8-1=57)
+	if !strings.Contains(output, "issue-57") {
+		t.Error("last visible node (issue-57) not rendered")
 	}
 
 	// Should NOT contain node 0's content
@@ -1380,9 +1391,9 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 		t.Error("non-visible node (issue-49) incorrectly rendered")
 	}
 
-	// Should NOT contain node 60's content (just after viewport)
-	if strings.Contains(output, "issue-60") {
-		t.Error("non-visible node (issue-60) incorrectly rendered")
+	// Should NOT contain node 58's content (just after viewport)
+	if strings.Contains(output, "issue-58") {
+		t.Error("non-visible node (issue-58) incorrectly rendered")
 	}
 }
 
@@ -1440,9 +1451,10 @@ func TestViewSelectionHighlightWithOffset(t *testing.T) {
 		t.Error("selected issue (issue-25) not in output")
 	}
 
-	// Cursor should be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
-		t.Errorf("cursor %d not visible with offset %d", tree.cursor, tree.viewportOffset)
+	// Cursor should be visible (use effectiveVisibleCount)
+	eff := tree.effectiveVisibleCount()
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+eff {
+		t.Errorf("cursor %d not visible with offset %d (effective %d)", tree.cursor, tree.viewportOffset, eff)
 	}
 }
 
@@ -1472,14 +1484,14 @@ func TestViewAtEndOfList(t *testing.T) {
 		t.Error("last issue (issue-99) not rendered")
 	}
 
-	// Should contain issue-90 (10 items from the end)
-	if !strings.Contains(output, "issue-90") {
-		t.Error("issue-90 not rendered")
+	// height=10, 100 nodes -> effective=8. Last 8 items: 92-99
+	if !strings.Contains(output, "issue-92") {
+		t.Error("issue-92 not rendered (first in last window)")
 	}
 
-	// Should NOT contain issue-89
-	if strings.Contains(output, "issue-89") {
-		t.Error("issue-89 incorrectly rendered")
+	// Should NOT contain issue-91 (just before the visible window)
+	if strings.Contains(output, "issue-91") {
+		t.Error("issue-91 incorrectly rendered")
 	}
 }
 
@@ -1505,8 +1517,8 @@ func TestPositionIndicatorShown(t *testing.T) {
 
 	output := tree.View()
 
-	// Should contain position indicator "[1-10 of 100]"
-	if !strings.Contains(output, "[1-10 of 100]") {
+	// height=10, 100 nodes -> effective=8. Position indicator: "[1-8 of 100]"
+	if !strings.Contains(output, "[1-8 of 100]") {
 		t.Errorf("position indicator not found in output, got:\n%s", output)
 	}
 }
@@ -1581,8 +1593,268 @@ func TestPositionIndicatorAtEnd(t *testing.T) {
 
 	output := tree.View()
 
-	// Should contain "[91-100 of 100]"
-	if !strings.Contains(output, "[91-100 of 100]") {
+	// height=10, 100 nodes -> effective=8. Last window: "[93-100 of 100]"
+	if !strings.Contains(output, "[93-100 of 100]") {
 		t.Errorf("position indicator at end not found, got:\n%s", output)
+	}
+}
+
+// =============================================================================
+// Filter tests (bd-e3w, bd-05v)
+// =============================================================================
+
+// TestTreeApplyFilterAll verifies "all" filter shows everything
+func TestTreeApplyFilterAll(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Apply "all" filter - nothing should change
+	tree.ApplyFilter("all")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes with 'all' filter, got %d", tree.NodeCount())
+	}
+	if tree.GetFilter() != "all" {
+		t.Errorf("expected filter 'all', got %q", tree.GetFilter())
+	}
+}
+
+// TestTreeApplyFilterOpen verifies "open" filter hides closed issues
+func TestTreeApplyFilterOpen(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "in-progress-1", Title: "In Progress", Priority: 1, IssueType: model.TypeTask, Status: model.StatusInProgress},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyFilter("open")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes with 'open' filter, got %d", tree.NodeCount())
+	}
+	if tree.GetFilter() != "open" {
+		t.Errorf("expected filter 'open', got %q", tree.GetFilter())
+	}
+}
+
+// TestTreeApplyFilterClosed verifies "closed" filter shows only closed issues
+func TestTreeApplyFilterClosed(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{ID: "closed-2", Title: "Tombstone", Priority: 2, IssueType: model.TypeTask, Status: model.StatusTombstone},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyFilter("closed")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes with 'closed' filter, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeApplyFilterReady verifies "ready" filter excludes blocked issues
+func TestTreeApplyFilterReady(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open Ready", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "blocked-1", Title: "Blocked", Priority: 1, IssueType: model.TypeTask, Status: model.StatusBlocked},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{
+			ID: "has-blocker", Title: "Has Open Blocker", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen,
+			Dependencies: []*model.Dependency{
+				{IssueID: "has-blocker", DependsOnID: "open-1", Type: model.DepBlocks},
+			},
+		},
+	}
+
+	// Provide global issue map for blocker resolution
+	globalMap := make(map[string]*model.Issue)
+	for i := range issues {
+		globalMap[issues[i].ID] = &issues[i]
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetGlobalIssueMap(globalMap)
+
+	tree.ApplyFilter("ready")
+
+	// Only "open-1" should pass: blocked-1 has status=blocked, closed-1 is closed,
+	// has-blocker has an open blocker
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 visible node with 'ready' filter, got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s (%s)", i, tree.flatList[i].Issue.ID, tree.flatList[i].Issue.Status)
+		}
+	}
+}
+
+// TestTreeFilterWithHierarchy verifies context ancestors are shown dimmed
+func TestTreeFilterWithHierarchy(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen, CreatedAt: now},
+		{
+			ID: "task-open", Title: "Open Task", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-open", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-closed", Title: "Closed Task", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-closed", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Filter to "closed" - only task-closed matches, epic-1 is context ancestor
+	tree.ApplyFilter("closed")
+
+	// Should show 2 nodes: epic-1 (context) + task-closed (match)
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes (1 context + 1 match), got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s", i, tree.flatList[i].Issue.ID)
+		}
+	}
+
+	// Verify epic-1 is dimmed (context ancestor, not match)
+	if epic := tree.issueMap["epic-1"]; epic != nil {
+		if !tree.IsFilterDimmed(epic) {
+			t.Error("expected epic-1 to be dimmed (context ancestor)")
+		}
+	}
+
+	// Verify task-closed is NOT dimmed (direct match)
+	if task := tree.issueMap["task-closed"]; task != nil {
+		if tree.IsFilterDimmed(task) {
+			t.Error("expected task-closed to NOT be dimmed (direct match)")
+		}
+	}
+}
+
+// TestTreeFilterResetToAll verifies clearing filter restores full tree
+func TestTreeFilterResetToAll(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Apply filter then clear
+	tree.ApplyFilter("open")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with 'open' filter, got %d", tree.NodeCount())
+	}
+
+	tree.ApplyFilter("all")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 nodes after clearing filter, got %d", tree.NodeCount())
+	}
+
+	// filterMatches and contextAncestors should be nil
+	if tree.filterMatches != nil {
+		t.Error("expected filterMatches to be nil after 'all' filter")
+	}
+	if tree.contextAncestors != nil {
+		t.Error("expected contextAncestors to be nil after 'all' filter")
+	}
+}
+
+// TestTreeFilterEmptyResult verifies filter with no matches shows nothing
+func TestTreeFilterEmptyResult(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyFilter("closed")
+	if tree.NodeCount() != 0 {
+		t.Errorf("expected 0 nodes with 'closed' filter (no closed issues), got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeFilterDeepHierarchy verifies ancestor chain is preserved for deep matches
+func TestTreeFilterDeepHierarchy(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "root", Title: "Root", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen, CreatedAt: now},
+		{
+			ID: "mid", Title: "Mid", Priority: 2, IssueType: model.TypeFeature, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "mid", DependsOnID: "root", Type: model.DepParentChild}},
+		},
+		{
+			ID: "leaf-closed", Title: "Leaf Closed", Priority: 3, IssueType: model.TypeTask, Status: model.StatusClosed, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "leaf-closed", DependsOnID: "mid", Type: model.DepParentChild}},
+		},
+		{
+			ID: "leaf-open", Title: "Leaf Open", Priority: 3, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(3 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "leaf-open", DependsOnID: "mid", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Filter to "closed" - only leaf-closed matches
+	// But root and mid should appear as context ancestors
+	tree.ApplyFilter("closed")
+
+	if tree.NodeCount() != 3 {
+		t.Errorf("expected 3 visible nodes (root + mid as context, leaf-closed as match), got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s", i, tree.flatList[i].Issue.ID)
+		}
+	}
+
+	// Verify dimming
+	if !tree.IsFilterDimmed(tree.issueMap["root"]) {
+		t.Error("expected root to be dimmed")
+	}
+	if !tree.IsFilterDimmed(tree.issueMap["mid"]) {
+		t.Error("expected mid to be dimmed")
+	}
+	if tree.IsFilterDimmed(tree.issueMap["leaf-closed"]) {
+		t.Error("expected leaf-closed to NOT be dimmed")
+	}
+}
+
+// TestTreeFilterNoDimmedWithoutFilter verifies IsFilterDimmed returns false when no filter
+func TestTreeFilterNoDimmedWithoutFilter(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "test-1", Title: "Test", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	if tree.IsFilterDimmed(tree.issueMap["test-1"]) {
+		t.Error("expected no dimming when no filter is active")
+	}
+}
+
+// TestTreeSetGlobalIssueMap verifies the global issue map is stored
+func TestTreeSetGlobalIssueMap(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	m := map[string]*model.Issue{
+		"test-1": {ID: "test-1"},
+	}
+	tree.SetGlobalIssueMap(m)
+	if tree.globalIssueMap == nil {
+		t.Error("expected globalIssueMap to be set")
+	}
+	if tree.globalIssueMap["test-1"] == nil {
+		t.Error("expected test-1 in globalIssueMap")
 	}
 }
