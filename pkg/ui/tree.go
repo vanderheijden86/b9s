@@ -35,8 +35,9 @@ import (
 //   - Version field enables future schema migrations
 //   - Corrupted/missing file = use defaults (graceful degradation)
 type TreeState struct {
-	Version  int             `json:"version"`  // Schema version (currently 1)
-	Expanded map[string]bool `json:"expanded"` // Issue ID -> explicitly set state
+	Version   int             `json:"version"`             // Schema version (currently 1)
+	Expanded  map[string]bool `json:"expanded"`            // Issue ID -> explicitly set state
+	Bookmarks []string        `json:"bookmarks,omitempty"` // Bookmarked issue IDs (bd-k4n)
 }
 
 // TreeStateVersion is the current schema version for tree persistence
@@ -107,6 +108,12 @@ func (t *TreeModel) saveState() {
 		walk(root)
 	}
 
+	// Save bookmarks (bd-k4n)
+	for id := range t.bookmarks {
+		state.Bookmarks = append(state.Bookmarks, id)
+	}
+	sort.Strings(state.Bookmarks) // Stable ordering for deterministic output
+
 	// Write to file
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
@@ -155,7 +162,7 @@ func (t *TreeModel) loadState() {
 // applyState sets expand state on nodes based on loaded state (bv-afcm).
 // Unknown IDs in state are silently ignored (stale IDs handled by bv-0jaz).
 func (t *TreeModel) applyState(state *TreeState) {
-	if state == nil || len(state.Expanded) == 0 {
+	if state == nil {
 		return
 	}
 
@@ -164,6 +171,14 @@ func (t *TreeModel) applyState(state *TreeState) {
 			node.Expanded = expanded
 		}
 		// If ID not found, it's stale - ignore
+	}
+
+	// Restore bookmarks (bd-k4n)
+	if len(state.Bookmarks) > 0 {
+		t.bookmarks = make(map[string]bool, len(state.Bookmarks))
+		for _, id := range state.Bookmarks {
+			t.bookmarks[id] = true
+		}
 	}
 }
 
@@ -242,6 +257,13 @@ type TreeModel struct {
 
 	// XRay state (bd-0rc)
 	xrayRoot *IssueTreeNode // When set, only this subtree is shown
+
+	// Bookmark state (bd-k4n)
+	bookmarks map[string]bool // Issue IDs that are bookmarked
+
+	// Follow mode state (bd-c0c)
+	followMode   bool     // Whether follow mode is active
+	lastIssueIDs []string // Issue IDs from last refresh, for detecting changes
 }
 
 // NewTreeModel creates an empty tree model
@@ -895,6 +917,16 @@ func (t *TreeModel) View() string {
 
 	// Prepend the column header row (bd-0ex, bd-s2k)
 	sb.WriteString(t.RenderHeader())
+	// Show [FOLLOW] badge when follow mode is active (bd-c0c)
+	if t.followMode {
+		followBadge := t.theme.Renderer.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+			Background(lipgloss.AdaptiveColor{Light: "#27AE60", Dark: "#50FA7B"}).
+			Bold(true).
+			Render(" FOLLOW ")
+		sb.WriteString(" ")
+		sb.WriteString(followBadge)
+	}
 	sb.WriteString("\n")
 
 	// Show XRay indicator when in drill-down mode (bd-0rc)
@@ -1150,6 +1182,15 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool) string {
 		ageStr := FormatTimeRel(issue.CreatedAt)
 		rightParts = append(rightParts, t.theme.MutedText.Render(fmt.Sprintf("%8s", ageStr)))
 		rightWidth += 9
+	}
+
+	// ── Bookmark indicator (bd-k4n) ──
+	isBookmarked := t.bookmarks[issue.ID]
+	if isBookmarked {
+		bookmarkStyle := r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#F1FA8C"})
+		leftSide.WriteString(bookmarkStyle.Render("\u2605"))
+		leftSide.WriteString(" ")
+		fixedWidth += 2 // account for the star + space in width calculation
 	}
 
 	// ── Title (fills remaining space) ──
@@ -2230,6 +2271,133 @@ func (t *TreeModel) expandPathToNode(node *IssueTreeNode) {
 		ancestor.Expanded = true
 		ancestor = ancestor.Parent
 	}
+}
+
+// ── Bookmark methods (bd-k4n) ──
+
+// ToggleBookmark toggles the bookmark state of the currently selected node.
+// Bookmarks are persisted to tree-state.json.
+func (t *TreeModel) ToggleBookmark() {
+	issue := t.SelectedIssue()
+	if issue == nil {
+		return
+	}
+	if t.bookmarks == nil {
+		t.bookmarks = make(map[string]bool)
+	}
+	if t.bookmarks[issue.ID] {
+		delete(t.bookmarks, issue.ID)
+	} else {
+		t.bookmarks[issue.ID] = true
+	}
+	t.saveState()
+}
+
+// CycleBookmark jumps the cursor to the next bookmarked node in flatList order.
+// Wraps around to the first bookmark when reaching the end.
+func (t *TreeModel) CycleBookmark() {
+	if len(t.bookmarks) == 0 || len(t.flatList) == 0 {
+		return
+	}
+
+	// Find bookmarked nodes in flatList order, starting after current cursor
+	startIdx := t.cursor + 1
+	n := len(t.flatList)
+
+	for i := 0; i < n; i++ {
+		idx := (startIdx + i) % n
+		node := t.flatList[idx]
+		if node != nil && node.Issue != nil && t.bookmarks[node.Issue.ID] {
+			t.cursor = idx
+			t.ensureCursorVisible()
+			return
+		}
+	}
+}
+
+// TreeBookmarkedIDs returns the list of bookmarked issue IDs in a stable order.
+func (t *TreeModel) TreeBookmarkedIDs() []string {
+	if len(t.bookmarks) == 0 {
+		return nil
+	}
+	// Return IDs in flatList order for stability
+	var ids []string
+	for _, node := range t.flatList {
+		if node != nil && node.Issue != nil && t.bookmarks[node.Issue.ID] {
+			ids = append(ids, node.Issue.ID)
+		}
+	}
+	// Also include bookmarks for nodes not currently visible (collapsed parents)
+	seen := make(map[string]bool)
+	for _, id := range ids {
+		seen[id] = true
+	}
+	for id := range t.bookmarks {
+		if !seen[id] {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// IsBookmarked returns true if the given issue ID is bookmarked.
+func (t *TreeModel) IsBookmarked(id string) bool {
+	return t.bookmarks[id]
+}
+
+// ── Follow mode methods (bd-c0c) ──
+
+// ToggleFollowMode toggles follow mode on/off.
+// When follow mode is active, external changes auto-reveal the changed node.
+func (t *TreeModel) ToggleFollowMode() {
+	t.followMode = !t.followMode
+}
+
+// GetFollowMode returns whether follow mode is active.
+func (t *TreeModel) GetFollowMode() bool {
+	return t.followMode
+}
+
+// DetectAndFollowChanges compares the current issues against the last known set.
+// If follow mode is active and changes are detected, expands and scrolls to the
+// first changed/new node. Returns the ID of the followed node, or "" if none.
+func (t *TreeModel) DetectAndFollowChanges(currentIssueIDs []string) string {
+	if !t.followMode || len(t.lastIssueIDs) == 0 {
+		t.lastIssueIDs = currentIssueIDs
+		return ""
+	}
+
+	// Build set of old IDs for diff
+	oldSet := make(map[string]bool, len(t.lastIssueIDs))
+	for _, id := range t.lastIssueIDs {
+		oldSet[id] = true
+	}
+
+	// Find new IDs
+	var changedID string
+	for _, id := range currentIssueIDs {
+		if !oldSet[id] {
+			changedID = id
+			break
+		}
+	}
+
+	t.lastIssueIDs = currentIssueIDs
+
+	if changedID == "" {
+		return ""
+	}
+
+	// Auto-expand and scroll to the changed node
+	if node, ok := t.issueMap[changedID]; ok {
+		t.expandPathToNode(node)
+		t.rebuildFlatList()
+		t.SelectByID(changedID)
+		t.ensureCursorVisible()
+		return changedID
+	}
+
+	return ""
 }
 
 // renderSearchBar renders the search input bar shown at the bottom of the tree view.

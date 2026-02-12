@@ -2944,6 +2944,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "b":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'b' for bookmarks (bd-k4n)
+				}
 				m.clearAttentionOverlay()
 				m.isBoardView = !m.isBoardView
 				m.isGraphView = false
@@ -3896,6 +3899,16 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Toggle XRay drill-down mode (bd-0rc)
 		m.tree.ToggleXRay()
 		m.syncTreeToDetail()
+	case "b":
+		// Toggle bookmark on current node (bd-k4n)
+		m.tree.ToggleBookmark()
+	case "B":
+		// Cycle through bookmarked nodes (bd-k4n)
+		m.tree.CycleBookmark()
+		m.syncTreeToDetail()
+	case "F":
+		// Toggle follow mode (bd-c0c)
+		m.tree.ToggleFollowMode()
 	case "esc":
 		// First escape exits XRay, then clears tree filter, then exits tree view (bd-kob, bd-0rc)
 		if m.tree.IsXRayMode() {
@@ -7635,6 +7648,16 @@ func (m Model) TreeSortField() SortField {
 // TreeSortDirection returns the current sort direction of the tree view (bd-x3l).
 func (m Model) TreeSortDirection() SortDirection {
 	return m.tree.GetSortDirection()
+}
+
+// TreeBookmarkedIDs returns the IDs of bookmarked tree nodes (bd-k4n).
+func (m Model) TreeBookmarkedIDs() []string {
+	return m.tree.TreeBookmarkedIDs()
+}
+
+// TreeFollowMode returns whether follow mode is active (bd-c0c).
+func (m Model) TreeFollowMode() bool {
+	return m.tree.GetFollowMode()
 }
 
 // exportToMarkdown exports all issues to a Markdown file with auto-generated filename
