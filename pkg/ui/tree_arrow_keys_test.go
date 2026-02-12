@@ -425,3 +425,131 @@ func lastN(s string, n int) string {
 	}
 	return s[len(s)-n:]
 }
+
+// ============================================================================
+// Tests: Sort popup menu integration (bd-t4e)
+// ============================================================================
+
+// TestTreeViewSortPopupOpensOnS verifies that 's' opens the sort popup
+func TestTreeViewSortPopupOpensOnS(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	// Initially popup should be closed
+	if m.TreeSortPopupOpen() {
+		t.Fatal("sort popup should be closed initially")
+	}
+
+	// Press 's' to open popup
+	m = sendKey(t, m, "s")
+	if !m.TreeSortPopupOpen() {
+		t.Error("sort popup should be open after pressing 's'")
+	}
+}
+
+// TestTreeViewSortPopupEscCloses verifies Esc closes the popup
+func TestTreeViewSortPopupEscCloses(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	m = sendKey(t, m, "s") // open
+	if !m.TreeSortPopupOpen() {
+		t.Fatal("popup should be open")
+	}
+
+	m = sendSpecialKey(t, m, tea.KeyEsc) // close
+	if m.TreeSortPopupOpen() {
+		t.Error("popup should close on Esc")
+	}
+}
+
+// TestTreeViewSortPopupSelectChangesSort verifies selecting a field changes the sort
+func TestTreeViewSortPopupSelectChangesSort(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	// Open popup and navigate to "Title" (index 3)
+	m = sendKey(t, m, "s")
+	m = sendKey(t, m, "j") // Created
+	m = sendKey(t, m, "j") // Updated
+	m = sendKey(t, m, "j") // Title
+
+	// Press Enter to select
+	m = sendSpecialKey(t, m, tea.KeyEnter)
+
+	if m.TreeSortPopupOpen() {
+		t.Error("popup should close after selection")
+	}
+	if m.TreeSortField() != ui.SortFieldTitle {
+		t.Errorf("expected SortFieldTitle, got %v", m.TreeSortField())
+	}
+}
+
+// TestTreeViewSortPopupToggleDirection verifies selecting current field toggles direction
+func TestTreeViewSortPopupToggleDirection(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	// Default: Priority ascending
+	if m.TreeSortDirection() != ui.SortAscending {
+		t.Fatalf("expected ascending default, got %v", m.TreeSortDirection())
+	}
+
+	// Open popup and select Priority (already current) -> toggle direction
+	m = sendKey(t, m, "s")
+	m = sendSpecialKey(t, m, tea.KeyEnter)
+
+	if m.TreeSortDirection() != ui.SortDescending {
+		t.Error("selecting current field should toggle to descending")
+	}
+}
+
+// TestTreeViewSortPopupDoesNotAffectNavigation verifies that normal keys
+// don't navigate the tree while popup is open
+func TestTreeViewSortPopupDoesNotAffectNavigation(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	initialID := m.TreeSelectedID()
+
+	// Open popup
+	m = sendKey(t, m, "s")
+
+	// Press 'j' which normally moves tree cursor down
+	m = sendKey(t, m, "j")
+
+	// Tree selection should NOT have changed (popup consumed the key)
+	if !m.TreeSortPopupOpen() {
+		t.Fatal("popup should still be open")
+	}
+
+	// Close popup
+	m = sendSpecialKey(t, m, tea.KeyEsc)
+
+	if m.TreeSelectedID() != initialID {
+		t.Errorf("tree selection should not change while popup is open: was %q, now %q",
+			initialID, m.TreeSelectedID())
+	}
+}
+
+// TestTreeViewSortPopupSKeyCloses verifies that pressing 's' again closes the popup
+func TestTreeViewSortPopupSKeyCloses(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	m = sendKey(t, m, "s") // open
+	if !m.TreeSortPopupOpen() {
+		t.Fatal("popup should be open")
+	}
+
+	m = sendKey(t, m, "s") // close
+	if m.TreeSortPopupOpen() {
+		t.Error("pressing 's' again should close popup")
+	}
+}

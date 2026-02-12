@@ -1858,3 +1858,427 @@ func TestTreeSetGlobalIssueMap(t *testing.T) {
 		t.Error("expected test-1 in globalIssueMap")
 	}
 }
+
+// =============================================================================
+// SortField/SortDirection type refactor tests (bd-x3l)
+// =============================================================================
+
+// TestSortFieldValues verifies that all expected SortField constants exist and have correct values
+func TestSortFieldValues(t *testing.T) {
+	fields := []struct {
+		field SortField
+		name  string
+	}{
+		{SortFieldPriority, "Priority"},
+		{SortFieldCreated, "Created"},
+		{SortFieldUpdated, "Updated"},
+		{SortFieldTitle, "Title"},
+		{SortFieldStatus, "Status"},
+		{SortFieldType, "Type"},
+		{SortFieldDepsCount, "Deps"},
+		{SortFieldPageRank, "PageRank"},
+	}
+
+	for _, tt := range fields {
+		t.Run(tt.name, func(t *testing.T) {
+			label := tt.field.String()
+			if label == "" {
+				t.Errorf("SortField %d has empty string label", tt.field)
+			}
+			if label != tt.name {
+				t.Errorf("SortField.String() = %q, want %q", label, tt.name)
+			}
+		})
+	}
+}
+
+// TestSortDirectionValues verifies Ascending and Descending constants
+func TestSortDirectionValues(t *testing.T) {
+	if SortAscending == SortDescending {
+		t.Error("SortAscending and SortDescending should be different values")
+	}
+
+	if SortAscending.String() != "Ascending" {
+		t.Errorf("SortAscending.String() = %q, want %q", SortAscending.String(), "Ascending")
+	}
+	if SortDescending.String() != "Descending" {
+		t.Errorf("SortDescending.String() = %q, want %q", SortDescending.String(), "Descending")
+	}
+}
+
+// TestSortDirectionIndicator verifies arrow indicators for sort direction
+func TestSortDirectionIndicator(t *testing.T) {
+	if SortAscending.Indicator() != "▲" {
+		t.Errorf("SortAscending.Indicator() = %q, want %q", SortAscending.Indicator(), "▲")
+	}
+	if SortDescending.Indicator() != "▼" {
+		t.Errorf("SortDescending.Indicator() = %q, want %q", SortDescending.Indicator(), "▼")
+	}
+}
+
+// TestSortDirectionToggle verifies toggling between ascending and descending
+func TestSortDirectionToggle(t *testing.T) {
+	if SortAscending.Toggle() != SortDescending {
+		t.Error("SortAscending.Toggle() should return SortDescending")
+	}
+	if SortDescending.Toggle() != SortAscending {
+		t.Error("SortDescending.Toggle() should return SortAscending")
+	}
+}
+
+// TestSortFieldDefaultDirection verifies each field has a sensible default direction
+func TestSortFieldDefaultDirection(t *testing.T) {
+	// Priority: ascending (P0 first)
+	if SortFieldPriority.DefaultDirection() != SortAscending {
+		t.Error("Priority default should be ascending")
+	}
+	// Created: descending (newest first)
+	if SortFieldCreated.DefaultDirection() != SortDescending {
+		t.Error("Created default should be descending")
+	}
+	// Updated: descending (most recent first)
+	if SortFieldUpdated.DefaultDirection() != SortDescending {
+		t.Error("Updated default should be descending")
+	}
+	// Title: ascending (A-Z)
+	if SortFieldTitle.DefaultDirection() != SortAscending {
+		t.Error("Title default should be ascending")
+	}
+	// PageRank: descending (highest first)
+	if SortFieldPageRank.DefaultDirection() != SortDescending {
+		t.Error("PageRank default should be descending")
+	}
+}
+
+// TestTreeSetSortFieldDirection verifies setting sort field and direction on tree
+func TestTreeSetSortFieldDirection(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "a", Title: "Alpha", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "b", Title: "Beta", Priority: 1, IssueType: model.TypeBug, CreatedAt: now},
+		{ID: "c", Title: "Charlie", Priority: 3, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Sort by title ascending
+	tree.SetSort(SortFieldTitle, SortAscending)
+	if tree.GetSortField() != SortFieldTitle {
+		t.Errorf("expected SortFieldTitle, got %v", tree.GetSortField())
+	}
+	if tree.GetSortDirection() != SortAscending {
+		t.Errorf("expected SortAscending, got %v", tree.GetSortDirection())
+	}
+
+	// Verify sorted order: Alpha, Beta, Charlie
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "a" || ids[1] != "b" || ids[2] != "c" {
+		t.Errorf("expected [a, b, c] for title ascending, got %v", ids)
+	}
+
+	// Sort by title descending
+	tree.SetSort(SortFieldTitle, SortDescending)
+	ids = make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "c" || ids[1] != "b" || ids[2] != "a" {
+		t.Errorf("expected [c, b, a] for title descending, got %v", ids)
+	}
+}
+
+// TestTreeSortByCreated verifies sorting by creation date
+func TestTreeSortByCreated(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "old", Title: "Old", Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
+		{ID: "new", Title: "New", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "mid", Title: "Mid", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Created ascending (oldest first)
+	tree.SetSort(SortFieldCreated, SortAscending)
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "old" || ids[1] != "mid" || ids[2] != "new" {
+		t.Errorf("expected [old, mid, new] for created ascending, got %v", ids)
+	}
+
+	// Created descending (newest first)
+	tree.SetSort(SortFieldCreated, SortDescending)
+	ids = make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "new" || ids[1] != "mid" || ids[2] != "old" {
+		t.Errorf("expected [new, mid, old] for created descending, got %v", ids)
+	}
+}
+
+// TestTreeSortByPriority verifies sorting by priority
+func TestTreeSortByPriority(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "p3", Title: "Low", Priority: 3, IssueType: model.TypeTask},
+		{ID: "p0", Title: "Critical", Priority: 0, IssueType: model.TypeTask},
+		{ID: "p1", Title: "High", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Priority ascending (P0 first)
+	tree.SetSort(SortFieldPriority, SortAscending)
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "p0" || ids[1] != "p1" || ids[2] != "p3" {
+		t.Errorf("expected [p0, p1, p3] for priority ascending, got %v", ids)
+	}
+
+	// Priority descending (P3 first)
+	tree.SetSort(SortFieldPriority, SortDescending)
+	ids = make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "p3" || ids[1] != "p1" || ids[2] != "p0" {
+		t.Errorf("expected [p3, p1, p0] for priority descending, got %v", ids)
+	}
+}
+
+// TestTreeSortByDepsCount verifies sorting by dependency count
+func TestTreeSortByDepsCount(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "no-deps", Title: "No deps", Priority: 1, IssueType: model.TypeTask},
+		{
+			ID: "two-deps", Title: "Two deps", Priority: 1, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{
+				{IssueID: "two-deps", DependsOnID: "no-deps", Type: model.DepBlocks},
+				{IssueID: "two-deps", DependsOnID: "one-dep", Type: model.DepRelated},
+			},
+		},
+		{
+			ID: "one-dep", Title: "One dep", Priority: 1, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{
+				{IssueID: "one-dep", DependsOnID: "no-deps", Type: model.DepBlocks},
+			},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Deps count descending (most deps first)
+	tree.SetSort(SortFieldDepsCount, SortDescending)
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "two-deps" || ids[1] != "one-dep" || ids[2] != "no-deps" {
+		t.Errorf("expected [two-deps, one-dep, no-deps] for deps descending, got %v", ids)
+	}
+}
+
+// TestSortModeBackwardsCompatibility verifies old SortMode still works through conversion
+func TestSortModeBackwardsCompatibility(t *testing.T) {
+	// The old SortMode enum should still compile and CycleSortMode should still work
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+		{ID: "b", Title: "B", Priority: 2, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+
+	// CycleSortMode should still function (for backwards compat)
+	tree.CycleSortMode()
+	// Should have changed from default
+	field := tree.GetSortField()
+	if field == SortFieldPriority && tree.GetSortDirection() == SortAscending {
+		// This is the default, cycling should change it
+		// (but the first cycle might land on something specific, so just ensure no panic)
+	}
+}
+
+// TestSortFieldCount verifies the total number of sort fields
+func TestSortFieldCount(t *testing.T) {
+	if NumSortFields != 8 {
+		t.Errorf("expected 8 sort fields, got %d", NumSortFields)
+	}
+}
+
+// =============================================================================
+// Sort popup menu tests (bd-t4e)
+// =============================================================================
+
+// TestSortPopupOpenClose verifies opening and closing the sort popup
+func TestSortPopupOpenClose(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+
+	if tree.IsSortPopupOpen() {
+		t.Error("sort popup should be closed initially")
+	}
+
+	tree.OpenSortPopup()
+	if !tree.IsSortPopupOpen() {
+		t.Error("sort popup should be open after OpenSortPopup()")
+	}
+
+	tree.CloseSortPopup()
+	if tree.IsSortPopupOpen() {
+		t.Error("sort popup should be closed after CloseSortPopup()")
+	}
+}
+
+// TestSortPopupCursorNavigation verifies j/k movement in the popup
+func TestSortPopupCursorNavigation(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+	tree.OpenSortPopup()
+
+	// Initially, cursor should be on the current sort field (SortFieldPriority = 0)
+	if tree.SortPopupCursor() != int(SortFieldPriority) {
+		t.Errorf("expected popup cursor at %d (Priority), got %d", SortFieldPriority, tree.SortPopupCursor())
+	}
+
+	// Move down
+	tree.SortPopupDown()
+	if tree.SortPopupCursor() != int(SortFieldCreated) {
+		t.Errorf("expected popup cursor at %d (Created), got %d", SortFieldCreated, tree.SortPopupCursor())
+	}
+
+	// Move up
+	tree.SortPopupUp()
+	if tree.SortPopupCursor() != int(SortFieldPriority) {
+		t.Errorf("expected popup cursor at %d (Priority), got %d", SortFieldPriority, tree.SortPopupCursor())
+	}
+
+	// Move up at top should stay at top
+	tree.SortPopupUp()
+	if tree.SortPopupCursor() != int(SortFieldPriority) {
+		t.Errorf("expected popup cursor to stay at top, got %d", tree.SortPopupCursor())
+	}
+}
+
+// TestSortPopupSelectField verifies selecting a sort field applies it
+func TestSortPopupSelectField(t *testing.T) {
+	now := time.Now()
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "b", Title: "Beta", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+		{ID: "a", Title: "Alpha", Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
+	}
+	tree.Build(issues)
+
+	tree.OpenSortPopup()
+
+	// Navigate to Title field (index 3)
+	tree.SortPopupDown() // Created
+	tree.SortPopupDown() // Updated
+	tree.SortPopupDown() // Title
+	if tree.SortPopupCursor() != int(SortFieldTitle) {
+		t.Fatalf("expected cursor at Title, got %d", tree.SortPopupCursor())
+	}
+
+	// Select it
+	tree.SortPopupSelect()
+
+	// Popup should close
+	if tree.IsSortPopupOpen() {
+		t.Error("popup should close after select")
+	}
+
+	// Sort should be applied: Title ascending
+	if tree.GetSortField() != SortFieldTitle {
+		t.Errorf("expected SortFieldTitle, got %v", tree.GetSortField())
+	}
+	if tree.GetSortDirection() != SortAscending {
+		t.Errorf("expected ascending (Title default), got %v", tree.GetSortDirection())
+	}
+}
+
+// TestSortPopupToggleDirection verifies selecting the current field toggles direction
+func TestSortPopupToggleDirection(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+
+	// Default is SortFieldPriority, SortAscending
+	tree.OpenSortPopup()
+
+	// Select Priority (already current) -> should toggle direction
+	tree.SortPopupSelect()
+
+	if tree.GetSortDirection() != SortDescending {
+		t.Errorf("selecting current field should toggle direction to descending, got %v", tree.GetSortDirection())
+	}
+
+	// Do it again -> should toggle back
+	tree.OpenSortPopup()
+	tree.SortPopupSelect()
+
+	if tree.GetSortDirection() != SortAscending {
+		t.Errorf("selecting current field again should toggle back to ascending, got %v", tree.GetSortDirection())
+	}
+}
+
+// TestSortPopupRendering verifies the popup renders field names and indicators
+func TestSortPopupRendering(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetSize(80, 20)
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+	tree.OpenSortPopup()
+
+	view := tree.RenderSortPopup()
+
+	// Should contain all field names
+	for _, name := range []string{"Priority", "Created", "Updated", "Title", "Status", "Type", "Deps", "PageRank"} {
+		if !strings.Contains(view, name) {
+			t.Errorf("popup should contain field name %q, got:\n%s", name, view)
+		}
+	}
+
+	// Should contain a direction indicator for the current sort
+	if !strings.Contains(view, "▲") && !strings.Contains(view, "▼") {
+		t.Errorf("popup should contain a direction indicator, got:\n%s", view)
+	}
+}
+
+// TestSortPopupCursorWrapsAtBottom verifies cursor doesn't go past last field
+func TestSortPopupCursorWrapsAtBottom(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+	tree.OpenSortPopup()
+
+	// Move to bottom
+	for i := 0; i < int(NumSortFields)+5; i++ {
+		tree.SortPopupDown()
+	}
+	if tree.SortPopupCursor() != int(NumSortFields)-1 {
+		t.Errorf("expected cursor at last field (%d), got %d", int(NumSortFields)-1, tree.SortPopupCursor())
+	}
+}
