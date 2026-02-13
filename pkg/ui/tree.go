@@ -35,9 +35,11 @@ import (
 //   - Version field enables future schema migrations
 //   - Corrupted/missing file = use defaults (graceful degradation)
 type TreeState struct {
-	Version   int             `json:"version"`             // Schema version (currently 1)
-	Expanded  map[string]bool `json:"expanded"`            // Issue ID -> explicitly set state
-	Bookmarks []string        `json:"bookmarks,omitempty"` // Bookmarked issue IDs (bd-k4n)
+	Version       int             `json:"version"`                    // Schema version (currently 1)
+	Expanded      map[string]bool `json:"expanded"`                   // Issue ID -> explicitly set state
+	Bookmarks     []string        `json:"bookmarks,omitempty"`        // Bookmarked issue IDs (bd-k4n)
+	SortField     *int            `json:"sort_field,omitempty"`       // Persisted sort field (bd-2qw)
+	SortDirection *int            `json:"sort_direction,omitempty"`   // Persisted sort direction (bd-2qw)
 }
 
 // TreeStateVersion is the current schema version for tree persistence
@@ -114,6 +116,16 @@ func (t *TreeModel) saveState() {
 	}
 	sort.Strings(state.Bookmarks) // Stable ordering for deterministic output
 
+	// Save sort settings if non-default (bd-2qw)
+	defaultField := SortFieldCreated
+	defaultDir := SortDescending
+	if t.sortField != defaultField || t.sortDirection != defaultDir {
+		sf := int(t.sortField)
+		sd := int(t.sortDirection)
+		state.SortField = &sf
+		state.SortDirection = &sd
+	}
+
 	// Write to file
 	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
@@ -178,6 +190,16 @@ func (t *TreeModel) applyState(state *TreeState) {
 		t.bookmarks = make(map[string]bool, len(state.Bookmarks))
 		for _, id := range state.Bookmarks {
 			t.bookmarks[id] = true
+		}
+	}
+
+	// Restore sort settings (bd-2qw)
+	if state.SortField != nil && state.SortDirection != nil {
+		sf := SortField(*state.SortField)
+		sd := SortDirection(*state.SortDirection)
+		if sf >= 0 && sf < NumSortFields && (sd == SortAscending || sd == SortDescending) {
+			t.sortField = sf
+			t.sortDirection = sd
 		}
 	}
 }
@@ -1159,7 +1181,8 @@ func (t *TreeModel) RenderHeader() string {
 		modeBadge = "FLAT"
 	}
 
-	headerText := fmt.Sprintf("  [%s] TYPE PRI STATUS      ID                     TITLE", modeBadge)
+	sortBadge := fmt.Sprintf("%s %s", t.sortField.String(), t.sortDirection.Indicator())
+	headerText := fmt.Sprintf("  [%s] TYPE PRI STATUS      ID                     TITLE  [%s]", modeBadge, sortBadge)
 	return headerStyle.Render(headerText)
 }
 

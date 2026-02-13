@@ -3996,3 +3996,59 @@ func TestTreeViewDefaultEmptyIssues(t *testing.T) {
 	}
 }
 
+// bd-och: sort indicator should appear in tree header
+func TestTreeHeaderShowsSortIndicator(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetSize(120, 40)
+
+	// Default sort is Created ▼
+	header := tree.RenderHeader()
+	if !strings.Contains(header, "Created") {
+		t.Fatalf("expected header to contain sort field 'Created', got %q", header)
+	}
+	if !strings.Contains(header, "▼") {
+		t.Fatalf("expected header to contain '▼' for descending sort, got %q", header)
+	}
+
+	// Change sort to Priority ascending
+	tree.SetSort(SortFieldPriority, SortAscending)
+	header = tree.RenderHeader()
+	if !strings.Contains(header, "Priority") {
+		t.Fatalf("expected header to contain 'Priority' after sort change, got %q", header)
+	}
+	if !strings.Contains(header, "▲") {
+		t.Fatalf("expected header to contain '▲' for ascending sort, got %q", header)
+	}
+}
+
+// bd-2qw: sort field and direction should persist to tree-state.json
+func TestTreeSortPersistence(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	beadsDir := filepath.Join(t.TempDir(), ".beads")
+	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	tree.SetBeadsDir(beadsDir)
+
+	issues := []model.Issue{
+		{ID: "a", Title: "Alpha", IssueType: model.TypeTask, Priority: 1, CreatedAt: time.Now()},
+	}
+	tree.Build(issues)
+
+	// Change sort to Title ascending and trigger save
+	tree.SetSort(SortFieldTitle, SortAscending)
+	tree.saveState()
+
+	// Create a new tree and load state
+	tree2 := NewTreeModel(newTreeTestTheme())
+	tree2.SetBeadsDir(beadsDir)
+	tree2.Build(issues) // loadState is called inside Build
+
+	if tree2.GetSortField() != SortFieldTitle {
+		t.Fatalf("expected sort field to persist as Title, got %v", tree2.GetSortField())
+	}
+	if tree2.GetSortDirection() != SortAscending {
+		t.Fatalf("expected sort direction to persist as Ascending, got %v", tree2.GetSortDirection())
+	}
+}
+
