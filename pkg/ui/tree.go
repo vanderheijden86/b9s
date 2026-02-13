@@ -275,9 +275,11 @@ type TreeModel struct {
 // NewTreeModel creates an empty tree model
 func NewTreeModel(theme Theme) TreeModel {
 	return TreeModel{
-		theme:    theme,
-		mode:     TreeModeHierarchy,
-		issueMap: make(map[string]*IssueTreeNode),
+		theme:         theme,
+		mode:          TreeModeHierarchy,
+		issueMap:      make(map[string]*IssueTreeNode),
+		sortField:     SortFieldCreated,    // Default: newest first (bd-ctu)
+		sortDirection: SortDescending,      // Default: newest first (bd-ctu)
 	}
 }
 

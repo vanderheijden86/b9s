@@ -296,20 +296,40 @@ func (s *ShortcutsSidebar) View() string {
 	visibleLines := lines[startLine:endLine]
 	visibleContent := strings.Join(visibleLines, "\n")
 
-	// Add scroll hint if needed
-	var footer string
+	// Build scroll indicators and footer
+	var header, footer string
 	if totalLines > availableHeight {
+		// Show up indicator when scrolled down
+		if s.scrollOffset > 0 {
+			header = dimStyle.Render("▲ more")
+		}
+		// Show down indicator when not at bottom
+		if s.scrollOffset < maxScroll {
+			footer = dimStyle.Render("▼ more")
+		}
+		// Add scroll percentage
 		scrollPercent := 0
 		if maxScroll > 0 {
 			scrollPercent = s.scrollOffset * 100 / maxScroll
 		}
-		footer = dimStyle.Render(fmt.Sprintf("j/k scroll %d%%", scrollPercent))
+		scrollHint := dimStyle.Render(fmt.Sprintf("j/k scroll %d%%", scrollPercent))
+		if footer != "" {
+			footer = footer + "  " + scrollHint
+		} else {
+			footer = scrollHint
+		}
 	} else {
 		footer = dimStyle.Render("; hide")
 	}
 
-	// Combine content and footer
-	content := visibleContent + "\n" + footer
+	// Combine header, content, and footer
+	var parts []string
+	if header != "" {
+		parts = append(parts, header)
+	}
+	parts = append(parts, visibleContent)
+	parts = append(parts, footer)
+	content := strings.Join(parts, "\n")
 
 	// Create the sidebar box
 	boxStyle := t.Renderer.NewStyle().

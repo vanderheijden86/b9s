@@ -26,13 +26,15 @@ func TestUpdateHelpQuitAndTabFocus(t *testing.T) {
 	}
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
 	m = updated.(Model)
-	if m.showHelp || m.focused != focusList {
-		t.Fatalf("expected help overlay dismissed")
+	if m.showHelp || m.focused != focusTree {
+		t.Fatalf("expected help overlay dismissed back to tree, got focus %v", m.focused)
 	}
 
-	// Tab should flip focus in split view
+	// Exit tree view to test Tab toggling between list and detail
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	m = updated.(Model)
 	if m.focused != focusList {
-		t.Fatalf("expected list focus before tab")
+		t.Fatalf("expected list focus after exiting tree, got %v", m.focused)
 	}
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = updated.(Model)
@@ -76,6 +78,13 @@ func TestHistoryViewToggle(t *testing.T) {
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = updated.(Model)
 
+	// Exit tree view first ('h' is intercepted by handleTreeKeys in tree view)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	m = updated.(Model)
+	if m.focused != focusList {
+		t.Fatalf("expected list focus after exiting tree, got %v", m.focused)
+	}
+
 	// h should toggle history view on
 	if m.isHistoryView {
 		t.Fatalf("history view should be off initially")
@@ -111,6 +120,10 @@ func TestHistoryViewKeys(t *testing.T) {
 
 	// Make model ready
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	m = updated.(Model)
+
+	// Exit tree view first ('h' is intercepted by handleTreeKeys in tree view)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
 	m = updated.(Model)
 
 	// Enter history view

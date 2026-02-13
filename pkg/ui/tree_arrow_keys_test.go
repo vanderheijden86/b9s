@@ -40,9 +40,14 @@ func createTreeTestIssues() []model.Issue {
 	}
 }
 
-// enterTreeView presses "E" to enter tree view and verifies focus changed.
+// enterTreeView ensures the model is in tree view. If already in tree view
+// (bd-dxc: tree is now the default), it returns immediately. Otherwise it
+// presses "E" to switch and verifies focus changed.
 func enterTreeView(t *testing.T, m ui.Model) ui.Model {
 	t.Helper()
+	if m.FocusState() == "tree" {
+		return m // Already in tree view (bd-dxc default)
+	}
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
 	m = newM.(ui.Model)
 	if m.FocusState() != "tree" {
@@ -436,21 +441,21 @@ func TestTreeViewSortCyclesOnS(t *testing.T) {
 	m := ui.NewModel(issues, nil, "")
 	m = enterTreeView(t, m)
 
-	// Default sort: Priority
-	if m.TreeSortField() != ui.SortFieldPriority {
-		t.Fatalf("expected initial sort Priority, got %v", m.TreeSortField())
-	}
-
-	// Press 's' to cycle to next sort field (Created)
-	m = sendKey(t, m, "s")
+	// Default sort: Created descending (bd-ctu)
 	if m.TreeSortField() != ui.SortFieldCreated {
-		t.Errorf("expected Created after first 's', got %v", m.TreeSortField())
+		t.Fatalf("expected initial sort Created, got %v", m.TreeSortField())
 	}
 
-	// Press 's' again to cycle to Updated
+	// Press 's' to cycle to next sort field (Updated)
 	m = sendKey(t, m, "s")
 	if m.TreeSortField() != ui.SortFieldUpdated {
-		t.Errorf("expected Updated after second 's', got %v", m.TreeSortField())
+		t.Errorf("expected Updated after first 's', got %v", m.TreeSortField())
+	}
+
+	// Press 's' again to cycle to Title
+	m = sendKey(t, m, "s")
+	if m.TreeSortField() != ui.SortFieldTitle {
+		t.Errorf("expected Title after second 's', got %v", m.TreeSortField())
 	}
 }
 
@@ -779,5 +784,148 @@ func TestTreeViewDetailToggleResetsFromDetail(t *testing.T) {
 	}
 	if !m.TreeDetailHidden() {
 		t.Error("Expected detail hidden after 'd' from detail")
+	}
+}
+
+// ============================================================================
+// Tests: Auto-hide detail panel on narrow terminal (bd-dy7)
+// ============================================================================
+
+// TestTreeDetailAutoHideNarrowTerminal verifies that the detail panel is
+// automatically hidden when the terminal is too narrow for readable content.
+func TestTreeDetailAutoHideNarrowTerminal(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+
+	// Enter tree view
+	m = enterTreeView(t, m)
+
+	// Wide terminal with default ratio (0.4) — detail should be visible.
+	// At width 200: availWidth=192, detail=192*0.6=115 (> 40)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+
+	if m.TreeDetailHidden() {
+		t.Error("Expected detail visible at width 200 with default ratio")
+	}
+
+	// Increase split pane ratio to 0.8 using '>' key (8 presses from 0.4).
+	// Each '>' adds 0.05 to the ratio.
+	for i := 0; i < 8; i++ {
+		m = sendKey(t, m, ">")
+	}
+
+	// Re-send WindowSizeMsg to trigger auto-hide check.
+	// With ratio 0.8 at width 200: availWidth=192, detail=192*0.2=38 (< 40 -> hidden)
+	newM, _ = m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+
+	if !m.TreeDetailHidden() {
+		t.Error("Expected detail auto-hidden at width 200 with ratio 0.8 (detail pane ~38 chars)")
+	}
+}
+
+// TestTreeDetailAutoShowOnWiderTerminal verifies that widening the terminal
+// re-shows the detail panel after it was auto-hidden.
+func TestTreeDetailAutoShowOnWiderTerminal(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	// Wide enough with default ratio
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+
+	// Increase split ratio to 0.8
+	for i := 0; i < 8; i++ {
+		m = sendKey(t, m, ">")
+	}
+
+	// At width 200 with ratio 0.8: detail=38 -> auto-hide
+	newM, _ = m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+	if !m.TreeDetailHidden() {
+		t.Fatal("Expected detail auto-hidden at width 200 with ratio 0.8")
+	}
+
+	// Widen to 260: availWidth=252, detail=252*0.2=50 (> 40 -> visible)
+	newM, _ = m.Update(tea.WindowSizeMsg{Width: 260, Height: 40})
+	m = newM.(ui.Model)
+
+	if m.TreeDetailHidden() {
+		t.Error("Expected detail visible at width 260 with ratio 0.8 (detail pane ~50 chars)")
+	}
+}
+
+// TestTreeDetailAutoHideManualToggleStillWorks verifies that after auto-hide,
+// the user can still manually show/hide the detail with 'd'.
+func TestTreeDetailAutoHideManualToggleStillWorks(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+	m = enterTreeView(t, m)
+
+	// Wide terminal -- detail visible
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+
+	if m.TreeDetailHidden() {
+		t.Fatal("Expected detail visible at width 200")
+	}
+
+	// User manually hides with 'd'
+	m = sendKey(t, m, "d")
+	if !m.TreeDetailHidden() {
+		t.Error("Expected detail hidden after manual 'd' toggle")
+	}
+
+	// User manually shows with 'd' again
+	m = sendKey(t, m, "d")
+	if m.TreeDetailHidden() {
+		t.Error("Expected detail visible after second 'd' toggle")
+	}
+}
+
+// TestTreeDetailAutoHideFocusSnap verifies that when the detail panel is
+// auto-hidden while the user is focused on the detail pane, focus snaps to tree.
+func TestTreeDetailAutoHideFocusSnap(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, nil, "")
+
+	// Wide terminal, enter tree view
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+	m = enterTreeView(t, m)
+
+	// Tab to detail
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+	if m.FocusState() != "detail" {
+		t.Fatalf("Expected focus 'detail' after Tab, got %q", m.FocusState())
+	}
+
+	// Tab back to tree so we can adjust ratio
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+
+	// Increase ratio to 0.8
+	for i := 0; i < 8; i++ {
+		m = sendKey(t, m, ">")
+	}
+
+	// Tab to detail
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+
+	// Resize to trigger auto-hide while focused on detail.
+	// With ratio 0.8 at width 200: detail=38 -> auto-hide
+	newM, _ = m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+	m = newM.(ui.Model)
+
+	// Focus should have snapped to tree
+	if m.FocusState() != "tree" {
+		t.Errorf("Expected focus snapped to 'tree' after auto-hide, got %q", m.FocusState())
+	}
+	if !m.TreeDetailHidden() {
+		t.Error("Expected detail auto-hidden")
 	}
 }

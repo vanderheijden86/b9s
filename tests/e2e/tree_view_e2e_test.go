@@ -232,7 +232,7 @@ func TestTreeViewEnterAndExit(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc); no need to press E
 	})
 	if err != nil {
 		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
@@ -249,7 +249,7 @@ func TestTreeViewShowsHierarchy(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc); no need to press E
 	})
 	if err != nil {
 		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
@@ -277,7 +277,7 @@ func TestTreeViewExpandAll(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all
 	})
 	if err != nil {
@@ -295,7 +295,7 @@ func TestTreeViewCollapseAll(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("Z"), // Collapse all
 	})
 	if err != nil {
@@ -327,7 +327,7 @@ func TestTreeViewToggleExpand(t *testing.T) {
 
 	// First collapse all, then navigate to epic-1 and expand it
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"),    // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("Z"),    // Collapse all
 		k(" "),    // Toggle expand on first node (epic-1, which is selected by default)
 	})
@@ -349,7 +349,7 @@ func TestTreeViewNavigation(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"),  // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("j"),  // Move down
 		k("j"),  // Move down again
 		k("k"),  // Move up
@@ -368,7 +368,7 @@ func TestTreeViewJumpTopBottom(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all to have many nodes
 		k("G"), // Jump to bottom
 		k("g"), // Jump to top
@@ -388,7 +388,7 @@ func TestTreeViewCollapseOrJumpToParent(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all
 		k("j"), // Move to task-1 (child of epic-1)
 		k("j"), // Move to subtask-1 (child of task-1)
@@ -410,7 +410,7 @@ func TestTreeViewExpandOrMoveToChild(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("Z"), // Collapse all
 		k("l"), // Expand epic-1 (first node, collapsed)
 		k("l"), // Move to first child of epic-1 (task-1)
@@ -433,7 +433,7 @@ func TestTreeViewFilterOpen(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all first
 		k("o"), // Filter: open only
 	})
@@ -451,7 +451,7 @@ func TestTreeViewFilterClosed(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all first
 		k("c"), // Filter: closed only
 	})
@@ -469,7 +469,7 @@ func TestTreeViewFilterReady(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all
 		k("r"), // Filter: ready only
 	})
@@ -487,7 +487,7 @@ func TestTreeViewFilterAllResets(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all
 		k("c"), // Filter: closed only
 		k("a"), // Reset filter: show all
@@ -506,7 +506,7 @@ func TestTreeViewFilterEscClears(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"),       // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("c"),       // Filter: closed only
 		k("\x1b"),    // ESC: should clear filter (not exit tree view)
 	})
@@ -528,7 +528,7 @@ func TestTreeViewSearch(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"),  // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"),  // Expand all
 		k("/"),  // Enter search mode
 		kd("S", 50 * time.Millisecond),
@@ -560,7 +560,7 @@ func TestTreeViewSearchByID(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		k("E"),  // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("/"),  // Enter search mode
 		kd("e", 50 * time.Millisecond),
 		kd("p", 50 * time.Millisecond),
@@ -587,7 +587,7 @@ func TestTreeViewSortCycle(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("s"), // Cycle sort mode (default -> created asc)
 		k("s"), // Cycle again (created asc -> created desc)
 	})
@@ -609,9 +609,9 @@ func TestTreeViewStatePersistence(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
-	// First session: expand all, then collapse, which saves state
+	// First session: collapse all, which saves state (tree is default on launch)
 	_, err := runTreeTUI(t, tempDir, 2500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("Z"), // Collapse all (this triggers saveState)
 	})
 	if err != nil {
@@ -650,7 +650,7 @@ func TestTreeViewEmptyData(t *testing.T) {
 	writeTreeFixture(t, tempDir, []treeFixtureIssue{})
 
 	out, err := runTreeTUI(t, tempDir, 2000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc); no need to press E
 	})
 	if err != nil {
 		// Empty data might cause early exit, which is acceptable
@@ -675,7 +675,7 @@ func TestTreeViewNoHierarchy(t *testing.T) {
 	writeTreeFixture(t, tempDir, issues)
 
 	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc); no need to press E
 	})
 	if err != nil {
 		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
@@ -721,7 +721,7 @@ func TestTreeViewDeepNesting(t *testing.T) {
 	writeTreeFixture(t, tempDir, issues)
 
 	out, err := runTreeTUI(t, tempDir, 2000, []keyStep{
-		k("E"), // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all to see deep nesting
 	})
 	if err != nil {
@@ -751,9 +751,9 @@ func TestTreeViewArrowDownNavigation(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
-	// Use arrow down to navigate after entering tree view
+	// Use arrow down to navigate in tree view (default on launch)
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"),          // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k(arrowDown),    // Arrow Down
 		k(arrowDown),    // Arrow Down again
 		k(arrowUp),      // Arrow Up
@@ -774,7 +774,7 @@ func TestTreeViewArrowDownMatchesJKey(t *testing.T) {
 	tempDir1 := t.TempDir()
 	writeTreeFixture(t, tempDir1, makeTreeHierarchy(t))
 	out1, err := runTreeTUI(t, tempDir1, 2500, []keyStep{
-		k("E"),
+		// Tree view is the default on launch (bd-dxc)
 		k("j"), // vim down
 	})
 	if err != nil {
@@ -785,7 +785,7 @@ func TestTreeViewArrowDownMatchesJKey(t *testing.T) {
 	tempDir2 := t.TempDir()
 	writeTreeFixture(t, tempDir2, makeTreeHierarchy(t))
 	out2, err := runTreeTUI(t, tempDir2, 2500, []keyStep{
-		k("E"),
+		// Tree view is the default on launch (bd-dxc)
 		k(arrowDown), // arrow down
 	})
 	if err != nil {
@@ -804,7 +804,7 @@ func TestTreeViewArrowLeftCollapsesNode(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"),          // Enter tree view (epic-1 is selected, auto-expanded)
+		// Tree view is the default on launch (bd-dxc); epic-1 is selected, auto-expanded
 		k(arrowLeft),    // Should collapse epic-1
 	})
 	if err != nil {
@@ -822,7 +822,7 @@ func TestTreeViewArrowRightExpandsNode(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
-		k("E"),          // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k("Z"),          // Collapse all
 		k(arrowRight),   // Expand epic-1 (selected by default)
 	})
@@ -842,7 +842,7 @@ func TestTreeViewArrowKeysOnlyNavigation(t *testing.T) {
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
 
 	out, err := runTreeTUI(t, tempDir, 4000, []keyStep{
-		k("E"),                    // Enter tree view
+		// Tree view is the default on launch (bd-dxc)
 		k(arrowDown),              // Move to task-1
 		k(arrowDown),              // Move to task-2
 		k(arrowUp),                // Back to task-1
@@ -881,7 +881,8 @@ func TestTreeViewArrowKeysWithManyNodes(t *testing.T) {
 	writeTreeFixture(t, tempDir, issues)
 
 	// Navigate down many times with arrow key to scroll past the viewport
-	keys := []keyStep{k("E")}
+	// Tree view is the default on launch (bd-dxc); no need to press E
+	var keys []keyStep
 	for i := 0; i < 15; i++ {
 		keys = append(keys, k(arrowDown))
 	}

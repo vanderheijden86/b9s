@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -2522,11 +2524,10 @@ func TestSortModeBackwardsCompatibility(t *testing.T) {
 
 	// CycleSortMode should still function (for backwards compat)
 	tree.CycleSortMode()
-	// Should have changed from default
+	// Should have changed from default (Created descending, bd-ctu)
 	field := tree.GetSortField()
-	if field == SortFieldPriority && tree.GetSortDirection() == SortAscending {
-		// This is the default, cycling should change it
-		// (but the first cycle might land on something specific, so just ensure no panic)
+	if field == SortFieldCreated && tree.GetSortDirection() == SortDescending {
+		t.Error("cycling should change from default Created/Descending")
 	}
 }
 
@@ -2573,18 +2574,24 @@ func TestSortPopupCursorNavigation(t *testing.T) {
 	tree.Build(issues)
 	tree.OpenSortPopup()
 
-	// Initially, cursor should be on the current sort field (SortFieldPriority = 0)
-	if tree.SortPopupCursor() != int(SortFieldPriority) {
-		t.Errorf("expected popup cursor at %d (Priority), got %d", SortFieldPriority, tree.SortPopupCursor())
-	}
-
-	// Move down
-	tree.SortPopupDown()
+	// Initially, cursor should be on the current sort field (SortFieldCreated = 1, bd-ctu)
 	if tree.SortPopupCursor() != int(SortFieldCreated) {
 		t.Errorf("expected popup cursor at %d (Created), got %d", SortFieldCreated, tree.SortPopupCursor())
 	}
 
+	// Move down
+	tree.SortPopupDown()
+	if tree.SortPopupCursor() != int(SortFieldUpdated) {
+		t.Errorf("expected popup cursor at %d (Updated), got %d", SortFieldUpdated, tree.SortPopupCursor())
+	}
+
 	// Move up
+	tree.SortPopupUp()
+	if tree.SortPopupCursor() != int(SortFieldCreated) {
+		t.Errorf("expected popup cursor at %d (Created), got %d", SortFieldCreated, tree.SortPopupCursor())
+	}
+
+	// Move up to Priority (one above Created)
 	tree.SortPopupUp()
 	if tree.SortPopupCursor() != int(SortFieldPriority) {
 		t.Errorf("expected popup cursor at %d (Priority), got %d", SortFieldPriority, tree.SortPopupCursor())
@@ -2609,8 +2616,7 @@ func TestSortPopupSelectField(t *testing.T) {
 
 	tree.OpenSortPopup()
 
-	// Navigate to Title field (index 3)
-	tree.SortPopupDown() // Created
+	// Navigate to Title field (index 3) — cursor starts at Created (1, bd-ctu)
 	tree.SortPopupDown() // Updated
 	tree.SortPopupDown() // Title
 	if tree.SortPopupCursor() != int(SortFieldTitle) {
@@ -2642,22 +2648,22 @@ func TestSortPopupToggleDirection(t *testing.T) {
 	}
 	tree.Build(issues)
 
-	// Default is SortFieldPriority, SortAscending
+	// Default is SortFieldCreated, SortDescending (bd-ctu)
 	tree.OpenSortPopup()
 
-	// Select Priority (already current) -> should toggle direction
-	tree.SortPopupSelect()
-
-	if tree.GetSortDirection() != SortDescending {
-		t.Errorf("selecting current field should toggle direction to descending, got %v", tree.GetSortDirection())
-	}
-
-	// Do it again -> should toggle back
-	tree.OpenSortPopup()
+	// Select Created (already current) -> should toggle direction to ascending
 	tree.SortPopupSelect()
 
 	if tree.GetSortDirection() != SortAscending {
-		t.Errorf("selecting current field again should toggle back to ascending, got %v", tree.GetSortDirection())
+		t.Errorf("selecting current field should toggle direction to ascending, got %v", tree.GetSortDirection())
+	}
+
+	// Do it again -> should toggle back to descending
+	tree.OpenSortPopup()
+	tree.SortPopupSelect()
+
+	if tree.GetSortDirection() != SortDescending {
+		t.Errorf("selecting current field again should toggle back to descending, got %v", tree.GetSortDirection())
 	}
 }
 
@@ -3047,13 +3053,13 @@ func TestFlatModePreservesSortMode(t *testing.T) {
 	tree := newIsolatedTree(t)
 	tree.Build(issues)
 
-	// In default sort mode (priority), order should be b(P1), c(P2), a(P3)
+	// In default sort mode (created descending, bd-ctu), order should be a(+2h), c(+1h), b(now)
 	tree.ToggleFlatMode()
 	if tree.NodeCount() != 3 {
 		t.Fatalf("expected 3 nodes, got %d", tree.NodeCount())
 	}
 
-	expectedOrder := []string{"b", "c", "a"}
+	expectedOrder := []string{"a", "c", "b"}
 	for i, expected := range expectedOrder {
 		got := tree.flatList[i].Issue.ID
 		if got != expected {
@@ -3740,6 +3746,83 @@ func TestTreeConnectorAlignmentOnSelectedRow(t *testing.T) {
 
 	if col1 != col2 {
 		t.Errorf("tree connectors misaligned: task-1 connector at column %d, task-2 at column %d\ntask-1: %q\ntask-2: %q", col1, col2, task1Line, task2Line)
+	}
+}
+
+// =============================================================================
+// Default view on launch (bd-dxc)
+// =============================================================================
+
+// TestTreeViewIsDefaultOnLaunch verifies that NewModel starts in tree view
+// rather than list view, with the tree properly built and focused.
+func TestTreeViewIsDefaultOnLaunch(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic One", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen},
+		{
+			ID: "task-1", Title: "Task under Epic", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen,
+			Dependencies: []*model.Dependency{
+				{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		},
+		{ID: "task-2", Title: "Standalone Task", Priority: 3, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	m := NewModel(issues, nil, "")
+
+	// Focus should be tree, not list
+	if m.focused != focusTree {
+		t.Errorf("expected focused = focusTree, got %v (FocusState = %q)", m.focused, m.FocusState())
+	}
+
+	// treeViewActive flag should be set
+	if !m.treeViewActive {
+		t.Error("expected treeViewActive = true on launch")
+	}
+
+	// Tree should be built with nodes visible
+	if m.TreeNodeCount() == 0 {
+		t.Error("expected tree to have visible nodes after build, got 0")
+	}
+}
+
+// TestTreeViewDefaultCanSwitchToList verifies that pressing 'E' from the
+// default tree view switches back to list view.
+func TestTreeViewDefaultCanSwitchToList(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "bv-1", Title: "Issue One", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	m := NewModel(issues, nil, "")
+
+	// Should start in tree
+	if m.FocusState() != "tree" {
+		t.Fatalf("expected initial focus = tree, got %q", m.FocusState())
+	}
+
+	// Press 'E' to toggle out of tree view (tree toggle key is 'E')
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}})
+	m = newM.(Model)
+
+	if m.FocusState() != "list" {
+		t.Errorf("after pressing 'E', expected focus = list, got %q", m.FocusState())
+	}
+	if m.treeViewActive {
+		t.Error("after pressing 'E', expected treeViewActive = false")
+	}
+}
+
+// TestTreeViewDefaultEmptyIssues verifies default tree view works with zero issues.
+func TestTreeViewDefaultEmptyIssues(t *testing.T) {
+	m := NewModel([]model.Issue{}, nil, "")
+
+	if m.focused != focusTree {
+		t.Errorf("expected focused = focusTree even with 0 issues, got %v", m.focused)
+	}
+	if !m.treeViewActive {
+		t.Error("expected treeViewActive = true even with 0 issues")
+	}
+	if m.TreeNodeCount() != 0 {
+		t.Errorf("expected 0 tree nodes for empty issues, got %d", m.TreeNodeCount())
 	}
 }
 

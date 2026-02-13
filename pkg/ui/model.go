@@ -40,6 +40,7 @@ const (
 	SplitViewThreshold     = 100
 	WideViewThreshold      = 140
 	UltraWideViewThreshold = 180
+	MinDetailPaneWidth     = 40 // Auto-hide detail panel below this width (bd-dy7)
 )
 
 // focus represents which UI element has keyboard focus
@@ -74,7 +75,7 @@ const (
 type SortMode int
 
 const (
-	SortDefault     SortMode = iota // Priority asc, then created desc (original default)
+	SortDefault     SortMode = iota // Created desc (newest first) (bd-ctu)
 	SortCreatedAsc                  // By creation date, oldest first
 	SortCreatedDesc                 // By creation date, newest first
 	SortPriority                    // By priority only (ascending)
@@ -831,17 +832,9 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 			return less
 		})
 	} else {
-		// Default Sort: Open first, then by Priority (ascending), then by date (newest first)
+		// Default Sort: creation date descending (newest first) (bd-ctu)
 		sort.Slice(issues, func(i, j int) bool {
-			iClosed := isClosedLikeStatus(issues[i].Status)
-			jClosed := isClosedLikeStatus(issues[j].Status)
-			if iClosed != jClosed {
-				return !iClosed // Open issues first
-			}
-			if issues[i].Priority != issues[j].Priority {
-				return issues[i].Priority < issues[j].Priority // Lower priority number = higher priority
-			}
-			return issues[i].CreatedAt.After(issues[j].CreatedAt) // Newer first
+			return issues[i].CreatedAt.After(issues[j].CreatedAt) // Newest first
 		})
 	}
 
@@ -1098,6 +1091,10 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		treeModel.SetBeadsDir(filepath.Dir(beadsPath))
 	}
 
+	// Build tree and set size so tree view is ready on launch (bd-dxc)
+	treeModel.Build(issues)
+	treeModel.SetSize(defaultWidth, defaultHeight-2)
+
 	return Model{
 		issues:                 issues,
 		issueMap:               issueMap,
@@ -1126,8 +1123,9 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		semanticHybridBuilding: false,
 		semanticHybridReady:    false,
 		lastSearchTerm:         "",
-		focused:                focusList,
-		splitPaneRatio:         0.4, // Default: list pane gets 40% of width
+		focused:                focusTree, // Tree view is the default on launch (bd-dxc)
+		treeViewActive:          true,      // Tree view is the default on launch (bd-dxc)
+		splitPaneRatio:         0.4,       // Default: list pane gets 40% of width
 		// Initialize as ready with default dimensions to eliminate "Initializing..." phase
 		ready:               true,
 		width:               defaultWidth,
@@ -1970,20 +1968,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Apply default sorting (Open first, Priority, Date)
+		// Apply default sorting: creation date descending (newest first) (bd-ctu)
 		var sortStart time.Time
 		if profileRefresh {
 			sortStart = time.Now()
 		}
 		sort.Slice(newIssues, func(i, j int) bool {
-			iClosed := isClosedLikeStatus(newIssues[i].Status)
-			jClosed := isClosedLikeStatus(newIssues[j].Status)
-			if iClosed != jClosed {
-				return !iClosed
-			}
-			if newIssues[i].Priority != newIssues[j].Priority {
-				return newIssues[i].Priority < newIssues[j].Priority
-			}
 			return newIssues[i].CreatedAt.After(newIssues[j].CreatedAt)
 		})
 		if profileRefresh {
@@ -2639,7 +2629,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showShortcutsSidebar = !m.showShortcutsSidebar
 			if m.showShortcutsSidebar {
 				m.shortcutsSidebar.ResetScroll()
-				m.statusMsg = "Shortcuts sidebar: ; hide | ctrl+j/k scroll"
+				m.statusMsg = "Shortcuts sidebar: ; hide | j/k scroll"
 				m.statusIsError = false
 			} else {
 				m.statusMsg = ""
@@ -2647,13 +2637,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Handle shortcuts sidebar scrolling (Ctrl+j/k when sidebar visible) - bv-3qi5
+		// Handle shortcuts sidebar scrolling (j/k, arrows, ctrl+j/k when sidebar visible) - bv-3qi5, bd-jk0
 		if m.showShortcutsSidebar && m.list.FilterState() != list.Filtering {
 			switch msg.String() {
-			case "ctrl+j":
+			case "j", "down", "ctrl+j":
 				m.shortcutsSidebar.ScrollDown()
 				return m, nil
-			case "ctrl+k":
+			case "k", "up", "ctrl+k":
 				m.shortcutsSidebar.ScrollUp()
 				return m, nil
 			}
@@ -3442,6 +3432,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update renderer for full width
 			m.renderer.SetWidthWithTheme(msg.Width, m.theme)
+		}
+
+		// Auto-hide detail panel when it would be too narrow to read (bd-dy7).
+		// This applies on every resize. The user can still toggle with 'd'.
+		if m.isSplitView && m.detailPaneWidth() < MinDetailPaneWidth {
+			m.treeDetailHidden = true
+			if m.treeViewActive && m.focused == focusDetail {
+				m.focused = focusTree
+			}
+		} else if m.isSplitView {
+			// Re-show detail when the terminal is wide enough again
+			m.treeDetailHidden = false
 		}
 
 		m.updateListDelegate()
@@ -4682,6 +4684,9 @@ func (m Model) restoreFocusFromHelp() focus {
 	}
 	if m.isHistoryView {
 		return focusHistory
+	}
+	if m.treeViewActive {
+		return focusTree
 	}
 	// Check for other focus states using stored focusBeforeHelp
 	// (m.focused is focusHelp while help is open, so we use the saved value)
@@ -5954,8 +5959,8 @@ func (m *Model) renderFooter() string {
 	if m.focused == focusTree || m.treeViewActive {
 		field := m.tree.GetSortField()
 		dir := m.tree.GetSortDirection()
-		// Show badge when not default sort (priority ascending)
-		if field != SortFieldPriority || dir != SortAscending {
+		// Show badge when not default sort (created descending) (bd-ctu)
+		if field != SortFieldCreated || dir != SortDescending {
 			sortBadge = lipgloss.NewStyle().
 				Background(ColorBgHighlight).
 				Foreground(ColorSecondary).
@@ -6797,15 +6802,7 @@ func (m *Model) sortFilteredItems(items []list.Item, issues []model.Issue) {
 			// Most recently updated first
 			return iItem.Issue.UpdatedAt.After(jItem.Issue.UpdatedAt)
 		default:
-			// Default: Open first, then priority, then newest
-			iClosed := isClosedLikeStatus(iItem.Issue.Status)
-			jClosed := isClosedLikeStatus(jItem.Issue.Status)
-			if iClosed != jClosed {
-				return !iClosed
-			}
-			if iItem.Issue.Priority != jItem.Issue.Priority {
-				return iItem.Issue.Priority < jItem.Issue.Priority
-			}
+			// Default: creation date descending (newest first) (bd-ctu)
 			return iItem.Issue.CreatedAt.After(jItem.Issue.CreatedAt)
 		}
 	})
@@ -7099,6 +7096,18 @@ func (m *Model) recalculateSplitPaneSizes() {
 	m.viewport = viewport.New(detailInnerWidth, bodyHeight-2)
 	m.renderer.SetWidthWithTheme(detailInnerWidth, m.theme)
 	m.updateViewportContent()
+}
+
+// detailPaneWidth returns the inner width the detail pane would have at the
+// current terminal width and split ratio. Used to decide whether the pane is
+// too narrow to be readable (bd-dy7).
+func (m *Model) detailPaneWidth() int {
+	availWidth := m.width - 8
+	if availWidth < 10 {
+		availWidth = 10
+	}
+	listInnerWidth := int(float64(availWidth) * m.splitPaneRatio)
+	return availWidth - listInnerWidth
 }
 
 func (m *Model) updateViewportContent() {

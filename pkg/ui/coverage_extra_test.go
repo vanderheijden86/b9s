@@ -305,8 +305,12 @@ func TestViewTogglesGraphBoardInsightsActionable(t *testing.T) {
 	// Prime layout so width/height are non-zero
 	_, _ = m.Update(tea.WindowSizeMsg{Width: 140, Height: 30})
 
+	// Exit default tree view (bd-dxc) so 'g'/'b'/'a' work as view toggles
+	modelAny, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	m = modelAny.(Model)
+
 	// Graph toggle
-	modelAny, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
+	modelAny, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
 	m = modelAny.(Model)
 	if !m.isGraphView || m.focused != focusGraph {
 		t.Fatalf("graph view not activated")
@@ -492,6 +496,9 @@ func TestDiffStatusAndExitTimeTravel(t *testing.T) {
 func TestRenderFooterStatusAndBadges(t *testing.T) {
 	m := NewModel(nil, nil, "")
 	m.width = 80
+	// Exit default tree view so footer renders list-view hints (bd-dxc)
+	m.focused = focusList
+	m.treeViewActive = false
 
 	// status message branch
 	m.statusMsg = "Saved"
@@ -791,6 +798,9 @@ func TestRenderFooter_CombinedIndicators(t *testing.T) {
 
 	m := NewModel(nil, nil, "")
 	m.width = 160
+	// Exit default tree view so footer renders list-view hints (bd-dxc)
+	m.focused = focusList
+	m.treeViewActive = false
 	m.currentFilter = "ready"
 	m.countOpen, m.countReady, m.countBlocked, m.countClosed = 1, 2, 3, 4
 	m.updateAvailable = true

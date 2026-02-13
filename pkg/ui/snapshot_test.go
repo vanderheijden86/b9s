@@ -646,7 +646,10 @@ func TestSnapshotSwap_PreservesBoardSelectionByID(t *testing.T) {
 	}
 
 	m := NewModel(issues, nil, "")
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")})
+	// Exit default tree view so 'b' activates board view (bd-dxc)
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	m = newM.(Model)
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")})
 	m = newM.(Model)
 
 	if m.focused != focusBoard {
@@ -831,11 +834,9 @@ func TestSnapshotSwap_RebuildsTreeWhenFocusedAndPreservesSelection(t *testing.T)
 	}
 	m.tree.SetBeadsDir(beadsDir)
 
-	// Enter tree view and select the child.
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
-	m = newM.(Model)
+	// Model starts in tree view by default (bd-dxc); verify and select the child.
 	if m.focused != focusTree {
-		t.Fatalf("expected focusTree, got %v", m.focused)
+		t.Fatalf("expected focusTree on launch, got %v", m.focused)
 	}
 	m.tree.MoveDown()
 	selected := m.tree.SelectedIssue()
@@ -862,7 +863,7 @@ func TestSnapshotSwap_RebuildsTreeWhenFocusedAndPreservesSelection(t *testing.T)
 	}
 	snapshot := NewSnapshotBuilder(updated).Build()
 
-	newM, _ = m.Update(SnapshotReadyMsg{Snapshot: snapshot})
+	newM, _ := m.Update(SnapshotReadyMsg{Snapshot: snapshot})
 	m = newM.(Model)
 	if m.focused != focusTree {
 		t.Fatalf("expected focusTree after swap, got %v", m.focused)
