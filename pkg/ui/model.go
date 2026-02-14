@@ -11,21 +11,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Dicklesworthstone/beads_viewer/pkg/agents"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/analysis"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/baseline"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/cass"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/correlation"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/debug"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/drift"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/export"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/instance"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/loader"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/recipe"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/search"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/updater"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/watcher"
+	"github.com/vanderheijden86/beadwork/pkg/agents"
+	"github.com/vanderheijden86/beadwork/pkg/analysis"
+	"github.com/vanderheijden86/beadwork/pkg/baseline"
+	"github.com/vanderheijden86/beadwork/pkg/cass"
+	"github.com/vanderheijden86/beadwork/pkg/correlation"
+	"github.com/vanderheijden86/beadwork/pkg/debug"
+	"github.com/vanderheijden86/beadwork/pkg/drift"
+	"github.com/vanderheijden86/beadwork/pkg/export"
+	"github.com/vanderheijden86/beadwork/pkg/instance"
+	"github.com/vanderheijden86/beadwork/pkg/loader"
+	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/beadwork/pkg/recipe"
+	"github.com/vanderheijden86/beadwork/pkg/search"
+	"github.com/vanderheijden86/beadwork/pkg/updater"
+	"github.com/vanderheijden86/beadwork/pkg/watcher"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
@@ -40,6 +40,7 @@ const (
 	SplitViewThreshold     = 100
 	WideViewThreshold      = 140
 	UltraWideViewThreshold = 180
+	MinDetailPaneWidth     = 40 // Auto-hide detail panel below this width (bd-dy7)
 )
 
 // focus represents which UI element has keyboard focus
@@ -74,7 +75,7 @@ const (
 type SortMode int
 
 const (
-	SortDefault     SortMode = iota // Priority asc, then created desc (original default)
+	SortDefault     SortMode = iota // Created desc (newest first) (bd-ctu)
 	SortCreatedAsc                  // By creation date, oldest first
 	SortCreatedDesc                 // By creation date, newest first
 	SortPriority                    // By priority only (ascending)
@@ -96,6 +97,94 @@ func (s SortMode) String() string {
 	default:
 		return "Default"
 	}
+}
+
+// SortField represents which field to sort by (bd-x3l).
+// This replaces the per-mode enum with a field+direction approach.
+type SortField int
+
+const (
+	SortFieldPriority  SortField = iota // Priority (P0, P1, ...)
+	SortFieldCreated                    // Creation date
+	SortFieldUpdated                    // Last update date
+	SortFieldTitle                      // Issue title (alphabetical)
+	SortFieldStatus                     // Issue status
+	SortFieldType                       // Issue type (epic, feature, task, ...)
+	SortFieldDepsCount                  // Number of dependencies
+	SortFieldPageRank                   // PageRank score
+	NumSortFields                       // Sentinel: total number of sort fields
+)
+
+// String returns a human-readable label for the sort field.
+func (f SortField) String() string {
+	switch f {
+	case SortFieldPriority:
+		return "Priority"
+	case SortFieldCreated:
+		return "Created"
+	case SortFieldUpdated:
+		return "Updated"
+	case SortFieldTitle:
+		return "Title"
+	case SortFieldStatus:
+		return "Status"
+	case SortFieldType:
+		return "Type"
+	case SortFieldDepsCount:
+		return "Deps"
+	case SortFieldPageRank:
+		return "PageRank"
+	default:
+		return "Unknown"
+	}
+}
+
+// DefaultDirection returns the natural default sort direction for this field.
+func (f SortField) DefaultDirection() SortDirection {
+	switch f {
+	case SortFieldPriority:
+		return SortAscending // P0 first
+	case SortFieldTitle:
+		return SortAscending // A-Z
+	case SortFieldStatus:
+		return SortAscending // open before closed
+	case SortFieldType:
+		return SortAscending // epic before chore
+	default:
+		return SortDescending // newest/highest first for dates, counts, scores
+	}
+}
+
+// SortDirection represents ascending or descending sort order (bd-x3l).
+type SortDirection int
+
+const (
+	SortAscending  SortDirection = iota // ▲ ascending
+	SortDescending                      // ▼ descending
+)
+
+// String returns a human-readable label for the sort direction.
+func (d SortDirection) String() string {
+	if d == SortAscending {
+		return "Ascending"
+	}
+	return "Descending"
+}
+
+// Indicator returns the arrow indicator for the sort direction.
+func (d SortDirection) Indicator() string {
+	if d == SortAscending {
+		return "▲"
+	}
+	return "▼"
+}
+
+// Toggle returns the opposite direction.
+func (d SortDirection) Toggle() SortDirection {
+	if d == SortAscending {
+		return SortDescending
+	}
+	return SortAscending
 }
 
 // LabelGraphAnalysisResult holds label-specific graph analysis results (bv-109)
@@ -146,11 +235,11 @@ const (
 )
 
 func freshnessWarnThreshold() time.Duration {
-	return envDurationSeconds("BV_FRESHNESS_WARN_S", 30*time.Second)
+	return envDurationSeconds("BW_FRESHNESS_WARN_S", 30*time.Second)
 }
 
 func freshnessStaleThreshold() time.Duration {
-	return envDurationSeconds("BV_FRESHNESS_STALE_S", 2*time.Minute)
+	return envDurationSeconds("BW_FRESHNESS_STALE_S", 2*time.Minute)
 }
 
 func workerPollTickCmd() tea.Cmd {
@@ -368,6 +457,9 @@ type Model struct {
 	// Focus and View State
 	focused                  focus
 	focusBeforeHelp          focus // Stores focus before opening help overlay
+	treeViewActive           bool  // True when tree view is the active left pane (bd-xfd)
+	treeDetailHidden         bool  // True when detail panel is hidden in tree view (bd-80u)
+	detailHiddenByNarrow     bool  // True when detail was auto-hidden due to narrow window (bd-6eg)
 	isSplitView              bool
 	splitPaneRatio           float64 // Ratio of list pane width (0.2-0.8), default 0.4
 	isBoardView              bool
@@ -741,17 +833,9 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 			return less
 		})
 	} else {
-		// Default Sort: Open first, then by Priority (ascending), then by date (newest first)
+		// Default Sort: creation date descending (newest first) (bd-ctu)
 		sort.Slice(issues, func(i, j int) bool {
-			iClosed := isClosedLikeStatus(issues[i].Status)
-			jClosed := isClosedLikeStatus(issues[j].Status)
-			if iClosed != jClosed {
-				return !iClosed // Open issues first
-			}
-			if issues[i].Priority != issues[j].Priority {
-				return issues[i].Priority < issues[j].Priority // Lower priority number = higher priority
-			}
-			return issues[i].CreatedAt.After(issues[j].CreatedAt) // Newer first
+			return issues[i].CreatedAt.After(issues[j].CreatedAt) // Newest first
 		})
 	}
 
@@ -921,7 +1005,7 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 	var backgroundWorker *BackgroundWorker
 	var backgroundModeErr error
 	backgroundModeRequested := false
-	if v := strings.TrimSpace(os.Getenv("BV_BACKGROUND_MODE")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("BW_BACKGROUND_MODE")); v != "" {
 		switch strings.ToLower(v) {
 		case "1", "true", "yes", "on":
 			backgroundModeRequested = true
@@ -1008,6 +1092,10 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		treeModel.SetBeadsDir(filepath.Dir(beadsPath))
 	}
 
+	// Build tree and set size so tree view is ready on launch (bd-dxc)
+	treeModel.Build(issues)
+	treeModel.SetSize(defaultWidth, defaultHeight-2)
+
 	return Model{
 		issues:                 issues,
 		issueMap:               issueMap,
@@ -1036,8 +1124,9 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		semanticHybridBuilding: false,
 		semanticHybridReady:    false,
 		lastSearchTerm:         "",
-		focused:                focusList,
-		splitPaneRatio:         0.4, // Default: list pane gets 40% of width
+		focused:                focusTree, // Tree view is the default on launch (bd-dxc)
+		treeViewActive:          true,      // Tree view is the default on launch (bd-dxc)
+		splitPaneRatio:         0.4,       // Default: list pane gets 40% of width
 		// Initialize as ready with default dimensions to eliminate "Initializing..." phase
 		ready:               true,
 		width:               defaultWidth,
@@ -1113,6 +1202,7 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
+	var listKeyConsumed bool // set by handleListKeys when key was handled (bd-kob)
 
 	if m.backgroundWorker != nil {
 		switch msg.(type) {
@@ -1712,6 +1802,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focused == focusTree {
 			m.tree.BuildFromSnapshot(m.snapshot)
 			m.tree.SetSize(m.width, m.height-2)
+			m.tree.SetGlobalIssueMap(m.issueMap) // Keep global map current for filter blocker checks (bd-5nw)
 		}
 
 		// Refresh detail pane if visible
@@ -1878,20 +1969,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Apply default sorting (Open first, Priority, Date)
+		// Apply default sorting: creation date descending (newest first) (bd-ctu)
 		var sortStart time.Time
 		if profileRefresh {
 			sortStart = time.Now()
 		}
 		sort.Slice(newIssues, func(i, j int) bool {
-			iClosed := isClosedLikeStatus(newIssues[i].Status)
-			jClosed := isClosedLikeStatus(newIssues[j].Status)
-			if iClosed != jClosed {
-				return !iClosed
-			}
-			if newIssues[i].Priority != newIssues[j].Priority {
-				return newIssues[i].Priority < newIssues[j].Priority
-			}
 			return newIssues[i].CreatedAt.After(newIssues[j].CreatedAt)
 		})
 		if profileRefresh {
@@ -2092,6 +2175,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Rebuild tree view if focused (bd-byp).
+		if m.focused == focusTree {
+			var treeStart time.Time
+			if profileRefresh {
+				treeStart = time.Now()
+			}
+			m.tree.Build(m.issues)
+			m.tree.SetSize(m.width, m.height-2)
+			m.tree.SetGlobalIssueMap(m.issueMap)
+			if profileRefresh {
+				recordTiming("tree_rebuild", time.Since(treeStart))
+			}
+		}
+
 		// Re-apply recipe filter if active
 		if m.activeRecipe != nil {
 			m.applyRecipe(m.activeRecipe)
@@ -2155,15 +2252,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			addTiming("alerts", "alerts")
 			addTiming("list", "list_items")
 			addTiming("graph", "board_graph")
+			addTiming("tree", "tree_rebuild")
 			addTiming("total", "total")
 			m.statusMsg += "]"
 		}
-		// Auto-enable background mode after slow sync reloads (opt-out via BV_BACKGROUND_MODE=0).
+		// Auto-enable background mode after slow sync reloads (opt-out via BW_BACKGROUND_MODE=0).
 		autoEnabled := false
 		slowReload := reloadDuration >= time.Second
 		if slowReload && m.backgroundWorker == nil && m.beadsPath != "" {
 			autoAllowed := true
-			if v := strings.TrimSpace(os.Getenv("BV_BACKGROUND_MODE")); v != "" {
+			if v := strings.TrimSpace(os.Getenv("BW_BACKGROUND_MODE")); v != "" {
 				switch strings.ToLower(v) {
 				case "0", "false", "no", "off":
 					autoAllowed = false
@@ -2193,7 +2291,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if autoEnabled {
 				m.statusMsg += "; background mode auto-enabled"
 			} else {
-				m.statusMsg += "; consider BV_BACKGROUND_MODE=1"
+				m.statusMsg += "; consider BW_BACKGROUND_MODE=1"
 			}
 		}
 		m.statusIsError = false
@@ -2547,7 +2645,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showShortcutsSidebar = !m.showShortcutsSidebar
 			if m.showShortcutsSidebar {
 				m.shortcutsSidebar.ResetScroll()
-				m.statusMsg = "Shortcuts sidebar: ; hide | ctrl+j/k scroll"
+				m.statusMsg = "Shortcuts sidebar: ; hide | j/k scroll"
 				m.statusIsError = false
 			} else {
 				m.statusMsg = ""
@@ -2555,15 +2653,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Handle shortcuts sidebar scrolling (Ctrl+j/k when sidebar visible) - bv-3qi5
+		// Handle shortcuts sidebar scrolling (j/k, arrows, ctrl+j/k when sidebar visible) - bv-3qi5, bd-jk0
+		// Only intercept navigation keys when the sidebar content actually overflows.
+		// Otherwise let keys pass through to the view handler for normal navigation.
 		if m.showShortcutsSidebar && m.list.FilterState() != list.Filtering {
-			switch msg.String() {
-			case "ctrl+j":
-				m.shortcutsSidebar.ScrollDown()
-				return m, nil
-			case "ctrl+k":
-				m.shortcutsSidebar.ScrollUp()
-				return m, nil
+			m.shortcutsSidebar.SetContext(ContextFromFocus(m.focused))
+			m.shortcutsSidebar.SetSize(m.shortcutsSidebar.Width(), m.height-2)
+			if m.shortcutsSidebar.NeedsScroll() {
+				switch msg.String() {
+				case "j", "down", "ctrl+j":
+					m.shortcutsSidebar.ScrollDown()
+					return m, nil
+				case "k", "up", "ctrl+k":
+					m.shortcutsSidebar.ScrollUp()
+					return m, nil
+				}
 			}
 		}
 
@@ -2785,6 +2889,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focused = focusList
 					return m, nil
 				}
+				// Tree detail-only mode: ESC returns to tree-only (bd-80u)
+				if m.treeViewActive && m.treeDetailHidden && m.focused == focusDetail {
+					m.focused = focusTree
+					return m, nil
+				}
+				// Tree view: sort popup escape (bd-u81) takes precedence
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSortPopupOpen() {
+					m.tree.CloseSortPopup()
+					return m, nil
+				}
+				// Tree view: search mode escape (bd-wf8) takes precedence
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSearchMode() {
+					m.tree.ClearSearch()
+					return m, nil
+				}
+				// Tree view: first ESC clears tree filter, second exits tree view (bd-kob)
+				if m.treeViewActive || m.focused == focusTree {
+					if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
+						m.tree.ApplyFilter("all")
+						m.syncTreeToDetail()
+					} else {
+						m.treeViewActive = false
+						m.focused = focusList
+					}
+					return m, nil
+				}
 				// At main list - first ESC clears filters, second shows quit confirm
 				if m.hasActiveFilters() {
 					m.clearAllFilters()
@@ -2799,6 +2929,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.isSplitView && !m.isBoardView {
 					if m.focused == focusList {
 						m.focused = focusDetail
+					} else if m.focused == focusTree {
+						// Tree to detail: sync selection before switching (skip when detail hidden, bd-80u)
+						if !m.treeDetailHidden {
+							m.syncTreeToDetail()
+							m.focused = focusDetail
+						}
+					} else if m.focused == focusDetail && m.treeViewActive {
+						// Detail back to tree
+						m.focused = focusTree
 					} else {
 						m.focused = focusList
 					}
@@ -2825,6 +2964,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "b":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'b' for bookmarks (bd-k4n)
+				}
 				m.clearAttentionOverlay()
 				m.isBoardView = !m.isBoardView
 				m.isGraphView = false
@@ -2839,6 +2981,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "g":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'g' for jump-to-top (bd-mwi)
+				}
 				// Toggle graph view
 				m.clearAttentionOverlay()
 				m.isGraphView = !m.isGraphView
@@ -2854,6 +2999,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "a":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'a' for all-filter (bd-mwi)
+				}
 				// Toggle actionable view
 				m.clearAttentionOverlay()
 				m.isActionableView = !m.isActionableView
@@ -2873,9 +3021,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "E":
-				// Toggle hierarchical tree view (bv-gllx)
+				// Toggle hierarchical tree view (bv-gllx, bd-xfd)
 				m.clearAttentionOverlay()
-				if m.focused == focusTree {
+				if m.focused == focusTree || m.treeViewActive {
+					m.treeViewActive = false
 					m.focused = focusList
 				} else {
 					m.isGraphView = false
@@ -2889,7 +3038,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.tree.Build(m.issues)
 					}
 					m.tree.SetSize(m.width, m.height-2)
+					m.tree.SetGlobalIssueMap(m.issueMap) // Provide global issue map for filter blocker checks (bd-5nw)
+					m.treeViewActive = true
 					m.focused = focusTree
+					m.syncTreeToDetail()
 				}
 				return m, nil
 
@@ -2931,6 +3083,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "p":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'p' for jump-to-parent (bd-ryu)
+				}
 				// Toggle priority hints
 				m.showPriorityHints = !m.showPriorityHints
 				// Update delegate with new state
@@ -2949,6 +3104,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "h":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'h' for collapse/parent (bd-mwi)
+				}
 				// Toggle history view
 				m.clearAttentionOverlay()
 				m.isHistoryView = !m.isHistoryView
@@ -2969,6 +3127,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "[", "f3":
+				if m.focused == focusTree && msg.String() == "[" {
+					break // Let handleTreeKeys handle '[' for prev-sibling (bd-ryu)
+				}
 				// Open label dashboard (phase 1: table view)
 				m.clearAttentionOverlay()
 				m.isGraphView = false
@@ -2989,6 +3150,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "]", "f4":
+				if m.focused == focusTree && msg.String() == "]" {
+					break // Let handleTreeKeys handle ']' for next-sibling (bd-ryu)
+				}
 				// Attention view: compute attention scores (cached) and render as text
 				if !m.attentionCached {
 					cfg := analysis.DefaultLabelHealthConfig()
@@ -3084,6 +3248,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "l":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'l' for expand/child (bd-mwi)
+				}
 				// Open label picker for quick filter (bv-126)
 				if len(m.issues) == 0 {
 					return m, nil
@@ -3168,11 +3335,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m = m.handleFlowMatrixKeys(msg)
 
 			case focusList:
-				m = m.handleListKeys(msg)
+				m, listKeyConsumed = m.handleListKeys(msg)
 
 			case focusDetail:
-				m.viewport, cmd = m.viewport.Update(msg)
-				cmds = append(cmds, cmd)
+				// Enter returns to tree in detail-only (non-split) mode (bd-bys)
+				if m.treeViewActive && m.treeDetailHidden && msg.String() == "enter" {
+					m.focused = focusTree
+				} else if m.treeViewActive && msg.String() == "d" {
+					// Toggle detail panel from detail focus in tree view (bd-80u)
+					m.treeDetailHidden = !m.treeDetailHidden
+					if m.treeDetailHidden {
+						m.focused = focusTree
+					}
+					if !m.treeDetailHidden {
+						m.syncTreeToDetail()
+					}
+				} else {
+					m.viewport, cmd = m.viewport.Update(msg)
+					cmds = append(cmds, cmd)
+				}
 			}
 		}
 
@@ -3283,6 +3464,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderer.SetWidthWithTheme(msg.Width, m.theme)
 		}
 
+		// Auto-hide detail panel when window is too narrow for split view (bd-6eg, bd-dy7).
+		// In narrow windows, Enter opens full-screen detail instead.
+		// Resizing from narrow to wide does NOT auto-show; user presses 'd'.
+		// But resizing within split view (pane too narrow -> fits) does auto-show.
+		if !m.isSplitView {
+			m.treeDetailHidden = true
+			m.detailHiddenByNarrow = true
+			if m.treeViewActive && m.focused == focusDetail {
+				m.focused = focusTree
+			}
+		} else if m.detailPaneWidth() < MinDetailPaneWidth {
+			m.treeDetailHidden = true
+			if m.treeViewActive && m.focused == focusDetail {
+				m.focused = focusTree
+			}
+		} else if !m.detailHiddenByNarrow {
+			// Auto-show detail when pane fits again (but not after narrow->wide)
+			m.treeDetailHidden = false
+		}
+
 		m.updateListDelegate()
 
 		// Resize label dashboard table and modal overlay sizing
@@ -3296,8 +3497,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// (we handle sizing ourselves to account for header/footer)
 	// Only forward keyboard messages to list when list has focus (bv-hmkz fix)
 	// This prevents j/k keys in detail view from changing list selection
+	// Skip forwarding when handleListKeys already consumed the key (bd-kob fix)
+	// to prevent filter shortcut keys (o/c/r/a etc.) from starting the
+	// built-in fuzzy search, which captures arrow keys and escape.
 	if m.focused == focusList {
-		if _, isWindowSize := msg.(tea.WindowSizeMsg); !isWindowSize {
+		if _, isWindowSize := msg.(tea.WindowSizeMsg); !isWindowSize && !listKeyConsumed {
 			m.list, cmd = m.list.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -3576,50 +3780,236 @@ func (m Model) handleGraphKeys(msg tea.KeyMsg) Model {
 	return m
 }
 
+// syncTreeToDetail synchronizes the detail panel with the currently selected tree node.
+// It finds the matching issue in the list and updates the viewport content.
+func (m *Model) syncTreeToDetail() {
+	selected := m.tree.SelectedIssue()
+	if selected == nil {
+		return
+	}
+	for i, item := range m.list.Items() {
+		if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selected.ID {
+			m.list.Select(i)
+			break
+		}
+	}
+	m.updateViewportContent()
+}
+
 // handleTreeKeys handles keyboard input when tree view is focused (bv-gllx)
 func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
+	// Sort popup mode: consume j/k/enter/esc/s only (bd-u81)
+	if m.tree.IsSortPopupOpen() {
+		switch msg.String() {
+		case "j", "down":
+			m.tree.SortPopupDown()
+		case "k", "up":
+			m.tree.SortPopupUp()
+		case "enter":
+			m.tree.SortPopupSelect()
+			m.syncTreeToDetail()
+		case "esc", "s":
+			m.tree.CloseSortPopup()
+		}
+		return m
+	}
+
+	// Search mode: forward input to tree search (bd-wf8)
+	if m.tree.IsSearchMode() {
+		switch msg.String() {
+		case "esc":
+			m.tree.ClearSearch()
+			return m
+		case "enter":
+			m.tree.ExitSearchMode()
+			m.syncTreeToDetail()
+			return m
+		case "backspace":
+			m.tree.SearchBackspace()
+			return m
+		default:
+			if len(msg.String()) == 1 {
+				m.tree.SearchAddChar(rune(msg.String()[0]))
+			}
+			return m
+		}
+	}
+
 	switch msg.String() {
 	case "j", "down":
 		m.tree.MoveDown()
+		m.syncTreeToDetail()
 	case "k", "up":
 		m.tree.MoveUp()
+		m.syncTreeToDetail()
 	case "enter", " ":
-		m.tree.ToggleExpand()
-	case "h", "left":
+		if msg.String() == "enter" && m.treeDetailHidden {
+			// Enter in tree-only mode shows detail-only view (bd-80u)
+			m.syncTreeToDetail()
+			m.focused = focusDetail
+		} else {
+			m.tree.ToggleExpand()
+			m.syncTreeToDetail()
+		}
+	case "ctrl+a":
+		m.tree.ToggleExpandCollapseAll()
+		m.syncTreeToDetail()
+	case "h":
 		m.tree.CollapseOrJumpToParent()
-	case "l", "right":
+		m.syncTreeToDetail()
+	case "l":
 		m.tree.ExpandOrMoveToChild()
+		m.syncTreeToDetail()
+	case "left":
+		m.tree.PageBackwardFull()
+		m.syncTreeToDetail()
+	case "right":
+		m.tree.PageForwardFull()
+		m.syncTreeToDetail()
 	case "g":
 		// Jump to top (vim-style)
 		m.tree.JumpToTop()
+		m.syncTreeToDetail()
 	case "G":
 		m.tree.JumpToBottom()
-	case "o":
+		m.syncTreeToDetail()
+	case "X":
 		m.tree.ExpandAll()
-	case "O":
+	case "Z":
 		m.tree.CollapseAll()
 	case "ctrl+d", "pgdown":
 		m.tree.PageDown()
+		m.syncTreeToDetail()
 	case "ctrl+u", "pgup":
 		m.tree.PageUp()
-	case "E", "esc":
-		// Return to list view
-		m.focused = focusList
+		m.syncTreeToDetail()
+	case "s":
+		// Open sort popup menu (bd-u81)
+		m.tree.OpenSortPopup()
+	case "/":
+		// Enter search mode (bd-wf8)
+		m.tree.EnterSearchMode()
+	case "n":
+		// Next search match (bd-wf8)
+		m.tree.NextSearchMatch()
+		m.syncTreeToDetail()
+	case "N":
+		// Previous search match (bd-wf8)
+		m.tree.PrevSearchMatch()
+		m.syncTreeToDetail()
+	case "`":
+		// Toggle flat/tree mode (bd-39v)
+		m.tree.ToggleFlatMode()
+		m.syncTreeToDetail()
+	case "o":
+		// Filter: open issues (bd-5nw)
+		m.tree.ApplyFilter("open")
+		m.syncTreeToDetail()
+	case "c":
+		// Filter: closed issues (bd-5nw)
+		m.tree.ApplyFilter("closed")
+		m.syncTreeToDetail()
+	case "r":
+		// Filter: ready issues (bd-5nw)
+		m.tree.ApplyFilter("ready")
+		m.syncTreeToDetail()
+	case "a":
+		// Filter: all issues (bd-5nw)
+		m.tree.ApplyFilter("all")
+		m.syncTreeToDetail()
+	case "p", "P":
+		// Jump to parent node (bd-ryu)
+		m.tree.JumpToParent()
+		m.syncTreeToDetail()
+	case "]":
+		// Next sibling (bd-ryu)
+		m.tree.NextSibling()
+		m.syncTreeToDetail()
+	case "[":
+		// Previous sibling (bd-ryu)
+		m.tree.PrevSibling()
+		m.syncTreeToDetail()
+	case "{":
+		// First sibling (bd-ryu)
+		m.tree.FirstSibling()
+		m.syncTreeToDetail()
+	case "}":
+		// Last sibling (bd-ryu)
+		m.tree.LastSibling()
+		m.syncTreeToDetail()
 	case "tab":
-		// Toggle detail panel (sync selection and jump to detail)
-		if m.isSplitView {
-			if selected := m.tree.SelectedIssue(); selected != nil {
-				// Sync detail panel with tree selection
-				for i, item := range m.list.Items() {
-					if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selected.ID {
-						m.list.Select(i)
-						break
-					}
-				}
-				m.updateViewportContent()
-				m.focused = focusDetail
-			}
+		// Org-mode TAB cycling on current node (bd-8of)
+		m.tree.CycleNodeVisibility()
+		m.syncTreeToDetail()
+	case "shift+tab":
+		// Global visibility cycling (bd-8of)
+		m.tree.CycleGlobalVisibility()
+		m.syncTreeToDetail()
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		// Level-based expand (bd-9jr)
+		level := int(msg.String()[0] - '0')
+		m.tree.ExpandToLevel(level)
+	case "m":
+		// Toggle mark on current node (bd-cz0)
+		m.tree.ToggleMark()
+	case "M":
+		// Unmark all (bd-cz0)
+		m.tree.UnmarkAll()
+	case "x":
+		// Toggle XRay drill-down mode (bd-0rc)
+		m.tree.ToggleXRay()
+		m.syncTreeToDetail()
+	case "b":
+		// Toggle bookmark on current node (bd-k4n)
+		m.tree.ToggleBookmark()
+	case "B":
+		// Cycle through bookmarked nodes (bd-k4n)
+		m.tree.CycleBookmark()
+		m.syncTreeToDetail()
+	case "F":
+		// Toggle follow mode (bd-c0c)
+		m.tree.ToggleFollowMode()
+	case "O":
+		// Toggle occur mode (bd-sjs.2) - uses current search pattern
+		if m.tree.IsOccurMode() {
+			m.tree.ExitOccurMode()
+			m.syncTreeToDetail()
+		} else if m.tree.SearchQuery() != "" {
+			m.tree.EnterOccurMode(m.tree.SearchQuery())
+			m.syncTreeToDetail()
+		} else {
+			m.statusMsg = "Search with / first, then O for occur mode"
+			m.statusIsError = false
 		}
+	case "d":
+		// Toggle detail panel visibility (bd-80u)
+		m.treeDetailHidden = !m.treeDetailHidden
+		m.detailHiddenByNarrow = false // User took manual control (bd-6eg)
+		if m.treeDetailHidden && m.focused == focusDetail {
+			m.focused = focusTree
+		}
+		if !m.treeDetailHidden {
+			m.syncTreeToDetail()
+		}
+	case "esc":
+		// Escape hierarchy: occur, XRay, tree filter, then exit tree view (bd-sjs.2, bd-kob, bd-0rc)
+		if m.tree.IsOccurMode() {
+			m.tree.ExitOccurMode()
+			m.syncTreeToDetail()
+		} else if m.tree.IsXRayMode() {
+			m.tree.ExitXRay()
+			m.syncTreeToDetail()
+		} else if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
+			m.tree.ApplyFilter("all")
+			m.syncTreeToDetail()
+		} else {
+			m.treeViewActive = false
+			m.focused = focusList
+		}
+	case "E":
+		// Always return to list view
+		m.treeViewActive = false
+		m.focused = focusList
 	}
 	return m
 }
@@ -3974,10 +4364,10 @@ func gitRemoteToWebURL(remote string) string {
 }
 
 // openBrowserURL opens a URL in the default browser (bv-xf4p)
-// Set BV_NO_BROWSER=1 to suppress browser opening (useful for tests).
+// Set BW_NO_BROWSER=1 to suppress browser opening (useful for tests).
 func openBrowserURL(url string) error {
 	// Skip browser opening in test mode or when explicitly disabled
-	if os.Getenv("BV_NO_BROWSER") != "" || os.Getenv("BV_TEST_MODE") != "" {
+	if os.Getenv("BW_NO_BROWSER") != "" || os.Getenv("BW_TEST_MODE") != "" {
 		return nil
 	}
 
@@ -4185,8 +4575,10 @@ func (m Model) handleInsightsKeys(msg tea.KeyMsg) Model {
 	return m
 }
 
-// handleListKeys handles keyboard input when the list is focused
-func (m Model) handleListKeys(msg tea.KeyMsg) Model {
+// handleListKeys handles keyboard input when the list is focused.
+// Returns (model, consumed) where consumed=true means the key was handled
+// and should NOT be forwarded to the bubbles/list component (bd-kob).
+func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 	switch msg.String() {
 	case "enter":
 		if !m.isSplitView {
@@ -4195,12 +4587,15 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			m.viewport.GotoTop() // Reset scroll position for new issue
 			m.updateViewportContent()
 		}
+		return m, true
 	case "home":
 		m.list.Select(0)
+		return m, true
 	case "G", "end":
 		if len(m.list.Items()) > 0 {
 			m.list.Select(len(m.list.Items()) - 1)
 		}
+		return m, true
 	case "ctrl+d":
 		// Page down
 		itemCount := len(m.list.Items())
@@ -4212,6 +4607,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			}
 			m.list.Select(newIdx)
 		}
+		return m, true
 	case "ctrl+u":
 		// Page up
 		if len(m.list.Items()) > 0 {
@@ -4222,18 +4618,23 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			}
 			m.list.Select(newIdx)
 		}
+		return m, true
 	case "o":
 		m.currentFilter = "open"
 		m.applyFilter()
+		return m, true
 	case "c":
 		m.currentFilter = "closed"
 		m.applyFilter()
+		return m, true
 	case "r":
 		m.currentFilter = "ready"
 		m.applyFilter()
+		return m, true
 	case "a":
 		m.currentFilter = "all"
 		m.applyFilter()
+		return m, true
 	case "t":
 		// Toggle time-travel mode off, or show prompt for custom revision
 		if m.timeTravelMode {
@@ -4245,6 +4646,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 			m.timeTravelInput.Focus()
 			m.focused = focusTimeTravelInput
 		}
+		return m, true
 	case "T":
 		// Quick time-travel with default HEAD~5
 		if m.timeTravelMode {
@@ -4252,32 +4654,40 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 		} else {
 			m.enterTimeTravelMode("HEAD~5")
 		}
+		return m, true
 	case "C":
 		// Copy selected issue to clipboard
 		m.copyIssueToClipboard()
+		return m, true
 	case "O":
 		// Open beads.jsonl in editor
 		m.openInEditor()
+		return m, true
 	case "h":
 		// Toggle history view
 		if !m.isHistoryView {
 			m.enterHistoryView()
 		}
+		return m, true
 	case "S":
 		// Apply triage recipe - sort by triage score (bv-151)
 		if r := m.recipeLoader.Get("triage"); r != nil {
 			m.setActiveRecipe(r)
 			m.applyRecipe(r)
 		}
+		return m, true
 	case "s":
 		// Cycle sort mode (bv-3ita)
 		m.cycleSortMode()
+		return m, true
 	case "V":
 		// Show cass session preview modal (bv-5bqh)
 		m.showCassSessionModal()
+		return m, true
 	case "U":
 		// Show self-update modal (bv-182)
 		m.showSelfUpdateModal()
+		return m, true
 	case "y":
 		// Copy ID to clipboard (consistent with board view - bv-yg39)
 		selectedItem := m.list.SelectedItem()
@@ -4293,8 +4703,9 @@ func (m Model) handleListKeys(msg tea.KeyMsg) Model {
 				m.statusIsError = false
 			}
 		}
+		return m, true
 	}
-	return m
+	return m, false
 }
 
 // handleTimeTravelInputKeys handles keyboard input for the time-travel revision prompt
@@ -4342,6 +4753,9 @@ func (m Model) restoreFocusFromHelp() focus {
 	}
 	if m.isHistoryView {
 		return focusHistory
+	}
+	if m.treeViewActive {
+		return focusTree
 	}
 	// Check for other focus states using stored focusBeforeHelp
 	// (m.focused is focusHelp while help is open, so we use the saved value)
@@ -4482,10 +4896,17 @@ func (m Model) View() string {
 	} else if m.focused == focusFlowMatrix {
 		m.flowMatrix.SetSize(m.width, m.height-1)
 		body = m.flowMatrix.View()
-	} else if m.focused == focusTree {
-		// Hierarchical tree view (bv-gllx)
-		m.tree.SetSize(m.width, m.height-1)
-		body = m.tree.View()
+	} else if m.focused == focusTree || (m.focused == focusDetail && m.treeViewActive) {
+		// Hierarchical tree view (bv-gllx) with split view support (bd-xfd)
+		if m.focused == focusDetail && m.treeDetailHidden {
+			// Detail-only mode: full-screen viewport (bd-80u)
+			body = m.viewport.View()
+		} else if m.isSplitView && !m.treeDetailHidden {
+			body = m.renderTreeSplitView()
+		} else {
+			m.tree.SetSize(m.width, m.height-1)
+			body = m.tree.View()
+		}
 	} else if m.isGraphView {
 		body = m.graphView.View(m.width, m.height-1)
 	} else if m.isBoardView {
@@ -4729,6 +5150,51 @@ func (m Model) renderSplitView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
 
+// renderTreeSplitView renders the tree view in a split layout with a detail panel on the right,
+// mirroring renderSplitView but using the tree for the left pane.
+func (m Model) renderTreeSplitView() string {
+	var treeStyle, detailStyle lipgloss.Style
+
+	if m.focused == focusTree {
+		treeStyle = FocusedPanelStyle
+		detailStyle = PanelStyle
+	} else {
+		treeStyle = PanelStyle
+		detailStyle = FocusedPanelStyle
+	}
+
+	// Use the same inner width as the list panel for consistent sizing
+	treeInnerWidth := m.list.Width()
+	panelHeight := m.height - 1
+
+	// Set tree size to fit inside the panel (border takes 2 lines)
+	// The header row is now rendered inside tree.View() via RenderHeader() (bd-s2k)
+	treeHeight := panelHeight - 2
+	if treeHeight < 1 {
+		treeHeight = 1
+	}
+	m.tree.SetSize(treeInnerWidth, treeHeight)
+
+	// tree.View() includes the header row (bd-s2k)
+	treeContent := m.tree.View()
+
+	// Tree Panel Width: Inner + 2 (Padding). Border adds another 2.
+	treeView := treeStyle.
+		Width(treeInnerWidth + 2).
+		Height(panelHeight).
+		MaxHeight(panelHeight).
+		Render(treeContent)
+
+	// Detail Panel Width: Inner + 2 (Padding). Border adds another 2.
+	detailView := detailStyle.
+		Width(m.viewport.Width + 2).
+		Height(panelHeight).
+		MaxHeight(panelHeight).
+		Render(m.viewport.View())
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, treeView, detailView)
+}
+
 func (m *Model) renderHelpOverlay() string {
 	t := m.theme
 
@@ -4815,6 +5281,7 @@ func (m *Model) renderHelpOverlay() string {
 	}
 
 	viewsSection := []struct{ key, desc string }{
+		{"E", "Tree view"},
 		{"b", "Kanban board"},
 		{"g", "Graph view"},
 		{"i", "Insights"},
@@ -4883,6 +5350,28 @@ func (m *Model) renderHelpOverlay() string {
 		{"O", "Open in editor"},
 	}
 
+	treeSection := []struct{ key, desc string }{
+		{"j/k/↕", "Move up/down"},
+		{"h", "Collapse / parent"},
+		{"l", "Expand / child"},
+		{"←/→", "Page back/forward"},
+		{"Enter/Spc", "Toggle expand"},
+		{"g/G", "Top / bottom"},
+		{"p", "Jump to parent"},
+		{"X/Z", "Expand / collapse all"},
+		{"Tab", "Cycle node visibility"},
+		{"1-9", "Expand to level N"},
+		{"d", "Toggle detail panel"},
+		{"o/c/r/a", "Filter: open/closed/ready/all"},
+		{"s", "Sort popup"},
+		{"/", "Search tree"},
+		{"n/N", "Next/prev match"},
+		{"O", "Occur (search filter)"},
+		{"x", "XRay drill-down"},
+		{"b/B", "Bookmark / cycle"},
+		{"m/M", "Mark / unmark all"},
+	}
+
 	statusSection := []struct{ key, desc string }{
 		{"◌ metrics", "Phase 2 metrics computing"},
 		{"⚠ age", "Snapshot getting stale"},
@@ -4893,16 +5382,20 @@ func (m *Model) renderHelpOverlay() string {
 		{"polling", "Live reload uses polling"},
 	}
 
-	// Build panels
+	// Build panels - ordered for balanced 3-column layout (4-4-2 split)
+	// Col 1: Nav(8)+Views(9)+Global(7)+History(5) = 29
+	// Col 2: Tree(9)+Graph(4)+Insights(6)+Status(7) = 26
+	// Col 3: Filters(10)+Actions(8) = 18
 	panels := []string{
 		renderPanel("Navigation", "🧭", 0, navSection),
 		renderPanel("Views", "👁", 1, viewsSection),
 		renderPanel("Global", "🌐", 2, globalSection),
-		renderPanel("Filters & Sort", "🔍", 3, filterSection),
-		renderPanel("Graph View", "📊", 4, graphSection),
-		renderPanel("Insights", "💡", 5, insightsSection),
+		renderPanel("History", "📜", 3, historySection),
+		renderPanel("Tree View", "🌳", 4, treeSection),
+		renderPanel("Graph View", "📊", 5, graphSection),
+		renderPanel("Insights", "💡", 0, insightsSection),
 		renderPanel("Status", "🩺", 2, statusSection),
-		renderPanel("History", "📜", 0, historySection),
+		renderPanel("Filters & Sort", "🔍", 3, filterSection),
 		renderPanel("Actions", "⚡", 1, actionsSection),
 	}
 
@@ -4944,13 +5437,47 @@ func (m *Model) renderHelpOverlay() string {
 	// Combine title and body
 	content := lipgloss.JoinVertical(lipgloss.Center, titleBar, "", body)
 
+	// Apply scroll offset: split into lines, window visible portion
+	contentLines := strings.Split(content, "\n")
+	totalLines := len(contentLines)
+	availableHeight := m.height - 6 // border (2) + padding (2) + footer hint (1) + margin (1)
+	if availableHeight < 10 {
+		availableHeight = 10
+	}
+
+	// Clamp scroll offset
+	maxScroll := totalLines - availableHeight
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.helpScroll > maxScroll {
+		m.helpScroll = maxScroll
+	}
+
+	// Build scroll hint
+	scrollHint := ""
+	if maxScroll > 0 {
+		scrollHint = subtitleStyle.Render(fmt.Sprintf("  j/k scroll (%d/%d)", m.helpScroll+1, maxScroll+1))
+	}
+
+	// Window the content
+	startLine := m.helpScroll
+	endLine := startLine + availableHeight
+	if endLine > totalLines {
+		endLine = totalLines
+	}
+	visibleContent := strings.Join(contentLines[startLine:endLine], "\n")
+	if scrollHint != "" {
+		visibleContent += "\n" + scrollHint
+	}
+
 	// Outer container
 	containerStyle := t.Renderer.NewStyle().
 		Border(lipgloss.DoubleBorder()).
 		BorderForeground(t.Primary).
 		Padding(1, 2)
 
-	helpBox := containerStyle.Render(content)
+	helpBox := containerStyle.Render(visibleContent)
 
 	// Center in viewport
 	return lipgloss.Place(
@@ -5467,6 +5994,23 @@ func (m *Model) renderFooter() string {
 	} else if m.showLabelDrilldown && m.labelDrilldownLabel != "" {
 		filterTxt = fmt.Sprintf("LABEL %s: enter filter • g graph • esc/q/d close", m.labelDrilldownLabel)
 		filterIcon = "🏷️"
+	} else if m.focused == focusTree || m.treeViewActive {
+		// Tree view uses its own filter state (bd-5nw)
+		treeFilter := m.tree.GetFilter()
+		switch treeFilter {
+		case "open":
+			filterTxt = "OPEN"
+			filterIcon = "📂"
+		case "closed":
+			filterTxt = "CLOSED"
+			filterIcon = "✅"
+		case "ready":
+			filterTxt = "READY"
+			filterIcon = "🚀"
+		default:
+			filterTxt = "ALL"
+			filterIcon = "📋"
+		}
 	} else {
 		switch m.currentFilter {
 		case "all":
@@ -5522,14 +6066,29 @@ func (m *Model) renderFooter() string {
 			Render(fmt.Sprintf("🔎 %s", mode))
 	}
 
-	// Sort badge - only show when not default (bv-3ita)
+	// Sort badge - only show when not default (bv-3ita, bd-tfn, bd-x3l)
+	// Show tree sort field+direction when in tree view, list sort mode otherwise
 	sortBadge := ""
-	if m.sortMode != SortDefault {
-		sortBadge = lipgloss.NewStyle().
-			Background(ColorBgHighlight).
-			Foreground(ColorSecondary).
-			Padding(0, 1).
-			Render(fmt.Sprintf("↕ %s", m.sortMode.String()))
+	if m.focused == focusTree || m.treeViewActive {
+		field := m.tree.GetSortField()
+		dir := m.tree.GetSortDirection()
+		// Show badge when not default sort (created descending) (bd-ctu)
+		if field != SortFieldCreated || dir != SortDescending {
+			sortBadge = lipgloss.NewStyle().
+				Background(ColorBgHighlight).
+				Foreground(ColorSecondary).
+				Padding(0, 1).
+				Render(fmt.Sprintf("%s %s", field.String(), dir.Indicator()))
+		}
+	} else {
+		activeSortMode := m.sortMode
+		if activeSortMode != SortDefault {
+			sortBadge = lipgloss.NewStyle().
+				Background(ColorBgHighlight).
+				Foreground(ColorSecondary).
+				Padding(0, 1).
+				Render(fmt.Sprintf("↕ %s", activeSortMode.String()))
+		}
 	}
 
 	labelHint := lipgloss.NewStyle().
@@ -6356,15 +6915,7 @@ func (m *Model) sortFilteredItems(items []list.Item, issues []model.Issue) {
 			// Most recently updated first
 			return iItem.Issue.UpdatedAt.After(jItem.Issue.UpdatedAt)
 		default:
-			// Default: Open first, then priority, then newest
-			iClosed := isClosedLikeStatus(iItem.Issue.Status)
-			jClosed := isClosedLikeStatus(jItem.Issue.Status)
-			if iClosed != jClosed {
-				return !iClosed
-			}
-			if iItem.Issue.Priority != jItem.Issue.Priority {
-				return iItem.Issue.Priority < jItem.Issue.Priority
-			}
+			// Default: creation date descending (newest first) (bd-ctu)
 			return iItem.Issue.CreatedAt.After(jItem.Issue.CreatedAt)
 		}
 	})
@@ -6658,6 +7209,18 @@ func (m *Model) recalculateSplitPaneSizes() {
 	m.viewport = viewport.New(detailInnerWidth, bodyHeight-2)
 	m.renderer.SetWidthWithTheme(detailInnerWidth, m.theme)
 	m.updateViewportContent()
+}
+
+// detailPaneWidth returns the inner width the detail pane would have at the
+// current terminal width and split ratio. Used to decide whether the pane is
+// too narrow to be readable (bd-dy7).
+func (m *Model) detailPaneWidth() int {
+	availWidth := m.width - 8
+	if availWidth < 10 {
+		availWidth = 10
+	}
+	listInnerWidth := int(float64(availWidth) * m.splitPaneRatio)
+	return availWidth - listInnerWidth
 }
 
 func (m *Model) updateViewportContent() {
@@ -7199,6 +7762,46 @@ func (m Model) IsActionableView() bool {
 // IsHistoryView returns true if the history view is active (bv-5e5q).
 func (m Model) IsHistoryView() bool {
 	return m.isHistoryView
+}
+
+// TreeSelectedID returns the ID of the currently selected tree node, or "".
+func (m Model) TreeSelectedID() string {
+	return m.tree.GetSelectedID()
+}
+
+// TreeNodeCount returns the number of visible nodes in the tree.
+func (m Model) TreeNodeCount() int {
+	return m.tree.NodeCount()
+}
+
+// TreeSortField returns the current sort field of the tree view (bd-x3l).
+func (m Model) TreeSortField() SortField {
+	return m.tree.GetSortField()
+}
+
+// TreeSortDirection returns the current sort direction of the tree view (bd-x3l).
+func (m Model) TreeSortDirection() SortDirection {
+	return m.tree.GetSortDirection()
+}
+
+// TreeSortPopupOpen returns whether the sort popup overlay is visible (bd-u81).
+func (m Model) TreeSortPopupOpen() bool {
+	return m.tree.IsSortPopupOpen()
+}
+
+// TreeBookmarkedIDs returns the IDs of bookmarked tree nodes (bd-k4n).
+func (m Model) TreeBookmarkedIDs() []string {
+	return m.tree.TreeBookmarkedIDs()
+}
+
+// TreeFollowMode returns whether follow mode is active (bd-c0c).
+func (m Model) TreeFollowMode() bool {
+	return m.tree.GetFollowMode()
+}
+
+// TreeDetailHidden returns whether the detail panel is hidden in tree view (bd-80u).
+func (m Model) TreeDetailHidden() bool {
+	return m.treeDetailHidden
 }
 
 // exportToMarkdown exports all issues to a Markdown file with auto-generated filename

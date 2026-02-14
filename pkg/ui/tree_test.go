@@ -5,13 +5,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/vanderheijden86/beadwork/pkg/model"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// stripANSI removes ANSI escape sequences for plain-text column comparison.
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+
+func stripANSI(s string) string { return ansiRe.ReplaceAllString(s, "") }
 
 func newTreeTestTheme() Theme {
 	return DefaultTheme(lipgloss.NewRenderer(nil))
@@ -72,6 +80,7 @@ func TestTreeBuildParentChild(t *testing.T) {
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 
 	// Should have 1 root (epic-1)
@@ -79,9 +88,9 @@ func TestTreeBuildParentChild(t *testing.T) {
 		t.Errorf("expected 1 root, got %d", tree.RootCount())
 	}
 
-	// With depth < 2 auto-expand, all 3 should be visible
-	if tree.NodeCount() != 3 {
-		t.Errorf("expected 3 visible nodes (auto-expanded), got %d", tree.NodeCount())
+	// With depth < 1 auto-expand, root + direct children should be visible (2 nodes)
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes (auto-expanded), got %d", tree.NodeCount())
 	}
 
 	// Verify hierarchy structure
@@ -249,15 +258,16 @@ func TestTreeBuildRelatedDepsIgnored(t *testing.T) {
 func TestTreeNavigation(t *testing.T) {
 	now := time.Now()
 	issues := []model.Issue{
-		{ID: "root-1", Title: "Root 1", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{ID: "root-1", Title: "Root 1", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now.Add(2 * time.Hour)},
 		{
 			ID: "child-1", Title: "Child 1", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
 			Dependencies: []*model.Dependency{{IssueID: "child-1", DependsOnID: "root-1", Type: model.DepParentChild}},
 		},
-		{ID: "root-2", Title: "Root 2", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "root-2", Title: "Root 2", Priority: 2, IssueType: model.TypeTask, CreatedAt: now},
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 
 	// Initial selection should be first node (root-1)
@@ -308,9 +318,10 @@ func TestTreeExpandCollapse(t *testing.T) {
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 
-	// Initially auto-expanded (depth < 2)
+	// Initially auto-expanded (depth < 1)
 	if tree.NodeCount() != 2 {
 		t.Errorf("expected 2 visible nodes (auto-expanded), got %d", tree.NodeCount())
 	}
@@ -412,6 +423,7 @@ func TestTreeViewRendering(t *testing.T) {
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 	tree.SetSize(100, 30)
 
@@ -510,6 +522,7 @@ func TestTreeJumpToParent(t *testing.T) {
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 
 	// Move to child
@@ -543,9 +556,10 @@ func TestTreeExpandOrMoveToChild(t *testing.T) {
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 
-	// Root is initially expanded (auto-expand depth < 2)
+	// Root is initially expanded (auto-expand depth < 1)
 	// ExpandOrMoveToChild should move to first child
 	tree.ExpandOrMoveToChild()
 	if tree.GetSelectedID() != "child" {
@@ -584,6 +598,7 @@ func TestTreeCollapseOrJumpToParent(t *testing.T) {
 	}
 
 	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads")) // Isolate from CWD state
 	tree.Build(issues)
 
 	// Root is expanded - CollapseOrJumpToParent should collapse
@@ -747,6 +762,15 @@ func TestTreeStateVersion(t *testing.T) {
 // =============================================================================
 
 func TestVisibleRange(t *testing.T) {
+	// effectiveVisibleCount logic:
+	//   visibleCount = height - 1 (for header); default 19 when height <= 0
+	//   if flatList > visibleCount: visibleCount-- (for position indicator)
+	//   minimum 1
+	//
+	// height=10 => 9 nodes; with indicator (100 > 9) => 8
+	// height=10, 5 nodes => 9 nodes capacity, 5 < 9 so no indicator => 9 (but clamped to 5)
+	// height=10, 10 nodes => 9, 10 > 9 so indicator => 8
+	// height=0 => default 19; with indicator (100 > 19) => 18
 	tests := []struct {
 		name      string
 		nodeCount int
@@ -756,17 +780,17 @@ func TestVisibleRange(t *testing.T) {
 		wantEnd   int
 	}{
 		{"empty tree", 0, 10, 0, 0, 0},
-		{"fewer nodes than viewport", 5, 10, 0, 0, 5},
-		{"exact fit", 10, 10, 0, 0, 10},
-		{"offset at start", 100, 10, 0, 0, 10},
-		{"offset in middle", 100, 10, 45, 45, 55},
-		{"offset near end", 100, 10, 90, 90, 100},
-		{"offset past end clamps", 100, 10, 95, 90, 100},
-		{"zero height uses default 20", 100, 0, 0, 0, 20},
-		{"negative height uses default 20", 100, -5, 0, 0, 20},
+		{"fewer nodes than viewport", 5, 10, 0, 0, 5},                          // 5 < 9, no indicator
+		{"exact fit", 10, 10, 0, 0, 8},                                         // 10 > 9 => indicator => 8
+		{"offset at start", 100, 10, 0, 0, 8},                                  // 100 > 9 => indicator => 8
+		{"offset in middle", 100, 10, 45, 45, 53},                              // 8 nodes visible
+		{"offset near end", 100, 10, 92, 92, 100},                              // last 8
+		{"offset past end clamps", 100, 10, 95, 92, 100},                       // clamped to 92
+		{"zero height uses default 19 minus indicator", 100, 0, 0, 0, 18},      // 19-1=18
+		{"negative height uses default 19 minus indicator", 100, -5, 0, 0, 18}, // 19-1=18
 		{"single node", 1, 10, 0, 0, 1},
-		{"negative offset clamps to start", 100, 10, -5, 0, 10},
-		{"negative offset small list", 5, 10, -5, 0, 5},
+		{"negative offset clamps to start", 100, 10, -5, 0, 8}, // 8 nodes visible
+		{"negative offset small list", 5, 10, -5, 0, 5},        // no indicator
 	}
 
 	for _, tt := range tests {
@@ -817,10 +841,11 @@ func TestVisibleRangePerformance(t *testing.T) {
 	tree.viewportOffset = 50000
 
 	// Should complete instantly (O(1))
+	// height=20 => 19 - 1 (indicator for 100000 nodes) = 18
 	start, end := tree.visibleRange()
 
-	if start != 50000 || end != 50020 {
-		t.Errorf("visibleRange() = (%d, %d), want (50000, 50020)", start, end)
+	if start != 50000 || end != 50018 {
+		t.Errorf("visibleRange() = (%d, %d), want (50000, 50018)", start, end)
 	}
 }
 
@@ -848,10 +873,10 @@ func TestSaveState(t *testing.T) {
 	tree.SetBeadsDir(beadsDir)
 	tree.Build(issues)
 
-	// Initially, root-1 (depth=0) and child-1 (depth=1) are expanded by default
-	// grandchild-1 (depth=2) is collapsed by default
+	// Initially, root-1 (depth=0) is expanded by default (depth < 1)
+	// child-1 (depth=1) and grandchild-1 (depth=2) are collapsed by default
 
-	// Collapse child-1 (non-default state)
+	// Expand child-1 (non-default state for depth >= 1)
 	for i, node := range tree.flatList {
 		if node.Issue != nil && node.Issue.ID == "child-1" {
 			tree.cursor = i
@@ -877,10 +902,10 @@ func TestSaveState(t *testing.T) {
 		t.Errorf("State version = %d, want %d", state.Version, TreeStateVersion)
 	}
 
-	// child-1 at depth=1 was expanded by default (depth < 2), now collapsed
-	// So it should be in the Expanded map as false
-	if expanded, ok := state.Expanded["child-1"]; !ok || expanded {
-		t.Errorf("Expected child-1 to be in Expanded map as false, got %v (ok=%v)", expanded, ok)
+	// child-1 at depth=1 was collapsed by default (depth < 1), now expanded
+	// So it should be in the Expanded map as true
+	if expanded, ok := state.Expanded["child-1"]; !ok || !expanded {
+		t.Errorf("Expected child-1 to be in Expanded map as true, got %v (ok=%v)", expanded, ok)
 	}
 }
 
@@ -905,13 +930,13 @@ func TestSaveStateOnlyNonDefault(t *testing.T) {
 	tree.SetBeadsDir(beadsDir)
 	tree.Build(issues)
 
-	// Default state:
-	// - root (depth=0): expanded
-	// - d1 (depth=1): expanded
-	// - d2 (depth=2): collapsed
-	// - d3 (depth=3): collapsed
+	// Default state (depth < 1):
+	// - root (depth=0): expanded (default)
+	// - d1 (depth=1): collapsed (default)
+	// - d2 (depth=2): collapsed (default)
+	// - d3 (depth=3): collapsed (default)
 
-	// Expand all - this makes d2 and d3 non-default (expanded when default is collapsed)
+	// Expand all - this makes d1, d2 and d3 non-default (expanded when default is collapsed)
 	tree.ExpandAll()
 
 	// Read state
@@ -926,15 +951,15 @@ func TestSaveStateOnlyNonDefault(t *testing.T) {
 		t.Fatalf("Failed to parse state file: %v", err)
 	}
 
-	// root and d1 should NOT be in the map (they're in default expanded state)
+	// root should NOT be in the map (it's in default expanded state)
 	if _, ok := state.Expanded["root"]; ok {
 		t.Error("root should not be in Expanded map (already default expanded)")
 	}
-	if _, ok := state.Expanded["d1"]; ok {
-		t.Error("d1 should not be in Expanded map (already default expanded)")
-	}
 
-	// d2 and d3 SHOULD be in the map as true (expanded is non-default for depth >= 2)
+	// d1, d2 and d3 SHOULD be in the map as true (expanded is non-default for depth >= 1)
+	if expanded, ok := state.Expanded["d1"]; !ok || !expanded {
+		t.Errorf("d1 should be in Expanded map as true, got %v (ok=%v)", expanded, ok)
+	}
 	if expanded, ok := state.Expanded["d2"]; !ok || !expanded {
 		t.Errorf("d2 should be in Expanded map as true, got %v (ok=%v)", expanded, ok)
 	}
@@ -957,15 +982,15 @@ func TestSaveStateOnlyNonDefault(t *testing.T) {
 		t.Fatalf("Failed to parse state file after collapse: %v", err)
 	}
 
-	// root and d1 should be in the map as false (collapsed is non-default for depth < 2)
+	// Only root should be in the map as false (collapsed is non-default for depth < 1)
 	if expanded, ok := state.Expanded["root"]; !ok || expanded {
 		t.Errorf("root should be in Expanded map as false after CollapseAll, got %v (ok=%v)", expanded, ok)
 	}
-	if expanded, ok := state.Expanded["d1"]; !ok || expanded {
-		t.Errorf("d1 should be in Expanded map as false after CollapseAll, got %v (ok=%v)", expanded, ok)
-	}
 
-	// d2 and d3 should NOT be in the map (collapsed is default for depth >= 2)
+	// d1, d2 and d3 should NOT be in the map (collapsed is default for depth >= 1)
+	if _, ok := state.Expanded["d1"]; ok {
+		t.Error("d1 should not be in Expanded map after CollapseAll (collapsed is default)")
+	}
 	if _, ok := state.Expanded["d2"]; ok {
 		t.Error("d2 should not be in Expanded map after CollapseAll (collapsed is default)")
 	}
@@ -1082,12 +1107,12 @@ func TestLoadStateNoFile(t *testing.T) {
 		t.Error("Tree should be built even without state file")
 	}
 
-	// Default: root (depth 0) and child (depth 1) should be expanded
+	// Default: root (depth 0) should be expanded, child (depth 1) should be collapsed
 	if !tree.issueMap["root"].Expanded {
 		t.Error("Expected root to be expanded (default for depth 0)")
 	}
-	if !tree.issueMap["child"].Expanded {
-		t.Error("Expected child to be expanded (default for depth 1)")
+	if tree.issueMap["child"].Expanded {
+		t.Error("Expected child to be collapsed (default for depth >= 1)")
 	}
 }
 
@@ -1173,6 +1198,9 @@ func TestLoadStateStaleIDs(t *testing.T) {
 // =============================================================================
 
 // TestEnsureCursorVisible verifies the cursor-follows-viewport behavior
+// Note: effectiveVisibleCount = height-1 (header), then -1 more if flatList > that
+// For height=10, 100 nodes: effective = 10-1-1 = 8
+// For height=0, 100 nodes: effective = 19-1 = 18
 func TestEnsureCursorVisible(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1184,17 +1212,17 @@ func TestEnsureCursorVisible(t *testing.T) {
 	}{
 		{"cursor at start, offset at start", 100, 10, 0, 0, 0},
 		{"cursor in visible range", 100, 10, 5, 0, 0},
-		{"cursor below viewport - scroll down", 100, 10, 15, 0, 6},
+		{"cursor below viewport - scroll down", 100, 10, 15, 0, 8},
 		{"cursor above viewport - scroll up", 100, 10, 0, 10, 0},
-		{"cursor at viewport bottom edge", 100, 10, 9, 0, 0},
-		{"cursor just past viewport bottom", 100, 10, 10, 0, 1},
-		{"cursor at end of list", 100, 10, 99, 0, 90},
+		{"cursor at viewport bottom edge", 100, 10, 9, 0, 2},
+		{"cursor just past viewport bottom", 100, 10, 10, 0, 3},
+		{"cursor at end of list", 100, 10, 99, 0, 92},
 		{"offset already correct", 100, 10, 50, 45, 45},
 		{"empty list", 0, 10, 0, 0, 0},
 		{"single node", 1, 10, 0, 0, 0},
 		{"fewer nodes than viewport", 5, 10, 3, 0, 0},
-		{"zero height uses default 20", 100, 0, 25, 0, 6},
-		{"large cursor with max offset clamping", 100, 10, 95, 0, 86},
+		{"zero height uses default", 100, 0, 25, 0, 8},
+		{"large cursor with max offset clamping", 100, 10, 95, 0, 88},
 	}
 
 	for _, tt := range tests {
@@ -1220,14 +1248,11 @@ func TestEnsureCursorVisible(t *testing.T) {
 
 			// Verify cursor is now within visible range (unless empty)
 			if tt.nodeCount > 0 {
-				visibleCount := tt.height
-				if visibleCount <= 0 {
-					visibleCount = 20
-				}
+				visibleCount := tree.effectiveVisibleCount()
 				if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+visibleCount {
 					// This check needs adjustment for edge case where list is smaller than viewport
 					if tt.nodeCount > visibleCount && tree.cursor >= tree.viewportOffset+visibleCount {
-						t.Errorf("cursor %d not visible with offset %d and height %d",
+						t.Errorf("cursor %d not visible with offset %d and effectiveVisible %d",
 							tree.cursor, tree.viewportOffset, visibleCount)
 					}
 				}
@@ -1285,9 +1310,10 @@ func TestNavigationCallsEnsureCursorVisible(t *testing.T) {
 	if tree.viewportOffset == 0 {
 		t.Error("viewportOffset should have scrolled down")
 	}
-	// Cursor should be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
-		t.Errorf("cursor %d not visible with offset %d", tree.cursor, tree.viewportOffset)
+	// Cursor should be visible (using effectiveVisibleCount)
+	effVis := tree.effectiveVisibleCount()
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+effVis {
+		t.Errorf("cursor %d not visible with offset %d (effective %d)", tree.cursor, tree.viewportOffset, effVis)
 	}
 
 	// Test JumpToBottom
@@ -1296,7 +1322,7 @@ func TestNavigationCallsEnsureCursorVisible(t *testing.T) {
 		t.Errorf("cursor should be 49 after JumpToBottom, got %d", tree.cursor)
 	}
 	// Cursor should still be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+effVis {
 		t.Errorf("cursor %d not visible after JumpToBottom with offset %d", tree.cursor, tree.viewportOffset)
 	}
 
@@ -1312,7 +1338,7 @@ func TestNavigationCallsEnsureCursorVisible(t *testing.T) {
 	// Test PageDown
 	tree.PageDown()
 	// Cursor should be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+effVis {
 		t.Errorf("cursor %d not visible after PageDown with offset %d", tree.cursor, tree.viewportOffset)
 	}
 }
@@ -1333,7 +1359,10 @@ func TestGetViewportOffset(t *testing.T) {
 
 // TestViewRendersOnlyVisible verifies that View() only renders visible nodes
 func TestViewRendersOnlyVisible(t *testing.T) {
-	// Create many issues for testing
+	// Create many issues for testing.
+	// CreatedAt is set in descending order so that default sort (created desc)
+	// preserves the expected display order: issue-00 first, issue-99 last.
+	now := time.Now()
 	var issues []model.Issue
 	for i := 0; i < 100; i++ {
 		issues = append(issues, model.Issue{
@@ -1341,6 +1370,7 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 			Title:     fmt.Sprintf("Issue %d", i),
 			Priority:  2,
 			IssueType: model.TypeTask,
+			CreatedAt: now.Add(-time.Duration(i) * time.Minute),
 		})
 	}
 
@@ -1354,10 +1384,10 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 	output := tree.View()
 	lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
 
-	// Should have exactly 11 lines: 10 content lines + 1 position indicator (bv-2nax)
-	// The position indicator shows "[start-end of total]" when scrolling is needed
-	if len(lines) != 11 {
-		t.Errorf("expected 11 lines (10 content + 1 indicator), got %d", len(lines))
+	// With height=10, effectiveVisibleCount = 10-1(header)-1(indicator) = 8 nodes visible.
+	// Output: 1 header + 8 node lines + 1 position indicator = 10 lines total.
+	if len(lines) != 10 {
+		t.Errorf("expected 10 lines (1 header + 8 content + 1 indicator), got %d", len(lines))
 	}
 
 	// Should contain node 50's content (issue-50)
@@ -1365,9 +1395,9 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 		t.Error("first visible node (issue-50) not rendered")
 	}
 
-	// Should contain node 59's content (last visible)
-	if !strings.Contains(output, "issue-59") {
-		t.Error("last visible node (issue-59) not rendered")
+	// Should contain node 57's content (last visible: 50+8-1=57)
+	if !strings.Contains(output, "issue-57") {
+		t.Error("last visible node (issue-57) not rendered")
 	}
 
 	// Should NOT contain node 0's content
@@ -1380,9 +1410,9 @@ func TestViewRendersOnlyVisible(t *testing.T) {
 		t.Error("non-visible node (issue-49) incorrectly rendered")
 	}
 
-	// Should NOT contain node 60's content (just after viewport)
-	if strings.Contains(output, "issue-60") {
-		t.Error("non-visible node (issue-60) incorrectly rendered")
+	// Should NOT contain node 58's content (just after viewport)
+	if strings.Contains(output, "issue-58") {
+		t.Error("non-visible node (issue-58) incorrectly rendered")
 	}
 }
 
@@ -1440,14 +1470,16 @@ func TestViewSelectionHighlightWithOffset(t *testing.T) {
 		t.Error("selected issue (issue-25) not in output")
 	}
 
-	// Cursor should be visible
-	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+10 {
-		t.Errorf("cursor %d not visible with offset %d", tree.cursor, tree.viewportOffset)
+	// Cursor should be visible (use effectiveVisibleCount)
+	eff := tree.effectiveVisibleCount()
+	if tree.cursor < tree.viewportOffset || tree.cursor >= tree.viewportOffset+eff {
+		t.Errorf("cursor %d not visible with offset %d (effective %d)", tree.cursor, tree.viewportOffset, eff)
 	}
 }
 
 // TestViewAtEndOfList verifies rendering at the end of a long list
 func TestViewAtEndOfList(t *testing.T) {
+	now := time.Now()
 	var issues []model.Issue
 	for i := 0; i < 100; i++ {
 		issues = append(issues, model.Issue{
@@ -1455,6 +1487,7 @@ func TestViewAtEndOfList(t *testing.T) {
 			Title:     fmt.Sprintf("Issue %d", i),
 			Priority:  2,
 			IssueType: model.TypeTask,
+			CreatedAt: now.Add(-time.Duration(i) * time.Minute),
 		})
 	}
 
@@ -1472,14 +1505,14 @@ func TestViewAtEndOfList(t *testing.T) {
 		t.Error("last issue (issue-99) not rendered")
 	}
 
-	// Should contain issue-90 (10 items from the end)
-	if !strings.Contains(output, "issue-90") {
-		t.Error("issue-90 not rendered")
+	// height=10, 100 nodes -> effective=8. Last 8 items: 92-99
+	if !strings.Contains(output, "issue-92") {
+		t.Error("issue-92 not rendered (first in last window)")
 	}
 
-	// Should NOT contain issue-89
-	if strings.Contains(output, "issue-89") {
-		t.Error("issue-89 incorrectly rendered")
+	// Should NOT contain issue-91 (just before the visible window)
+	if strings.Contains(output, "issue-91") {
+		t.Error("issue-91 incorrectly rendered")
 	}
 }
 
@@ -1505,8 +1538,8 @@ func TestPositionIndicatorShown(t *testing.T) {
 
 	output := tree.View()
 
-	// Should contain position indicator "[1-10 of 100]"
-	if !strings.Contains(output, "[1-10 of 100]") {
+	// height=10, 100 nodes -> effective=8. Position indicator: "Page 1/13 (1-8 of 100)"
+	if !strings.Contains(output, "Page 1/13 (1-8 of 100)") {
 		t.Errorf("position indicator not found in output, got:\n%s", output)
 	}
 }
@@ -1533,10 +1566,10 @@ func TestPositionIndicatorMiddle(t *testing.T) {
 
 	output := tree.View()
 
-	// Should contain updated position indicator
+	// Should contain updated position indicator with Page format
 	// The offset should be adjusted so cursor 50 is visible
-	if !strings.Contains(output, " of 100]") {
-		t.Errorf("position indicator with 'of 100' not found, got:\n%s", output)
+	if !strings.Contains(output, "of 100)") {
+		t.Errorf("position indicator with 'of 100)' not found, got:\n%s", output)
 	}
 }
 
@@ -1581,8 +1614,2440 @@ func TestPositionIndicatorAtEnd(t *testing.T) {
 
 	output := tree.View()
 
-	// Should contain "[91-100 of 100]"
-	if !strings.Contains(output, "[91-100 of 100]") {
+	// height=10, 100 nodes -> effective=8. Last window shows "93-100 of 100" with page info
+	if !strings.Contains(output, "93-100 of 100)") {
 		t.Errorf("position indicator at end not found, got:\n%s", output)
+	}
+}
+
+// TestPositionIndicatorUpdatesOnPageForward verifies page indicator changes after PageForwardFull (bd-apg)
+func TestPositionIndicatorUpdatesOnPageForward(t *testing.T) {
+	var issues []model.Issue
+	for i := 0; i < 100; i++ {
+		issues = append(issues, model.Issue{
+			ID:        fmt.Sprintf("issue-%02d", i),
+			Title:     fmt.Sprintf("Issue %d", i),
+			Priority:  2,
+			IssueType: model.TypeTask,
+		})
+	}
+
+	tree := NewTreeModel(testTheme())
+	tree.Build(issues)
+	tree.SetSize(80, 10) // height=10 -> effective visible = 8
+
+	// Initially at page 1
+	output := tree.View()
+	if !strings.Contains(output, "Page 1/") {
+		t.Fatalf("expected Page 1/ initially, got:\n%s", output)
+	}
+
+	// Page forward with right arrow
+	tree.PageForwardFull()
+	output = tree.View()
+	if !strings.Contains(output, "Page 2/") {
+		t.Errorf("expected Page 2/ after PageForwardFull, got:\n%s", output)
+	}
+
+	// Page forward again
+	tree.PageForwardFull()
+	output = tree.View()
+	if !strings.Contains(output, "Page 3/") {
+		t.Errorf("expected Page 3/ after second PageForwardFull, got:\n%s", output)
+	}
+
+	// Page backward
+	tree.PageBackwardFull()
+	output = tree.View()
+	if !strings.Contains(output, "Page 2/") {
+		t.Errorf("expected Page 2/ after PageBackwardFull, got:\n%s", output)
+	}
+}
+
+// =============================================================================
+// Filter tests (bd-e3w, bd-05v)
+// =============================================================================
+
+// TestTreeApplyFilterAll verifies "all" filter shows everything
+func TestTreeApplyFilterAll(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Apply "all" filter - nothing should change
+	tree.ApplyFilter("all")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes with 'all' filter, got %d", tree.NodeCount())
+	}
+	if tree.GetFilter() != "all" {
+		t.Errorf("expected filter 'all', got %q", tree.GetFilter())
+	}
+}
+
+// TestTreeApplyFilterOpen verifies "open" filter hides closed issues
+func TestTreeApplyFilterOpen(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "in-progress-1", Title: "In Progress", Priority: 1, IssueType: model.TypeTask, Status: model.StatusInProgress},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyFilter("open")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes with 'open' filter, got %d", tree.NodeCount())
+	}
+	if tree.GetFilter() != "open" {
+		t.Errorf("expected filter 'open', got %q", tree.GetFilter())
+	}
+}
+
+// TestTreeApplyFilterClosed verifies "closed" filter shows only closed issues
+func TestTreeApplyFilterClosed(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{ID: "closed-2", Title: "Tombstone", Priority: 2, IssueType: model.TypeTask, Status: model.StatusTombstone},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyFilter("closed")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes with 'closed' filter, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeApplyFilterReady verifies "ready" filter excludes blocked issues
+func TestTreeApplyFilterReady(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open Ready", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "blocked-1", Title: "Blocked", Priority: 1, IssueType: model.TypeTask, Status: model.StatusBlocked},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{
+			ID: "has-blocker", Title: "Has Open Blocker", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen,
+			Dependencies: []*model.Dependency{
+				{IssueID: "has-blocker", DependsOnID: "open-1", Type: model.DepBlocks},
+			},
+		},
+	}
+
+	// Provide global issue map for blocker resolution
+	globalMap := make(map[string]*model.Issue)
+	for i := range issues {
+		globalMap[issues[i].ID] = &issues[i]
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetGlobalIssueMap(globalMap)
+
+	tree.ApplyFilter("ready")
+
+	// Only "open-1" should pass: blocked-1 has status=blocked, closed-1 is closed,
+	// has-blocker has an open blocker
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 visible node with 'ready' filter, got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s (%s)", i, tree.flatList[i].Issue.ID, tree.flatList[i].Issue.Status)
+		}
+	}
+}
+
+// TestTreeFilterWithHierarchy verifies context ancestors are shown dimmed
+func TestTreeFilterWithHierarchy(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen, CreatedAt: now},
+		{
+			ID: "task-open", Title: "Open Task", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-open", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-closed", Title: "Closed Task", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-closed", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Filter to "closed" - only task-closed matches, epic-1 is context ancestor
+	tree.ApplyFilter("closed")
+
+	// Should show 2 nodes: epic-1 (context) + task-closed (match)
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes (1 context + 1 match), got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s", i, tree.flatList[i].Issue.ID)
+		}
+	}
+
+	// Verify epic-1 is dimmed (context ancestor, not match)
+	if epic := tree.issueMap["epic-1"]; epic != nil {
+		if !tree.IsFilterDimmed(epic) {
+			t.Error("expected epic-1 to be dimmed (context ancestor)")
+		}
+	}
+
+	// Verify task-closed is NOT dimmed (direct match)
+	if task := tree.issueMap["task-closed"]; task != nil {
+		if tree.IsFilterDimmed(task) {
+			t.Error("expected task-closed to NOT be dimmed (direct match)")
+		}
+	}
+}
+
+// TestTreeFilterResetToAll verifies clearing filter restores full tree
+func TestTreeFilterResetToAll(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Apply filter then clear
+	tree.ApplyFilter("open")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with 'open' filter, got %d", tree.NodeCount())
+	}
+
+	tree.ApplyFilter("all")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 nodes after clearing filter, got %d", tree.NodeCount())
+	}
+
+	// filterMatches and contextAncestors should be nil
+	if tree.filterMatches != nil {
+		t.Error("expected filterMatches to be nil after 'all' filter")
+	}
+	if tree.contextAncestors != nil {
+		t.Error("expected contextAncestors to be nil after 'all' filter")
+	}
+}
+
+// TestTreeFilterEmptyResult verifies filter with no matches shows nothing
+func TestTreeFilterEmptyResult(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyFilter("closed")
+	if tree.NodeCount() != 0 {
+		t.Errorf("expected 0 nodes with 'closed' filter (no closed issues), got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeFilterDeepHierarchy verifies ancestor chain is preserved for deep matches
+func TestTreeFilterDeepHierarchy(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "root", Title: "Root", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen, CreatedAt: now},
+		{
+			ID: "mid", Title: "Mid", Priority: 2, IssueType: model.TypeFeature, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "mid", DependsOnID: "root", Type: model.DepParentChild}},
+		},
+		{
+			ID: "leaf-closed", Title: "Leaf Closed", Priority: 3, IssueType: model.TypeTask, Status: model.StatusClosed, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "leaf-closed", DependsOnID: "mid", Type: model.DepParentChild}},
+		},
+		{
+			ID: "leaf-open", Title: "Leaf Open", Priority: 3, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(3 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "leaf-open", DependsOnID: "mid", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Filter to "closed" - only leaf-closed matches
+	// But root and mid should appear as context ancestors
+	tree.ApplyFilter("closed")
+
+	if tree.NodeCount() != 3 {
+		t.Errorf("expected 3 visible nodes (root + mid as context, leaf-closed as match), got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s", i, tree.flatList[i].Issue.ID)
+		}
+	}
+
+	// Verify dimming
+	if !tree.IsFilterDimmed(tree.issueMap["root"]) {
+		t.Error("expected root to be dimmed")
+	}
+	if !tree.IsFilterDimmed(tree.issueMap["mid"]) {
+		t.Error("expected mid to be dimmed")
+	}
+	if tree.IsFilterDimmed(tree.issueMap["leaf-closed"]) {
+		t.Error("expected leaf-closed to NOT be dimmed")
+	}
+}
+
+// TestTreeFilterNoDimmedWithoutFilter verifies IsFilterDimmed returns false when no filter
+func TestTreeFilterNoDimmedWithoutFilter(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "test-1", Title: "Test", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	if tree.IsFilterDimmed(tree.issueMap["test-1"]) {
+		t.Error("expected no dimming when no filter is active")
+	}
+}
+
+// TestTreeSetGlobalIssueMap verifies the global issue map is stored
+func TestTreeSetGlobalIssueMap(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	m := map[string]*model.Issue{
+		"test-1": {ID: "test-1"},
+	}
+	tree.SetGlobalIssueMap(m)
+	if tree.globalIssueMap == nil {
+		t.Error("expected globalIssueMap to be set")
+	}
+	if tree.globalIssueMap["test-1"] == nil {
+		t.Error("expected test-1 in globalIssueMap")
+	}
+}
+
+
+// =============================================================================
+// SortField/SortDirection type refactor tests (bd-x3l)
+// =============================================================================
+
+// TestSortFieldValues verifies that all expected SortField constants exist and have correct values
+func TestSortFieldValues(t *testing.T) {
+	fields := []struct {
+		field SortField
+		name  string
+	}{
+		{SortFieldPriority, "Priority"},
+		{SortFieldCreated, "Created"},
+		{SortFieldUpdated, "Updated"},
+		{SortFieldTitle, "Title"},
+		{SortFieldStatus, "Status"},
+		{SortFieldType, "Type"},
+		{SortFieldDepsCount, "Deps"},
+		{SortFieldPageRank, "PageRank"},
+	}
+
+	for _, tt := range fields {
+		t.Run(tt.name, func(t *testing.T) {
+			label := tt.field.String()
+			if label == "" {
+				t.Errorf("SortField %d has empty string label", tt.field)
+			}
+			if label != tt.name {
+				t.Errorf("SortField.String() = %q, want %q", label, tt.name)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Multi-select (mark) tests (bd-cz0)
+// =============================================================================
+
+// TestTreeToggleMark verifies marking and unmarking a node
+func TestTreeToggleMark(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "item-1", Title: "Item 1", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "item-2", Title: "Item 2", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+		{ID: "item-3", Title: "Item 3", Priority: 3, IssueType: model.TypeTask, CreatedAt: now},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Initially no marks
+	if len(tree.TreeMarkedIDs()) != 0 {
+		t.Errorf("expected 0 marked items initially, got %d", len(tree.TreeMarkedIDs()))
+	}
+
+	// Mark first item
+	tree.ToggleMark()
+	marked := tree.TreeMarkedIDs()
+	if len(marked) != 1 || marked[0] != "item-1" {
+		t.Errorf("expected [item-1] marked, got %v", marked)
+	}
+
+	// Move down and mark second item
+	tree.MoveDown()
+	tree.ToggleMark()
+	marked = tree.TreeMarkedIDs()
+	if len(marked) != 2 {
+		t.Errorf("expected 2 marked items, got %d", len(marked))
+	}
+
+	// Toggle mark on first item (unmark it)
+	tree.MoveUp()
+	tree.ToggleMark()
+	marked = tree.TreeMarkedIDs()
+	if len(marked) != 1 || marked[0] != "item-2" {
+		t.Errorf("expected [item-2] marked after unmarking item-1, got %v", marked)
+	}
+}
+
+// TestTreeUnmarkAll verifies clearing all marks
+func TestTreeUnmarkAll(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "item-1", Title: "Item 1", Priority: 1, IssueType: model.TypeTask},
+		{ID: "item-2", Title: "Item 2", Priority: 2, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Mark both items
+	tree.ToggleMark()
+	tree.MoveDown()
+	tree.ToggleMark()
+	if len(tree.TreeMarkedIDs()) != 2 {
+		t.Fatalf("expected 2 marked items, got %d", len(tree.TreeMarkedIDs()))
+	}
+
+	// Unmark all
+	tree.UnmarkAll()
+	if len(tree.TreeMarkedIDs()) != 0 {
+		t.Errorf("expected 0 marked items after UnmarkAll, got %d", len(tree.TreeMarkedIDs()))
+	}
+}
+
+// TestTreeMarkSurvivesExpandCollapse verifies marks persist across expand/collapse
+func TestTreeMarkSurvivesExpandCollapse(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(t.TempDir()) // isolate from stale tree-state.json
+	tree.Build(issues)
+
+	// Verify initial position
+	if tree.GetSelectedID() != "epic-1" {
+		t.Fatalf("expected initial selection epic-1, got %s", tree.GetSelectedID())
+	}
+
+	// Mark child task
+	tree.MoveDown() // move to task-1
+	if tree.GetSelectedID() != "task-1" {
+		t.Fatalf("expected task-1 after MoveDown, got %s", tree.GetSelectedID())
+	}
+	tree.ToggleMark()
+	if len(tree.TreeMarkedIDs()) != 1 {
+		t.Fatalf("expected 1 marked item, got %d", len(tree.TreeMarkedIDs()))
+	}
+	if tree.TreeMarkedIDs()[0] != "task-1" {
+		t.Fatalf("expected task-1 to be marked, got %v", tree.TreeMarkedIDs())
+	}
+
+	// Collapse root
+	tree.JumpToTop()
+	tree.ToggleExpand()
+
+	// Mark should still be there even though task-1 is hidden
+	if len(tree.TreeMarkedIDs()) != 1 || tree.TreeMarkedIDs()[0] != "task-1" {
+		t.Errorf("marks should survive collapse, got %v", tree.TreeMarkedIDs())
+	}
+
+	// Expand root
+	tree.ToggleExpand()
+	if len(tree.TreeMarkedIDs()) != 1 || tree.TreeMarkedIDs()[0] != "task-1" {
+		t.Errorf("marks should survive expand, got %v", tree.TreeMarkedIDs())
+	}
+}
+
+// TestTreeIsMarked verifies the IsMarked check
+func TestTreeIsMarked(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "item-1", Title: "Item 1", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+		{ID: "item-2", Title: "Item 2", Priority: 2, IssueType: model.TypeTask, CreatedAt: now},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	if tree.IsMarked("item-1") {
+		t.Error("item-1 should not be marked initially")
+	}
+
+	tree.ToggleMark() // marks item-1 (cursor at 0)
+	if !tree.IsMarked("item-1") {
+		t.Error("item-1 should be marked after ToggleMark")
+	}
+	if tree.IsMarked("item-2") {
+		t.Error("item-2 should not be marked")
+	}
+}
+
+// =============================================================================
+// XRay drill-down tests (bd-0rc)
+// =============================================================================
+
+// TestTreeXRayEnterExit verifies entering and exiting XRay mode
+func TestTreeXRayEnterExit(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic 1", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now.Add(2 * time.Hour)},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{ID: "epic-2", Title: "Epic 2", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(t.TempDir())
+	tree.Build(issues)
+
+	// Initially NOT in XRay mode
+	if tree.IsXRayMode() {
+		t.Error("expected NOT in XRay mode initially")
+	}
+
+	// Full tree should show all 3 nodes (epic-1, task-1, epic-2)
+	if tree.NodeCount() != 3 {
+		t.Errorf("expected 3 visible nodes, got %d", tree.NodeCount())
+	}
+
+	// Enter XRay on epic-1 (cursor at 0)
+	tree.ToggleXRay()
+	if !tree.IsXRayMode() {
+		t.Error("expected IN XRay mode after ToggleXRay")
+	}
+	if tree.XRayTitle() != "Epic 1" {
+		t.Errorf("expected XRay title 'Epic 1', got %q", tree.XRayTitle())
+	}
+
+	// Should only show epic-1 and its child task-1
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes in XRay mode, got %d", tree.NodeCount())
+	}
+
+	// epic-2 should NOT be visible
+	found := false
+	for _, node := range tree.flatList {
+		if node.Issue.ID == "epic-2" {
+			found = true
+		}
+	}
+	if found {
+		t.Error("epic-2 should NOT be visible in XRay mode")
+	}
+
+	// Exit XRay
+	tree.ToggleXRay()
+	if tree.IsXRayMode() {
+		t.Error("expected NOT in XRay mode after second ToggleXRay")
+	}
+	if tree.NodeCount() != 3 {
+		t.Errorf("expected 3 visible nodes after exiting XRay, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeXRayOnLeafNode verifies XRay doesn't activate on leaf nodes
+func TestTreeXRayOnLeafNode(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "leaf-1", Title: "Leaf 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Try to enter XRay on a leaf node
+	tree.ToggleXRay()
+	if tree.IsXRayMode() {
+		t.Error("should NOT enter XRay mode on a leaf node")
+	}
+}
+
+// TestTreeXRayNavigationWorks verifies navigation works within XRay subtree
+func TestTreeXRayNavigationWorks(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic 1", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now.Add(2 * time.Hour)},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-2", Title: "Task 2", Priority: 3, IssueType: model.TypeTask, CreatedAt: now,
+			Dependencies: []*model.Dependency{{IssueID: "task-2", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(t.TempDir())
+	tree.Build(issues)
+
+	// Enter XRay on epic-1
+	tree.ToggleXRay()
+	if tree.NodeCount() != 3 {
+		t.Fatalf("expected 3 nodes in XRay (epic-1 + 2 children), got %d", tree.NodeCount())
+	}
+
+	// Navigate down
+	tree.MoveDown()
+	if tree.GetSelectedID() != "task-1" {
+		t.Errorf("expected task-1 after MoveDown, got %s", tree.GetSelectedID())
+	}
+	tree.MoveDown()
+	if tree.GetSelectedID() != "task-2" {
+		t.Errorf("expected task-2 after second MoveDown, got %s", tree.GetSelectedID())
+	}
+
+	// Navigate up
+	tree.MoveUp()
+	if tree.GetSelectedID() != "task-1" {
+		t.Errorf("expected task-1 after MoveUp, got %s", tree.GetSelectedID())
+	}
+
+	// Jump to bottom/top
+	tree.JumpToBottom()
+	if tree.GetSelectedID() != "task-2" {
+		t.Errorf("expected task-2 after JumpToBottom, got %s", tree.GetSelectedID())
+	}
+	tree.JumpToTop()
+	if tree.GetSelectedID() != "epic-1" {
+		t.Errorf("expected epic-1 after JumpToTop, got %s", tree.GetSelectedID())
+	}
+}
+
+// TestTreeXRayExitWithEscape verifies ExitXRay works
+func TestTreeXRayExitWithEscape(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic 1", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now.Add(2 * time.Hour)},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{ID: "root-2", Title: "Root 2", Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(t.TempDir())
+	tree.Build(issues)
+
+	tree.ToggleXRay()
+	if tree.NodeCount() != 2 {
+		t.Fatalf("expected 2 nodes in XRay, got %d", tree.NodeCount())
+	}
+
+	tree.ExitXRay()
+	if tree.IsXRayMode() {
+		t.Error("expected NOT in XRay mode after ExitXRay")
+	}
+	if tree.NodeCount() != 3 {
+		t.Errorf("expected 3 nodes after ExitXRay, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeXRayViewIndicator verifies the View shows XRay indicator
+func TestTreeXRayViewIndicator(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "My Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(t.TempDir())
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	tree.ToggleXRay()
+	view := tree.View()
+
+	// Should show XRay indicator
+	if !strings.Contains(view, "[XRAY:") {
+		t.Errorf("expected [XRAY: ...] indicator in view, got:\n%s", view)
+	}
+	if !strings.Contains(view, "My Epic") {
+		t.Errorf("expected epic title in XRay indicator, got:\n%s", view)
+	}
+}
+
+// =============================================================================
+// Advanced filter tests (bd-08h)
+// =============================================================================
+
+// TestTreeParseFilterPredicates verifies parsing of filter strings
+func TestTreeParseFilterPredicates(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		count int // expected number of predicates
+	}{
+		{"empty", "", 0},
+		{"plain text", "login", 1},
+		{"field:value", "status:open", 1},
+		{"negated", "!closed", 1},
+		{"negated field", "!status:closed", 1},
+		{"combined", "priority:1 !status:closed", 2},
+		{"multiple fields", "type:epic status:open priority:1", 3},
+		{"plain with negation", "login !status:closed", 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			preds := ParseFilterPredicates(tt.input)
+			if len(preds) != tt.count {
+				t.Errorf("ParseFilterPredicates(%q) = %d predicates, want %d", tt.input, len(preds), tt.count)
+			}
+		})
+	}
+}
+
+// TestSortDirectionValues verifies Ascending and Descending constants
+func TestSortDirectionValues(t *testing.T) {
+	if SortAscending == SortDescending {
+		t.Error("SortAscending and SortDescending should be different values")
+	}
+
+	if SortAscending.String() != "Ascending" {
+		t.Errorf("SortAscending.String() = %q, want %q", SortAscending.String(), "Ascending")
+	}
+	if SortDescending.String() != "Descending" {
+		t.Errorf("SortDescending.String() = %q, want %q", SortDescending.String(), "Descending")
+	}
+}
+
+// TestSortDirectionIndicator verifies arrow indicators for sort direction
+func TestSortDirectionIndicator(t *testing.T) {
+	if SortAscending.Indicator() != "▲" {
+		t.Errorf("SortAscending.Indicator() = %q, want %q", SortAscending.Indicator(), "▲")
+	}
+	if SortDescending.Indicator() != "▼" {
+		t.Errorf("SortDescending.Indicator() = %q, want %q", SortDescending.Indicator(), "▼")
+	}
+}
+
+// TestSortDirectionToggle verifies toggling between ascending and descending
+func TestSortDirectionToggle(t *testing.T) {
+	if SortAscending.Toggle() != SortDescending {
+		t.Error("SortAscending.Toggle() should return SortDescending")
+	}
+	if SortDescending.Toggle() != SortAscending {
+		t.Error("SortDescending.Toggle() should return SortAscending")
+	}
+}
+
+// TestSortFieldDefaultDirection verifies each field has a sensible default direction
+func TestSortFieldDefaultDirection(t *testing.T) {
+	// Priority: ascending (P0 first)
+	if SortFieldPriority.DefaultDirection() != SortAscending {
+		t.Error("Priority default should be ascending")
+	}
+	// Created: descending (newest first)
+	if SortFieldCreated.DefaultDirection() != SortDescending {
+		t.Error("Created default should be descending")
+	}
+	// Updated: descending (most recent first)
+	if SortFieldUpdated.DefaultDirection() != SortDescending {
+		t.Error("Updated default should be descending")
+	}
+	// Title: ascending (A-Z)
+	if SortFieldTitle.DefaultDirection() != SortAscending {
+		t.Error("Title default should be ascending")
+	}
+	// PageRank: descending (highest first)
+	if SortFieldPageRank.DefaultDirection() != SortDescending {
+		t.Error("PageRank default should be descending")
+	}
+}
+
+// TestTreeSetSortFieldDirection verifies setting sort field and direction on tree
+func TestTreeSetSortFieldDirection(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "a", Title: "Alpha", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "b", Title: "Beta", Priority: 1, IssueType: model.TypeBug, CreatedAt: now},
+		{ID: "c", Title: "Charlie", Priority: 3, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Sort by title ascending
+	tree.SetSort(SortFieldTitle, SortAscending)
+	if tree.GetSortField() != SortFieldTitle {
+		t.Errorf("expected SortFieldTitle, got %v", tree.GetSortField())
+	}
+	if tree.GetSortDirection() != SortAscending {
+		t.Errorf("expected SortAscending, got %v", tree.GetSortDirection())
+	}
+
+	// Verify sorted order: Alpha, Beta, Charlie
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "a" || ids[1] != "b" || ids[2] != "c" {
+		t.Errorf("expected [a, b, c] for title ascending, got %v", ids)
+	}
+
+	// Sort by title descending
+	tree.SetSort(SortFieldTitle, SortDescending)
+	ids = make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "c" || ids[1] != "b" || ids[2] != "a" {
+		t.Errorf("expected [c, b, a] for title descending, got %v", ids)
+	}
+}
+
+// TestTreeSortByCreated verifies sorting by creation date
+func TestTreeSortByCreated(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "old", Title: "Old", Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
+		{ID: "new", Title: "New", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "mid", Title: "Mid", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Created ascending (oldest first)
+	tree.SetSort(SortFieldCreated, SortAscending)
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "old" || ids[1] != "mid" || ids[2] != "new" {
+		t.Errorf("expected [old, mid, new] for created ascending, got %v", ids)
+	}
+
+	// Created descending (newest first)
+	tree.SetSort(SortFieldCreated, SortDescending)
+	ids = make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "new" || ids[1] != "mid" || ids[2] != "old" {
+		t.Errorf("expected [new, mid, old] for created descending, got %v", ids)
+	}
+}
+
+// TestTreeSortByPriority verifies sorting by priority
+func TestTreeSortByPriority(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "p3", Title: "Low", Priority: 3, IssueType: model.TypeTask},
+		{ID: "p0", Title: "Critical", Priority: 0, IssueType: model.TypeTask},
+		{ID: "p1", Title: "High", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Priority ascending (P0 first)
+	tree.SetSort(SortFieldPriority, SortAscending)
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "p0" || ids[1] != "p1" || ids[2] != "p3" {
+		t.Errorf("expected [p0, p1, p3] for priority ascending, got %v", ids)
+	}
+
+	// Priority descending (P3 first)
+	tree.SetSort(SortFieldPriority, SortDescending)
+	ids = make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "p3" || ids[1] != "p1" || ids[2] != "p0" {
+		t.Errorf("expected [p3, p1, p0] for priority descending, got %v", ids)
+	}
+}
+
+// TestTreeSortByDepsCount verifies sorting by dependency count
+func TestTreeSortByDepsCount(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "no-deps", Title: "No deps", Priority: 1, IssueType: model.TypeTask},
+		{
+			ID: "two-deps", Title: "Two deps", Priority: 1, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{
+				{IssueID: "two-deps", DependsOnID: "no-deps", Type: model.DepBlocks},
+				{IssueID: "two-deps", DependsOnID: "one-dep", Type: model.DepRelated},
+			},
+		},
+		{
+			ID: "one-dep", Title: "One dep", Priority: 1, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{
+				{IssueID: "one-dep", DependsOnID: "no-deps", Type: model.DepBlocks},
+			},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Deps count descending (most deps first)
+	tree.SetSort(SortFieldDepsCount, SortDescending)
+	ids := make([]string, len(tree.flatList))
+	for i, n := range tree.flatList {
+		ids[i] = n.Issue.ID
+	}
+	if ids[0] != "two-deps" || ids[1] != "one-dep" || ids[2] != "no-deps" {
+		t.Errorf("expected [two-deps, one-dep, no-deps] for deps descending, got %v", ids)
+	}
+}
+
+// TestSortModeBackwardsCompatibility verifies old SortMode still works through conversion
+func TestSortModeBackwardsCompatibility(t *testing.T) {
+	// The old SortMode enum should still compile and CycleSortMode should still work
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+		{ID: "b", Title: "B", Priority: 2, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+
+	// CycleSortMode should still function (for backwards compat)
+	tree.CycleSortMode()
+	// Should have changed from default (Created descending, bd-ctu)
+	field := tree.GetSortField()
+	if field == SortFieldCreated && tree.GetSortDirection() == SortDescending {
+		t.Error("cycling should change from default Created/Descending")
+	}
+}
+
+// TestSortFieldCount verifies the total number of sort fields
+func TestSortFieldCount(t *testing.T) {
+	if NumSortFields != 8 {
+		t.Errorf("expected 8 sort fields, got %d", NumSortFields)
+	}
+}
+
+// =============================================================================
+// Sort popup menu tests (bd-t4e)
+// =============================================================================
+
+// TestSortPopupOpenClose verifies opening and closing the sort popup
+func TestSortPopupOpenClose(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+
+	if tree.IsSortPopupOpen() {
+		t.Error("sort popup should be closed initially")
+	}
+
+	tree.OpenSortPopup()
+	if !tree.IsSortPopupOpen() {
+		t.Error("sort popup should be open after OpenSortPopup()")
+	}
+
+	tree.CloseSortPopup()
+	if tree.IsSortPopupOpen() {
+		t.Error("sort popup should be closed after CloseSortPopup()")
+	}
+}
+
+// TestSortPopupCursorNavigation verifies j/k movement in the popup
+func TestSortPopupCursorNavigation(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+	tree.OpenSortPopup()
+
+	// Initially, cursor should be on the current sort field (SortFieldCreated = 1, bd-ctu)
+	if tree.SortPopupCursor() != int(SortFieldCreated) {
+		t.Errorf("expected popup cursor at %d (Created), got %d", SortFieldCreated, tree.SortPopupCursor())
+	}
+
+	// Move down
+	tree.SortPopupDown()
+	if tree.SortPopupCursor() != int(SortFieldUpdated) {
+		t.Errorf("expected popup cursor at %d (Updated), got %d", SortFieldUpdated, tree.SortPopupCursor())
+	}
+
+	// Move up
+	tree.SortPopupUp()
+	if tree.SortPopupCursor() != int(SortFieldCreated) {
+		t.Errorf("expected popup cursor at %d (Created), got %d", SortFieldCreated, tree.SortPopupCursor())
+	}
+
+	// Move up to Priority (one above Created)
+	tree.SortPopupUp()
+	if tree.SortPopupCursor() != int(SortFieldPriority) {
+		t.Errorf("expected popup cursor at %d (Priority), got %d", SortFieldPriority, tree.SortPopupCursor())
+	}
+
+	// Move up at top should stay at top
+	tree.SortPopupUp()
+	if tree.SortPopupCursor() != int(SortFieldPriority) {
+		t.Errorf("expected popup cursor to stay at top, got %d", tree.SortPopupCursor())
+	}
+}
+
+// TestSortPopupSelectField verifies selecting a sort field applies it
+func TestSortPopupSelectField(t *testing.T) {
+	now := time.Now()
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "b", Title: "Beta", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+		{ID: "a", Title: "Alpha", Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
+	}
+	tree.Build(issues)
+
+	tree.OpenSortPopup()
+
+	// Navigate to Title field (index 3) — cursor starts at Created (1, bd-ctu)
+	tree.SortPopupDown() // Updated
+	tree.SortPopupDown() // Title
+	if tree.SortPopupCursor() != int(SortFieldTitle) {
+		t.Fatalf("expected cursor at Title, got %d", tree.SortPopupCursor())
+	}
+
+	// Select it
+	tree.SortPopupSelect()
+
+	// Popup should close
+	if tree.IsSortPopupOpen() {
+		t.Error("popup should close after select")
+	}
+
+	// Sort should be applied: Title ascending
+	if tree.GetSortField() != SortFieldTitle {
+		t.Errorf("expected SortFieldTitle, got %v", tree.GetSortField())
+	}
+	if tree.GetSortDirection() != SortAscending {
+		t.Errorf("expected ascending (Title default), got %v", tree.GetSortDirection())
+	}
+}
+
+// TestSortPopupToggleDirection verifies selecting the current field toggles direction
+func TestSortPopupToggleDirection(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+
+	// Default is SortFieldCreated, SortDescending (bd-ctu)
+	tree.OpenSortPopup()
+
+	// Select Created (already current) -> should toggle direction to ascending
+	tree.SortPopupSelect()
+
+	if tree.GetSortDirection() != SortAscending {
+		t.Errorf("selecting current field should toggle direction to ascending, got %v", tree.GetSortDirection())
+	}
+
+	// Do it again -> should toggle back to descending
+	tree.OpenSortPopup()
+	tree.SortPopupSelect()
+
+	if tree.GetSortDirection() != SortDescending {
+		t.Errorf("selecting current field again should toggle back to descending, got %v", tree.GetSortDirection())
+	}
+}
+
+// TestSortPopupRendering verifies the popup renders field names and indicators
+func TestSortPopupRendering(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetSize(80, 20)
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+	tree.OpenSortPopup()
+
+	view := tree.RenderSortPopup()
+
+	// Should contain all field names
+	for _, name := range []string{"Priority", "Created", "Updated", "Title", "Status", "Type", "Deps", "PageRank"} {
+		if !strings.Contains(view, name) {
+			t.Errorf("popup should contain field name %q, got:\n%s", name, view)
+		}
+	}
+
+	// Should contain a direction indicator for the current sort
+	if !strings.Contains(view, "▲") && !strings.Contains(view, "▼") {
+		t.Errorf("popup should contain a direction indicator, got:\n%s", view)
+	}
+}
+
+// TestSortPopupCursorWrapsAtBottom verifies cursor doesn't go past last field
+func TestSortPopupCursorWrapsAtBottom(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask},
+	}
+	tree.Build(issues)
+	tree.OpenSortPopup()
+
+	// Move to bottom
+	for i := 0; i < int(NumSortFields)+5; i++ {
+		tree.SortPopupDown()
+	}
+	if tree.SortPopupCursor() != int(NumSortFields)-1 {
+		t.Errorf("expected cursor at last field (%d), got %d", int(NumSortFields)-1, tree.SortPopupCursor())
+	}
+}
+
+// =============================================================================
+// Flat mode toggle tests (bd-39v)
+// =============================================================================
+
+// newIsolatedTree creates a TreeModel with an isolated beadsDir to prevent
+// stale tree-state.json files from affecting test results.
+func newIsolatedTree(t *testing.T) TreeModel {
+	t.Helper()
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	return tree
+}
+
+// TestFlatModeDefault verifies flat mode is off by default
+func TestFlatModeDefault(t *testing.T) {
+	tree := newIsolatedTree(t)
+	if tree.IsFlatMode() {
+		t.Error("expected flat mode to be off by default")
+	}
+}
+
+// TestToggleFlatMode verifies ToggleFlatMode flips the flag
+func TestToggleFlatMode(t *testing.T) {
+	tree := newIsolatedTree(t)
+	tree.ToggleFlatMode()
+	if !tree.IsFlatMode() {
+		t.Error("expected flat mode to be on after toggle")
+	}
+	tree.ToggleFlatMode()
+	if tree.IsFlatMode() {
+		t.Error("expected flat mode to be off after second toggle")
+	}
+}
+
+// TestFlatModeShowsAllNodesWithoutHierarchy verifies flat mode lists all nodes
+// at depth 0 without parent-child nesting, even when tree has hierarchy
+func TestFlatModeShowsAllNodesWithoutHierarchy(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task under Epic", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		},
+		{
+			ID: "subtask-1", Title: "Subtask", Priority: 3, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "subtask-1", DependsOnID: "task-1", Type: model.DepParentChild},
+			},
+		},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+
+	// Expand all so we can see the full hierarchy first
+	tree.ExpandAll()
+	if tree.NodeCount() != 3 {
+		t.Fatalf("expected 3 visible nodes after expand all, got %d", tree.NodeCount())
+	}
+
+	// Now collapse all — only epic-1 visible
+	tree.CollapseAll()
+	if tree.NodeCount() != 1 {
+		t.Fatalf("expected 1 visible node after collapse all, got %d", tree.NodeCount())
+	}
+
+	// Toggle flat mode — all 3 issues should be visible regardless of expand state
+	tree.ToggleFlatMode()
+	if tree.NodeCount() != 3 {
+		t.Errorf("expected 3 visible nodes in flat mode (ignoring hierarchy), got %d", tree.NodeCount())
+	}
+
+	// Verify nodes in flat mode have no tree prefix (depth 0 behavior)
+	for i := 0; i < tree.NodeCount(); i++ {
+		node := tree.flatList[i]
+		if node.Depth != 0 {
+			t.Errorf("flat mode node[%d] %s has depth %d, expected 0", i, node.Issue.ID, node.Depth)
+		}
+	}
+}
+
+// =============================================================================
+// Bookmark tests (bd-k4n)
+// =============================================================================
+
+// TestTreeToggleBookmark verifies toggling a bookmark on/off for the selected node
+func TestTreeToggleBookmark(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+		{ID: "issue-2", Title: "Issue 2", Priority: 2, IssueType: model.TypeTask, CreatedAt: now},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// Initially no bookmarks
+	if len(tree.TreeBookmarkedIDs()) != 0 {
+		t.Errorf("expected 0 bookmarks initially, got %d", len(tree.TreeBookmarkedIDs()))
+	}
+
+	// Toggle bookmark on issue-1 (cursor is on first item)
+	tree.ToggleBookmark()
+	bookmarks := tree.TreeBookmarkedIDs()
+	if len(bookmarks) != 1 || bookmarks[0] != "issue-1" {
+		t.Errorf("expected [issue-1] bookmarked, got %v", bookmarks)
+	}
+
+	// Toggle again to remove bookmark
+	tree.ToggleBookmark()
+	if len(tree.TreeBookmarkedIDs()) != 0 {
+		t.Errorf("expected 0 bookmarks after toggle off, got %d", len(tree.TreeBookmarkedIDs()))
+	}
+}
+
+// TestTreeCycleBookmarks verifies cycling through bookmarked nodes with 'B'
+func TestTreeCycleBookmarks(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "issue-0", Title: "Issue 0", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(3 * time.Hour)},
+		{ID: "issue-1", Title: "Issue 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "issue-2", Title: "Issue 2", Priority: 3, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+		{ID: "issue-3", Title: "Issue 3", Priority: 4, IssueType: model.TypeTask, CreatedAt: now},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// Bookmark issue-1 and issue-3
+	tree.MoveDown() // cursor on issue-1
+	tree.ToggleBookmark()
+	tree.MoveDown() // cursor on issue-2
+	tree.MoveDown() // cursor on issue-3
+	tree.ToggleBookmark()
+
+	// Go back to top
+	tree.JumpToTop()
+	if tree.GetSelectedID() != "issue-0" {
+		t.Fatalf("expected cursor on issue-0, got %s", tree.GetSelectedID())
+	}
+
+	// Cycle to next bookmark -> should jump to issue-1
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-1" {
+		t.Errorf("expected cursor on issue-1 after first CycleBookmark, got %s", tree.GetSelectedID())
+	}
+
+	// Cycle again -> should jump to issue-3
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-3" {
+		t.Errorf("expected cursor on issue-3 after second CycleBookmark, got %s", tree.GetSelectedID())
+	}
+
+	// Cycle again -> should wrap around to issue-1
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-1" {
+		t.Errorf("expected cursor on issue-1 after wrap CycleBookmark, got %s", tree.GetSelectedID())
+	}
+}
+
+// TestTreeCycleBookmarkEmpty verifies CycleBookmark does nothing with no bookmarks
+func TestTreeCycleBookmarkEmpty(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-0", Title: "Issue 0", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// No bookmarks - CycleBookmark should not crash and cursor stays
+	tree.CycleBookmark()
+	if tree.GetSelectedID() != "issue-0" {
+		t.Errorf("expected cursor on issue-0 (unchanged), got %s", tree.GetSelectedID())
+	}
+}
+
+// TestTreeBookmarkIndicatorInView verifies bookmarked nodes show a visual indicator
+func TestTreeBookmarkIndicatorInView(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Bookmarked Issue", Priority: 1, IssueType: model.TypeTask},
+		{ID: "issue-2", Title: "Normal Issue", Priority: 2, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.SetSize(120, 20)
+
+	// Bookmark issue-1
+	tree.ToggleBookmark()
+
+	view := tree.View()
+
+	// The bookmarked node should have a star indicator
+	if !strings.Contains(view, "\u2605") { // ★ character
+		t.Errorf("expected bookmark indicator (★) in view for bookmarked node, got:\n%s", view)
+	}
+}
+
+// TestTreeBookmarkPersistence verifies bookmarks are saved/loaded from tree-state.json
+func TestTreeBookmarkPersistence(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+
+	issues := []model.Issue{
+		{ID: "root-1", Title: "Root 1", Status: model.StatusOpen, IssueType: model.TypeEpic},
+		{ID: "child-1", Title: "Child 1", Status: model.StatusOpen, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{{IssueID: "child-1", DependsOnID: "root-1", Type: model.DepParentChild}}},
+	}
+
+	// Build tree with bookmark
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	tree := NewTreeModel(theme)
+	tree.SetBeadsDir(beadsDir)
+	tree.Build(issues)
+
+	// Bookmark root-1
+	tree.ToggleBookmark()
+
+	// Read state file and verify bookmarks field
+	statePath := filepath.Join(beadsDir, "tree-state.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		t.Fatalf("Failed to read state file: %v", err)
+	}
+
+	// The state file should contain a bookmarks field
+	if !strings.Contains(string(data), "bookmarks") {
+		t.Errorf("expected 'bookmarks' in state file, got:\n%s", string(data))
+	}
+
+	// Build a new tree from same issues and verify bookmark is restored
+	tree2 := NewTreeModel(theme)
+	tree2.SetBeadsDir(beadsDir)
+	tree2.Build(issues)
+
+	bookmarks := tree2.TreeBookmarkedIDs()
+	if len(bookmarks) != 1 || bookmarks[0] != "root-1" {
+		t.Errorf("expected [root-1] restored from persistence, got %v", bookmarks)
+	}
+}
+
+// TestTreeBookmarkNoEffectOnEmpty verifies ToggleBookmark on empty tree doesn't crash
+func TestTreeBookmarkNoEffectOnEmpty(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(nil)
+
+	// Should not panic
+	tree.ToggleBookmark()
+	tree.CycleBookmark()
+
+	if len(tree.TreeBookmarkedIDs()) != 0 {
+		t.Error("expected 0 bookmarks on empty tree")
+	}
+}
+
+// =============================================================================
+// Follow mode tests (bd-c0c)
+// =============================================================================
+
+// TestTreeFollowModeToggle verifies 'F' toggles follow mode
+func TestTreeFollowModeToggle(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(nil)
+
+	if tree.GetFollowMode() {
+		t.Error("expected follow mode off initially")
+	}
+
+	tree.ToggleFollowMode()
+	if !tree.GetFollowMode() {
+		t.Error("expected follow mode on after toggle")
+	}
+
+	tree.ToggleFollowMode()
+	if tree.GetFollowMode() {
+		t.Error("expected follow mode off after second toggle")
+	}
+}
+
+// TestTreeFollowModeDetectsNewIssue verifies auto-reveal when a new issue appears
+func TestTreeFollowModeDetectsNewIssue(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.ToggleFollowMode()
+
+	// Establish baseline
+	oldIDs := []string{"epic-1", "task-1"}
+	tree.DetectAndFollowChanges(oldIDs)
+
+	// Simulate adding a new issue
+	newIssues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-new", Title: "New Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-new", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+	tree.Build(newIssues)
+
+	newIDs := []string{"epic-1", "task-1", "task-new"}
+	followedID := tree.DetectAndFollowChanges(newIDs)
+
+	if followedID != "task-new" {
+		t.Errorf("expected follow to reveal task-new, got %q", followedID)
+	}
+	if tree.GetSelectedID() != "task-new" {
+		t.Errorf("expected cursor on task-new after follow, got %s", tree.GetSelectedID())
+	}
+}
+
+// TestFlatModePreservesSortMode verifies flat mode respects the current sort order
+func TestFlatModePreservesSortMode(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 3, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
+		{ID: "b", Title: "B", Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
+		{ID: "c", Title: "C", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+
+	// In default sort mode (created descending, bd-ctu), order should be a(+2h), c(+1h), b(now)
+	tree.ToggleFlatMode()
+	if tree.NodeCount() != 3 {
+		t.Fatalf("expected 3 nodes, got %d", tree.NodeCount())
+	}
+
+	expectedOrder := []string{"a", "c", "b"}
+	for i, expected := range expectedOrder {
+		got := tree.flatList[i].Issue.ID
+		if got != expected {
+			t.Errorf("flat mode node[%d]: expected %s, got %s", i, expected, got)
+		}
+	}
+}
+
+// TestFlatModePreservesFilter verifies flat mode respects the current filter
+func TestFlatModePreservesFilter(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+
+	// Apply "open" filter first, then toggle flat mode
+	tree.ApplyFilter("open")
+	tree.ToggleFlatMode()
+
+	// Should only show open issue
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with open filter in flat mode, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeFilterPredicateNegation verifies negated predicate structure
+func TestTreeFilterPredicateNegation(t *testing.T) {
+	preds := ParseFilterPredicates("!status:closed")
+	if len(preds) != 1 {
+		t.Fatalf("expected 1 predicate, got %d", len(preds))
+	}
+	if !preds[0].Negated {
+		t.Error("expected predicate to be negated")
+	}
+	if preds[0].Field != "status" {
+		t.Errorf("expected field 'status', got %q", preds[0].Field)
+	}
+	if preds[0].Value != "closed" {
+		t.Errorf("expected value 'closed', got %q", preds[0].Value)
+	}
+}
+
+// TestTreeFilterPredicatePlainText verifies plain text predicate
+func TestTreeFilterPredicatePlainText(t *testing.T) {
+	preds := ParseFilterPredicates("login page")
+	if len(preds) != 1 {
+		t.Fatalf("expected 1 predicate (plain text is single), got %d", len(preds))
+	}
+	if preds[0].Field != "" {
+		t.Errorf("expected empty field for plain text, got %q", preds[0].Field)
+	}
+	if preds[0].Value != "login page" {
+		t.Errorf("expected value 'login page', got %q", preds[0].Value)
+	}
+}
+
+// TestTreeAdvancedFilterStatusOpen verifies status:open filter
+func TestTreeAdvancedFilterStatusOpen(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{ID: "wip-1", Title: "WIP", Priority: 1, IssueType: model.TypeTask, Status: model.StatusInProgress},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("status:open")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with status:open, got %d", tree.NodeCount())
+	}
+	if tree.flatList[0].Issue.ID != "open-1" {
+		t.Errorf("expected open-1, got %s", tree.flatList[0].Issue.ID)
+	}
+}
+
+// TestFlatModeViewIndicator verifies the view shows a [FLAT] or [TREE] indicator
+func TestFlatModeViewIndicator(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "test-1", Title: "Test", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	// Tree mode should show TREE indicator
+	view := tree.View()
+	if !strings.Contains(view, "TREE") {
+		t.Errorf("expected TREE indicator in tree mode view")
+	}
+
+	// Flat mode should show FLAT indicator
+	tree.ToggleFlatMode()
+	view = tree.View()
+	if !strings.Contains(view, "FLAT") {
+		t.Errorf("expected FLAT indicator in flat mode view")
+	}
+}
+
+// TestFlatModeToggleBackRestoresTree verifies toggling back restores hierarchy
+func TestFlatModeToggleBackRestoresTree(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+
+	// Record tree mode state
+	treeCount := tree.NodeCount()
+
+	// Toggle to flat, then back to tree
+	tree.ToggleFlatMode()
+	tree.ToggleFlatMode()
+
+	// Should restore tree hierarchy
+	if tree.NodeCount() != treeCount {
+		t.Errorf("expected %d nodes after restoring tree mode, got %d", treeCount, tree.NodeCount())
+	}
+
+	// Verify hierarchy is restored (task-1 should have depth > 0)
+	for _, node := range tree.flatList {
+		if node.Issue.ID == "task-1" && node.Depth == 0 {
+			t.Error("expected task-1 to have depth > 0 in restored tree mode")
+		}
+	}
+}
+
+// =============================================================================
+// Sticky scroll tests (bd-2z9)
+// =============================================================================
+
+// TestStickyScrollNoParentOffScreen verifies no sticky header when parent is visible
+func TestStickyScrollNoParentOffScreen(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic One", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task One", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+	tree.SetSize(100, 20) // Large viewport - everything visible
+
+	// Select task-1 (child) — parent epic-1 is visible on screen
+	tree.MoveDown()
+	if tree.GetSelectedID() != "task-1" {
+		t.Fatalf("expected task-1 selected, got %s", tree.GetSelectedID())
+	}
+
+	// No sticky lines should be generated since parent is visible
+	lines := tree.StickyScrollLines()
+	if len(lines) != 0 {
+		t.Errorf("expected 0 sticky lines when parent is visible, got %d", len(lines))
+	}
+}
+
+// TestStickyScrollParentOffScreen verifies sticky header appears when parent scrolls off
+func TestStickyScrollParentOffScreen(t *testing.T) {
+	now := time.Now()
+
+	// Create a deep tree with enough nodes to force scrolling
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic One", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+	}
+	// Add 20 children under epic-1 so the parent scrolls off screen
+	for i := 0; i < 20; i++ {
+		issues = append(issues, model.Issue{
+			ID:        fmt.Sprintf("task-%02d", i),
+			Title:     fmt.Sprintf("Task %02d", i),
+			Priority:  2,
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(time.Duration(i+1) * time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: fmt.Sprintf("task-%02d", i), DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		})
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+	tree.SetSize(100, 10) // Small viewport — will need scrolling
+
+	// Move cursor down until parent scrolls off screen
+	for i := 0; i < 15; i++ {
+		tree.MoveDown()
+	}
+
+	// Parent epic-1 should now be off screen
+	start, _ := tree.visibleRange()
+	if start == 0 {
+		t.Fatal("expected viewport to have scrolled past the parent")
+	}
+
+	// Sticky lines should contain parent info
+	lines := tree.StickyScrollLines()
+	if len(lines) == 0 {
+		t.Error("expected sticky scroll lines when parent is off screen")
+	}
+
+	// The sticky line should reference the parent issue
+	found := false
+	for _, line := range lines {
+		if strings.Contains(line, "Epic One") || strings.Contains(line, "epic-1") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("sticky lines should reference parent 'Epic One', got: %v", lines)
+	}
+}
+
+// TestStickyScrollMaxLines verifies sticky scroll is limited to 2 lines max
+func TestStickyScrollMaxLines(t *testing.T) {
+	now := time.Now()
+
+	// Create a deeply nested tree: epic -> feature -> task -> many subtasks
+	issues := []model.Issue{
+		{ID: "epic", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "feature", Title: "Feature", Priority: 1, IssueType: model.TypeFeature, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "feature", DependsOnID: "epic", Type: model.DepParentChild},
+			},
+		},
+		{
+			ID: "task", Title: "Task", Priority: 1, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "task", DependsOnID: "feature", Type: model.DepParentChild},
+			},
+		},
+	}
+	// Add subtasks under task
+	for i := 0; i < 20; i++ {
+		issues = append(issues, model.Issue{
+			ID:        fmt.Sprintf("sub-%02d", i),
+			Title:     fmt.Sprintf("Subtask %02d", i),
+			Priority:  2,
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(time.Duration(i+3) * time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: fmt.Sprintf("sub-%02d", i), DependsOnID: "task", Type: model.DepParentChild},
+			},
+		})
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+	tree.SetSize(100, 10) // Small viewport
+
+	// Expand all nodes to make subtasks visible
+	tree.ExpandAll()
+
+	// Move cursor far down so all ancestors scroll off
+	for i := 0; i < 18; i++ {
+		tree.MoveDown()
+	}
+
+	lines := tree.StickyScrollLines()
+
+	// Should be at most 2 lines (don't consume too much viewport space)
+	if len(lines) > 2 {
+		t.Errorf("expected at most 2 sticky scroll lines, got %d", len(lines))
+	}
+}
+
+// TestStickyScrollInFlatMode verifies no sticky scroll in flat mode
+func TestStickyScrollInFlatMode(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		},
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+	tree.SetSize(100, 10)
+
+	// Switch to flat mode
+	tree.ToggleFlatMode()
+
+	lines := tree.StickyScrollLines()
+	if len(lines) != 0 {
+		t.Errorf("expected 0 sticky lines in flat mode, got %d", len(lines))
+	}
+}
+
+// TestStickyScrollRenderedInView verifies sticky scroll appears in the View output
+func TestStickyScrollRenderedInView(t *testing.T) {
+	now := time.Now()
+
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic One", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+	}
+	for i := 0; i < 20; i++ {
+		issues = append(issues, model.Issue{
+			ID:        fmt.Sprintf("task-%02d", i),
+			Title:     fmt.Sprintf("Task %02d", i),
+			Priority:  2,
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(time.Duration(i+1) * time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: fmt.Sprintf("task-%02d", i), DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		})
+	}
+
+	tree := newIsolatedTree(t)
+	tree.Build(issues)
+	tree.SetSize(100, 10)
+
+	// Scroll down past parent
+	for i := 0; i < 15; i++ {
+		tree.MoveDown()
+	}
+
+	view := tree.View()
+	// The view should contain some indicator of the sticky parent
+	// The sticky parent line contains the parent's title in a muted style
+	if !strings.Contains(view, "Epic One") {
+		t.Errorf("expected sticky parent 'Epic One' in view output when parent is scrolled off-screen")
+	}
+}
+
+// TestTreeAdvancedFilterNegation verifies !status:closed filter
+func TestTreeAdvancedFilterNegation(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-1", Title: "Open", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-1", Title: "Closed", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{ID: "wip-1", Title: "WIP", Priority: 1, IssueType: model.TypeTask, Status: model.StatusInProgress},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("!status:closed")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 nodes with !status:closed, got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s (%s)", i, tree.flatList[i].Issue.ID, tree.flatList[i].Issue.Status)
+		}
+	}
+}
+
+// TestTreeAdvancedFilterPriority verifies priority:N filter
+func TestTreeAdvancedFilterPriority(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "p1", Title: "P1 Item", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "p2", Title: "P2 Item", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "p3", Title: "P3 Item", Priority: 3, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("priority:1")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with priority:1, got %d", tree.NodeCount())
+	}
+	if tree.flatList[0].Issue.ID != "p1" {
+		t.Errorf("expected p1, got %s", tree.flatList[0].Issue.ID)
+	}
+}
+
+// TestTreeAdvancedFilterType verifies type:epic filter
+func TestTreeAdvancedFilterType(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen},
+		{ID: "task-1", Title: "Task", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "bug-1", Title: "Bug", Priority: 1, IssueType: model.TypeBug, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("type:epic")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with type:epic, got %d", tree.NodeCount())
+	}
+	if tree.flatList[0].Issue.ID != "epic-1" {
+		t.Errorf("expected epic-1, got %s", tree.flatList[0].Issue.ID)
+	}
+}
+
+// TestTreeAdvancedFilterCombined verifies combined filters
+func TestTreeAdvancedFilterCombined(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-p1", Title: "Open P1", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "closed-p1", Title: "Closed P1", Priority: 1, IssueType: model.TypeTask, Status: model.StatusClosed},
+		{ID: "open-p2", Title: "Open P2", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("priority:1 !status:closed")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node with priority:1 !status:closed, got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s", i, tree.flatList[i].Issue.ID)
+		}
+	}
+	if tree.NodeCount() > 0 && tree.flatList[0].Issue.ID != "open-p1" {
+		t.Errorf("expected open-p1, got %s", tree.flatList[0].Issue.ID)
+	}
+}
+
+// TestTreeAdvancedFilterPlainTextFuzzy verifies plain text works as fuzzy title search
+func TestTreeAdvancedFilterPlainTextFuzzy(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "login-1", Title: "Fix login page", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "signup-1", Title: "Add signup flow", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "logout-1", Title: "Logout button broken", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("login")
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 node matching 'login', got %d", tree.NodeCount())
+	}
+	if tree.NodeCount() > 0 && tree.flatList[0].Issue.ID != "login-1" {
+		t.Errorf("expected login-1, got %s", tree.flatList[0].Issue.ID)
+	}
+}
+
+// TestTreeAdvancedFilterClearRestores verifies clearing the filter restores the tree
+func TestTreeAdvancedFilterClearRestores(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "a", Title: "A", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+		{ID: "b", Title: "B", Priority: 2, IssueType: model.TypeTask, Status: model.StatusClosed},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	tree.ApplyAdvancedFilter("status:open")
+	if tree.NodeCount() != 1 {
+		t.Fatalf("expected 1 node with filter, got %d", tree.NodeCount())
+	}
+
+	tree.ApplyAdvancedFilter("")
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 nodes after clearing filter, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeMarkRenderIndicator verifies marked nodes show visual marker in View()
+func TestTreeMarkRenderIndicator(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "item-1", Title: "Item 1", Priority: 1, IssueType: model.TypeTask},
+		{ID: "item-2", Title: "Item 2", Priority: 2, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	// Mark first item
+	tree.ToggleMark()
+
+	view := tree.View()
+	// The marked item should have a visual marker (e.g., "●")
+	if !strings.Contains(view, "●") {
+		t.Errorf("expected mark indicator '●' in view for marked item, got:\n%s", view)
+	}
+}
+
+// TestTreeFollowModeOffDoesNotFollow verifies no auto-reveal when follow mode is off
+func TestTreeFollowModeOffDoesNotFollow(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+
+	// Follow mode is off (default)
+	oldIDs := []string{"issue-1"}
+	tree.DetectAndFollowChanges(oldIDs)
+
+	// Add new issue
+	newIssues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+		{ID: "issue-2", Title: "Issue 2", Priority: 2, IssueType: model.TypeTask},
+	}
+	tree.Build(newIssues)
+
+	newIDs := []string{"issue-1", "issue-2"}
+	followedID := tree.DetectAndFollowChanges(newIDs)
+
+	if followedID != "" {
+		t.Errorf("expected no follow when mode is off, got %q", followedID)
+	}
+}
+
+// TestTreeFollowModeNoChangeNoFollow verifies no action when issue list is unchanged
+func TestTreeFollowModeNoChangeNoFollow(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.ToggleFollowMode()
+
+	ids := []string{"issue-1"}
+	tree.DetectAndFollowChanges(ids)
+
+	// Same IDs again — no change
+	followedID := tree.DetectAndFollowChanges(ids)
+	if followedID != "" {
+		t.Errorf("expected no follow when IDs unchanged, got %q", followedID)
+	}
+}
+
+// TestTreeFollowModeIndicatorInView verifies [FOLLOW] badge when follow mode is active
+func TestTreeFollowModeIndicatorInView(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "issue-1", Title: "Issue 1", Priority: 1, IssueType: model.TypeTask},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	// No follow mode -> no badge
+	view := tree.View()
+	if strings.Contains(view, "FOLLOW") {
+		t.Error("expected no FOLLOW badge when follow mode is off")
+	}
+
+	// Enable follow mode
+	tree.ToggleFollowMode()
+	view = tree.View()
+	if !strings.Contains(view, "FOLLOW") {
+		t.Errorf("expected FOLLOW badge when follow mode is on, got:\n%s", view)
+	}
+}
+
+// TestTreeFollowModeExpandsCollapsedParent verifies auto-expand of collapsed parents
+func TestTreeFollowModeExpandsCollapsedParent(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.ToggleFollowMode()
+
+	// Collapse the parent
+	tree.CollapseAll()
+	if tree.NodeCount() != 1 {
+		t.Fatalf("expected 1 node after collapse, got %d", tree.NodeCount())
+	}
+
+	// Establish baseline
+	oldIDs := []string{"epic-1", "task-1"}
+	tree.DetectAndFollowChanges(oldIDs)
+
+	// Add a child under epic-1
+	newIssues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-new", Title: "New Task", Priority: 2, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-new", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+	tree.Build(newIssues)
+
+	newIDs := []string{"epic-1", "task-1", "task-new"}
+	followedID := tree.DetectAndFollowChanges(newIDs)
+
+	if followedID != "task-new" {
+		t.Errorf("expected follow to reveal task-new, got %q", followedID)
+	}
+	// Parent should have been expanded to make task-new visible
+	if tree.NodeCount() < 3 {
+		t.Errorf("expected at least 3 visible nodes (parent expanded), got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeConnectorAlignmentOnSelectedRow verifies that tree connector characters
+// (│, ├, └) on the selected row align with the same characters on non-selected
+// sibling rows. Regression test for bd-6yz.
+func TestTreeConnectorAlignmentOnSelectedRow(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Parent Epic", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen, CreatedAt: now.Add(2 * time.Hour)},
+		{
+			ID: "task-1", Title: "First Child", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+		{
+			ID: "task-2", Title: "Second Child", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now,
+			Dependencies: []*model.Dependency{{IssueID: "task-2", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(filepath.Join(t.TempDir(), ".beads"))
+	tree.Build(issues)
+	tree.SetSize(120, 30)
+
+	// Select the first child (index 1 in flatList: epic=0, task-1=1, task-2=2)
+	tree.MoveDown()
+
+	if tree.GetSelectedID() != "task-1" {
+		t.Fatalf("expected task-1 selected, got %q", tree.GetSelectedID())
+	}
+
+	view := tree.View()
+	lines := strings.Split(view, "\n")
+
+	// Find lines containing task-1 (selected) and task-2 (not selected) by ID
+	var task1Line, task2Line string
+	for _, line := range lines {
+		plain := stripANSI(line)
+		if strings.Contains(plain, "task-1") {
+			task1Line = plain
+		}
+		if strings.Contains(plain, "task-2") {
+			task2Line = plain
+		}
+	}
+
+	if task1Line == "" || task2Line == "" {
+		t.Fatalf("could not find task-1 and task-2 lines in view output:\n%s", view)
+	}
+
+	// Find the column position of the branch connector (├ or └) in each line.
+	// Both siblings should have their connector at the same column.
+	findConnectorCol := func(line string) int {
+		for i, r := range []rune(line) {
+			if r == '├' || r == '└' || r == '│' {
+				return i
+			}
+		}
+		return -1
+	}
+
+	col1 := findConnectorCol(task1Line)
+	col2 := findConnectorCol(task2Line)
+
+	if col1 == -1 || col2 == -1 {
+		t.Fatalf("could not find connector chars: task-1 col=%d, task-2 col=%d\ntask-1: %q\ntask-2: %q", col1, col2, task1Line, task2Line)
+	}
+
+	if col1 != col2 {
+		t.Errorf("tree connectors misaligned: task-1 connector at column %d, task-2 at column %d\ntask-1: %q\ntask-2: %q", col1, col2, task1Line, task2Line)
+	}
+}
+
+// =============================================================================
+// Default view on launch (bd-dxc)
+// =============================================================================
+
+// TestTreeViewIsDefaultOnLaunch verifies that NewModel starts in tree view
+// rather than list view, with the tree properly built and focused.
+func TestTreeViewIsDefaultOnLaunch(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic One", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen},
+		{
+			ID: "task-1", Title: "Task under Epic", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen,
+			Dependencies: []*model.Dependency{
+				{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		},
+		{ID: "task-2", Title: "Standalone Task", Priority: 3, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	m := NewModel(issues, nil, "")
+
+	// Focus should be tree, not list
+	if m.focused != focusTree {
+		t.Errorf("expected focused = focusTree, got %v (FocusState = %q)", m.focused, m.FocusState())
+	}
+
+	// treeViewActive flag should be set
+	if !m.treeViewActive {
+		t.Error("expected treeViewActive = true on launch")
+	}
+
+	// Tree should be built with nodes visible
+	if m.TreeNodeCount() == 0 {
+		t.Error("expected tree to have visible nodes after build, got 0")
+	}
+}
+
+// TestTreeViewDefaultCanSwitchToList verifies that pressing 'E' from the
+// default tree view switches back to list view.
+func TestTreeViewDefaultCanSwitchToList(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "bv-1", Title: "Issue One", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	m := NewModel(issues, nil, "")
+
+	// Should start in tree
+	if m.FocusState() != "tree" {
+		t.Fatalf("expected initial focus = tree, got %q", m.FocusState())
+	}
+
+	// Press 'E' to toggle out of tree view (tree toggle key is 'E')
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}})
+	m = newM.(Model)
+
+	if m.FocusState() != "list" {
+		t.Errorf("after pressing 'E', expected focus = list, got %q", m.FocusState())
+	}
+	if m.treeViewActive {
+		t.Error("after pressing 'E', expected treeViewActive = false")
+	}
+}
+
+// TestTreeDefaultSortCreatedDesc verifies that the default sort order is
+// Created/Descending (newest first) in the tree view (bd-2ty).
+// This is a regression test: the tree was sorting by priority instead of
+// by creation date descending because buildIssueTreeNodes used a hardcoded
+// priority-based sort and Build() never re-sorted using the model's configured
+// sortField/sortDirection.
+func TestTreeDefaultSortCreatedDesc(t *testing.T) {
+	now := time.Now()
+
+	// Create issues with different creation dates and priorities.
+	// If sorted by priority, the order would be: P0, P1, P2
+	// If sorted by created desc, the order should be: newest, middle, oldest
+	issues := []model.Issue{
+		{
+			ID:        "old-1",
+			Title:     "Oldest issue",
+			Priority:  0, // Highest priority
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(-3 * time.Hour),
+		},
+		{
+			ID:        "mid-2",
+			Title:     "Middle issue",
+			Priority:  1,
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(-1 * time.Hour),
+		},
+		{
+			ID:        "new-3",
+			Title:     "Newest issue",
+			Priority:  2, // Lowest priority
+			IssueType: model.TypeTask,
+			CreatedAt: now,
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+
+	// Verify default sort settings
+	if tree.GetSortField() != SortFieldCreated {
+		t.Fatalf("expected default sort field = SortFieldCreated, got %v", tree.GetSortField())
+	}
+	if tree.GetSortDirection() != SortDescending {
+		t.Fatalf("expected default sort direction = SortDescending, got %v", tree.GetSortDirection())
+	}
+
+	tree.Build(issues)
+
+	// The flat list should be ordered newest-first (created descending).
+	if tree.NodeCount() != 3 {
+		t.Fatalf("expected 3 nodes, got %d", tree.NodeCount())
+	}
+
+	// Navigate through the flat list and collect issue IDs in display order.
+	var displayOrder []string
+	for i := 0; i < tree.NodeCount(); i++ {
+		tree.cursor = i
+		issue := tree.SelectedIssue()
+		if issue == nil {
+			t.Fatalf("node at index %d has nil issue", i)
+		}
+		displayOrder = append(displayOrder, issue.ID)
+	}
+
+	// Expected: newest first (created descending)
+	expectedOrder := []string{"new-3", "mid-2", "old-1"}
+	for i, expected := range expectedOrder {
+		if displayOrder[i] != expected {
+			t.Errorf("position %d: expected %s, got %s (display order: %v)",
+				i, expected, displayOrder[i], displayOrder)
+		}
+	}
+}
+
+// TestTreeDefaultSortCreatedDescWithHierarchy verifies that the default sort
+// (Created/Descending) works correctly with parent-child hierarchies (bd-2ty).
+// Both root nodes and sibling children should be sorted newest-first.
+func TestTreeDefaultSortCreatedDescWithHierarchy(t *testing.T) {
+	now := time.Now()
+
+	issues := []model.Issue{
+		{
+			ID:        "epic-old",
+			Title:     "Old Epic",
+			Priority:  0,
+			IssueType: model.TypeEpic,
+			CreatedAt: now.Add(-5 * time.Hour),
+		},
+		{
+			ID:        "epic-new",
+			Title:     "New Epic",
+			Priority:  1,
+			IssueType: model.TypeEpic,
+			CreatedAt: now.Add(-1 * time.Hour),
+		},
+		{
+			// Child of old epic, created recently
+			ID:        "child-new",
+			Title:     "New Child",
+			Priority:  2,
+			IssueType: model.TypeTask,
+			CreatedAt: now,
+			Dependencies: []*model.Dependency{
+				{IssueID: "child-new", DependsOnID: "epic-old", Type: model.DepParentChild},
+			},
+		},
+		{
+			// Child of old epic, created long ago
+			ID:        "child-old",
+			Title:     "Old Child",
+			Priority:  0,
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(-4 * time.Hour),
+			Dependencies: []*model.Dependency{
+				{IssueID: "child-old", DependsOnID: "epic-old", Type: model.DepParentChild},
+			},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Collect display order. With created desc:
+	// Root order: epic-new (newer) before epic-old (older)
+	// Under epic-old: child-new (newer) before child-old (older)
+	// Total flat list with default expand (epics expanded):
+	//   epic-new, epic-old, child-new, child-old
+	var displayOrder []string
+	for i := 0; i < tree.NodeCount(); i++ {
+		tree.cursor = i
+		issue := tree.SelectedIssue()
+		if issue == nil {
+			t.Fatalf("node at index %d has nil issue", i)
+		}
+		displayOrder = append(displayOrder, issue.ID)
+	}
+
+	// Verify root ordering: newest epic first
+	rootOrder := []string{}
+	for _, id := range displayOrder {
+		if id == "epic-old" || id == "epic-new" {
+			rootOrder = append(rootOrder, id)
+		}
+	}
+	if len(rootOrder) < 2 || rootOrder[0] != "epic-new" {
+		t.Errorf("expected epic-new before epic-old in root order, got %v (full: %v)", rootOrder, displayOrder)
+	}
+
+	// Verify child ordering under epic-old: newest child first
+	childOrder := []string{}
+	for _, id := range displayOrder {
+		if id == "child-new" || id == "child-old" {
+			childOrder = append(childOrder, id)
+		}
+	}
+	if len(childOrder) < 2 || childOrder[0] != "child-new" {
+		t.Errorf("expected child-new before child-old in child order, got %v (full: %v)", childOrder, displayOrder)
+	}
+}
+
+// TestTreeViewDefaultEmptyIssues verifies default tree view works with zero issues.
+func TestTreeViewDefaultEmptyIssues(t *testing.T) {
+	m := NewModel([]model.Issue{}, nil, "")
+
+	if m.focused != focusTree {
+		t.Errorf("expected focused = focusTree even with 0 issues, got %v", m.focused)
+	}
+	if !m.treeViewActive {
+		t.Error("expected treeViewActive = true even with 0 issues")
+	}
+	if m.TreeNodeCount() != 0 {
+		t.Errorf("expected 0 tree nodes for empty issues, got %d", m.TreeNodeCount())
+	}
+}
+
+// bd-och: sort indicator should appear in tree header
+func TestTreeHeaderShowsSortIndicator(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetSize(120, 40)
+
+	// Default sort is Created ▼
+	header := tree.RenderHeader()
+	if !strings.Contains(header, "Created") {
+		t.Fatalf("expected header to contain sort field 'Created', got %q", header)
+	}
+	if !strings.Contains(header, "▼") {
+		t.Fatalf("expected header to contain '▼' for descending sort, got %q", header)
+	}
+
+	// Change sort to Priority ascending
+	tree.SetSort(SortFieldPriority, SortAscending)
+	header = tree.RenderHeader()
+	if !strings.Contains(header, "Priority") {
+		t.Fatalf("expected header to contain 'Priority' after sort change, got %q", header)
+	}
+	if !strings.Contains(header, "▲") {
+		t.Fatalf("expected header to contain '▲' for ascending sort, got %q", header)
+	}
+}
+
+// bd-2qw: sort field and direction should persist to tree-state.json
+func TestTreeSortPersistence(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	beadsDir := filepath.Join(t.TempDir(), ".beads")
+	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	tree.SetBeadsDir(beadsDir)
+
+	issues := []model.Issue{
+		{ID: "a", Title: "Alpha", IssueType: model.TypeTask, Priority: 1, CreatedAt: time.Now()},
+	}
+	tree.Build(issues)
+
+	// Change sort to Title ascending and trigger save
+	tree.SetSort(SortFieldTitle, SortAscending)
+	tree.saveState()
+
+	// Create a new tree and load state
+	tree2 := NewTreeModel(newTreeTestTheme())
+	tree2.SetBeadsDir(beadsDir)
+	tree2.Build(issues) // loadState is called inside Build
+
+	if tree2.GetSortField() != SortFieldTitle {
+		t.Fatalf("expected sort field to persist as Title, got %v", tree2.GetSortField())
+	}
+	if tree2.GetSortDirection() != SortAscending {
+		t.Fatalf("expected sort direction to persist as Ascending, got %v", tree2.GetSortDirection())
 	}
 }

@@ -10,9 +10,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/Dicklesworthstone/beads_viewer/pkg/analysis"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/model"
-	"github.com/Dicklesworthstone/beads_viewer/pkg/recipe"
+	"github.com/vanderheijden86/beadwork/pkg/analysis"
+	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/beadwork/pkg/recipe"
 )
 
 func TestDataSnapshot_Empty(t *testing.T) {
@@ -33,8 +33,8 @@ func TestDataSnapshot_Empty(t *testing.T) {
 }
 
 func TestFreshnessThresholds_FromEnv(t *testing.T) {
-	t.Setenv("BV_FRESHNESS_WARN_S", "15")
-	t.Setenv("BV_FRESHNESS_STALE_S", "90")
+	t.Setenv("BW_FRESHNESS_WARN_S", "15")
+	t.Setenv("BW_FRESHNESS_STALE_S", "90")
 
 	if got := freshnessWarnThreshold(); got != 15*time.Second {
 		t.Errorf("freshnessWarnThreshold()=%v, want %v", got, 15*time.Second)
@@ -43,8 +43,8 @@ func TestFreshnessThresholds_FromEnv(t *testing.T) {
 		t.Errorf("freshnessStaleThreshold()=%v, want %v", got, 90*time.Second)
 	}
 
-	t.Setenv("BV_FRESHNESS_WARN_S", "-1")
-	t.Setenv("BV_FRESHNESS_STALE_S", "nope")
+	t.Setenv("BW_FRESHNESS_WARN_S", "-1")
+	t.Setenv("BW_FRESHNESS_STALE_S", "nope")
 
 	if got := freshnessWarnThreshold(); got != 30*time.Second {
 		t.Errorf("freshnessWarnThreshold() invalid env=%v, want %v", got, 30*time.Second)
@@ -646,7 +646,10 @@ func TestSnapshotSwap_PreservesBoardSelectionByID(t *testing.T) {
 	}
 
 	m := NewModel(issues, nil, "")
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")})
+	// Exit default tree view so 'b' activates board view (bd-dxc)
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	m = newM.(Model)
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("b")})
 	m = newM.(Model)
 
 	if m.focused != focusBoard {
@@ -831,11 +834,9 @@ func TestSnapshotSwap_RebuildsTreeWhenFocusedAndPreservesSelection(t *testing.T)
 	}
 	m.tree.SetBeadsDir(beadsDir)
 
-	// Enter tree view and select the child.
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
-	m = newM.(Model)
+	// Model starts in tree view by default (bd-dxc); verify and select the child.
 	if m.focused != focusTree {
-		t.Fatalf("expected focusTree, got %v", m.focused)
+		t.Fatalf("expected focusTree on launch, got %v", m.focused)
 	}
 	m.tree.MoveDown()
 	selected := m.tree.SelectedIssue()
@@ -862,7 +863,7 @@ func TestSnapshotSwap_RebuildsTreeWhenFocusedAndPreservesSelection(t *testing.T)
 	}
 	snapshot := NewSnapshotBuilder(updated).Build()
 
-	newM, _ = m.Update(SnapshotReadyMsg{Snapshot: snapshot})
+	newM, _ := m.Update(SnapshotReadyMsg{Snapshot: snapshot})
 	m = newM.(Model)
 	if m.focused != focusTree {
 		t.Fatalf("expected focusTree after swap, got %v", m.focused)

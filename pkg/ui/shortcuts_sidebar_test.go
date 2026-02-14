@@ -166,3 +166,139 @@ func TestShortcutsSidebarWidth(t *testing.T) {
 		t.Errorf("Expected Width() = 34, got %d", sidebar.Width())
 	}
 }
+
+func TestShortcutsSidebarScrollClampOnView(t *testing.T) {
+	theme := Theme{
+		Renderer:  lipgloss.DefaultRenderer(),
+		Primary:   lipgloss.AdaptiveColor{Light: "#00ff00", Dark: "#00ff00"},
+		Secondary: lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"},
+		Base:      lipgloss.NewStyle(),
+	}
+	sidebar := NewShortcutsSidebar(theme)
+	// Set a very small height so content overflows
+	sidebar.SetSize(34, 10)
+	sidebar.SetContext("list") // list context has many sections
+
+	// Scroll way past the end
+	for i := 0; i < 200; i++ {
+		sidebar.ScrollDown()
+	}
+
+	// View() should clamp scrollOffset to maxScroll
+	sidebar.View()
+
+	// After rendering, scrollOffset should be clamped (not 200)
+	if sidebar.scrollOffset >= 200 {
+		t.Errorf("Expected scrollOffset to be clamped, got %d", sidebar.scrollOffset)
+	}
+}
+
+func TestShortcutsSidebarScrollIndicators(t *testing.T) {
+	theme := Theme{
+		Renderer:  lipgloss.DefaultRenderer(),
+		Primary:   lipgloss.AdaptiveColor{Light: "#00ff00", Dark: "#00ff00"},
+		Secondary: lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"},
+		Base:      lipgloss.NewStyle(),
+	}
+	sidebar := NewShortcutsSidebar(theme)
+	// Use a small height to force overflow
+	sidebar.SetSize(34, 10)
+	sidebar.SetContext("list")
+
+	// At top: should show down indicator but not up
+	sidebar.ResetScroll()
+	view := sidebar.View()
+	if !strings.Contains(view, "\u25bc") { // ▼
+		t.Error("Expected down arrow indicator at top of scrollable content")
+	}
+
+	// Scroll down a bit: should show both indicators
+	for i := 0; i < 5; i++ {
+		sidebar.ScrollDown()
+	}
+	view = sidebar.View()
+	if !strings.Contains(view, "\u25b2") { // ▲
+		t.Error("Expected up arrow indicator when scrolled down")
+	}
+	if !strings.Contains(view, "\u25bc") { // ▼
+		t.Error("Expected down arrow indicator when not at bottom")
+	}
+
+	// Scroll to bottom: should show up indicator but not down
+	for i := 0; i < 200; i++ {
+		sidebar.ScrollDown()
+	}
+	view = sidebar.View()
+	if !strings.Contains(view, "\u25b2") { // ▲
+		t.Error("Expected up arrow indicator at bottom")
+	}
+	// At the bottom, no down arrow
+	// Count occurrences of ▼ - there should be none
+	if strings.Contains(view, "\u25bc") {
+		t.Error("Expected no down arrow indicator at bottom of scrollable content")
+	}
+}
+
+func TestShortcutsSidebarTreeContextIncludesEmacsShortcuts(t *testing.T) {
+	theme := Theme{
+		Renderer:  lipgloss.DefaultRenderer(),
+		Primary:   lipgloss.AdaptiveColor{Light: "#00ff00", Dark: "#00ff00"},
+		Secondary: lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"},
+		Base:      lipgloss.NewStyle(),
+	}
+	sidebar := NewShortcutsSidebar(theme)
+	sidebar.SetSize(34, 50)
+	sidebar.SetContext("tree")
+
+	view := sidebar.View()
+
+	// New emacs-inspired shortcuts should be listed in tree context
+	for _, expected := range []string{"Occur"} {
+		if !strings.Contains(view, expected) {
+			t.Errorf("Expected tree context to include %q shortcut", expected)
+		}
+	}
+}
+
+func TestShortcutsSidebarNeedsScroll(t *testing.T) {
+	theme := Theme{
+		Renderer:  lipgloss.DefaultRenderer(),
+		Primary:   lipgloss.AdaptiveColor{Light: "#00ff00", Dark: "#00ff00"},
+		Secondary: lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"},
+		Base:      lipgloss.NewStyle(),
+	}
+
+	sidebar := NewShortcutsSidebar(theme)
+	sidebar.SetContext("graph") // Few items
+
+	// Large height - content should fit
+	sidebar.SetSize(34, 100)
+	if sidebar.NeedsScroll() {
+		t.Error("Expected NeedsScroll=false when content fits in large height")
+	}
+
+	// Small height - content should overflow
+	sidebar.SetSize(34, 10)
+	if !sidebar.NeedsScroll() {
+		t.Error("Expected NeedsScroll=true when height is small")
+	}
+}
+
+func TestShortcutsSidebarNoIndicatorsWhenFits(t *testing.T) {
+	theme := Theme{
+		Renderer:  lipgloss.DefaultRenderer(),
+		Primary:   lipgloss.AdaptiveColor{Light: "#00ff00", Dark: "#00ff00"},
+		Secondary: lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"},
+		Base:      lipgloss.NewStyle(),
+	}
+	sidebar := NewShortcutsSidebar(theme)
+	// Set a large height so everything fits
+	sidebar.SetSize(34, 100)
+	sidebar.SetContext("graph") // graph context has few items
+
+	view := sidebar.View()
+	// Should NOT contain scroll indicators since content fits
+	if strings.Contains(view, "\u25b2") || strings.Contains(view, "\u25bc") {
+		t.Error("Expected no scroll indicators when content fits in view")
+	}
+}

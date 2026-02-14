@@ -30,6 +30,7 @@ const (
 	ContextActionable     Context = "actionable"
 	ContextHistory        Context = "history"
 	ContextSprint         Context = "sprint"
+	ContextTree           Context = "tree"
 	ContextLabelDashboard Context = "label-dashboard"
 	ContextAttention      Context = "attention"
 
@@ -152,6 +153,11 @@ func (m Model) CurrentContext() Context {
 		return ContextHistory
 	}
 
+	// Tree view
+	if m.treeViewActive || m.focused == focusTree {
+		return ContextTree
+	}
+
 	// Sprint view
 	if m.isSprintView {
 		return ContextSprint
@@ -208,6 +214,7 @@ func (c Context) Description() string {
 		ContextActionable:         "Actionable view",
 		ContextHistory:            "History view",
 		ContextSprint:             "Sprint view",
+		ContextTree:               "Tree view",
 		ContextLabelDashboard:     "Label dashboard",
 		ContextAttention:          "Attention view",
 		ContextSplit:              "Split view",
@@ -238,8 +245,9 @@ func (c Context) IsOverlay() bool {
 func (c Context) IsView() bool {
 	switch c {
 	case ContextInsights, ContextFlowMatrix, ContextGraph, ContextBoard,
-		ContextActionable, ContextHistory, ContextSprint, ContextLabelDashboard,
-		ContextAttention, ContextSplit, ContextDetail, ContextTimeTravel:
+		ContextActionable, ContextHistory, ContextSprint, ContextTree,
+		ContextLabelDashboard, ContextAttention, ContextSplit, ContextDetail,
+		ContextTimeTravel:
 		return true
 	}
 	return false
@@ -258,6 +266,7 @@ func (c Context) TutorialPages() []int {
 		ContextGraph:              {6},       // Graph View
 		ContextInsights:           {7},       // Insights
 		ContextHistory:            {8},       // History View
+		ContextTree:               {2, 3},   // List View, Filtering (tree shares navigation/filter concepts)
 		ContextActionable:         {9},       // Actionable View
 		ContextTimeTravel:         {10},      // Time-Travel
 		ContextLabelDashboard:     {11},      // Labels
