@@ -56,24 +56,24 @@ sequenceDiagram
 
     participant User
     participant Agent as AI Agent
-    participant BV as bv
+    participant BW as bw
     participant File as beads.jsonl
 
     User->>Agent: "Fix the next blocked task"
 
     rect rgba(232, 245, 233, 0.4)
         Note over Agent, BV: Cognitive Offloading
-        Agent->>BV: bv --robot-plan
+        Agent->>BW: bw --robot-plan
         BV->>File: Read & Parse
-        BV->>BV: PageRank + Topo Sort
-        BV-->>Agent: { next: "TASK-123", unblocks: 5 }
+        BW->>BW: PageRank + Topo Sort
+        BW-->>Agent: { next: "TASK-123", unblocks: 5 }
     end
 
     rect rgba(255, 243, 224, 0.3)
         Note over Agent: Implementation Phase
         Agent->>Agent: Fix TASK-123
-        Agent->>BV: bv --robot-insights
-        BV-->>Agent: Updated graph metrics
+        Agent->>BW: bw --robot-insights
+        BW-->>Agent: Updated graph metrics
     end
 ```
 
@@ -98,7 +98,7 @@ Using `beads` directly gives an agent *data*. Using `bw --robot-insights` gives 
 | **Graph Logic** | Agent must infer/compute. | Pre-computed (PageRank/Brandes). |
 | **Safety** | Agent might miss a cycle. | Cycles explicitly flagged. |
 
-### Why Robots Love bv
+### Why Robots Love bw
 - Deterministic JSON contracts: robot commands emit stable field names, stable ordering (ties broken by ID), and include `data_hash`, `analysis_config`, and `computed_at` so multiple calls can be correlated safely.
 - Health flags: every expensive metric reports status (`computed`, `approx`, `timeout`, `skipped`) plus elapsed ms and (when sampled) the sample size used.
 - Consistent cache: robot subcommands share the same analyzer/cache keyed by the issue data hash, avoiding divergent outputs across `--robot-insights`, `--robot-plan`, and `--robot-priority`.
@@ -127,11 +127,11 @@ Agents typically use `bw` in three phases:
 Drop this into your `AGENTS.md` or `CLAUDE.md` files:
 
 ```
-### Using bv as an AI sidecar
+### Using bw as an AI sidecar
 
 bw is a graph-aware triage engine for Beads projects (.beads/beads.jsonl). Instead of parsing JSONL or hallucinating graph traversal, use robot flags for deterministic, dependency-aware outputs with precomputed metrics (PageRank, betweenness, critical path, cycles, HITS, eigenvector, k-core).
 
-**Scope boundary:** bv handles *what to work on* (triage, priority, planning). For agent-to-agent coordination (messaging, work claiming, file reservations), use [MCP Agent Mail](https://github.com/Dicklesworthstone/mcp_agent_mail).
+**Scope boundary:** bw handles *what to work on* (triage, priority, planning). For agent-to-agent coordination (messaging, work claiming, file reservations), use [MCP Agent Mail](https://github.com/Dicklesworthstone/mcp_agent_mail).
 
 **CRITICAL: Use ONLY `--robot-*` flags. Bare `bw` launches an interactive TUI that blocks your session.**
 
@@ -218,14 +218,14 @@ bw --robot-label-health | jq '.results.labels[] | select(.health_level == "criti
 
 **Performance:** Phase 1 instant, Phase 2 async (500ms timeout). Prefer `--robot-plan` over `--robot-insights` when speed matters. Results cached by data hash.
 
-Use bv instead of parsing beads.jsonl—it computes PageRank, critical paths, cycles, and parallel tracks deterministically.
+Use bw instead of parsing beads.jsonl—it computes PageRank, critical paths, cycles, and parallel tracks deterministically.
 ```
 
 ### Automatic Integration
 
 `bw` can automatically add the above instructions to your project's agent file:
 
-- **On first run**, bv checks for AGENTS.md (or similar files) and offers to inject the blurb if not present
+- **On first run**, bw checks for AGENTS.md (or similar files) and offers to inject the blurb if not present
 - Choose **"Yes"** to add the instructions, **"No"** to skip, or **"Don't ask again"** to remember your preference
 - Preferences are stored per-project in `~/.config/bv/agent-prompts/`
 
@@ -471,7 +471,7 @@ Semantic search builds a lightweight vector index from a weighted issue document
 
 Hybrid mode is a two-stage pipeline: it first retrieves the top candidates by semantic similarity, then re-ranks those candidates using graph-aware signals (PageRank, status, impact, priority, recency). That keeps results anchored to your query while surfacing items that matter most in the dependency graph.
 
-Short, intent-heavy queries (e.g., "benchmarks", "oauth") are treated differently on purpose. bv widens the candidate pool, boosts literal matches, and raises the text weight so quick lookups behave like a precise search. Longer, descriptive queries lean more on graph signals for smart tie-breaking and prioritization.
+Short, intent-heavy queries (e.g., "benchmarks", "oauth") are treated differently on purpose. bw widens the candidate pool, boosts literal matches, and raises the text weight so quick lookups behave like a precise search. Longer, descriptive queries lean more on graph signals for smart tie-breaking and prioritization.
 
 Hybrid defaults can be set via:
 - `BW_SEARCH_MODE` (text|hybrid)
@@ -487,16 +487,16 @@ In `--robot-search` JSON, hybrid results include `mode`, `preset`, `weights`, pl
 # agent-workflow.sh - Autonomous task selection
 
 # 1. Get the execution plan
-PLAN=$(bv --robot-plan)
+PLAN=$(bw --robot-plan)
 
 # 2. Extract highest-impact actionable task
 TASK=$(echo "$PLAN" | jq -r '.plan.summary.highest_impact')
 
 # 3. Get full insights for context
-INSIGHTS=$(bv --robot-insights)
+INSIGHTS=$(bw --robot-insights)
 
 # 4. Check if completing this introduces regressions
-BASELINE=$(bv --diff-since HEAD~1 --robot-diff)
+BASELINE=$(bw --diff-since HEAD~1 --robot-diff)
 
 echo "Working on: $TASK"
 echo "Unblocks: $(echo "$PLAN" | jq '.plan.summary.unblocks_count') tasks"
@@ -653,10 +653,10 @@ bw --robot-insights --as-of HEAD~30 | jq '{as_of, as_of_commit, data_hash}'
 ### Integrating with CI & Agents
 - Typical pipeline:
   ```bash
-  bv --robot-insights > insights.json
-  bv --robot-plan | jq '.plan.summary'
-  bv --robot-priority | jq '.recommendations[0]'
-  bv --check-drift --robot-drift --diff-since HEAD~5 > drift.json
+  bw --robot-insights > insights.json
+  bw --robot-plan | jq '.plan.summary'
+  bw --robot-priority | jq '.recommendations[0]'
+  bw --check-drift --robot-drift --diff-since HEAD~5 > drift.json
   ```
 - Use `data_hash` to ensure all artifacts come from the same analysis run; fail CI if hashes diverge.
 - Exit codes: drift check (0 ok, 1 critical, 2 warning).
