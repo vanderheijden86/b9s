@@ -17,6 +17,9 @@ No hard feelings toward the original project. This is simply a differentiated of
 
 ### What's different from the original?
 
+<img width="1712" height="997" alt="image" src="https://github.com/user-attachments/assets/b0e57645-2931-4588-973d-fa6936ad23fd" />
+
+
 - **Open to contributions**: PRs are welcome here
 - **Renamed binary**: `bw` instead of `bv`, so both can coexist on the same machine
 - **Tree view with split pane**: hierarchical issue view with a detail panel alongside
