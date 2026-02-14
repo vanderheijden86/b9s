@@ -1,9 +1,9 @@
-# Beadwork (bw) — a community fork of Beads Viewer
+# Beadwork (bw) — a fork of Beads Viewer
 
 ![Go Version](https://img.shields.io/github/go-mod/go-version/vanderheijden86/beadwork?style=for-the-badge&color=6272a4)
 ![License](https://img.shields.io/badge/License-MIT-50fa7b?style=for-the-badge)
 
-> **A community-maintained fork of [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), the terminal interface for the [Beads](https://github.com/steveyegge/beads) issue tracker.**
+> **A fork of [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), the terminal interface for the [Beads](https://github.com/steveyegge/beads) issue tracker.**
 
 ## Why this fork?
 
