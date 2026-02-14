@@ -1156,7 +1156,7 @@ The sidebar occupies a fixed 34-character width on the right edge of the termina
 
 ## 🎓 Interactive Tutorial System
 
-Press `` ` `` (backtick) to open the **Interactive Tutorial**—a comprehensive multi-page walkthrough that teaches all bv features through rich, styled content.
+Press `` ` `` (backtick) to open the **Interactive Tutorial**—a comprehensive multi-page walkthrough that teaches all bw features through rich, styled content.
 
 ### Tutorial Architecture
 
@@ -1179,7 +1179,7 @@ The tutorial uses a **component-based rendering system** that produces beautiful
 
 The tutorial covers these topics in depth:
 
-1. **Introduction** — What bv is and why it exists
+1. **Introduction** — What bw is and why it exists
 2. **Core Concepts** — Beads, dependencies, labels, priorities
 3. **List View** — Navigation, filtering, sorting
 4. **Board View** — Kanban workflows, swimlanes
@@ -1217,7 +1217,7 @@ The tutorial automatically tracks which pages you've viewed:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Progress persists across sessions, so you can close bv and resume where you left off.
+Progress persists across sessions, so you can close bw and resume where you left off.
 
 ### Tutorial Navigation
 
@@ -1739,7 +1739,7 @@ graph LR
     %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e8f5e9', 'lineColor': '#90a4ae'}}}%%
 
     CASS["🤖 cass<br/><small>Session Store</small>"]
-    BV["⚡ bv<br/><small>Issue Viewer</small>"]
+    BW["⚡ bw<br/><small>Issue Viewer</small>"]
     CORR["🔗 Enhanced<br/>Correlation"]
 
     CASS --> BV
@@ -2046,13 +2046,13 @@ Launches an interactive wizard that guides you through:
 ### Direct Export
 
 ```bash
-bw --export-pages ./bv-pages                    # Export to directory
-bw --export-pages ./bv-pages --pages-title "Sprint 42 Status"
-bw --export-pages ./bv-pages --pages-exclude-closed   # Omit closed issues
-bw --export-pages ./bv-pages --pages-exclude-history  # Omit git history
+bw --export-pages ./bw-pages                    # Export to directory
+bw --export-pages ./bw-pages --pages-title "Sprint 42 Status"
+bw --export-pages ./bw-pages --pages-exclude-closed   # Omit closed issues
+bw --export-pages ./bw-pages --pages-exclude-history  # Omit git history
 
 # Preview an existing bundle without regenerating
-bw --preview-pages ./bv-pages                   # Serve at localhost:9000 (or next available port)
+bw --preview-pages ./bw-pages                   # Serve at localhost:9000 (or next available port)
 ```
 
 ### Optional: Hybrid Search WASM Scorer
@@ -2064,7 +2064,7 @@ For very large datasets, you can build an optional WASM scorer used by the stati
 ./scripts/build_hybrid_wasm.sh
 
 # Or build during export
-BW_BUILD_HYBRID_WASM=1 bv --export-pages ./bv-pages
+BW_BUILD_HYBRID_WASM=1 bw --export-pages ./bw-pages
 ```
 
 If the `wasm/` assets are missing, the viewer automatically falls back to the JS scorer.
@@ -2072,7 +2072,7 @@ If the `wasm/` assets are missing, the viewer automatically falls back to the JS
 ### What Gets Generated
 
 ```
-./bv-pages/
+./bw-pages/
 ├── index.html              # Main dashboard with Alpine.js + Tailwind
 ├── beads.sqlite3           # Full SQLite database (~2MB for 400+ issues)
 ├── data/
@@ -2469,9 +2469,9 @@ The JSONL parser is designed to be **Lossy-Tolerant**.
 *   Some filesystems don’t reliably deliver filesystem events. `bw` will try to auto-detect this and switch to polling.
 *   If it still misbehaves, force polling:
     ```bash
-    BW_FORCE_POLLING=1 bv
+    BW_FORCE_POLLING=1 bw
     # or
-    BW_FORCE_POLL=1 bv
+    BW_FORCE_POLL=1 bw
     ```
 
 **Q: I see `polling …` in the footer. Is that bad?**
