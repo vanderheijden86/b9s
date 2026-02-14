@@ -3506,59 +3506,6 @@ A: They're the same thing! In the Beads ecosystem, the unit of work is called a 
 
 ---
 
-## 📦 Installation
-
-### One-Line Install (Linux/macOS)
-The fastest way to get started. Detects your OS and architecture automatically.
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/vanderheijden86/beadwork/main/install.sh?$(date +%s)" | bash
-```
-
-### One-Line Install (Windows)
-For Windows users using PowerShell:
-
-```powershell
-irm "https://raw.githubusercontent.com/vanderheijden86/beadwork/main/install.ps1" | iex
-```
-
-**Requirements:**
-- Go 1.21+ installed and in your PATH ([download](https://go.dev/dl/))
-- For best display, use [Windows Terminal](https://aka.ms/terminal) with a [Nerd Font](https://www.nerdfonts.com/)
-
-### Build from Source
-Requires Go 1.21+.
-
-```bash
-git clone https://github.com/vanderheijden86/beadwork.git
-cd beadwork
-go install ./cmd/bw
-```
-
-### Nix Flake
-For Nix users, `bv` provides a flake for reproducible builds and development environments.
-
-```bash
-# Run directly
-nix run github:vanderheijden86/beadwork
-
-# Install to profile
-nix profile install github:vanderheijden86/beadwork
-
-# Development shell with Go toolchain
-nix develop github:vanderheijden86/beadwork
-```
-
-Or add to your flake inputs:
-```nix
-{
-  inputs.bv.url = "github:vanderheijden86/beadwork";
-  # Use: bv.packages.${system}.default
-}
-```
-
----
-
 ## 🚀 Usage Guide
 
 Navigate to any project initialized with `bd init` and run:
