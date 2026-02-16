@@ -69,6 +69,8 @@ const (
 	focusTutorial    // Interactive tutorial (bv-8y31)
 	focusCassModal   // Cass session preview modal (bv-5bqh)
 	focusUpdateModal // Self-update modal (bv-182)
+	focusStatusPicker // Quick status change picker (bd-a83)
+	focusEditModal   // Full issue edit modal (bd-a83)
 )
 
 // SortMode represents the current list sorting mode (bv-3ita)
@@ -536,6 +538,10 @@ type Model struct {
 	showLabelPicker bool
 	labelPicker     LabelPickerModel
 
+	// Status picker for quick status changes (bd-a83)
+	showStatusPicker bool
+	statusPicker     StatusPickerModel
+
 	// Repo picker (workspace mode)
 	showRepoPicker bool
 	repoPicker     RepoPickerModel
@@ -594,6 +600,13 @@ type Model struct {
 	// Self-update modal (bv-182)
 	showUpdateModal bool
 	updateModal     UpdateModal
+
+	// Issue writer for in-app editing (bd-a83)
+	issueWriter *IssueWriter
+
+	// Edit modal for full issue editing (bd-a83)
+	showEditModal bool
+	editModal     EditModal
 }
 
 // labelCount is a simple label->count pair for display
@@ -1170,6 +1183,8 @@ func NewModel(issues []model.Issue, activeRecipe *recipe.Recipe, beadsPath strin
 		}(),
 		// Tutorial integration (bv-8y31)
 		tutorialModel: NewTutorialModel(theme),
+		// Issue writer for in-app editing (bd-a83)
+		issueWriter: NewIssueWriter(),
 	}
 }
 
@@ -1229,6 +1244,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.showUpdateModal {
 			m.updateModal, cmd = m.updateModal.Update(msg)
 			cmds = append(cmds, cmd)
+		}
+
+	case BdResultMsg:
+		// Handle bd CLI operation results (bd-a83)
+		if msg.Success {
+			m.statusMsg = fmt.Sprintf("Updated %s", msg.IssueID)
+			if msg.Operation == BdOpCreate {
+				m.statusMsg = fmt.Sprintf("Created %s", msg.IssueID)
+			} else if msg.Operation == BdOpClose {
+				m.statusMsg = fmt.Sprintf("Closed %s", msg.IssueID)
+			}
+			m.statusIsError = false
+			// Trigger reload to pick up changes
+			cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
+		} else {
+			errMsg := "bd command failed"
+			if msg.Error != nil {
+				errMsg = msg.Error.Error()
+			}
+			m.statusMsg = errMsg
+			m.statusIsError = true
 		}
 
 	case ReadyTimeoutMsg:
@@ -2312,6 +2348,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMsg = ""
 		m.statusIsError = false
 
+		// Handle status picker modal (bd-a83)
+		if m.showStatusPicker {
+			switch msg.String() {
+			case "j", "down":
+				m.statusPicker.MoveDown()
+			case "k", "up":
+				m.statusPicker.MoveUp()
+			case "enter":
+				// Apply status change
+				selected := m.statusPicker.SelectedStatus()
+				if issue := m.getSelectedIssue(); issue != nil && selected != "" {
+					cmds = append(cmds, m.issueWriter.SetStatus(issue.ID, selected))
+				}
+				m.showStatusPicker = false
+			case "esc", "q":
+				m.showStatusPicker = false
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 		// Handle AGENTS.md prompt modal (bv-i8dk)
 		if m.showAgentPrompt {
 			m.agentPromptModal, cmd = m.agentPromptModal.Update(msg)
@@ -2355,6 +2411,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "V", "esc", "enter", "q":
 				m.showCassModal = false
 				m.focused = focusList
+				return m, tea.Batch(cmds...)
+			}
+			return m, tea.Batch(cmds...)
+		}
+
+		// Handle edit modal (bd-a83)
+		if m.showEditModal {
+			m.editModal, cmd = m.editModal.Update(msg)
+			cmds = append(cmds, cmd)
+			if m.editModal.IsCancelRequested() {
+				m.showEditModal = false
+				return m, tea.Batch(cmds...)
+			}
+			if m.editModal.IsSaveRequested() {
+				m.showEditModal = false
+				if m.editModal.isCreateMode {
+					args := m.editModal.BuildCreateArgs()
+					if len(args) > 0 {
+						cmds = append(cmds, m.issueWriter.CreateIssue(args))
+					}
+				} else {
+					args := m.editModal.BuildUpdateArgs()
+					if len(args) > 0 {
+						cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
+					}
+				}
 				return m, tea.Batch(cmds...)
 			}
 			return m, tea.Batch(cmds...)
@@ -3126,6 +3208,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 
+			case "e":
+				if m.focused == focusTree {
+					// Edit in tree view
+					if issue := m.getSelectedIssue(); issue != nil {
+						m.editModal = NewEditModal(issue, m.theme)
+						m.editModal.SetSize(m.width, m.height)
+						m.showEditModal = true
+					}
+					return m, nil
+				}
+				// For other views, pass through to their handlers
+
+			case "ctrl+n":
+				// Create new issue (bd-a83)
+				m.editModal = NewCreateModal(m.theme)
+				m.editModal.SetSize(m.width, m.height)
+				m.showEditModal = true
+				return m, nil
+
 			case "[", "f3":
 				if m.focused == focusTree && msg.String() == "[" {
 					break // Let handleTreeKeys handle '[' for prev-sibling (bd-ryu)
@@ -3335,7 +3436,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m = m.handleFlowMatrixKeys(msg)
 
 			case focusList:
-				m, listKeyConsumed = m.handleListKeys(msg)
+				// Handle priority quick-keys (bd-a83) before other list keys
+				// These need access to cmds, so can't be in handleListKeys
+				if !m.list.SettingFilter() && m.list.FilterState() != list.Filtering {
+					switch msg.String() {
+					case "1", "2", "3", "4":
+						if issue := m.getSelectedIssue(); issue != nil {
+							priority := int(msg.String()[0] - '0')
+							cmds = append(cmds, m.issueWriter.SetPriority(issue.ID, priority))
+							listKeyConsumed = true
+						}
+					}
+				}
+				if !listKeyConsumed {
+					m, listKeyConsumed = m.handleListKeys(msg)
+				}
 
 			case focusDetail:
 				// Enter returns to tree in detail-only (non-split) mode (bd-bys)
@@ -4704,6 +4819,32 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 			}
 		}
 		return m, true
+	case " ":
+		// Open status picker modal (bd-a83)
+		// Skip if filtering is active
+		if m.list.SettingFilter() || m.list.FilterState() == list.Filtering {
+			return m, false
+		}
+		if issue := m.getSelectedIssue(); issue != nil {
+			m.statusPicker = NewStatusPickerModel(string(issue.Status), m.theme)
+			m.statusPicker.SetSize(m.width, m.height-1)
+			m.showStatusPicker = true
+			m.focused = focusStatusPicker
+		}
+		return m, true
+	case "e":
+		// Open edit modal (bd-a83)
+		// Skip if filtering is active
+		if m.list.SettingFilter() || m.list.FilterState() == list.Filtering {
+			return m, false
+		}
+		if issue := m.getSelectedIssue(); issue != nil {
+			m.editModal = NewEditModal(issue, m.theme)
+			m.editModal.SetSize(m.width, m.height)
+			m.showEditModal = true
+			m.focused = focusEditModal
+		}
+		return m, true
 	}
 	return m, false
 }
@@ -4864,9 +5005,15 @@ func (m Model) View() string {
 	} else if m.showCassModal {
 		// Cass session preview modal (bv-5bqh)
 		body = m.cassModal.CenterModal(m.width, m.height-1)
+	} else if m.showEditModal {
+		// Edit modal (bd-a83)
+		body = m.editModal.View()
 	} else if m.showUpdateModal {
 		// Self-update modal (bv-182)
 		body = m.updateModal.CenterModal(m.width, m.height-1)
+	} else if m.showStatusPicker {
+		// Status picker modal (bd-a83)
+		body = m.statusPicker.View()
 	} else if m.showLabelHealthDetail && m.labelHealthDetail != nil {
 		body = m.renderLabelHealthDetail(*m.labelHealthDetail)
 	} else if m.showLabelGraphAnalysis && m.labelGraphAnalysisResult != nil {
@@ -5372,6 +5519,15 @@ func (m *Model) renderHelpOverlay() string {
 		{"m/M", "Mark / unmark all"},
 	}
 
+	editingSection := []struct{ key, desc string }{
+		{"e", "Edit issue"},
+		{"Space", "Status picker (list)"},
+		{"1-4", "Set priority (list)"},
+		{"Ctrl+n", "Create new issue"},
+		{"Ctrl+s", "Save (in editor)"},
+		{"Esc", "Cancel (in editor)"},
+	}
+
 	statusSection := []struct{ key, desc string }{
 		{"◌ metrics", "Phase 2 metrics computing"},
 		{"⚠ age", "Snapshot getting stale"},
@@ -5397,6 +5553,7 @@ func (m *Model) renderHelpOverlay() string {
 		renderPanel("Status", "🩺", 2, statusSection),
 		renderPanel("Filters & Sort", "🔍", 3, filterSection),
 		renderPanel("Actions", "⚡", 1, actionsSection),
+		renderPanel("Editing", "✏️", 4, editingSection),
 	}
 
 	// Arrange panels into columns
@@ -7742,6 +7899,33 @@ func (m Model) FocusState() string {
 	default:
 		return "unknown"
 	}
+}
+
+// getSelectedIssue returns the currently selected issue from the active view (list or tree).
+// Returns nil if no issue is selected.
+func (m *Model) getSelectedIssue() *model.Issue {
+	if m.focused == focusTree || m.treeViewActive {
+		id := m.tree.GetSelectedID()
+		if id != "" {
+			if issue, ok := m.issueMap[id]; ok {
+				return issue
+			}
+		}
+		return nil
+	}
+	// List view
+	sel := m.list.SelectedItem()
+	if sel == nil {
+		return nil
+	}
+	item, ok := sel.(IssueItem)
+	if !ok {
+		return nil
+	}
+	if issue, ok := m.issueMap[item.Issue.ID]; ok {
+		return issue
+	}
+	return nil
 }
 
 // IsBoardView returns true if the board view is active (bv-5e5q).
