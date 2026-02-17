@@ -78,8 +78,8 @@ func NewCreateModal(theme Theme) EditModal {
 	m := EditModal{
 		theme:        theme,
 		isCreateMode: true,
-		priority:     "P2",
-		issueType:    "task",
+		priority:     "P0",
+		issueType:    "bug",
 	}
 
 	m.form = buildCreateForm(&m)
@@ -94,6 +94,7 @@ func buildEditForm(m *EditModal) *huh.Form {
 			huh.NewSelect[string]().Title("Status").
 				Options(makeOptions(getStatusOptions())...).
 				Value(&m.status),
+			huh.NewText().Title("Description").Value(&m.description).Lines(5),
 			huh.NewSelect[string]().Title("Priority").
 				Options(makeOptions(getPriorityOptions())...).
 				Value(&m.priority),
@@ -102,9 +103,6 @@ func buildEditForm(m *EditModal) *huh.Form {
 				Value(&m.issueType),
 			huh.NewInput().Title("Assignee").Value(&m.assignee),
 			huh.NewInput().Title("Labels").Value(&m.labels),
-		),
-		huh.NewGroup(
-			huh.NewText().Title("Description").Value(&m.description).Lines(5),
 			huh.NewText().Title("Notes").Value(&m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).
@@ -116,6 +114,7 @@ func buildCreateForm(m *EditModal) *huh.Form {
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title("Title").Value(&m.title),
+			huh.NewText().Title("Description").Value(&m.description).Lines(5),
 			huh.NewSelect[string]().Title("Priority").
 				Options(makeOptions(getPriorityOptions())...).
 				Value(&m.priority),
@@ -124,9 +123,6 @@ func buildCreateForm(m *EditModal) *huh.Form {
 				Value(&m.issueType),
 			huh.NewInput().Title("Assignee").Value(&m.assignee),
 			huh.NewInput().Title("Labels").Value(&m.labels),
-		),
-		huh.NewGroup(
-			huh.NewText().Title("Description").Value(&m.description).Lines(5),
 			huh.NewText().Title("Notes").Value(&m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).

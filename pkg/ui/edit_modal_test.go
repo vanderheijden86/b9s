@@ -108,11 +108,11 @@ func TestNewCreateModal_HasDefaults(t *testing.T) {
 	if modal.title != "" {
 		t.Errorf("Expected empty title, got %q", modal.title)
 	}
-	if modal.priority != "P2" {
-		t.Errorf("Expected priority %q, got %q", "P2", modal.priority)
+	if modal.priority != "P0" {
+		t.Errorf("Expected priority %q, got %q", "P0", modal.priority)
 	}
-	if modal.issueType != "task" {
-		t.Errorf("Expected type %q, got %q", "task", modal.issueType)
+	if modal.issueType != "bug" {
+		t.Errorf("Expected type %q, got %q", "bug", modal.issueType)
 	}
 	if modal.assignee != "" {
 		t.Errorf("Expected empty assignee, got %q", modal.assignee)
@@ -214,11 +214,11 @@ func TestEditModal_BuildCreateArgs_AllNonEmpty(t *testing.T) {
 	if _, exists := args["status"]; exists {
 		t.Error("Status should not be in create args (bd create has no --status flag)")
 	}
-	if args["priority"] != "2" { // P2 -> 2
-		t.Errorf("Expected priority '2', got %s", args["priority"])
+	if args["priority"] != "0" { // P0 -> 0
+		t.Errorf("Expected priority '0', got %s", args["priority"])
 	}
-	if args["type"] != "task" {
-		t.Errorf("Expected type 'task', got %s", args["type"])
+	if args["type"] != "bug" {
+		t.Errorf("Expected type 'bug', got %s", args["type"])
 	}
 	if args["assignee"] != "bob" {
 		t.Errorf("Expected assignee 'bob', got %s", args["assignee"])
