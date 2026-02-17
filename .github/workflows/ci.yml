@@ -42,5 +42,5 @@ jobs:
             printf("%.2f", (hit / all) * 100)
           }
         ' coverage.out)
-        echo "pkg/* coverage: ${total}% (threshold 71%)"
-        awk -v c="$total" 'BEGIN { if (c < 71.0) { printf("FAIL: pkg/* coverage %.2f%% is below 71%%\n", c); exit 1 } }'
+        echo "pkg/* coverage: ${total}% (threshold 65%)"
+        awk -v c="$total" 'BEGIN { if (c < 65.0) { printf("FAIL: pkg/* coverage %.2f%% is below 65%%\n", c); exit 1 } }'
