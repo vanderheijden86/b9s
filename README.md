@@ -13,9 +13,9 @@ Originally forked from [beads_viewer](https://github.com/Dicklesworthstone/beads
 
 ### Why strip it down?
 
-The upstream beads_viewer is an impressive piece of software with a graph analysis engine (PageRank, betweenness, HITS, critical path), AI agent protocols, static site export, time-travel diffs, sprint analytics, and more. That breadth is its strength, but it also means ~42k lines of Go source code, heavy dependencies like `gonum`, and complexity that isn't needed if all you want is a terminal viewer/editor.
+The upstream beads_viewer is an impressive piece of software with a graph analysis engine (PageRank, betweenness, HITS, critical path), AI agent protocols, static site export, time-travel diffs, sprint analytics, and more. That breadth is its strength, but it also means ~90k lines of Go source code, ~108k lines of tests, heavy dependencies like `gonum`, and complexity that isn't needed if all you want is a terminal viewer/editor.
 
-Beadwork takes the opposite approach: **do fewer things well**. By removing ~127k lines of code (source + vendor) and keeping only the TUI core (~27k lines of source, ~25k lines of tests), beadwork starts faster, compiles faster, and is easier to understand, maintain, and contribute to.
+Beadwork takes the opposite approach: **do fewer things well**. By stripping the codebase down to ~27k lines of source and ~26k lines of tests, and removing heavy vendor dependencies like `gonum`, beadwork starts faster, compiles faster, and is easier to understand, maintain, and contribute to.
 
 **What was removed:**
 
