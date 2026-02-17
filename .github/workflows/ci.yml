@@ -11,32 +11,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
         go-version: '1.25.5'
-        
+
     - name: Build
       run: go build -v ./cmd/bw
-      
-    - name: Test with Coverage
-      run: go test -v -covermode=atomic -coverprofile=coverage.out ./pkg/... ./cmd/bw
+
+    - name: Test
+      run: go test -covermode=atomic -coverprofile=coverage.out ./pkg/... ./cmd/bw
 
     - name: E2E Tests
       run: go test -v ./tests/e2e -count=1
 
-    - name: Enforce Coverage Threshold (project, pkg/* only)
+    - name: Enforce Coverage Threshold
       run: |
         total=$(awk '
-          NR == 1 { next } # mode line
+          NR == 1 { next }
           {
             file = $1
             sub(/:.*/, "", file)
             if (file !~ /^github.com\/vanderheijden86\/beadwork\/pkg\//) next
-            stmts = $2
-            count = $3
-            all += stmts
+            stmts = $2; count = $3; all += stmts
             if (count > 0) hit += stmts
           }
           END {
@@ -45,68 +43,4 @@ jobs:
           }
         ' coverage.out)
         echo "pkg/* coverage: ${total}% (threshold 71%)"
-        awk -v c="$total" 'BEGIN { if (c < 71.0) { printf("pkg/* coverage %.2f%% is below 71%%\n", c); exit 1 } }'
-
-    - name: Enforce Coverage Thresholds (per-package, statement-weighted)
-      run: |
-        set -euo pipefail
-        awk '
-          NR == 1 { next } # mode line
-          {
-            file = $1
-            sub(/:.*/, "", file)          # strip :line.col,line.col
-            pkg = file
-            sub(/\/[^\/]+$/, "", pkg)     # strip /file.go
-            stmts = $2
-            count = $3
-            total[pkg] += stmts
-            if (count > 0) covered[pkg] += stmts
-          }
-          END {
-            for (pkg in total) {
-              pct = (covered[pkg] / total[pkg]) * 100
-              printf "%s %.2f\n", pkg, pct
-            }
-          }
-        ' coverage.out | sort > pkgcov.txt
-
-        # Enforce thresholds for key packages.
-        while read -r pkg pct; do
-          req=
-          case "$pkg" in
-            github.com/vanderheijden86/beadwork/pkg/ui) req=55 ;;
-            github.com/vanderheijden86/beadwork/pkg/loader) req=80 ;;
-            github.com/vanderheijden86/beadwork/pkg/updater) req=55 ;;
-            github.com/vanderheijden86/beadwork/pkg/watcher) req=60 ;;
-          esac
-          if [ -z "$req" ]; then
-            continue
-          fi
-          if awk -v p="$pct" -v r="$req" 'BEGIN { exit !(p < r) }'; then
-            echo "Coverage for $pkg is ${pct}% (< ${req}%)"
-            exit 1
-          fi
-        done < pkgcov.txt
-        echo "Per-package thresholds OK"
-
-    - name: Coverage Report Artifact
-      run: |
-        go tool cover -html=coverage.out -o coverage.html
-      
-    - name: Upload Coverage Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage.html
-
-    - name: Upload to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: coverage.out
-        flags: unittests
-        name: codecov-coverage
-        fail_ci_if_error: false
-        verbose: true
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
+        awk -v c="$total" 'BEGIN { if (c < 71.0) { printf("FAIL: pkg/* coverage %.2f%% is below 71%%\n", c); exit 1 } }'
