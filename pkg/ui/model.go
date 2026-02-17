@@ -1226,6 +1226,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle edit modal before type switch: huh.Form needs to receive ALL
+	// message types (not just tea.KeyMsg) for internal navigation (nextFieldMsg,
+	// updateFieldMsg, etc.) to work correctly.
+	if m.showEditModal {
+		m.editModal, cmd = m.editModal.Update(msg)
+		cmds = append(cmds, cmd)
+		if m.editModal.IsCancelRequested() {
+			m.showEditModal = false
+			return m, tea.Batch(cmds...)
+		}
+		if m.editModal.IsSaveRequested() {
+			m.showEditModal = false
+			if m.editModal.isCreateMode {
+				args := m.editModal.BuildCreateArgs()
+				if len(args) > 0 {
+					cmds = append(cmds, m.issueWriter.CreateIssue(args))
+				}
+			} else {
+				args := m.editModal.BuildUpdateArgs()
+				if len(args) > 0 {
+					cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
+				}
+			}
+			return m, tea.Batch(cmds...)
+		}
+		return m, tea.Batch(cmds...)
+	}
+
 	switch msg := msg.(type) {
 	case UpdateMsg:
 		m.updateAvailable = true
@@ -2416,31 +2444,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle edit modal (bd-a83)
-		if m.showEditModal {
-			m.editModal, cmd = m.editModal.Update(msg)
-			cmds = append(cmds, cmd)
-			if m.editModal.IsCancelRequested() {
-				m.showEditModal = false
-				return m, tea.Batch(cmds...)
-			}
-			if m.editModal.IsSaveRequested() {
-				m.showEditModal = false
-				if m.editModal.isCreateMode {
-					args := m.editModal.BuildCreateArgs()
-					if len(args) > 0 {
-						cmds = append(cmds, m.issueWriter.CreateIssue(args))
-					}
-				} else {
-					args := m.editModal.BuildUpdateArgs()
-					if len(args) > 0 {
-						cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
-					}
-				}
-				return m, tea.Batch(cmds...)
-			}
-			return m, tea.Batch(cmds...)
-		}
+		// Edit modal is handled before the type switch (needs all msg types for huh.Form)
 
 		// Handle self-update modal (bv-182)
 		if m.showUpdateModal {

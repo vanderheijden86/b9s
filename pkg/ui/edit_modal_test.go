@@ -332,6 +332,23 @@ func TestEditModal_CtrlC_ReturnsQuit(t *testing.T) {
 	}
 }
 
+func TestEditModal_FormReceivesNonKeyMessages(t *testing.T) {
+	// Regression: huh.Form needs non-KeyMsg types (e.g. WindowSizeMsg,
+	// internal nextFieldMsg) for navigation to work. The edit modal's
+	// Update must forward all message types, not just tea.KeyMsg.
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme)
+	modal.SetSize(100, 40)
+
+	// Sending a WindowSizeMsg should not panic and should be processed
+	modal, _ = modal.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+
+	// The form should still be in normal state (not completed/aborted)
+	if modal.IsSaveRequested() || modal.IsCancelRequested() {
+		t.Error("WindowSizeMsg should not trigger save or cancel")
+	}
+}
+
 func TestEditModal_BuildUpdateArgs_NoChanges(t *testing.T) {
 	theme := DefaultTheme(lipgloss.DefaultRenderer())
 	issue := &model.Issue{
