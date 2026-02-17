@@ -997,6 +997,11 @@ func TestGetBeadsDir_EmptyRepoPath_UsesCwd(t *testing.T) {
 	// Use a temp directory outside git to test pure cwd fallback behavior
 	// (within a git repo, GetBeadsDir now intelligently finds .beads in the repo root)
 	tmpDir := t.TempDir()
+	// Resolve symlinks so comparison works on macOS where /var -> /private/var
+	tmpDir, err := filepath.EvalSymlinks(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to resolve symlinks: %v", err)
+	}
 	oldCwd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get cwd: %v", err)
