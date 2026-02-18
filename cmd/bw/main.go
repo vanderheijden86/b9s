@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/vanderheijden86/beadwork/internal/datasource"
+	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 	"github.com/vanderheijden86/beadwork/pkg/ui"
@@ -159,8 +160,15 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Load bw config for project switching, favorites, and experimental flags
+	appCfg, cfgErr := config.Load()
+	if cfgErr != nil {
+		// Non-fatal: continue without config
+		appCfg = config.DefaultConfig()
+	}
+
 	// Background mode rollout:
-	// CLI flags override env var, env var overrides user config file
+	// CLI flags override env var, env var overrides config file
 	if *backgroundMode && *noBackgroundMode {
 		fmt.Fprintln(os.Stderr, "Error: --background-mode and --no-background-mode are mutually exclusive")
 		os.Exit(2)
@@ -172,7 +180,14 @@ func main() {
 	} else if v, ok := os.LookupEnv("BW_BACKGROUND_MODE"); ok && strings.TrimSpace(v) != "" {
 		// Respect explicit user env var.
 		_ = v
+	} else if appCfg.Experimental.BackgroundMode != nil {
+		if *appCfg.Experimental.BackgroundMode {
+			_ = os.Setenv("BW_BACKGROUND_MODE", "1")
+		} else {
+			_ = os.Setenv("BW_BACKGROUND_MODE", "0")
+		}
 	} else if enabled, ok := loadBackgroundModeFromUserConfig(); ok {
+		// Legacy fallback: check ~/.config/bv/config.yaml
 		if enabled {
 			_ = os.Setenv("BW_BACKGROUND_MODE", "1")
 		} else {
@@ -180,8 +195,12 @@ func main() {
 		}
 	}
 
+	// Detect current project name from cwd
+	projectName := filepath.Base(projectDir)
+	projectPath := projectDir
+
 	// Launch TUI
-	m := ui.NewModel(issues, beadsPath)
+	m := ui.NewModel(issues, beadsPath).WithConfig(appCfg, projectName, projectPath)
 	defer m.Stop()
 
 	if err := runTUIProgram(m); err != nil {

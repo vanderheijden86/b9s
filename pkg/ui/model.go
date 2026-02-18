@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
 	"github.com/vanderheijden86/beadwork/pkg/model"
@@ -376,12 +377,130 @@ type Model struct {
 	// Edit modal for full issue editing (bd-a83)
 	showEditModal bool
 	editModal     EditModal
+
+	// Project switching (bd-q5z)
+	activeProjectName string            // Name of the currently loaded project
+	activeProjectPath string            // Path to the project directory
+	activeProjectFavN int               // Favorite number (1-9, or 0)
+	appConfig         config.Config     // Loaded app configuration
+	allProjects       []config.Project  // All known projects
+	showProjectPicker bool              // Project picker overlay visible
+	projectPicker     ProjectPickerModel
 }
 
 // labelCount is a simple label->count pair for display
 type labelCount struct {
 	Label string
 	Count int
+}
+
+// currentViewName returns a human-readable name for the current view mode.
+func (m Model) currentViewName() string {
+	if m.isBoardView {
+		return "board"
+	}
+	if m.treeViewActive || m.focused == focusTree {
+		return "tree"
+	}
+	if m.isSplitView {
+		return "split"
+	}
+	if m.showDetails {
+		return "detail"
+	}
+	return "list"
+}
+
+// renderGlobalHeader renders the single-line global header bar.
+// Format:  bw | projectname (1)      list view | ○12 ◉5 ◈3 ●2
+func (m Model) renderGlobalHeader() string {
+	// Left side: app name + project
+	appName := lipgloss.NewStyle().Bold(true).Foreground(ColorText).Render("bw")
+	sep := lipgloss.NewStyle().Foreground(ColorMuted).Render(" | ")
+
+	projectLabel := m.activeProjectName
+	if projectLabel == "" {
+		projectLabel = "untitled"
+	}
+	if m.activeProjectFavN > 0 {
+		projectLabel = fmt.Sprintf("%s (%d)", projectLabel, m.activeProjectFavN)
+	}
+	projectSection := lipgloss.NewStyle().Foreground(ColorSubtext).Render(projectLabel)
+
+	leftParts := appName + sep + projectSection
+
+	// Right side: view name + stats
+	viewLabel := lipgloss.NewStyle().Foreground(ColorSubtext).Render(m.currentViewName() + " view")
+
+	openStyle := lipgloss.NewStyle().Foreground(ColorStatusOpen)
+	readyStyle := lipgloss.NewStyle().Foreground(ColorSuccess)
+	blockedStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	closedStyle := lipgloss.NewStyle().Foreground(ColorMuted)
+
+	statsContent := fmt.Sprintf("%s%d %s%d %s%d %s%d",
+		openStyle.Render("○"), m.countOpen,
+		readyStyle.Render("◉"), m.countReady,
+		blockedStyle.Render("◈"), m.countBlocked,
+		closedStyle.Render("●"), m.countClosed)
+
+	rightParts := viewLabel + sep + statsContent
+
+	// Calculate filler between left and right
+	leftWidth := lipgloss.Width(leftParts)
+	rightWidth := lipgloss.Width(rightParts)
+	fillerWidth := m.width - leftWidth - rightWidth
+	if fillerWidth < 1 {
+		fillerWidth = 1
+	}
+	filler := lipgloss.NewStyle().Width(fillerWidth).Render("")
+
+	headerBg := lipgloss.NewStyle().
+		Width(m.width).
+		Background(ColorBgHighlight)
+
+	return headerBg.Render(leftParts + filler + rightParts)
+}
+
+// buildProjectEntries constructs the project picker display data from config.
+func (m Model) buildProjectEntries() []ProjectEntry {
+	entries := make([]ProjectEntry, 0, len(m.allProjects))
+	for _, p := range m.allProjects {
+		entry := ProjectEntry{
+			Project:     p,
+			FavoriteNum: m.appConfig.ProjectFavoriteNumber(p.Name),
+			IsActive:    p.Name == m.activeProjectName,
+		}
+		// Load issue counts if this is the active project
+		if entry.IsActive {
+			entry.OpenCount = m.countOpen
+			entry.ReadyCount = m.countReady
+		} else {
+			// Try to get counts from the project's beads file
+			beadsPath := filepath.Join(p.ResolvedPath(), ".beads", "issues.jsonl")
+			if issues, err := loader.LoadIssuesFromFile(beadsPath); err == nil {
+				for _, iss := range issues {
+					if iss.Status == "open" || iss.Status == "in_progress" {
+						entry.OpenCount++
+					}
+					if iss.Status == "open" {
+						// Simple "ready" check: open and not blocked
+						blocked := false
+						for _, dep := range iss.Dependencies {
+							if dep.Type == "blocked_by" {
+								blocked = true
+								break
+							}
+						}
+						if !blocked {
+							entry.ReadyCount++
+						}
+					}
+				}
+			}
+		}
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 // filterIssuesByLabel returns issues that contain the given label (case-sensitive match)
@@ -621,6 +740,17 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		// Issue writer for in-app editing (bd-a83)
 		issueWriter: NewIssueWriter(),
 	}
+}
+
+// WithConfig sets the application config and project info on the model.
+// Call this after NewModel to enable project switching and favorites.
+func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Model {
+	m.appConfig = cfg
+	m.activeProjectName = projectName
+	m.activeProjectPath = projectPath
+	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
+	m.allProjects = config.DiscoverProjects(cfg)
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -941,6 +1071,55 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(m.backgroundWorker))
 		}
 		return m, tea.Batch(cmds...)
+
+	case SwitchProjectMsg:
+		// Switch to a different project (bd-q5z)
+		m.showProjectPicker = false
+		m.activeProjectName = msg.Project.Name
+		m.activeProjectPath = msg.Project.ResolvedPath()
+		m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(msg.Project.Name)
+		// Determine new beads path
+		beadsDir := filepath.Join(msg.Project.ResolvedPath(), ".beads")
+		newPath, err := loader.FindJSONLPath(beadsDir)
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
+			m.statusIsError = true
+			return m, nil
+		}
+		// Update path and stop old watcher
+		if m.watcher != nil {
+			m.watcher.Stop()
+			m.watcher = nil
+		}
+		m.beadsPath = newPath
+		// Start new watcher
+		w, watchErr := watcher.NewWatcher(newPath)
+		if watchErr == nil {
+			m.watcher = w
+			cmds = append(cmds, WatchFileCmd(w))
+		}
+		// Trigger reload via FileChangedMsg which handles all the complex state
+		cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
+		m.statusMsg = fmt.Sprintf("Switched to %s", msg.Project.Name)
+		m.statusIsError = false
+		return m, tea.Batch(cmds...)
+
+	case ToggleFavoriteMsg:
+		// Toggle favorite slot for a project (bd-q5z)
+		m.appConfig.SetFavorite(msg.SlotNumber, msg.ProjectName)
+		// Update current project's favorite number if it changed
+		if msg.ProjectName == m.activeProjectName {
+			m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(m.activeProjectName)
+		}
+		// Save config
+		_ = config.Save(m.appConfig)
+		// Refresh picker entries if open
+		if m.showProjectPicker {
+			entries := m.buildProjectEntries()
+			m.projectPicker = NewProjectPicker(entries, m.theme)
+			m.projectPicker.SetSize(m.width, m.height)
+		}
+		return m, nil
 
 	case FileChangedMsg:
 		// File changed on disk - reload issues
@@ -1263,6 +1442,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
+		// Handle project picker overlay before global keys (bd-q5z)
+		if m.showProjectPicker {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			if msg.String() == "esc" && !m.projectPicker.Filtering() {
+				m.showProjectPicker = false
+				return m, nil
+			}
+			var pickerCmd tea.Cmd
+			m.projectPicker, pickerCmd = m.projectPicker.Update(msg)
+			return m, pickerCmd
+		}
+
 		// Handle repo picker overlay (workspace mode) before global keys (esc/q/etc.)
 		if m.showRepoPicker {
 			if msg.String() == "ctrl+c" {
@@ -1390,6 +1583,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle keys when not filtering
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
+			// Project switching keys (bd-q5z) - number keys 1-9 for favorites
+			case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+				if m.focused != focusTree && m.focused != focusBoard {
+					// Only handle as project switch when not in tree/board (where numbers may have other uses)
+					n := int(msg.String()[0] - '0')
+					proj := m.appConfig.FavoriteProject(n)
+					if proj != nil {
+						return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
+					}
+				}
+
+			case "P":
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 'P' for jump-to-parent (bd-ryu)
+				}
+				// Toggle project picker overlay (bd-q5z)
+				m.showProjectPicker = !m.showProjectPicker
+				if m.showProjectPicker {
+					entries := m.buildProjectEntries()
+					m.projectPicker = NewProjectPicker(entries, m.theme)
+					m.projectPicker.SetSize(m.width, m.height)
+				}
+				return m, nil
+
 			case "ctrl+c":
 				return m, tea.Quit
 
@@ -1522,9 +1739,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break // Let handleTreeKeys handle 'a' for all-filter (bd-mwi)
 				}
 
-			case "E":
+			case "t", "E":
 				// Toggle hierarchical tree view (bv-gllx, bd-xfd)
-				if m.focused == focusTree || m.treeViewActive {
+				// 't' is the k9s-inspired single-key shortcut (bd-q5z)
+				if m.focused == focusTree {
+					break // Let handleTreeKeys handle 't' for in-tree use
+				}
+				if m.treeViewActive {
 					m.treeViewActive = false
 					m.focused = focusList
 				} else {
@@ -2237,8 +2458,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 			m.treeViewActive = false
 			m.focused = focusList
 		}
-	case "E":
-		// Always return to list view
+	case "t", "E":
+		// Always return to list view (t is k9s-inspired shortcut, bd-q5z)
 		m.treeViewActive = false
 		m.focused = focusList
 	}
@@ -2522,30 +2743,44 @@ func (m Model) View() string {
 	}
 
 	var body string
+	isOverlay := false // Track whether an overlay is active (no global header)
 
 	// Quit confirmation overlay takes highest priority
 	if m.showQuitConfirm {
 		body = m.renderQuitConfirm()
+		isOverlay = true
 	} else if m.showEditModal {
 		// Edit modal (bd-a83)
 		body = m.editModal.View()
+		isOverlay = true
 	} else if m.showUpdateModal {
 		// Self-update modal (bv-182)
 		body = m.updateModal.CenterModal(m.width, m.height-1)
+		isOverlay = true
 	} else if m.showStatusPicker {
 		// Status picker modal (bd-a83)
 		body = m.statusPicker.View()
+		isOverlay = true
 	} else if m.showRepoPicker {
 		body = m.repoPicker.View()
+		isOverlay = true
 	} else if m.showLabelPicker {
 		body = m.labelPicker.View()
+		isOverlay = true
 	} else if m.showHelp {
 		body = m.renderHelpOverlay()
+		isOverlay = true
+	} else if m.showProjectPicker {
+		// Project picker overlay (bd-q5z)
+		body = m.projectPicker.View()
+		isOverlay = true
 	} else if m.showTutorial {
 		// Interactive tutorial (bv-8y31) - full screen overlay
 		body = m.tutorialModel.View()
+		isOverlay = true
 	} else if m.snapshotInitPending && m.snapshot == nil {
 		body = m.renderLoadingScreen()
+		isOverlay = true
 	} else if m.focused == focusTree || (m.focused == focusDetail && m.treeViewActive) {
 		// Hierarchical tree view (bv-gllx) with split view support (bd-xfd)
 		if m.focused == focusDetail && m.treeDetailHidden {
@@ -2554,11 +2789,11 @@ func (m Model) View() string {
 		} else if m.isSplitView && !m.treeDetailHidden {
 			body = m.renderTreeSplitView()
 		} else {
-			m.tree.SetSize(m.width, m.height-1)
+			m.tree.SetSize(m.width, m.height-2)
 			body = m.tree.View()
 		}
 	} else if m.isBoardView {
-		body = m.board.View(m.width, m.height-1)
+		body = m.board.View(m.width, m.height-2)
 	} else if m.isSplitView {
 		body = m.renderSplitView()
 	} else {
@@ -2588,7 +2823,12 @@ func (m Model) View() string {
 		Height(m.height).
 		MaxHeight(m.height)
 
-	return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
+	if isOverlay {
+		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
+	}
+
+	header := m.renderGlobalHeader()
+	return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, header, body, footer))
 }
 
 func (m Model) renderQuitConfirm() string {
@@ -2689,8 +2929,8 @@ func (m Model) renderListWithHeader() string {
 	pageLine := pageStyle.Render(pageInfo)
 
 	// Combine all elements and force exact height
-	// bodyHeight = m.height - 1 (1 for footer)
-	bodyHeight := m.height - 1
+	// bodyHeight = m.height - 2 (1 for global header, 1 for footer)
+	bodyHeight := m.height - 2
 	if bodyHeight < 3 {
 		bodyHeight = 3
 	}
@@ -2722,7 +2962,7 @@ func (m Model) renderSplitView() string {
 
 	// m.list.Width() is the inner width (set in Update)
 	listInnerWidth := m.list.Width()
-	panelHeight := m.height - 1
+	panelHeight := m.height - 2 // 1 for global header, 1 for footer
 
 	// Create header row for list
 	headerStyle := t.Renderer.NewStyle().
@@ -2802,7 +3042,7 @@ func (m Model) renderTreeSplitView() string {
 
 	// Use the same inner width as the list panel for consistent sizing
 	treeInnerWidth := m.list.Width()
-	panelHeight := m.height - 1
+	panelHeight := m.height - 2 // 1 for global header, 1 for footer
 
 	// Set tree size to fit inside the panel (border takes 2 lines)
 	// The header row is now rendered inside tree.View() via RenderHeader() (bd-s2k)
@@ -3171,466 +3411,92 @@ func (m *Model) renderFooter() string {
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
-	// FILTER BADGE - Current view/filter state + quick hint for label dashboard
+	// CONTEXT-SENSITIVE SHORTCUT BAR
 	// ─────────────────────────────────────────────────────────────────────────
-	var filterTxt string
-	var filterIcon string
-	if m.focused == focusTree || m.treeViewActive {
-		// Tree view uses its own filter state (bd-5nw)
-		treeFilter := m.tree.GetFilter()
-		switch treeFilter {
-		case "open":
-			filterTxt = "OPEN"
-			filterIcon = "📂"
-		case "closed":
-			filterTxt = "CLOSED"
-			filterIcon = "✅"
-		case "ready":
-			filterTxt = "READY"
-			filterIcon = "🚀"
-		default:
-			filterTxt = "ALL"
-			filterIcon = "📋"
-		}
-	} else {
-		switch m.currentFilter {
-		case "all":
-			filterTxt = "ALL"
-			filterIcon = "📋"
-		case "open":
-			filterTxt = "OPEN"
-			filterIcon = "📂"
-		case "closed":
-			filterTxt = "CLOSED"
-			filterIcon = "✅"
-		case "ready":
-			filterTxt = "READY"
-			filterIcon = "🚀"
-		default:
-			if strings.HasPrefix(m.currentFilter, "recipe:") {
-				filterTxt = strings.ToUpper(m.currentFilter[7:])
-				filterIcon = "📑"
-			} else {
-				filterTxt = m.currentFilter
-				filterIcon = "🔍"
-			}
-		}
+	keyStyle := lipgloss.NewStyle().Foreground(ColorMuted)
+	labelStyle := lipgloss.NewStyle().Foreground(ColorText)
+
+	// Build shortcut hints based on current view
+	type hint struct {
+		key   string
+		label string
 	}
+	var hints []hint
 
-	filterBadge := lipgloss.NewStyle().
-		Background(ColorPrimary).
-		Foreground(ColorText).
-		Bold(true).
-		Padding(0, 1).
-		Render(fmt.Sprintf("%s %s", filterIcon, filterTxt))
-
-	// Search mode badge when filtering
-	searchBadge := ""
-	if m.list.FilterState() != list.Unfiltered {
-		searchBadge = lipgloss.NewStyle().
-			Background(ColorBgHighlight).
-			Foreground(ColorSecondary).
-			Padding(0, 1).
-			Render("🔎 fuzzy")
-	}
-
-	// Sort badge - only show when not default (bv-3ita, bd-tfn, bd-x3l)
-	// Show tree sort field+direction when in tree view, list sort mode otherwise
-	sortBadge := ""
-	if m.focused == focusTree || m.treeViewActive {
-		field := m.tree.GetSortField()
-		dir := m.tree.GetSortDirection()
-		// Show badge when not default sort (created descending) (bd-ctu)
-		if field != SortFieldCreated || dir != SortDescending {
-			sortBadge = lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorSecondary).
-				Padding(0, 1).
-				Render(fmt.Sprintf("%s %s", field.String(), dir.Indicator()))
+	viewName := m.currentViewName()
+	switch viewName {
+	case "tree":
+		hints = []hint{
+			{"1-9", "project"},
+			{"h/l", "fold"},
+			{"j/k", "nav"},
+			{"enter", "detail"},
+			{"s", "sort"},
+			{"/", "search"},
+			{"e", "edit"},
+			{"q", "back"},
 		}
-	} else {
-		activeSortMode := m.sortMode
-		if activeSortMode != SortDefault {
-			sortBadge = lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorSecondary).
-				Padding(0, 1).
-				Render(fmt.Sprintf("↕ %s", activeSortMode.String()))
+	case "board":
+		hints = []hint{
+			{"1-9", "project"},
+			{"h/l", "column"},
+			{"j/k", "card"},
+			{"m", "move"},
+			{"s", "swim"},
+			{"/", "search"},
+			{"e", "edit"},
+			{"q", "back"},
+		}
+	case "split":
+		hints = []hint{
+			{"1-9", "project"},
+			{"tab", "focus"},
+			{"</>", "resize"},
+			{"t", "tree"},
+			{"b", "board"},
+			{"e", "edit"},
+			{"?", "help"},
+			{"q", "quit"},
+		}
+	case "detail":
+		hints = []hint{
+			{"1-9", "project"},
+			{"esc", "back"},
+			{"e", "edit"},
+			{"C", "copy"},
+			{"O", "open"},
+			{"?", "help"},
+			{"q", "quit"},
+		}
+	default: // list view
+		hints = []hint{
+			{"1-9", "project"},
+			{"t", "tree"},
+			{"b", "board"},
+			{"s", "split"},
+			{"/", "filter"},
+			{"e", "edit"},
+			{"n", "new"},
+			{"?", "help"},
+			{"q", "quit"},
 		}
 	}
 
-	labelHint := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1).
-		Render("L:labels • h:detail")
-
-	// Board-specific hints (bv-yg39, bv-naov)
-	if m.isBoardView {
-		if m.board.IsSearchMode() {
-			// Search mode active - show search hints
-			matchInfo := ""
-			if m.board.SearchMatchCount() > 0 {
-				matchInfo = fmt.Sprintf(" [%d/%d]", m.board.SearchCursorPos(), m.board.SearchMatchCount())
-			}
-			labelHint = lipgloss.NewStyle().
-				Foreground(ColorMuted).
-				Padding(0, 1).
-				Render(fmt.Sprintf("/%s%s • n/N:match • enter:done • esc:cancel", m.board.SearchQuery(), matchInfo))
-		} else {
-			// Normal board mode - show navigation hints with filter indicator (bv-naov)
-			filterInfo := ""
-			if m.currentFilter != "all" && m.currentFilter != "" {
-				shown := m.board.TotalCount()
-				total := len(m.issues)
-				filterInfo = fmt.Sprintf("[%s:%d/%d] ", m.currentFilter, shown, total)
-			}
-			labelHint = lipgloss.NewStyle().
-				Foreground(ColorMuted).
-				Padding(0, 1).
-				Render(fmt.Sprintf("%s1-4:col • o/c/r:filter • L:labels • /:search • ?:help", filterInfo))
-		}
+	var hintParts []string
+	for _, h := range hints {
+		hintParts = append(hintParts, keyStyle.Render(h.key)+":"+labelStyle.Render(h.label))
 	}
+	shortcutBar := " " + strings.Join(hintParts, "  ")
 
-	// ─────────────────────────────────────────────────────────────────────────
-	// STATS SECTION - Issue counts with visual indicators
-	// ─────────────────────────────────────────────────────────────────────────
-	var statsSection string
-	{
-		// Polished stats with mini indicators
-		statsStyle := lipgloss.NewStyle().
-			Background(ColorBgHighlight).
-			Foreground(ColorText).
-			Padding(0, 1)
-
-		openStyle := lipgloss.NewStyle().Foreground(ColorStatusOpen)
-		readyStyle := lipgloss.NewStyle().Foreground(ColorSuccess)
-		blockedStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-		closedStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-
-		statsContent := fmt.Sprintf("%s%d %s%d %s%d %s%d",
-			openStyle.Render("○"),
-			m.countOpen,
-			readyStyle.Render("◉"),
-			m.countReady,
-			blockedStyle.Render("◈"),
-			m.countBlocked,
-			closedStyle.Render("●"),
-			m.countClosed)
-		statsSection = statsStyle.Render(statsContent)
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// FRESHNESS / WORKER BADGE - Staleness + errors + background worker activity (bv-h305)
-	// ─────────────────────────────────────────────────────────────────────────
-	workerSection := ""
-	if m.backgroundWorker != nil {
-		formatAge := func(d time.Duration) string {
-			switch {
-			case d < time.Second:
-				return "<1s"
-			case d < time.Minute:
-				return fmt.Sprintf("%ds", int(d.Seconds()))
-			case d < time.Hour:
-				return fmt.Sprintf("%dm", int(d.Minutes()))
-			case d < 24*time.Hour:
-				return fmt.Sprintf("%dh", int(d.Hours()))
-			default:
-				return fmt.Sprintf("%dd", int(d.Hours()/24))
-			}
-		}
-
-		var snapshotAge time.Duration
-		hasSnapshotAge := false
-		if m.snapshot != nil && !m.snapshot.CreatedAt.IsZero() {
-			snapshotAge = time.Since(m.snapshot.CreatedAt)
-			hasSnapshotAge = true
-		}
-
-		state := m.backgroundWorker.State()
-		health := m.backgroundWorker.Health()
-		lastErr := m.backgroundWorker.LastError()
-
-		var style lipgloss.Style
-		var text string
-		switch {
-		case health.Started && !health.Alive:
-			style = lipgloss.NewStyle().
-				Background(ColorPrioCriticalBg).
-				Foreground(ColorPrioCritical).
-				Bold(true).
-				Padding(0, 1)
-			text = "⚠ worker unresponsive"
-
-		case state == WorkerProcessing && m.backgroundWorker.ProcessingDuration() >= 250*time.Millisecond:
-			// Only show spinner after grace period to avoid flicker for quick dedup operations
-			style = lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorInfo).
-				Bold(true).
-				Padding(0, 1)
-			frame := workerSpinnerFrames[m.workerSpinnerIdx%len(workerSpinnerFrames)]
-			text = fmt.Sprintf("%s refreshing", frame)
-
-		case lastErr != nil && lastErr.Retries >= freshnessErrorRetries:
-			style = lipgloss.NewStyle().
-				Background(ColorPrioCriticalBg).
-				Foreground(ColorPrioCritical).
-				Bold(true).
-				Padding(0, 1)
-			text = fmt.Sprintf("✗ bg %s (%dx)", lastErr.Phase, lastErr.Retries)
-
-		case lastErr != nil:
-			style = lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorWarning).
-				Bold(true).
-				Padding(0, 1)
-			text = fmt.Sprintf("⚠ bg %s (%s)", lastErr.Phase, formatAge(time.Since(lastErr.Time)))
-
-		case hasSnapshotAge && snapshotAge >= freshnessStaleThreshold():
-			style = lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorDanger).
-				Bold(true).
-				Padding(0, 1)
-			text = fmt.Sprintf("⚠ STALE: %s ago", formatAge(snapshotAge))
-
-		case hasSnapshotAge && snapshotAge >= freshnessWarnThreshold():
-			style = lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorWarning).
-				Padding(0, 1)
-			text = fmt.Sprintf("⚠ %s ago", formatAge(snapshotAge))
-
-		default:
-			if health.RecoveryCount > 0 {
-				style = lipgloss.NewStyle().
-					Background(ColorBgHighlight).
-					Foreground(ColorWarning).
-					Padding(0, 1)
-				text = fmt.Sprintf("↻ recovered x%d", health.RecoveryCount)
-			} else {
-				// Fresh: no indicator.
-				text = ""
-			}
-		}
-
-		if text != "" {
-			workerSection = style.Render(text)
-		}
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// WATCHER MODE - show polling mode when fsnotify isn't reliable (bv-3zwy)
-	// ─────────────────────────────────────────────────────────────────────────
-	watcherSection := ""
-	{
-		var (
-			polling      bool
-			fsType       watcher.FilesystemType
-			pollInterval time.Duration
-		)
-
-		switch {
-		case m.backgroundWorker != nil:
-			polling, fsType, pollInterval = m.backgroundWorker.WatcherInfo()
-		case m.watcher != nil:
-			polling = m.watcher.IsPolling()
-			fsType = m.watcher.FilesystemType()
-			pollInterval = m.watcher.PollInterval()
-		}
-
-		if polling {
-			watcherStyle := lipgloss.NewStyle().
-				Background(ColorBgHighlight).
-				Foreground(ColorMuted).
-				Padding(0, 1)
-			label := "polling"
-			if fsType != watcher.FSTypeUnknown && fsType != watcher.FSTypeLocal {
-				label = fmt.Sprintf("polling %s", fsType.String())
-			}
-			if pollInterval > 0 {
-				label = fmt.Sprintf("%s %s", label, pollInterval.String())
-			}
-			watcherSection = watcherStyle.Render(label)
-		}
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// UPDATE BADGE - New version available
-	// ─────────────────────────────────────────────────────────────────────────
-	updateSection := ""
-	if m.updateAvailable {
-		updateStyle := lipgloss.NewStyle().
-			Background(ColorTypeFeature).
-			Foreground(ColorBg).
-			Bold(true).
-			Padding(0, 1)
-		updateSection = updateStyle.Render(fmt.Sprintf("⭐ %s", m.updateTag))
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// LARGE DATASET WARNING - Tiered performance mode (bv-9thm)
-	// ─────────────────────────────────────────────────────────────────────────
-	datasetSection := ""
-	if m.snapshot != nil && m.snapshot.LargeDatasetWarning != "" {
-		bg := ColorPrioHighBg
-		fg := ColorWarning
-		if m.snapshot.DatasetTier == datasetTierHuge {
-			bg = ColorPrioCriticalBg
-			fg = ColorPrioCritical
-		}
-		datasetStyle := lipgloss.NewStyle().
-			Background(bg).
-			Foreground(fg).
-			Bold(true).
-			Padding(0, 1)
-		datasetSection = datasetStyle.Render(m.snapshot.LargeDatasetWarning)
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// WORKSPACE BADGE - Multi-repo mode indicator
-	// ─────────────────────────────────────────────────────────────────────────
-	workspaceSection := ""
-	if m.workspaceMode && m.workspaceSummary != "" {
-		workspaceStyle := lipgloss.NewStyle().
-			Background(ThemeBg("#45B7D1")).
-			Foreground(ColorBg).
-			Bold(true).
-			Padding(0, 1)
-		workspaceSection = workspaceStyle.Render(fmt.Sprintf("📦 %s", m.workspaceSummary))
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// REPO FILTER BADGE - Active repo selection (workspace mode)
-	// ─────────────────────────────────────────────────────────────────────────
-	repoFilterSection := ""
-	if m.workspaceMode && m.activeRepos != nil && len(m.activeRepos) > 0 {
-		active := sortedRepoKeys(m.activeRepos)
-		label := formatRepoList(active, 3)
-		repoStyle := lipgloss.NewStyle().
-			Background(ColorBgHighlight).
-			Foreground(ColorInfo).
-			Bold(true).
-			Padding(0, 1)
-		repoFilterSection = repoStyle.Render(fmt.Sprintf("🗂 %s", label))
-	}
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// KEYBOARD HINTS - Context-aware navigation help
-	// ─────────────────────────────────────────────────────────────────────────
-	keyStyle := lipgloss.NewStyle().
-		Foreground(ColorSecondary).
-		Background(ColorBgSubtle).
-		Padding(0, 0)
-	sepStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	sep := sepStyle.Render(" │ ")
-
-	var keyHints []string
-	if m.showHelp {
-		keyHints = append(keyHints, "Press any key to close")
-	} else if m.showRepoPicker {
-		keyHints = append(keyHints, keyStyle.Render("j/k")+" nav", keyStyle.Render("space")+" toggle", keyStyle.Render("⏎")+" apply", keyStyle.Render("esc")+" cancel")
-	} else if m.showLabelPicker {
-		keyHints = append(keyHints, "type to filter", keyStyle.Render("j/k")+" nav", keyStyle.Render("⏎")+" apply", keyStyle.Render("esc")+" cancel")
-	} else if m.isBoardView {
-		keyHints = append(keyHints, keyStyle.Render("hjkl")+" nav", keyStyle.Render("G")+" bottom", keyStyle.Render("⏎")+" view", keyStyle.Render("b")+" list")
-	} else if m.list.FilterState() == list.Filtering {
-		keyHints = append(keyHints, keyStyle.Render("esc")+" cancel", keyStyle.Render("⏎")+" select")
-	} else {
-		if m.isSplitView {
-			keyHints = append(keyHints, keyStyle.Render("tab")+" focus", keyStyle.Render("C")+" copy", keyStyle.Render("Ctrl+R")+" refresh", keyStyle.Render("?")+" help")
-		} else if m.showDetails {
-			keyHints = append(keyHints, keyStyle.Render("esc")+" back", keyStyle.Render("C")+" copy", keyStyle.Render("O")+" edit", keyStyle.Render("Ctrl+R")+" refresh", keyStyle.Render("?")+" help")
-		} else {
-			keyHints = append(keyHints, keyStyle.Render("⏎")+" details", keyStyle.Render("l")+" labels", keyStyle.Render("Ctrl+R")+" refresh", keyStyle.Render("?")+" help")
-			if m.workspaceMode {
-				keyHints = append(keyHints, keyStyle.Render("w")+" repos")
-			}
-		}
-	}
-
-	keysSection := lipgloss.NewStyle().
-		Foreground(ColorSubtext).
-		Padding(0, 1).
-		Render(strings.Join(keyHints, sep))
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// COUNT BADGE - Total issues displayed
-	// ─────────────────────────────────────────────────────────────────────────
-	countBadge := lipgloss.NewStyle().
-		Foreground(ColorSecondary).
-		Padding(0, 1).
-		Render(fmt.Sprintf("%d issues", len(m.list.Items())))
-
-	// ─────────────────────────────────────────────────────────────────────────
-	// ASSEMBLE FOOTER with proper spacing
-	// ─────────────────────────────────────────────────────────────────────────
-	leftWidth := lipgloss.Width(filterBadge) + lipgloss.Width(labelHint) + lipgloss.Width(statsSection)
-	if watcherSection != "" {
-		leftWidth += lipgloss.Width(watcherSection) + 1
-	}
-	if workerSection != "" {
-		leftWidth += lipgloss.Width(workerSection) + 1
-	}
-	if searchBadge != "" {
-		leftWidth += lipgloss.Width(searchBadge) + 1
-	}
-	if sortBadge != "" {
-		leftWidth += lipgloss.Width(sortBadge) + 1
-	}
-	if workspaceSection != "" {
-		leftWidth += lipgloss.Width(workspaceSection) + 1
-	}
-	if repoFilterSection != "" {
-		leftWidth += lipgloss.Width(repoFilterSection) + 1
-	}
-	if updateSection != "" {
-		leftWidth += lipgloss.Width(updateSection) + 1
-	}
-	if datasetSection != "" {
-		leftWidth += lipgloss.Width(datasetSection) + 1
-	}
-	rightWidth := lipgloss.Width(countBadge) + lipgloss.Width(keysSection)
-
-	remaining := m.width - leftWidth - rightWidth - 1
+	// Render the full-width footer line
+	barWidth := lipgloss.Width(shortcutBar)
+	remaining := m.width - barWidth
 	if remaining < 0 {
 		remaining = 0
 	}
 	filler := lipgloss.NewStyle().Width(remaining).Render("")
 
-	// Build the footer
-	var parts []string
-	parts = append(parts, filterBadge)
-	if searchBadge != "" {
-		parts = append(parts, searchBadge)
-	}
-	if sortBadge != "" {
-		parts = append(parts, sortBadge)
-	}
-	parts = append(parts, labelHint)
-	if workspaceSection != "" {
-		parts = append(parts, workspaceSection)
-	}
-	if repoFilterSection != "" {
-		parts = append(parts, repoFilterSection)
-	}
-	if updateSection != "" {
-		parts = append(parts, updateSection)
-	}
-	if datasetSection != "" {
-		parts = append(parts, datasetSection)
-	}
-	parts = append(parts, statsSection)
-	if watcherSection != "" {
-		parts = append(parts, watcherSection)
-	}
-	if workerSection != "" {
-		parts = append(parts, workerSection)
-	}
-	parts = append(parts, filler, countBadge, keysSection)
-
-	return lipgloss.JoinHorizontal(lipgloss.Bottom, parts...)
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, shortcutBar, filler)
 }
 
 // getDiffStatus returns the diff status for an issue if time-travel mode is active
