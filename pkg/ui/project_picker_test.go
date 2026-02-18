@@ -598,6 +598,47 @@ func TestProjectSwitch_NoLoadingScreen(t *testing.T) {
 	}
 }
 
+// TestProjectSwitch_ClearsOldTreeData verifies that switching projects clears the
+// old tree/issues data so stale content doesn't render while loading (bd-lll).
+func TestProjectSwitch_ClearsOldTreeData(t *testing.T) {
+	_, projects := createSampleProjects(t)
+
+	cfg := config.Config{
+		Projects:  projects,
+		Favorites: nil,
+		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+	}
+
+	issues := []model.Issue{
+		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
+		{ID: "api-2", Title: "Add rate limiting", Status: "in_progress", IssueType: "feature", Priority: 2, CreatedAt: time.Now()},
+	}
+
+	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
+		WithConfig(cfg, "api-service", projects[0].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = newM.(ui.Model)
+
+	// Verify we have api-service issues in the tree
+	if m.TreeNodeCount() == 0 {
+		t.Fatal("expected tree to have nodes before switch")
+	}
+
+	// Switch to web-frontend
+	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
+	newM, _ = m.Update(switchMsg)
+	m = newM.(ui.Model)
+
+	// After switch, old tree data should be cleared
+	view := m.View()
+	if strings.Contains(view, "Fix auth bug") {
+		t.Error("old project issues should not appear after switch")
+	}
+	if strings.Contains(view, "Add rate limiting") {
+		t.Error("old project issues should not appear after switch")
+	}
+}
+
 // TestProjectSwitch_SameProjectIsNoop verifies pressing the number key of the
 // already-active project does NOT restart the background worker or reload data (bd-3eh).
 func TestProjectSwitch_SameProjectIsNoop(t *testing.T) {

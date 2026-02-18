@@ -119,8 +119,13 @@ func TestDiscoverProjects_AddsNewProjects(t *testing.T) {
 
 	proj1 := filepath.Join(root, "proj1")
 	proj2 := filepath.Join(root, "proj2")
+	validIssue := `{"id":"t1","title":"Test","status":"open","issue_type":"task","priority":2,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}` + "\n"
 	for _, p := range []string{proj1, proj2} {
-		if err := os.MkdirAll(filepath.Join(p, ".beads"), 0o755); err != nil {
+		beadsDir := filepath.Join(p, ".beads")
+		if err := os.MkdirAll(beadsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(beadsDir, "issues.jsonl"), []byte(validIssue), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -171,6 +176,62 @@ func TestFindBeadsRoot(t *testing.T) {
 	}
 	if found != root {
 		t.Errorf("expected %q, got %q", root, found)
+	}
+}
+
+func TestDiscoverProjects_ExcludesInvalidJSONL(t *testing.T) {
+	root := t.TempDir()
+
+	// Project with valid JSONL
+	valid := filepath.Join(root, "valid-project")
+	validBeads := filepath.Join(valid, ".beads")
+	if err := os.MkdirAll(validBeads, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(validBeads, "issues.jsonl"),
+		[]byte(`{"id":"v1","title":"Valid","status":"open","issue_type":"task","priority":2,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`+"\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Project with malformed JSONL
+	invalid := filepath.Join(root, "invalid-project")
+	invalidBeads := filepath.Join(invalid, ".beads")
+	if err := os.MkdirAll(invalidBeads, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(invalidBeads, "issues.jsonl"),
+		[]byte("this is not valid json\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Project with .beads dir but NO issues.jsonl
+	noFile := filepath.Join(root, "nofile-project")
+	noFileBeads := filepath.Join(noFile, ".beads")
+	if err := os.MkdirAll(noFileBeads, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Config{
+		Discovery: DiscoveryConfig{
+			ScanPaths: []string{root},
+			MaxDepth:  3,
+		},
+	}
+
+	result := DiscoverProjects(cfg)
+
+	// Only the valid project should be included
+	if len(result) != 1 {
+		names := make([]string, len(result))
+		for i, p := range result {
+			names[i] = p.Name
+		}
+		t.Fatalf("expected 1 valid project, got %d: %v", len(result), names)
+	}
+	if result[0].Name != "valid-project" {
+		t.Errorf("expected 'valid-project', got %q", result[0].Name)
 	}
 }
 

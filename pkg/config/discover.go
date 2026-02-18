@@ -1,6 +1,9 @@
 package config
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,8 +13,16 @@ import (
 // projects found. It merges discovered projects with existing registered
 // projects, preferring the registered name when a path matches.
 func DiscoverProjects(cfg Config) []Project {
+	projects, _ := DiscoverProjectsWithErrors(cfg)
+	return projects
+}
+
+// DiscoverProjectsWithErrors scans for beads projects and returns them along with
+// any validation errors for projects that were skipped (e.g., missing or malformed JSONL).
+func DiscoverProjectsWithErrors(cfg Config) ([]Project, []string) {
 	seen := make(map[string]bool)
 	var result []Project
+	var discoveryErrors []string
 
 	// Start with registered projects
 	for _, p := range cfg.Projects {
@@ -30,6 +41,10 @@ func DiscoverProjects(cfg Config) []Project {
 		for _, f := range found {
 			if !seen[f] {
 				seen[f] = true
+				if err := validateBeadsDir(f); err != nil {
+					discoveryErrors = append(discoveryErrors, fmt.Sprintf("%s: %v", filepath.Base(f), err))
+					continue
+				}
 				result = append(result, Project{
 					Name: filepath.Base(f),
 					Path: f,
@@ -38,7 +53,7 @@ func DiscoverProjects(cfg Config) []Project {
 		}
 	}
 
-	return result
+	return result, discoveryErrors
 }
 
 // scanForBeads walks a directory tree up to maxDepth levels deep,
@@ -113,4 +128,48 @@ func findBeadsRoot(dir string) (string, bool) {
 		dir = parent
 	}
 	return "", false
+}
+
+// validateBeadsDir checks that a project directory has a valid .beads/issues.jsonl file.
+// Returns nil if valid, an error describing the problem otherwise.
+func validateBeadsDir(projectPath string) error {
+	beadsDir := filepath.Join(projectPath, ".beads")
+
+	// Look for a JSONL file (issues.jsonl is the standard name)
+	candidates := []string{"issues.jsonl", "beads.jsonl"}
+	var jsonlPath string
+	for _, name := range candidates {
+		p := filepath.Join(beadsDir, name)
+		if info, err := os.Stat(p); err == nil && !info.IsDir() && info.Size() > 0 {
+			jsonlPath = p
+			break
+		}
+	}
+	if jsonlPath == "" {
+		return fmt.Errorf("no issues.jsonl found in .beads/")
+	}
+
+	// Validate that the file contains at least one parseable JSON line with an "id" field
+	f, err := os.Open(jsonlPath)
+	if err != nil {
+		return fmt.Errorf("cannot read %s: %w", filepath.Base(jsonlPath), err)
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			return fmt.Errorf("malformed JSON in %s: %w", filepath.Base(jsonlPath), err)
+		}
+		if _, ok := obj["id"]; !ok {
+			return fmt.Errorf("first entry in %s has no 'id' field", filepath.Base(jsonlPath))
+		}
+		return nil // First valid line is enough
+	}
+	return fmt.Errorf("%s has no valid entries", filepath.Base(jsonlPath))
 }

@@ -500,9 +500,11 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 				}
 			}
 		} else {
-			// Try to get counts from the project's beads file
+			// Try to get counts from the project's beads file.
+			// Use silent warning handler to avoid corrupting TUI with stderr output (bd-lll).
 			beadsPath := filepath.Join(p.ResolvedPath(), ".beads", "issues.jsonl")
-			if issues, err := loader.LoadIssuesFromFile(beadsPath); err == nil {
+			silentOpts := loader.ParseOptions{WarningHandler: func(string) {}}
+			if issues, err := loader.LoadIssuesFromFileWithOptions(beadsPath, silentOpts); err == nil {
 				for _, iss := range issues {
 					switch iss.Status {
 					case "in_progress":
@@ -800,7 +802,11 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
 	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
-	m.allProjects = config.DiscoverProjects(cfg)
+	projects, errs := config.DiscoverProjectsWithErrors(cfg)
+	m.allProjects = projects
+	for _, e := range errs {
+		debug.Log("project discovery: skipping %s", e)
+	}
 	// Initialize picker as expanded on startup (bd-ey3)
 	m.pickerExpanded = true
 	entries := m.buildProjectEntries()
@@ -1161,6 +1167,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.watcher = nil
 		}
 		m.beadsPath = newPath
+		// Clear old project data to prevent stale rendering (bd-lll)
+		m.issues = nil
+		m.issueMap = nil
+		m.snapshot = nil
+		m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
+		m.tree.Build(nil)
 		// Start new background worker for the new path (bd-87w, bd-828)
 		// BackgroundWorker creates its own internal file watcher.
 		bw, bwErr := NewBackgroundWorker(WorkerConfig{BeadsPath: newPath})
