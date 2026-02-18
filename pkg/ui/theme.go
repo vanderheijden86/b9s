@@ -180,3 +180,8 @@ func (t Theme) GetTypeIcon(typ string) (string, lipgloss.AdaptiveColor) {
 		return "•", t.Subtext
 	}
 }
+
+// TestTheme returns a theme suitable for use in tests (uses nil renderer).
+func TestTheme() Theme {
+	return DefaultTheme(lipgloss.NewRenderer(os.Stdout))
+}

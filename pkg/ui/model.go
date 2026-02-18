@@ -474,6 +474,7 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 		if entry.IsActive {
 			entry.OpenCount = m.countOpen
 			entry.ReadyCount = m.countReady
+			entry.BlockedCount = m.countBlocked
 		} else {
 			// Try to get counts from the project's beads file
 			beadsPath := filepath.Join(p.ResolvedPath(), ".beads", "issues.jsonl")
@@ -482,8 +483,11 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 					if iss.Status == "open" || iss.Status == "in_progress" {
 						entry.OpenCount++
 					}
+					if iss.Status == "blocked" {
+						entry.BlockedCount++
+						continue
+					}
 					if iss.Status == "open" {
-						// Simple "ready" check: open and not blocked
 						blocked := false
 						for _, dep := range iss.Dependencies {
 							if dep.Type == "blocked_by" {
@@ -491,7 +495,9 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 								break
 							}
 						}
-						if !blocked {
+						if blocked {
+							entry.BlockedCount++
+						} else {
 							entry.ReadyCount++
 						}
 					}
@@ -4033,6 +4039,26 @@ func (m Model) TreeFollowMode() bool {
 // TreeDetailHidden returns whether the detail panel is hidden in tree view (bd-80u).
 func (m Model) TreeDetailHidden() bool {
 	return m.treeDetailHidden
+}
+
+// ShowProjectPicker returns whether the project picker is visible (bd-q5z.8).
+func (m Model) ShowProjectPicker() bool {
+	return m.showProjectPicker
+}
+
+// ActiveProjectName returns the name of the currently loaded project (bd-q5z.8).
+func (m Model) ActiveProjectName() string {
+	return m.activeProjectName
+}
+
+// ProjectPickerCursor returns the cursor position in the project picker (bd-q5z.8).
+func (m Model) ProjectPickerCursor() int {
+	return m.projectPicker.Cursor()
+}
+
+// ProjectPickerFilteredCount returns how many projects match the current filter (bd-q5z.8).
+func (m Model) ProjectPickerFilteredCount() int {
+	return m.projectPicker.FilteredCount()
 }
 
 // exportToMarkdown exports all issues to a Markdown file with auto-generated filename

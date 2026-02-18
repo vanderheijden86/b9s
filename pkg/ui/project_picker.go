@@ -14,11 +14,12 @@ import (
 
 // ProjectEntry holds display data for one project in the picker.
 type ProjectEntry struct {
-	Project     config.Project
-	FavoriteNum int  // 0 = not favorited, 1-9 = key
-	IsActive    bool // Currently loaded project
-	OpenCount   int
-	ReadyCount  int
+	Project      config.Project
+	FavoriteNum  int  // 0 = not favorited, 1-9 = key
+	IsActive     bool // Currently loaded project
+	OpenCount    int
+	ReadyCount   int
+	BlockedCount int
 }
 
 // SwitchProjectMsg is sent when the user selects a project to switch to.
@@ -32,7 +33,7 @@ type ToggleFavoriteMsg struct {
 	SlotNumber  int // 0 = remove, 1-9 = assign
 }
 
-// ProjectPickerModel is the overlay for selecting and switching between projects.
+// ProjectPickerModel is a full-screen k9s-style view for selecting projects.
 type ProjectPickerModel struct {
 	entries     []ProjectEntry
 	filtered    []int // indices into entries
@@ -44,7 +45,7 @@ type ProjectPickerModel struct {
 	theme       Theme
 }
 
-// NewProjectPicker creates a new project picker overlay.
+// NewProjectPicker creates a new project picker.
 func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
 	ti := textinput.New()
 	ti.Placeholder = "type to filter..."
@@ -76,7 +77,6 @@ func (m *ProjectPickerModel) SetSize(w, h int) {
 func (m ProjectPickerModel) Update(msg tea.Msg) (ProjectPickerModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// In filter mode, most keys go to the text input
 		if m.filtering {
 			return m.updateFiltering(msg)
 		}
@@ -95,6 +95,12 @@ func (m ProjectPickerModel) updateNormal(msg tea.KeyMsg) (ProjectPickerModel, te
 	case "k", "up":
 		if m.cursor > 0 {
 			m.cursor--
+		}
+	case "g":
+		m.cursor = 0
+	case "G":
+		if len(m.filtered) > 0 {
+			m.cursor = len(m.filtered) - 1
 		}
 	case "enter":
 		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
@@ -128,8 +134,6 @@ func (m ProjectPickerModel) updateNormal(msg tea.KeyMsg) (ProjectPickerModel, te
 			}
 		}
 	case "esc":
-		// Close signal: the parent model handles this by checking for esc
-		// and toggling the showProjectPicker flag. Return nil cmd.
 		return m, nil
 	}
 	return m, nil
@@ -147,7 +151,6 @@ func (m ProjectPickerModel) updateFiltering(msg tea.KeyMsg) (ProjectPickerModel,
 	case "enter":
 		m.filtering = false
 		m.filterInput.Blur()
-		// Keep the filter applied, select the highlighted entry
 		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 			entry := m.entries[m.filtered[m.cursor]]
 			return m, func() tea.Msg {
@@ -195,7 +198,6 @@ func (m *ProjectPickerModel) applyFilter() {
 	for i, entry := range m.entries {
 		name := strings.ToLower(entry.Project.Name)
 		path := strings.ToLower(entry.Project.Path)
-		// Check name and path for fuzzy match
 		nameScore := fuzzyScore(name, query)
 		pathScore := fuzzyScore(path, query)
 		best := nameScore
@@ -222,14 +224,10 @@ func (m *ProjectPickerModel) applyFilter() {
 }
 
 // nextAvailableFavoriteSlot cycles through favorite slots for the given entry.
-// If already favorited, removes the favorite (returns 0).
-// If not favorited, assigns the next available slot 1-9.
 func (m *ProjectPickerModel) nextAvailableFavoriteSlot(entry ProjectEntry) int {
 	if entry.FavoriteNum > 0 {
-		// Already favorited: remove it
 		return 0
 	}
-	// Find the first available slot
 	used := make(map[int]bool)
 	for _, e := range m.entries {
 		if e.FavoriteNum > 0 {
@@ -241,76 +239,53 @@ func (m *ProjectPickerModel) nextAvailableFavoriteSlot(entry ProjectEntry) int {
 			return n
 		}
 	}
-	return 0 // All slots taken
+	return 0
 }
 
-// View renders the project picker overlay.
+// View renders the full-screen k9s-style project picker.
 func (m *ProjectPickerModel) View() string {
 	if m.width == 0 {
-		m.width = 70
+		m.width = 80
 	}
 	if m.height == 0 {
-		m.height = 20
+		m.height = 24
 	}
 
 	t := m.theme
+	w := m.width
 
-	// Calculate box dimensions
-	boxWidth := 64
-	if m.width < 74 {
-		boxWidth = m.width - 10
-	}
-	if boxWidth < 40 {
-		boxWidth = 40
+	var sections []string
+
+	// --- Shortcut hints (k9s style: colored key + description grid) ---
+	sections = append(sections, m.renderShortcutBar(w))
+
+	// --- Title bar: " projects(filtered)[count] " ---
+	sections = append(sections, m.renderTitleBar(w))
+
+	// --- Column headers ---
+	sections = append(sections, m.renderColumnHeaders(w))
+
+	// --- Filter input (shown inline when filtering) ---
+	if m.filtering {
+		filterStyle := t.Renderer.NewStyle().
+			Foreground(t.Primary).
+			Width(w)
+		sections = append(sections, filterStyle.Render("  / "+m.filterInput.View()))
 	}
 
-	maxVisible := 12
-	if m.height < 18 {
-		maxVisible = m.height - 8
-	}
+	// --- Project rows ---
+	headerLines := len(sections) + 1 // +1 for footer
+	maxVisible := m.height - headerLines - 1
 	if maxVisible < 3 {
 		maxVisible = 3
 	}
 
-	var lines []string
-
-	// Title
-	titleStyle := t.Renderer.NewStyle().
-		Foreground(t.Primary).
-		Bold(true)
-	lines = append(lines, titleStyle.Render("Select Project"))
-	lines = append(lines, "")
-
-	// Filter input (shown when filtering)
-	if m.filtering {
-		inputStyle := t.Renderer.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(t.Secondary).
-			Padding(0, 1).
-			Width(boxWidth - 6)
-		lines = append(lines, inputStyle.Render(m.filterInput.View()))
-		lines = append(lines, "")
-	}
-
-	// Column header
-	headerLine := m.renderHeaderLine(boxWidth)
-	headerStyle := t.Renderer.NewStyle().
-		Foreground(t.Secondary).
-		Bold(true)
-	lines = append(lines, headerStyle.Render(headerLine))
-
-	// Separator
-	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
-	lines = append(lines, sepStyle.Render(strings.Repeat("\u2500", boxWidth-4)))
-
-	// Project list with scroll
 	if len(m.filtered) == 0 {
 		dimStyle := t.Renderer.NewStyle().
 			Foreground(t.Secondary).
 			Italic(true)
-		lines = append(lines, dimStyle.Render("  No matching projects"))
+		sections = append(sections, dimStyle.Render("  No projects found. Configure scan_paths in ~/.config/bw/config.yaml"))
 	} else {
-		// Calculate visible window
 		start := 0
 		if m.cursor >= maxVisible {
 			start = m.cursor - maxVisible + 1
@@ -323,113 +298,186 @@ func (m *ProjectPickerModel) View() string {
 		for i := start; i < end; i++ {
 			entry := m.entries[m.filtered[i]]
 			isCursor := i == m.cursor
-			lines = append(lines, m.renderProjectLine(entry, isCursor, boxWidth))
-		}
-
-		// Show scroll indicator
-		if len(m.filtered) > maxVisible {
-			countStyle := t.Renderer.NewStyle().
-				Foreground(t.Secondary).
-				Italic(true)
-			lines = append(lines, "")
-			lines = append(lines, countStyle.Render(
-				fmt.Sprintf("  %d/%d projects", m.cursor+1, len(m.filtered)),
-			))
+			sections = append(sections, m.renderRow(entry, isCursor, w))
 		}
 	}
 
-	// Footer
-	lines = append(lines, "")
-	footerStyle := t.Renderer.NewStyle().
-		Foreground(t.Secondary).
-		Italic(true)
-	lines = append(lines, footerStyle.Render("* = active | u:favorite | enter:switch | /:search | esc"))
+	// Pad remaining vertical space
+	usedLines := len(sections)
+	remaining := m.height - usedLines
+	if remaining > 0 {
+		sections = append(sections, strings.Repeat("\n", remaining-1))
+	}
 
-	content := strings.Join(lines, "\n")
-
-	// Box style
-	boxStyle := t.Renderer.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Primary).
-		Padding(1, 2).
-		Width(boxWidth)
-
-	box := boxStyle.Render(content)
-
-	// Center in viewport
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		box,
-	)
+	return strings.Join(sections, "\n")
 }
 
-// renderHeaderLine renders the column header row.
-func (m *ProjectPickerModel) renderHeaderLine(boxWidth int) string {
-	// Layout: " #  Project          Path                    Open  Ready"
-	nameWidth, pathWidth := m.columnWidths(boxWidth)
-	return fmt.Sprintf(" %-2s %-*s  %-*s  %5s %5s",
-		"#", nameWidth, "Project", pathWidth, "Path", "Open", "Ready")
-}
-
-// renderProjectLine renders a single project entry row.
-func (m *ProjectPickerModel) renderProjectLine(entry ProjectEntry, isCursor bool, boxWidth int) string {
+// renderShortcutBar renders the k9s-style shortcut hints at the top.
+func (m *ProjectPickerModel) renderShortcutBar(w int) string {
 	t := m.theme
-	nameWidth, pathWidth := m.columnWidths(boxWidth)
 
-	// Favorite number column
-	favStr := "-"
+	keyStyle := t.Renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
+		Bold(true)
+	descStyle := t.Renderer.NewStyle().
+		Foreground(t.Subtext)
+
+	shortcuts := []struct {
+		key  string
+		desc string
+	}{
+		{"<enter>", "Switch"},
+		{"<1-9>", "Quick Switch"},
+		{"<u>", "Favorite"},
+		{"</>", "Filter"},
+		{"<esc>", "Back"},
+		{"<g>", "Top"},
+		{"<G>", "Bottom"},
+	}
+
+	var parts []string
+	for _, s := range shortcuts {
+		parts = append(parts, keyStyle.Render(s.key)+" "+descStyle.Render(s.desc))
+	}
+
+	line := strings.Join(parts, "  ")
+
+	barStyle := t.Renderer.NewStyle().
+		Width(w).
+		Background(ColorBgHighlight).
+		Padding(0, 1)
+
+	return barStyle.Render(line)
+}
+
+// renderTitleBar renders the k9s-style title bar with resource type and count.
+func (m *ProjectPickerModel) renderTitleBar(w int) string {
+	t := m.theme
+
+	titleText := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+
+	countText := t.Renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"})
+
+	label := "projects"
+	if m.filtering && m.filterInput.Value() != "" {
+		label = fmt.Sprintf("projects(%s)", m.filterInput.Value())
+	}
+
+	title := titleText.Render(label) + countText.Render(fmt.Sprintf("[%d]", len(m.filtered)))
+
+	// Center the title with separator lines
+	sepChar := "\u2500"
+	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
+
+	// Calculate padding (approximate since styled text has zero-width codes)
+	titleLen := len(label) + len(fmt.Sprintf("[%d]", len(m.filtered)))
+	leftPad := (w - titleLen - 4) / 2
+	rightPad := w - titleLen - 4 - leftPad
+	if leftPad < 1 {
+		leftPad = 1
+	}
+	if rightPad < 1 {
+		rightPad = 1
+	}
+
+	return sepStyle.Render(strings.Repeat(sepChar, leftPad)) + " " + title + " " + sepStyle.Render(strings.Repeat(sepChar, rightPad))
+}
+
+// renderColumnHeaders renders the table column header row.
+func (m *ProjectPickerModel) renderColumnHeaders(w int) string {
+	t := m.theme
+	nameW, pathW := m.columnWidths(w)
+
+	header := fmt.Sprintf("  %-2s %-*s %-*s %6s %6s %8s",
+		"#", nameW, "NAME", pathW, "PATH", "OPEN", "READY", "BLOCKED")
+
+	headerStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary).
+		Bold(true).
+		Width(w)
+
+	return headerStyle.Render(header)
+}
+
+// renderRow renders a single project entry row in k9s table style.
+func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int) string {
+	t := m.theme
+	nameW, pathW := m.columnWidths(w)
+
+	// Favorite number
+	favStr := " "
 	if entry.FavoriteNum > 0 {
 		favStr = fmt.Sprintf("%d", entry.FavoriteNum)
 	}
 
-	// Project name with active marker
+	// Project name
 	name := entry.Project.Name
-	if entry.IsActive {
-		name += " *"
-	}
-	name = truncateRunesHelper(name, nameWidth, "...")
+	name = truncateRunesHelper(name, nameW, "...")
 
-	// Path (abbreviated with ~)
+	// Path (abbreviated)
 	path := abbreviatePath(entry.Project.Path)
-	path = truncateRunesHelper(path, pathWidth, "...")
+	path = truncateRunesHelper(path, pathW, "...")
 
 	// Counts
 	openStr := fmt.Sprintf("%d", entry.OpenCount)
 	readyStr := fmt.Sprintf("%d", entry.ReadyCount)
+	blockedStr := fmt.Sprintf("%d", entry.BlockedCount)
 
-	line := fmt.Sprintf(" %-2s %-*s  %-*s  %5s %5s",
-		favStr, nameWidth, name, pathWidth, path, openStr, readyStr)
+	line := fmt.Sprintf("  %-2s %-*s %-*s %6s %6s %8s",
+		favStr, nameW, name, pathW, path, openStr, readyStr, blockedStr)
 
-	style := t.Renderer.NewStyle()
 	if isCursor {
-		style = style.Foreground(t.Primary).Bold(true)
-		line = ">" + line[1:] // Replace leading space with cursor
-	} else {
-		style = style.Foreground(t.Base.GetForeground())
+		// Active row highlight: full-width background like k9s
+		if entry.IsActive {
+			// Active + selected: bright cyan/green
+			return t.Renderer.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
+				Background(ColorBgHighlight).
+				Bold(true).
+				Width(w).
+				Render(line)
+		}
+		return t.Renderer.NewStyle().
+			Foreground(t.Primary).
+			Background(ColorBgHighlight).
+			Bold(true).
+			Width(w).
+			Render(line)
 	}
 
-	return style.Render(line)
+	if entry.IsActive {
+		// Active project (not selected): cyan text
+		return t.Renderer.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
+			Width(w).
+			Render(line)
+	}
+
+	// Normal row
+	return t.Renderer.NewStyle().
+		Foreground(t.Base.GetForeground()).
+		Width(w).
+		Render(line)
 }
 
-// columnWidths calculates name and path column widths based on box width.
-// Layout: " #  Name  Path  Open  Ready" with padding and fixed-width count columns.
-func (m *ProjectPickerModel) columnWidths(boxWidth int) (nameWidth, pathWidth int) {
-	// Fixed columns: " # " (4) + "  " (2 gap) + "  " (2 gap) + " Open" (6) + " Ready" (6) = ~20 fixed
-	available := boxWidth - 24
+// columnWidths calculates name and path column widths based on terminal width.
+func (m *ProjectPickerModel) columnWidths(totalWidth int) (nameWidth, pathWidth int) {
+	// Fixed columns: "  # " (4) + " " (gaps) + "  OPEN" (7) + " READY" (7) + " BLOCKED" (9) = ~27 fixed
+	available := totalWidth - 30
 	if available < 20 {
 		available = 20
 	}
-	// Split roughly 40/60 between name and path
-	nameWidth = available * 2 / 5
+	// Split 35/65 between name and path
+	nameWidth = available * 35 / 100
 	pathWidth = available - nameWidth
-	if nameWidth < 8 {
-		nameWidth = 8
+	if nameWidth < 10 {
+		nameWidth = 10
 	}
-	if pathWidth < 10 {
-		pathWidth = 10
+	if pathWidth < 15 {
+		pathWidth = 15
 	}
 	return nameWidth, pathWidth
 }
