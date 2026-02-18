@@ -49,6 +49,7 @@ const (
 	focusUpdateModal
 	focusStatusPicker
 	focusEditModal
+	focusProjectPicker // bd-ecf: project picker has keyboard focus
 )
 
 // SortMode represents the current list sorting mode (bv-3ita)
@@ -182,6 +183,9 @@ type semanticDebounceTickMsg struct{}
 // workerPollTickMsg drives a small background-mode status refresh (spinner + freshness) (bv-9nfy).
 type workerPollTickMsg struct{}
 
+// PickerRefreshTickMsg triggers a periodic refresh of project picker counts (bd-8yc).
+type PickerRefreshTickMsg struct{}
+
 var workerSpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 const (
@@ -199,6 +203,13 @@ func freshnessStaleThreshold() time.Duration {
 func workerPollTickCmd() tea.Cmd {
 	return tea.Tick(120*time.Millisecond, func(time.Time) tea.Msg {
 		return workerPollTickMsg{}
+	})
+}
+
+// pickerRefreshTickCmd returns a command that fires a PickerRefreshTickMsg after 30s (bd-8yc).
+func pickerRefreshTickCmd() tea.Cmd {
+	return tea.Tick(30*time.Second, func(time.Time) tea.Msg {
+		return PickerRefreshTickMsg{}
 	})
 }
 
@@ -385,6 +396,7 @@ type Model struct {
 	appConfig         config.Config     // Loaded app configuration
 	allProjects       []config.Project  // All known projects
 	pickerExpanded    bool              // Project picker expanded (true) or minimized (false)
+	pickerPrevFocus   focus             // Focus to restore when defocusing picker (bd-ecf)
 	projectPicker     ProjectPickerModel
 }
 
@@ -828,6 +840,10 @@ func (m Model) Init() tea.Cmd {
 	} else if m.watcher != nil {
 		cmds = append(cmds, WatchFileCmd(m.watcher))
 	}
+	// Start periodic picker refresh for non-active project counts (bd-8yc)
+	if len(m.allProjects) > 1 {
+		cmds = append(cmds, pickerRefreshTickCmd())
+	}
 	return tea.Batch(cmds...)
 }
 
@@ -923,6 +939,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetSize(m.width, m.height-3)
 			m.viewport = viewport.New(m.width, m.bodyHeight())
 		}
+
+	case PickerRefreshTickMsg:
+		// Periodic refresh of project picker counts (bd-8yc)
+		if len(m.allProjects) > 0 {
+			entries := m.buildProjectEntries()
+			m.projectPicker = NewProjectPicker(entries, m.theme)
+			m.projectPicker.SetSize(m.width, m.height)
+		}
+		return m, pickerRefreshTickCmd()
 
 	case workerPollTickMsg:
 		if m.backgroundWorker != nil {
@@ -1679,14 +1704,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
 			case "P":
-				// Toggle project picker expanded/minimized (bd-ey3)
+				// Toggle project picker expanded/minimized (bd-ey3, bd-ecf)
 				// Note: lowercase 'p' still does jump-to-parent in tree (bd-ryu)
-				m.pickerExpanded = !m.pickerExpanded
 				if m.pickerExpanded {
-					// Rebuild entries when expanding
+					// Minimize and defocus (bd-ecf)
+					m.pickerExpanded = false
+					m.projectPicker.SetFocused(false)
+					if m.focused == focusProjectPicker {
+						m.focused = m.pickerPrevFocus
+					}
+				} else {
+					// Expand and focus (bd-ecf)
+					m.pickerPrevFocus = m.focused
 					entries := m.buildProjectEntries()
 					m.projectPicker = NewProjectPicker(entries, m.theme)
 					m.projectPicker.SetSize(m.width, m.height)
+					m.projectPicker.SetFocused(true)
+					m.pickerExpanded = true
+					m.focused = focusProjectPicker
 				}
 				return m, nil
 
@@ -4020,6 +4055,8 @@ func (m Model) FocusState() string {
 		return "status_picker"
 	case focusEditModal:
 		return "edit_modal"
+	case focusProjectPicker:
+		return "project_picker"
 	default:
 		return "unknown"
 	}

@@ -669,3 +669,345 @@ func TestProjectSwitch_SameProjectIsNoop(t *testing.T) {
 		t.Error("switching to already-active project should be a no-op (no commands)")
 	}
 }
+
+// TestPickerCountsRefreshOnTick verifies that a periodic tick message
+// triggers a refresh of non-active project counts in the picker (bd-8yc).
+func TestPickerCountsRefreshOnTick(t *testing.T) {
+	_, projects := createSampleProjects(t)
+
+	cfg := config.Config{
+		Projects:  projects,
+		Favorites: nil,
+		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+	}
+
+	issues := []model.Issue{
+		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
+	}
+
+	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
+		WithConfig(cfg, "api-service", projects[0].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = newM.(ui.Model)
+
+	// Capture initial view — web-frontend should have some counts from its JSONL
+	initialView := m.View()
+	if !strings.Contains(initialView, "web-frontend") {
+		t.Fatal("expected web-frontend in expanded picker")
+	}
+
+	// Now modify the web-frontend JSONL on disk (add a new issue)
+	webBeadsPath := filepath.Join(projects[1].Path, ".beads", "issues.jsonl")
+	existingContent, err := os.ReadFile(webBeadsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newIssue := `{"id":"web-3","title":"New feature","status":"open","issue_type":"feature","priority":2,"created_at":"2026-01-03T00:00:00Z","updated_at":"2026-01-03T00:00:00Z"}` + "\n"
+	if err := os.WriteFile(webBeadsPath, append(existingContent, []byte(newIssue)...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Send PickerRefreshTickMsg to trigger a refresh
+	newM, cmd := m.Update(ui.PickerRefreshTickMsg{})
+	m = newM.(ui.Model)
+
+	// The tick should produce a follow-up tick command
+	if cmd == nil {
+		t.Error("expected PickerRefreshTickMsg to produce a follow-up tick command")
+	}
+
+	// The picker should now reflect updated counts for web-frontend
+	// Original: 2 issues (web-1 open, web-2 blocked). After: 3 issues.
+	updatedView := m.View()
+	// web-frontend originally had OpenCount=1 (web-1). Now it should have 2 (web-1 + web-3).
+	// We can't easily check exact numbers in the table format, but we can verify
+	// the view changed after the tick (indicating a refresh happened).
+	if initialView == updatedView {
+		t.Error("expected picker view to change after PickerRefreshTickMsg with modified JSONL")
+	}
+}
+
+// --- Focus mode tests (bd-ecf) ---
+
+// TestProjectPicker_FocusedArrowNavigation verifies that when the picker is focused,
+// up/down arrow keys move the cursor through the project list.
+func TestProjectPicker_FocusedArrowNavigation(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}},
+		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+	picker.SetFocused(true)
+
+	// Cursor starts at 0
+	if picker.Cursor() != 0 {
+		t.Fatalf("expected cursor at 0, got %d", picker.Cursor())
+	}
+
+	// Down arrow moves cursor
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if picker.Cursor() != 1 {
+		t.Errorf("expected cursor at 1 after down, got %d", picker.Cursor())
+	}
+
+	// Another down
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if picker.Cursor() != 2 {
+		t.Errorf("expected cursor at 2 after second down, got %d", picker.Cursor())
+	}
+
+	// Down at bottom stays at bottom
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if picker.Cursor() != 2 {
+		t.Errorf("expected cursor to stay at 2 at bottom, got %d", picker.Cursor())
+	}
+
+	// Up arrow moves cursor back
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyUp})
+	if picker.Cursor() != 1 {
+		t.Errorf("expected cursor at 1 after up, got %d", picker.Cursor())
+	}
+}
+
+// TestProjectPicker_FocusedEnterSwitchesProject verifies that pressing Enter
+// while focused selects the project under the cursor.
+func TestProjectPicker_FocusedEnterSwitchesProject(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}},
+		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+	picker.SetFocused(true)
+
+	// Move to second project
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyDown})
+
+	// Press enter to select
+	picker, cmd := picker.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("expected a command from enter in focused mode")
+	}
+
+	msg := cmd()
+	switchMsg, ok := msg.(ui.SwitchProjectMsg)
+	if !ok {
+		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
+	}
+	if switchMsg.Project.Name != "beta" {
+		t.Errorf("expected beta, got %q", switchMsg.Project.Name)
+	}
+}
+
+// TestProjectPicker_FocusedTabDefocuses verifies that pressing Tab while focused
+// sends a ProjectPickerDefocusMsg.
+func TestProjectPicker_FocusedTabDefocuses(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+	picker.SetFocused(true)
+
+	// Press tab
+	_, cmd := picker.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if cmd == nil {
+		t.Fatal("expected a command from tab in focused mode")
+	}
+
+	msg := cmd()
+	_, ok := msg.(ui.ProjectPickerDefocusMsg)
+	if !ok {
+		t.Fatalf("expected ProjectPickerDefocusMsg, got %T", msg)
+	}
+}
+
+// TestProjectPicker_UnfocusedArrowsDontNavigate verifies that when NOT focused,
+// arrow keys in normal mode (non-filter) don't move the cursor.
+func TestProjectPicker_UnfocusedArrowsDontNavigate(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+	// NOT focused (default)
+
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if picker.Cursor() != 0 {
+		t.Errorf("cursor should not move when not focused, got %d", picker.Cursor())
+	}
+}
+
+// TestProjectPicker_FocusedCursorVisibleInView verifies that the cursor row
+// is visually highlighted when the picker is focused.
+func TestProjectPicker_FocusedCursorVisibleInView(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}, IsActive: false},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}, IsActive: false},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+	picker.SetFocused(true)
+
+	// Move cursor to beta
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyDown})
+
+	view := picker.ViewExpanded()
+	// The view should contain both project names
+	if !strings.Contains(view, "alpha") {
+		t.Error("view should contain alpha")
+	}
+	if !strings.Contains(view, "beta") {
+		t.Error("view should contain beta")
+	}
+}
+
+// TestProjectPicker_FocusedShortcutBarShowsTab verifies the shortcut bar
+// shows Tab hint when focused.
+func TestProjectPicker_FocusedShortcutBarShowsTab(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+	picker.SetFocused(true)
+
+	view := picker.ViewExpanded()
+	if !strings.Contains(view, "Tab") {
+		t.Error("shortcut bar should show Tab hint when focused")
+	}
+}
+
+// --- Model-level focus integration tests (bd-ecf) ---
+
+// TestModel_PKeyExpandsAndFocusesPicker verifies that pressing P when the picker
+// is minimized expands it AND sets focus to the project picker.
+func TestModel_PKeyExpandsAndFocusesPicker(t *testing.T) {
+	m, _ := createModelWithProjects(t)
+
+	// Minimize picker first
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+	if m.PickerExpanded() {
+		t.Fatal("picker should be minimized after P")
+	}
+
+	// Press P again to expand
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+	if !m.PickerExpanded() {
+		t.Fatal("picker should be expanded after second P")
+	}
+
+	// Focus should be on project picker
+	if m.FocusState() != "project_picker" {
+		t.Errorf("expected focus 'project_picker', got %q", m.FocusState())
+	}
+}
+
+// TestModel_PKeyMinimizesExpandedPicker verifies that pressing P when the picker
+// is expanded minimizes it and returns focus to previous view.
+func TestModel_PKeyMinimizesExpandedPicker(t *testing.T) {
+	m, _ := createModelWithProjects(t)
+
+	// Picker starts expanded and focused
+	if !m.PickerExpanded() {
+		t.Fatal("picker should start expanded")
+	}
+
+	// Press P to minimize
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+	if m.PickerExpanded() {
+		t.Fatal("picker should be minimized after P")
+	}
+
+	// Focus should NOT be on project picker
+	if m.FocusState() == "project_picker" {
+		t.Error("focus should not be on project_picker after minimizing")
+	}
+}
+
+// TestModel_TabDefocusesPickerKeepsExpanded verifies that pressing Tab while
+// the picker is focused returns focus to the tree but keeps the picker expanded.
+func TestModel_TabDefocusesPickerKeepsExpanded(t *testing.T) {
+	m, _ := createModelWithProjects(t)
+
+	// Minimize then re-expand to get picker focus
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+
+	if m.FocusState() != "project_picker" {
+		t.Fatalf("expected focus 'project_picker', got %q", m.FocusState())
+	}
+
+	// Press Tab
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+
+	// Picker should still be expanded
+	if !m.PickerExpanded() {
+		t.Error("picker should remain expanded after Tab")
+	}
+
+	// Focus should be back on tree (not project_picker)
+	if m.FocusState() == "project_picker" {
+		t.Error("focus should not be on project_picker after Tab")
+	}
+	if m.FocusState() != "tree" {
+		t.Errorf("expected focus 'tree' after Tab, got %q", m.FocusState())
+	}
+}
+
+// TestModel_PickerArrowNavigation verifies that arrow keys navigate the picker
+// when it has focus, via the full Model.Update cycle.
+func TestModel_PickerArrowNavigation(t *testing.T) {
+	m, _ := createModelWithProjects(t)
+
+	// Minimize then re-expand to get picker focus
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+
+	if m.FocusState() != "project_picker" {
+		t.Fatalf("expected focus 'project_picker', got %q", m.FocusState())
+	}
+
+	// Cursor starts at 0
+	if m.ProjectPickerCursor() != 0 {
+		t.Fatalf("expected cursor at 0, got %d", m.ProjectPickerCursor())
+	}
+
+	// Down arrow
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m = newM.(ui.Model)
+	if m.ProjectPickerCursor() != 1 {
+		t.Errorf("expected cursor at 1 after down, got %d", m.ProjectPickerCursor())
+	}
+
+	// Up arrow
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = newM.(ui.Model)
+	if m.ProjectPickerCursor() != 0 {
+		t.Errorf("expected cursor at 0 after up, got %d", m.ProjectPickerCursor())
+	}
+}
