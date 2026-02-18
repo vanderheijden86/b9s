@@ -184,16 +184,15 @@ func TestFocusStateInitial(t *testing.T) {
 	}
 }
 
-// TestFocusTransitionBoard verifies 'b' toggles board view
+// TestFocusTransitionBoard verifies 'b' toggles board view from tree (bd-8hw.4)
 func TestFocusTransitionBoard(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "Test Issue", Status: model.StatusOpen, Priority: 1},
 	}
 	m := ui.NewModel(issues, "")
-	m = switchToList(t, m) // Exit default tree view (bd-dxc)
 
-	if m.FocusState() != "list" {
-		t.Fatalf("Initial focus = %q, want 'list'", m.FocusState())
+	if m.FocusState() != "tree" {
+		t.Fatalf("Initial focus = %q, want 'tree'", m.FocusState())
 	}
 	if m.IsBoardView() {
 		t.Fatal("IsBoardView should be false initially")
@@ -212,8 +211,8 @@ func TestFocusTransitionBoard(t *testing.T) {
 	newM, _ = m.Update(keyMsg("b"))
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "list" {
-		t.Errorf("After second 'b', focus = %q, want 'list'", m.FocusState())
+	if m.FocusState() != "tree" {
+		t.Errorf("After second 'b', focus = %q, want 'tree'", m.FocusState())
 	}
 	if m.IsBoardView() {
 		t.Error("IsBoardView should be false after second 'b'")
@@ -221,7 +220,7 @@ func TestFocusTransitionBoard(t *testing.T) {
 }
 
 
-// TestFocusTransitionTree verifies 'E' toggles tree view (bd-dxc: starts in tree)
+// TestFocusTransitionTree verifies tree is permanent (bd-8hw.4: no list view)
 func TestFocusTransitionTree(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "Test Issue", Status: model.StatusOpen, Priority: 1, IssueType: model.TypeEpic},
@@ -233,20 +232,12 @@ func TestFocusTransitionTree(t *testing.T) {
 		t.Fatalf("Initial focus = %q, want 'tree'", m.FocusState())
 	}
 
-	// Press 'E' to exit tree view
+	// 'E' from tree is a no-op (bd-8hw.4: tree is permanent)
 	newM, _ := m.Update(keyMsg("E"))
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "list" {
-		t.Errorf("After 'E', focus = %q, want 'list'", m.FocusState())
-	}
-
-	// Press 'E' again to re-enter tree view
-	newM, _ = m.Update(keyMsg("E"))
-	m = newM.(ui.Model)
-
 	if m.FocusState() != "tree" {
-		t.Errorf("After second 'E', focus = %q, want 'tree'", m.FocusState())
+		t.Errorf("After 'E', focus = %q, want 'tree' (tree is permanent)", m.FocusState())
 	}
 }
 
@@ -265,15 +256,14 @@ func TestFocusTransitionHelp(t *testing.T) {
 	}
 }
 
-// TestViewSwitchClearsOthers verifies switching views clears other view states
+// TestViewSwitchClearsOthers verifies toggling board clears board state (bd-8hw.4)
 func TestViewSwitchClearsOthers(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "Test Issue", Status: model.StatusOpen, Priority: 1, IssueType: model.TypeEpic},
 	}
 	m := ui.NewModel(issues, "")
-	m = switchToList(t, m) // Exit default tree view (bd-dxc)
 
-	// Switch to board
+	// Switch to board from tree
 	newM, _ := m.Update(keyMsg("b"))
 	m = newM.(ui.Model)
 
@@ -281,26 +271,25 @@ func TestViewSwitchClearsOthers(t *testing.T) {
 		t.Fatal("IsBoardView should be true after 'b'")
 	}
 
-	// Switch to tree - board should be cleared
-	newM, _ = m.Update(keyMsg("E"))
+	// Toggle board off - should return to tree
+	newM, _ = m.Update(keyMsg("b"))
 	m = newM.(ui.Model)
 
 	if m.FocusState() != "tree" {
-		t.Error("Expected tree focus after 'E'")
+		t.Error("Expected tree focus after toggling board off")
 	}
 	if m.IsBoardView() {
-		t.Error("IsBoardView should be false after switching to tree")
+		t.Error("IsBoardView should be false after second 'b'")
 	}
 }
 
-// TestEscClosesViews verifies Esc returns to list from board view
+// TestEscClosesViews verifies Esc returns to tree from board view (bd-8hw.4)
 func TestEscClosesViews(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "Test Issue", Status: model.StatusOpen, Priority: 1},
 	}
 
 	m := ui.NewModel(issues, "")
-	m = switchToList(t, m) // Exit default tree view (bd-dxc)
 
 	newM, _ := m.Update(keyMsg("b"))
 	m = newM.(ui.Model)
@@ -309,22 +298,21 @@ func TestEscClosesViews(t *testing.T) {
 		t.Fatalf("After 'b', focus = %q, want 'board'", m.FocusState())
 	}
 
-	newM, _ = m.Update(keyMsg("esc"))
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "list" {
-		t.Errorf("After Esc from board, focus = %q, want 'list'", m.FocusState())
+	if m.FocusState() != "tree" {
+		t.Errorf("After Esc from board, focus = %q, want 'tree'", m.FocusState())
 	}
 }
 
-// TestQuitClosesViews verifies 'q' returns to list from board view
+// TestQuitClosesViews verifies 'q' returns to tree from board view (bd-8hw.4)
 func TestQuitClosesViews(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "Test Issue", Status: model.StatusOpen, Priority: 1},
 	}
 
 	m := ui.NewModel(issues, "")
-	m = switchToList(t, m) // Exit default tree view (bd-dxc)
 
 	newM, _ := m.Update(keyMsg("b"))
 	m = newM.(ui.Model)
@@ -336,8 +324,8 @@ func TestQuitClosesViews(t *testing.T) {
 	newM, _ = m.Update(keyMsg("q"))
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "list" {
-		t.Errorf("After 'q' from board, focus = %q, want 'list'", m.FocusState())
+	if m.FocusState() != "tree" {
+		t.Errorf("After 'q' from board, focus = %q, want 'tree'", m.FocusState())
 	}
 }
 
@@ -377,18 +365,13 @@ func TestFocusStateString(t *testing.T) {
 	}
 }
 
-// switchToList exits the default tree view to reach list view (bd-dxc).
-// Since tree view is the default on launch, tests that need list focus
-// must press 'E' first to toggle out of tree view.
-func switchToList(t *testing.T, m ui.Model) ui.Model {
+// switchToBoard enters board view from tree (bd-8hw.4: tree is the only base view).
+func switchToBoard(t *testing.T, m ui.Model) ui.Model {
 	t.Helper()
-	if m.FocusState() != "tree" {
-		return m
-	}
-	newM, _ := m.Update(keyMsg("E"))
+	newM, _ := m.Update(keyMsg("b"))
 	m = newM.(ui.Model)
-	if m.FocusState() != "list" {
-		t.Fatalf("switchToList: after 'E', focus = %q, want 'list'", m.FocusState())
+	if m.FocusState() != "board" {
+		t.Fatalf("switchToBoard: after 'b', focus = %q, want 'board'", m.FocusState())
 	}
 	return m
 }

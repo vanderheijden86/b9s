@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Cover additional branches in Model.Update for quit/help/tab handling and update notices.
+// Cover additional branches in Model.Update for quit/help/tab handling and update notices (bd-8hw.4).
 func TestUpdateHelpQuitAndTabFocus(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "One", Status: model.StatusOpen},
@@ -30,21 +30,19 @@ func TestUpdateHelpQuitAndTabFocus(t *testing.T) {
 		t.Fatalf("expected help overlay dismissed back to tree, got focus %v", m.focused)
 	}
 
-	// Exit tree view to test Tab toggling between list and detail
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
-	m = updated.(Model)
-	if m.focused != focusList {
-		t.Fatalf("expected list focus after exiting tree, got %v", m.focused)
+	// Tree is permanent (bd-8hw.4). Tab in tree+split toggles tree/detail.
+	if m.focused != focusTree {
+		t.Fatalf("expected tree focus, got %v", m.focused)
 	}
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = updated.(Model)
 	if m.focused != focusDetail {
-		t.Fatalf("expected detail focus after tab")
+		t.Fatalf("expected detail focus after tab from tree, got %v", m.focused)
 	}
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = updated.(Model)
-	if m.focused != focusList {
-		t.Fatalf("expected list focus after second tab")
+	if m.focused != focusTree {
+		t.Fatalf("expected tree focus after second tab, got %v", m.focused)
 	}
 
 	// Escape should show quit confirm, 'y' should issue tea.Quit

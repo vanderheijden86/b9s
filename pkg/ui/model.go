@@ -493,15 +493,24 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 			entry.OpenCount = m.countOpen
 			entry.ReadyCount = m.countReady
 			entry.BlockedCount = m.countBlocked
+			// Count in_progress from active issue data
+			for _, iss := range m.issues {
+				if iss.Status == "in_progress" {
+					entry.InProgressCount++
+				}
+			}
 		} else {
 			// Try to get counts from the project's beads file
 			beadsPath := filepath.Join(p.ResolvedPath(), ".beads", "issues.jsonl")
 			if issues, err := loader.LoadIssuesFromFile(beadsPath); err == nil {
 				for _, iss := range issues {
-					if iss.Status == "open" || iss.Status == "in_progress" {
+					switch iss.Status {
+					case "in_progress":
 						entry.OpenCount++
-					}
-					if iss.Status == "blocked" {
+						entry.InProgressCount++
+					case "open":
+						entry.OpenCount++
+					case "blocked":
 						entry.BlockedCount++
 						continue
 					}
@@ -1451,27 +1460,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Always allow escape to close
 				if !m.updateModal.IsInProgress() {
 					m.showUpdateModal = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, tea.Batch(cmds...)
 				}
 			case "enter":
 				// Close on enter if complete or if cancelled
 				if m.updateModal.IsComplete() {
 					m.showUpdateModal = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, tea.Batch(cmds...)
 				}
 				// If confirming and cancelled, close
 				if m.updateModal.IsConfirming() && m.updateModal.IsCancelled() {
 					m.showUpdateModal = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, tea.Batch(cmds...)
 				}
 			case "n", "N":
 				// Quick cancel
 				if m.updateModal.IsConfirming() {
 					m.showUpdateModal = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, tea.Batch(cmds...)
 				}
 			}
@@ -1494,7 +1503,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			default:
 				m.showQuitConfirm = false
-				m.focused = focusList
+				m.focused = focusTree
 				return m, nil
 			}
 		}
@@ -1520,7 +1529,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tutorialModel.SetSize(m.width, m.height)
 				m.focused = focusTutorial
 			} else {
-				m.focused = focusList
+				m.focused = focusTree
 			}
 			return m, nil
 		}
@@ -1596,31 +1605,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Check if tutorial wants to close
 			if m.tutorialModel.ShouldClose() {
 				m.showTutorial = false
-				m.focused = focusList
+				m.focused = focusTree
 				m.tutorialModel = NewTutorialModel(m.theme) // Reset for next time
 			}
 			return m, tutorialCmd
 		}
 
+		// Project switching keys (bd-8hw.3) - number keys 1-9 ALWAYS switch regardless of focus
+		// Handled at top priority so they work from any view/state.
+		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+			n := int(key[0] - '0')
+			proj := m.appConfig.FavoriteProject(n)
+			if proj != nil {
+				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
+			}
+		}
+
 		// Handle keys when not filtering
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
-			// Project switching keys (bd-q5z) - number keys 1-9 for favorites
-			case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-				if m.focused != focusTree && m.focused != focusBoard {
-					// Only handle as project switch when not in tree/board (where numbers may have other uses)
-					n := int(msg.String()[0] - '0')
-					proj := m.appConfig.FavoriteProject(n)
-					if proj != nil {
-						return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
-					}
-				}
-
 			case "P":
-				if m.focused == focusTree {
-					break // Let handleTreeKeys handle 'P' for jump-to-parent (bd-ryu)
-				}
 				// Toggle project picker expanded/minimized (bd-ey3)
+				// Note: lowercase 'p' still does jump-to-parent in tree (bd-ryu)
 				m.pickerExpanded = !m.pickerExpanded
 				if m.pickerExpanded {
 					// Rebuild entries when expanding
@@ -1637,12 +1643,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// q closes current view or quits if at top level
 				if m.showDetails && !m.isSplitView {
 					m.showDetails = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, nil
 				}
 				if m.isBoardView {
 					m.isBoardView = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, nil
 				}
 				return m, tea.Quit
@@ -1651,18 +1657,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Escape closes modals and goes back
 				if m.showDetails && !m.isSplitView {
 					m.showDetails = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, nil
 				}
 				if m.isBoardView {
 					m.isBoardView = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, nil
 				}
 				// Close label picker if open (bv-126 fix)
 				if m.showLabelPicker {
 					m.showLabelPicker = false
-					m.focused = focusList
+					m.focused = focusTree
 					return m, nil
 				}
 				// Tree detail-only mode: ESC returns to tree-only (bd-80u)
@@ -1685,11 +1691,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
 						m.tree.ApplyFilter("all")
 						m.syncTreeToDetail()
-					} else {
-						m.treeViewActive = false
-						m.focused = focusList
+						return m, nil
 					}
-					return m, nil
+					// Tree view is permanent (bd-8hw.4), don't exit
 				}
 				// At main list - first ESC clears filters, second shows quit confirm
 				if m.hasActiveFilters() {
@@ -1715,7 +1719,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Detail back to tree
 						m.focused = focusTree
 					} else {
-						m.focused = focusList
+						m.focused = focusTree
 					}
 				}
 
@@ -1740,15 +1744,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "b":
-				if m.focused == focusTree {
-					break // Let handleTreeKeys handle 'b' for bookmarks (bd-k4n)
-				}
+				// Toggle board view from any context (bd-8hw.4: tree is permanent)
 				m.isBoardView = !m.isBoardView
 				if m.isBoardView {
 					m.focused = focusBoard
 					m.refreshBoardAndGraphForCurrentFilter()
 				} else {
-					m.focused = focusList
+					m.focused = focusTree
 				}
 				return m, nil
 
@@ -1763,28 +1765,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "t", "E":
-				// Toggle hierarchical tree view (bv-gllx, bd-xfd)
-				// 't' is the k9s-inspired single-key shortcut (bd-q5z)
+				// Tree view is always active (bd-8hw.4), t/E is a no-op from list focus
 				if m.focused == focusTree {
 					break // Let handleTreeKeys handle 't' for in-tree use
 				}
-				if m.treeViewActive {
-					m.treeViewActive = false
-					m.focused = focusList
-				} else {
-					m.isBoardView = false
-					// Build tree from snapshot when available (bv-t435)
-					if m.snapshot != nil {
-						m.tree.BuildFromSnapshot(m.snapshot)
-					} else {
-						m.tree.Build(m.issues)
-					}
-					m.tree.SetSize(m.width, m.bodyHeight())
-					m.tree.SetGlobalIssueMap(m.issueMap) // Provide global issue map for filter blocker checks (bd-5nw)
-					m.treeViewActive = true
-					m.focused = focusTree
-					m.syncTreeToDetail()
-				}
+				// If somehow not in tree, switch to it
+				m.isBoardView = false
+				m.focused = focusTree
 				return m, nil
 
 			case "p":
@@ -1841,7 +1828,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.repoPicker.SetSize(m.width, m.height-1)
 					m.focused = focusRepoPicker
 				} else {
-					m.focused = focusList
+					m.focused = focusTree
 				}
 				return m, nil
 
@@ -2241,7 +2228,7 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 				}
 			}
 			m.isBoardView = false
-			m.focused = focusList
+			m.focused = focusTree
 			if m.isSplitView {
 				m.focused = focusDetail
 			} else {
@@ -2392,8 +2379,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Filter: all issues (bd-5nw)
 		m.tree.ApplyFilter("all")
 		m.syncTreeToDetail()
-	case "p", "P":
-		// Jump to parent node (bd-ryu)
+	case "p":
+		// Jump to parent node (bd-ryu) — 'P' is now picker toggle (bd-ey3)
 		m.tree.JumpToParent()
 		m.syncTreeToDetail()
 	case "]":
@@ -2467,7 +2454,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 			m.syncTreeToDetail()
 		}
 	case "esc":
-		// Escape hierarchy: occur, XRay, tree filter, then exit tree view (bd-sjs.2, bd-kob, bd-0rc)
+		// Escape hierarchy: occur, XRay, tree filter (bd-sjs.2, bd-kob, bd-0rc)
+		// Tree view is always active (bd-8hw.4), esc doesn't exit tree
 		if m.tree.IsOccurMode() {
 			m.tree.ExitOccurMode()
 			m.syncTreeToDetail()
@@ -2477,14 +2465,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		} else if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
 			m.tree.ApplyFilter("all")
 			m.syncTreeToDetail()
-		} else {
-			m.treeViewActive = false
-			m.focused = focusList
 		}
-	case "t", "E":
-		// Always return to list view (t is k9s-inspired shortcut, bd-q5z)
-		m.treeViewActive = false
-		m.focused = focusList
+		// No else: tree view is permanent
 	}
 	return m
 }
@@ -2503,7 +2485,7 @@ func (m Model) handleRepoPickerKeys(msg tea.KeyMsg) Model {
 		m.repoPicker.SelectAll()
 	case "esc", "q":
 		m.showRepoPicker = false
-		m.focused = focusList
+		m.focused = focusTree
 	case "enter":
 		selected := m.repoPicker.SelectedRepos()
 
@@ -2521,7 +2503,7 @@ func (m Model) handleRepoPickerKeys(msg tea.KeyMsg) Model {
 		m.applyFilter()
 
 		m.showRepoPicker = false
-		m.focused = focusList
+		m.focused = focusTree
 	}
 	return m
 }
@@ -2531,7 +2513,7 @@ func (m Model) handleLabelPickerKeys(msg tea.KeyMsg) Model {
 	switch msg.String() {
 	case "esc":
 		m.showLabelPicker = false
-		m.focused = focusList
+		m.focused = focusTree
 	case "j", "down", "ctrl+n":
 		m.labelPicker.MoveDown()
 	case "k", "up", "ctrl+p":
@@ -2544,7 +2526,7 @@ func (m Model) handleLabelPickerKeys(msg tea.KeyMsg) Model {
 			m.statusIsError = false
 		}
 		m.showLabelPicker = false
-		m.focused = focusList
+		m.focused = focusTree
 	default:
 		// Pass other keys to text input for fuzzy search
 		m.labelPicker.UpdateInput(msg)
@@ -2816,12 +2798,9 @@ func (m Model) View() string {
 	} else if m.isSplitView {
 		body = m.renderSplitView()
 	} else {
-		// Mobile view
-		if m.showDetails {
-			body = m.viewport.View()
-		} else {
-			body = m.renderListWithHeader()
-		}
+		// Tree view is always the default (bd-8hw.4)
+		m.tree.SetSize(m.width, m.bodyHeight())
+		body = m.tree.View()
 	}
 
 	// Add shortcuts sidebar if enabled (bv-3qi5)

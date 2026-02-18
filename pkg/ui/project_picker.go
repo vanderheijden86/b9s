@@ -14,12 +14,13 @@ import (
 
 // ProjectEntry holds display data for one project in the picker.
 type ProjectEntry struct {
-	Project      config.Project
-	FavoriteNum  int  // 0 = not favorited, 1-9 = key
-	IsActive     bool // Currently loaded project
-	OpenCount    int
-	ReadyCount   int
-	BlockedCount int
+	Project         config.Project
+	FavoriteNum     int  // 0 = not favorited, 1-9 = key
+	IsActive        bool // Currently loaded project
+	OpenCount       int
+	InProgressCount int
+	ReadyCount      int
+	BlockedCount    int
 }
 
 // SwitchProjectMsg is sent when the user selects a project to switch to.
@@ -88,9 +89,10 @@ func (m ProjectPickerModel) Update(msg tea.Msg) (ProjectPickerModel, tea.Cmd) {
 	return m, nil
 }
 
-// updateNormal handles keys when not in filter mode.
-// In the always-visible design, the picker is display-only outside of filter mode.
-// Only `/` (enter filter) and number keys are handled here.
+// updateNormal handles keys in display-only mode.
+// Only filter entry (/) and number-key quick-switch are active.
+// Navigation (j/k/enter) is intentionally omitted — the picker is display-only.
+// Project switching is done via number keys 1-9, handled at top priority in Model.Update.
 func (m ProjectPickerModel) updateNormal(msg tea.KeyMsg) (ProjectPickerModel, tea.Cmd) {
 	switch msg.String() {
 	case "/":
@@ -222,9 +224,8 @@ func (m *ProjectPickerModel) View() string {
 	return m.ViewExpanded()
 }
 
-// ViewExpanded renders the expanded project picker header (display-only table).
-// No cursor navigation; the active project is marked with a bullet.
-// Returns the rendered string without vertical padding (caller handles layout).
+// ViewExpanded renders the expanded project picker header (display-only).
+// Active project is marked with ►, favorite numbers shown explicitly.
 func (m *ProjectPickerModel) ViewExpanded() string {
 	if m.width == 0 {
 		m.width = 80
@@ -266,7 +267,8 @@ func (m *ProjectPickerModel) ViewExpanded() string {
 		}
 		for i := 0; i < visible; i++ {
 			entry := m.entries[m.filtered[i]]
-			sections = append(sections, m.renderRow(entry, false, w))
+			isCursor := m.filtering && i == m.cursor
+			sections = append(sections, m.renderRow(entry, isCursor, w))
 		}
 		if len(m.filtered) > maxExpandedRows {
 			t := m.theme
@@ -299,11 +301,12 @@ func (m *ProjectPickerModel) ViewMinimized() string {
 
 	// Find the active project
 	var activeName string
-	var activeOpen, activeReady, activeBlocked int
+	var activeOpen, activeInProg, activeReady, activeBlocked int
 	for _, entry := range m.entries {
 		if entry.IsActive {
 			activeName = entry.Project.Name
 			activeOpen = entry.OpenCount
+			activeInProg = entry.InProgressCount
 			activeReady = entry.ReadyCount
 			activeBlocked = entry.BlockedCount
 			break
@@ -316,7 +319,7 @@ func (m *ProjectPickerModel) ViewMinimized() string {
 	// Left: project info
 	projectInfo := descStyle.Render("Project: ") +
 		t.Renderer.NewStyle().Foreground(t.Primary).Bold(true).Render(activeName) +
-		descStyle.Render(fmt.Sprintf(" (%d/%d/%d)", activeOpen, activeReady, activeBlocked))
+		descStyle.Render(fmt.Sprintf(" (%d/%d/%d/%d)", activeOpen, activeInProg, activeReady, activeBlocked))
 
 	// Middle: favorite shortcuts
 	var favParts []string
@@ -387,6 +390,7 @@ func (m *ProjectPickerModel) renderExpandedShortcutBar(w int) string {
 		desc string
 	}{
 		{"<1-9>", "Quick Switch"},
+		{"</>", "Filter"},
 		{"<P>", "Minimize"},
 	}
 
@@ -446,8 +450,8 @@ func (m *ProjectPickerModel) renderColumnHeaders(w int) string {
 	t := m.theme
 	nameW, pathW := m.columnWidths(w)
 
-	header := fmt.Sprintf("  %-2s %-*s %-*s %6s %6s %8s",
-		"#", nameW, "NAME", pathW, "PATH", "OPEN", "READY", "BLOCKED")
+	header := fmt.Sprintf("  %-2s %-*s %-*s %6s %8s %6s %8s",
+		"#", nameW, "NAME", pathW, "PATH", "OPEN", "IN_PROG", "READY", "BLOCKED")
 
 	headerStyle := t.Renderer.NewStyle().
 		Foreground(t.Secondary).
@@ -485,11 +489,12 @@ func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int)
 
 	// Counts
 	openStr := fmt.Sprintf("%d", entry.OpenCount)
+	inProgStr := fmt.Sprintf("%d", entry.InProgressCount)
 	readyStr := fmt.Sprintf("%d", entry.ReadyCount)
 	blockedStr := fmt.Sprintf("%d", entry.BlockedCount)
 
-	line := fmt.Sprintf("%s %-2s %-*s %-*s %6s %6s %8s",
-		indicator, favStr, nameW, name, pathW, path, openStr, readyStr, blockedStr)
+	line := fmt.Sprintf("%s %-2s %-*s %-*s %6s %8s %6s %8s",
+		indicator, favStr, nameW, name, pathW, path, openStr, inProgStr, readyStr, blockedStr)
 
 	if isCursor {
 		// Cursor highlight during filter mode
@@ -520,8 +525,8 @@ func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int)
 
 // columnWidths calculates name and path column widths based on terminal width.
 func (m *ProjectPickerModel) columnWidths(totalWidth int) (nameWidth, pathWidth int) {
-	// Fixed columns: "► # " (4) + " " (gaps) + "  OPEN" (7) + " READY" (7) + " BLOCKED" (9) = ~29 fixed
-	available := totalWidth - 31
+	// Fixed columns: "► # " (4) + " " (gaps) + "  OPEN" (7) + " IN_PROG" (9) + " READY" (7) + " BLOCKED" (9) = ~38 fixed
+	available := totalWidth - 39
 	if available < 20 {
 		available = 20
 	}

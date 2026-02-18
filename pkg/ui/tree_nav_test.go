@@ -90,8 +90,9 @@ func TestTreeNavJumpToParentP(t *testing.T) {
 	}
 }
 
-// TestTreeNavJumpToParentPUppercase verifies that 'P' also jumps to the parent node.
-func TestTreeNavJumpToParentPUppercase(t *testing.T) {
+// TestTreeNavPUppercaseTogglesPickerNotParent verifies 'P' toggles picker (bd-ey3),
+// not parent-jump. Lowercase 'p' still does parent-jump (tested in TestTreeNavJumpToParentP).
+func TestTreeNavPUppercaseTogglesPickerNotParent(t *testing.T) {
 	cleanTreeState(t)
 	issues := createNavTestIssues()
 	m := ui.NewModel(issues, "")
@@ -104,10 +105,14 @@ func TestTreeNavJumpToParentPUppercase(t *testing.T) {
 		t.Fatalf("expected task-2 selected, got %q", m.TreeSelectedID())
 	}
 
-	// Press 'P' to jump to parent
+	// 'P' should NOT jump to parent (it toggles picker now)
 	m = sendKey(t, m, "P")
-	if m.TreeSelectedID() != "epic-1" {
-		t.Errorf("expected epic-1 after 'P', got %q", m.TreeSelectedID())
+	if m.TreeSelectedID() == "epic-1" {
+		t.Error("'P' should not jump to parent (use lowercase 'p' for that)")
+	}
+	// Should stay on task-2
+	if m.TreeSelectedID() != "task-2" {
+		t.Errorf("expected to stay on task-2, got %q", m.TreeSelectedID())
 	}
 }
 

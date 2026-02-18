@@ -3800,9 +3800,8 @@ func TestTreeViewIsDefaultOnLaunch(t *testing.T) {
 	}
 }
 
-// TestTreeViewDefaultCanSwitchToList verifies that pressing 'E' from the
-// default tree view switches back to list view.
-func TestTreeViewDefaultCanSwitchToList(t *testing.T) {
+// TestTreeViewPermanentNoToggle verifies that 'E' is a no-op from tree (bd-8hw.4).
+func TestTreeViewPermanentNoToggle(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "bv-1", Title: "Issue One", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
 	}
@@ -3814,15 +3813,15 @@ func TestTreeViewDefaultCanSwitchToList(t *testing.T) {
 		t.Fatalf("expected initial focus = tree, got %q", m.FocusState())
 	}
 
-	// Press 'E' to toggle out of tree view (tree toggle key is 'E')
+	// Press 'E' — no-op, tree is permanent (bd-8hw.4)
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}})
 	m = newM.(Model)
 
-	if m.FocusState() != "list" {
-		t.Errorf("after pressing 'E', expected focus = list, got %q", m.FocusState())
+	if m.FocusState() != "tree" {
+		t.Errorf("after pressing 'E', expected focus = tree (permanent), got %q", m.FocusState())
 	}
-	if m.treeViewActive {
-		t.Error("after pressing 'E', expected treeViewActive = false")
+	if !m.treeViewActive {
+		t.Error("treeViewActive should still be true (permanent)")
 	}
 }
 

@@ -613,95 +613,29 @@ func TestTreeViewBacktickTogglesFlatMode(t *testing.T) {
 // Tests: Bookmark key bindings (bd-k4n)
 // ============================================================================
 
-// TestTreeViewBookmarkToggleKey verifies 'b' key toggles bookmark in tree view
-func TestTreeViewBookmarkToggleKey(t *testing.T) {
+// TestTreeViewBKeyOpensBoard verifies 'b' from tree toggles board view (bd-8hw.4)
+func TestTreeViewBKeyOpensBoard(t *testing.T) {
 	issues := createTreeTestIssues()
 	m := ui.NewModel(issues, "")
 	m = enterTreeView(t, m)
 
-	initialID := m.TreeSelectedID()
-	if initialID == "" {
-		t.Fatal("Expected non-empty tree selection")
-	}
-
-	// Press 'b' to toggle bookmark
+	// Press 'b' to enter board view
 	m = sendKey(t, m, "b")
 
-	// Verify bookmark was set (use TreeBookmarkedIDs)
-	bookmarks := m.TreeBookmarkedIDs()
-	found := false
-	for _, id := range bookmarks {
-		if id == initialID {
-			found = true
-			break
-		}
+	if !m.IsBoardView() {
+		t.Error("Expected board view after 'b' in tree")
 	}
-	if !found {
-		t.Errorf("Expected %q to be bookmarked after 'b', bookmarks: %v", initialID, bookmarks)
+	if m.FocusState() != "board" {
+		t.Errorf("Expected focus 'board', got %q", m.FocusState())
 	}
 
-	// Press 'b' again to toggle off
+	// Press 'b' again to return to tree
 	m = sendKey(t, m, "b")
-	bookmarks = m.TreeBookmarkedIDs()
-	for _, id := range bookmarks {
-		if id == initialID {
-			t.Errorf("Expected %q to be unbookmarked after second 'b', bookmarks: %v", initialID, bookmarks)
-		}
-	}
-}
-
-// TestTreeViewBookmarkCycleKey verifies 'B' key cycles through bookmarks
-func TestTreeViewBookmarkCycleKey(t *testing.T) {
-	issues := createTreeTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// Bookmark first item (epic-1)
-	m = sendKey(t, m, "b")
-
-	// Move to third item and bookmark it
-	m = sendKey(t, m, "j")
-	m = sendKey(t, m, "j")
-	secondBookmarkID := m.TreeSelectedID()
-	m = sendKey(t, m, "b")
-
-	// Move away
-	m = sendKey(t, m, "j")
-
-	// Press 'B' to cycle to next bookmark - should go to epic-1 (wraps)
-	m = sendKey(t, m, "B")
-	afterCycleID := m.TreeSelectedID()
-
-	// Should be on one of the bookmarked items
-	bookmarks := m.TreeBookmarkedIDs()
-	found := false
-	for _, id := range bookmarks {
-		if id == afterCycleID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("'B' should jump to a bookmarked node, got %q, bookmarks: %v", afterCycleID, bookmarks)
-	}
-	_ = secondBookmarkID // used for bookmarking
-}
-
-// TestTreeViewBKeyDoesNotOpenBoard verifies 'b' in tree view doesn't open board
-func TestTreeViewBKeyDoesNotOpenBoard(t *testing.T) {
-	issues := createTreeTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// Press 'b' in tree view
-	m = sendKey(t, m, "b")
-
-	// Should still be in tree view, not board view
-	if m.FocusState() != "tree" {
-		t.Errorf("Expected focus 'tree' after 'b' in tree view, got %q", m.FocusState())
-	}
 	if m.IsBoardView() {
-		t.Error("'b' in tree view should not open board view")
+		t.Error("Expected board off after second 'b'")
+	}
+	if m.FocusState() != "tree" {
+		t.Errorf("Expected focus 'tree' after board toggle, got %q", m.FocusState())
 	}
 }
 

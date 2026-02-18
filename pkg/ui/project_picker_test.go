@@ -83,17 +83,7 @@ func createModelWithProjects(t *testing.T) (ui.Model, config.Config) {
 	return newM.(ui.Model), cfg
 }
 
-// switchToListView exits tree view (default) into list view.
-func switchToListView(t *testing.T, m ui.Model) ui.Model {
-	t.Helper()
-	// Default is tree view; press 't' to toggle off -> list view
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("t")})
-	m = newM.(ui.Model)
-	if m.FocusState() == "tree" {
-		t.Fatal("expected to leave tree view after 't'")
-	}
-	return m
-}
+// (bd-8hw.4: switchToListView removed — tree is permanent, no list view)
 
 func TestProjectPicker_ExpandedByDefault(t *testing.T) {
 	m, _ := createModelWithProjects(t)
@@ -106,14 +96,13 @@ func TestProjectPicker_ExpandedByDefault(t *testing.T) {
 
 func TestProjectPicker_ToggleExpandedMinimized(t *testing.T) {
 	m, _ := createModelWithProjects(t)
-	m = switchToListView(t, m)
 
 	// Should start expanded
 	if !m.PickerExpanded() {
 		t.Fatal("picker should be expanded initially")
 	}
 
-	// Press P to minimize
+	// Press P to minimize (works from tree, bd-8hw.4)
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
 	m = newM.(ui.Model)
 
@@ -250,9 +239,9 @@ func TestProjectPicker_ViewMinimizedContainsInfo(t *testing.T) {
 		t.Error("minimized view should contain active project name")
 	}
 
-	// Should contain stats (open/ready/blocked)
-	if !strings.Contains(view, "3/2/1") {
-		t.Error("minimized view should contain stats (3/2/1)")
+	// Should contain stats (open/in_progress/ready/blocked)
+	if !strings.Contains(view, "3/0/2/1") {
+		t.Error("minimized view should contain stats (3/0/2/1)")
 	}
 
 	// Should contain favorite shortcuts
@@ -339,7 +328,8 @@ func TestProjectPicker_QuickSwitchByNumber(t *testing.T) {
 }
 
 func TestProjectPicker_DisplayOnlyNoNavigation(t *testing.T) {
-	// In the always-visible design, j/k/g/G/enter/u don't navigate/act on the picker
+	// Picker is display-only: j/k/enter/g/G don't navigate or act.
+	// Project switching is via number keys only (handled by Model, not picker).
 	entries := []ui.ProjectEntry{
 		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
 		{Project: config.Project{Name: "beta", Path: "/tmp/b"}},
@@ -366,12 +356,6 @@ func TestProjectPicker_DisplayOnlyNoNavigation(t *testing.T) {
 	_, cmd := picker.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd != nil {
 		t.Error("enter should not produce a command in display-only mode")
-	}
-
-	// u should not produce a command
-	_, cmd = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("u")})
-	if cmd != nil {
-		t.Error("u should not produce a command in display-only mode")
 	}
 }
 
