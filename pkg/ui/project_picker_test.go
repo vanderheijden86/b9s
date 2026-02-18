@@ -202,9 +202,9 @@ func TestProjectPicker_ViewExpandedContainsProjectInfo(t *testing.T) {
 		t.Error("expanded view should contain 'Minimize' shortcut hint")
 	}
 
-	// Should contain active project indicator (►)
-	if !strings.Contains(view, "\u25ba") {
-		t.Error("expanded view should contain ► indicator for active project")
+	// Active project should be shown in title bar (k9s style)
+	if !strings.Contains(view, "projects(api-service)") {
+		t.Error("title bar should contain active project name like projects(api-service)")
 	}
 }
 

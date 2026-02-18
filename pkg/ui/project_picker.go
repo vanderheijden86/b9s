@@ -405,9 +405,18 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 	countText := t.Renderer.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"})
 
+	// Show active project in title bar like k9s: projects(active-name)[count]
+	// When filtering, show the filter text instead.
 	label := "projects"
 	if m.filtering && m.filterInput.Value() != "" {
 		label = fmt.Sprintf("projects(%s)", m.filterInput.Value())
+	} else {
+		for _, entry := range m.entries {
+			if entry.IsActive {
+				label = fmt.Sprintf("projects(%s)", entry.Project.Name)
+				break
+			}
+		}
 	}
 
 	title := titleText.Render(label) + countText.Render(fmt.Sprintf("[%d]", len(m.filtered)))
@@ -446,16 +455,11 @@ func (m *ProjectPickerModel) renderColumnHeaders(w int) string {
 }
 
 // renderRow renders a single project entry row in k9s table style.
-// Active project is marked with ► indicator; isCursor is used for filter-mode selection.
+// All rows are rendered uniformly; the active project is shown in the title bar instead.
+// isCursor is used for filter-mode selection highlight only.
 func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int) string {
 	t := m.theme
 	nameW, pathW := m.columnWidths(w)
-
-	// Row indicator: ► for active project, space otherwise
-	indicator := " "
-	if entry.IsActive {
-		indicator = "\u25ba"
-	}
 
 	// Favorite number
 	favStr := " "
@@ -477,8 +481,8 @@ func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int)
 	readyStr := fmt.Sprintf("%d", entry.ReadyCount)
 	blockedStr := fmt.Sprintf("%d", entry.BlockedCount)
 
-	line := fmt.Sprintf("%s %-2s %-*s %-*s %6s %8s %6s %8s",
-		indicator, favStr, nameW, name, pathW, path, openStr, inProgStr, readyStr, blockedStr)
+	line := fmt.Sprintf("  %-2s %-*s %-*s %6s %8s %6s %8s",
+		favStr, nameW, name, pathW, path, openStr, inProgStr, readyStr, blockedStr)
 
 	if isCursor {
 		// Cursor highlight during filter mode
@@ -488,15 +492,7 @@ func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int)
 			Render(line)
 	}
 
-	if entry.IsActive {
-		// Active project: cyan text
-		return t.Renderer.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
-			Bold(true).
-			Render(line)
-	}
-
-	// Normal row
+	// All rows rendered uniformly (active project shown in title bar, not here)
 	return t.Renderer.NewStyle().
 		Foreground(t.Base.GetForeground()).
 		Render(line)
@@ -504,8 +500,8 @@ func (m *ProjectPickerModel) renderRow(entry ProjectEntry, isCursor bool, w int)
 
 // columnWidths calculates name and path column widths based on terminal width.
 func (m *ProjectPickerModel) columnWidths(totalWidth int) (nameWidth, pathWidth int) {
-	// Fixed columns: "► # " (4) + " " (gaps) + "  OPEN" (7) + " IN_PROG" (9) + " READY" (7) + " BLOCKED" (9) = ~38 fixed
-	available := totalWidth - 39
+	// Fixed columns: "  # " (4) + " " (gaps) + "  OPEN" (7) + " IN_PROG" (9) + " READY" (7) + " BLOCKED" (9) = ~38 fixed
+	available := totalWidth - 37
 	if available < 20 {
 		available = 20
 	}
