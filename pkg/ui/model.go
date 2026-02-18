@@ -1157,13 +1157,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.watcher = nil
 		}
 		m.beadsPath = newPath
-		// Start new background worker for the new path (bd-87w)
+		// Start new background worker for the new path (bd-87w, bd-828)
 		// BackgroundWorker creates its own internal file watcher.
 		bw, bwErr := NewBackgroundWorker(WorkerConfig{BeadsPath: newPath})
 		if bwErr == nil {
-			bw.Start()
 			m.backgroundWorker = bw
-			m.snapshotInitPending = true
+			// Use StartBackgroundWorkerCmd which calls Start() + TriggerRefresh()
+			cmds = append(cmds, StartBackgroundWorkerCmd(bw))
 			cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(bw))
 		} else {
 			// Fallback: no background worker, use watcher + FileChangedMsg

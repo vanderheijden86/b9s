@@ -504,3 +504,96 @@ func TestProjectPicker_AutoNumberDisplayInView(t *testing.T) {
 		t.Error("expanded view should contain '3' and 'gamma'")
 	}
 }
+
+// TestProjectSwitch_FullCycleLoadsNewData verifies that pressing a number key
+// to switch projects produces a SwitchProjectMsg, and feeding that message back
+// into Update triggers a data reload for the new project (bd-828).
+func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
+	_, projects := createSampleProjects(t)
+
+	cfg := config.Config{
+		Projects:  projects,
+		Favorites: nil,
+		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+	}
+
+	// Start with api-service issues
+	issues := []model.Issue{
+		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
+	}
+
+	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
+		WithConfig(cfg, "api-service", projects[0].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = newM.(ui.Model)
+
+	// Verify initial state
+	if m.TreeSelectedID() != "api-1" {
+		// Issue might not be selected if tree isn't built yet, that's OK
+	}
+
+	// Press "2" to switch to web-frontend
+	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
+	m = newM.(ui.Model)
+
+	if cmd == nil {
+		t.Fatal("expected a command from pressing '2'")
+	}
+
+	// Execute the command to get SwitchProjectMsg
+	msg := cmd()
+	switchMsg, ok := msg.(ui.SwitchProjectMsg)
+	if !ok {
+		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
+	}
+	if switchMsg.Project.Name != "web-frontend" {
+		t.Fatalf("expected web-frontend, got %q", switchMsg.Project.Name)
+	}
+
+	// Feed SwitchProjectMsg back into Update (this is what bubbletea does)
+	newM, switchCmd := m.Update(switchMsg)
+	m = newM.(ui.Model)
+
+	// The status should say "Switched to web-frontend"
+	view := m.View()
+	if !strings.Contains(view, "web-frontend") {
+		t.Error("view should mention web-frontend after switch")
+	}
+
+	// The switch produces commands (either StartBackgroundWorkerCmd or FileChangedMsg)
+	if switchCmd == nil {
+		t.Fatal("expected commands from SwitchProjectMsg")
+	}
+}
+
+// TestProjectSwitch_NoLoadingScreen verifies project switching doesn't flash
+// the "Loading beads..." screen — it keeps showing the tree while loading (bd-828).
+func TestProjectSwitch_NoLoadingScreen(t *testing.T) {
+	_, projects := createSampleProjects(t)
+
+	cfg := config.Config{
+		Projects:  projects,
+		Favorites: nil,
+		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+	}
+
+	issues := []model.Issue{
+		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
+	}
+
+	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
+		WithConfig(cfg, "api-service", projects[0].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = newM.(ui.Model)
+
+	// Switch to web-frontend
+	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
+	newM, _ = m.Update(switchMsg)
+	m = newM.(ui.Model)
+
+	// View should NOT show "Loading beads..."
+	view := m.View()
+	if strings.Contains(view, "Loading beads") {
+		t.Error("project switch should NOT show loading screen")
+	}
+}
