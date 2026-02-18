@@ -32,29 +32,29 @@ func TestNewEditModal_PopulatesFromIssue(t *testing.T) {
 	if modal.isCreateMode {
 		t.Error("Expected edit mode, got create mode")
 	}
-	if modal.title != "Test Issue" {
-		t.Errorf("Expected title %q, got %q", "Test Issue", modal.title)
+	if *modal.title != "Test Issue" {
+		t.Errorf("Expected title %q, got %q", "Test Issue", *modal.title)
 	}
-	if modal.status != "in_progress" {
-		t.Errorf("Expected status %q, got %q", "in_progress", modal.status)
+	if *modal.status != "in_progress" {
+		t.Errorf("Expected status %q, got %q", "in_progress", *modal.status)
 	}
-	if modal.priority != "P1" {
-		t.Errorf("Expected priority %q, got %q", "P1", modal.priority)
+	if *modal.priority != "P1" {
+		t.Errorf("Expected priority %q, got %q", "P1", *modal.priority)
 	}
-	if modal.issueType != "bug" {
-		t.Errorf("Expected type %q, got %q", "bug", modal.issueType)
+	if *modal.issueType != "bug" {
+		t.Errorf("Expected type %q, got %q", "bug", *modal.issueType)
 	}
-	if modal.assignee != "alice" {
-		t.Errorf("Expected assignee %q, got %q", "alice", modal.assignee)
+	if *modal.assignee != "alice" {
+		t.Errorf("Expected assignee %q, got %q", "alice", *modal.assignee)
 	}
-	if modal.labels != "frontend, urgent" {
-		t.Errorf("Expected labels %q, got %q", "frontend, urgent", modal.labels)
+	if *modal.labels != "frontend, urgent" {
+		t.Errorf("Expected labels %q, got %q", "frontend, urgent", *modal.labels)
 	}
-	if modal.description != "A test description" {
-		t.Errorf("Expected description %q, got %q", "A test description", modal.description)
+	if *modal.description != "A test description" {
+		t.Errorf("Expected description %q, got %q", "A test description", *modal.description)
 	}
-	if modal.notes != "Some notes" {
-		t.Errorf("Expected notes %q, got %q", "Some notes", modal.notes)
+	if *modal.notes != "Some notes" {
+		t.Errorf("Expected notes %q, got %q", "Some notes", *modal.notes)
 	}
 }
 
@@ -105,20 +105,20 @@ func TestNewCreateModal_HasDefaults(t *testing.T) {
 	if modal.issueID != "" {
 		t.Errorf("Expected empty issueID, got %s", modal.issueID)
 	}
-	if modal.title != "" {
-		t.Errorf("Expected empty title, got %q", modal.title)
+	if *modal.title != "" {
+		t.Errorf("Expected empty title, got %q", *modal.title)
 	}
-	if modal.priority != "P0" {
-		t.Errorf("Expected priority %q, got %q", "P0", modal.priority)
+	if *modal.priority != "P0" {
+		t.Errorf("Expected priority %q, got %q", "P0", *modal.priority)
 	}
-	if modal.issueType != "bug" {
-		t.Errorf("Expected type %q, got %q", "bug", modal.issueType)
+	if *modal.issueType != "bug" {
+		t.Errorf("Expected type %q, got %q", "bug", *modal.issueType)
 	}
-	if modal.assignee != "" {
-		t.Errorf("Expected empty assignee, got %q", modal.assignee)
+	if *modal.assignee != "" {
+		t.Errorf("Expected empty assignee, got %q", *modal.assignee)
 	}
-	if modal.labels != "" {
-		t.Errorf("Expected empty labels, got %q", modal.labels)
+	if *modal.labels != "" {
+		t.Errorf("Expected empty labels, got %q", *modal.labels)
 	}
 }
 
@@ -139,8 +139,8 @@ func TestEditModal_BuildUpdateArgs_OnlyChanged(t *testing.T) {
 	modal := NewEditModal(issue, theme)
 
 	// Change only title and priority via bound fields
-	modal.title = "New Title"
-	modal.priority = "P0"
+	*modal.title = "New Title"
+	*modal.priority = "P0"
 
 	args := modal.BuildUpdateArgs()
 
@@ -180,7 +180,7 @@ func TestEditModal_BuildUpdateArgs_LabelsUsesSetLabels(t *testing.T) {
 	modal := NewEditModal(issue, theme)
 
 	// Change labels via bound field
-	modal.labels = "frontend, backend"
+	*modal.labels = "frontend, backend"
 
 	args := modal.BuildUpdateArgs()
 
@@ -200,9 +200,9 @@ func TestEditModal_BuildCreateArgs_AllNonEmpty(t *testing.T) {
 	modal := NewCreateModal(theme)
 
 	// Set fields via bound values
-	modal.title = "New Issue"
-	modal.assignee = "bob"
-	modal.labels = "urgent"
+	*modal.title = "New Issue"
+	*modal.assignee = "bob"
+	*modal.labels = "urgent"
 
 	args := modal.BuildCreateArgs()
 
@@ -260,6 +260,31 @@ func TestEditModal_SaveCancelRequests(t *testing.T) {
 	modal, _ = modal.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if !modal.IsCancelRequested() {
 		t.Error("Esc should set cancel request")
+	}
+}
+
+func TestCreateModal_TypedTitleVisibleInBuildCreateArgs(t *testing.T) {
+	// Regression: huh form binds to Value(&m.title) during construction.
+	// With value-receiver Update(), each call copies the struct but the
+	// form's pointers still target the original instance. So the form
+	// writes the user's keystrokes to a stale address and BuildCreateArgs
+	// reads empty strings from the copy → "title required" error from bd.
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme)
+	modal.SetSize(100, 40)
+
+	// Type "Hello" into the title field (first field, receives focus)
+	for _, r := range "Hello" {
+		modal, _ = modal.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+
+	// Save
+	modal, _ = modal.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+
+	args := modal.BuildCreateArgs()
+	title := args["title"]
+	if title != "Hello" {
+		t.Errorf("After typing 'Hello' and Ctrl+S, expected title='Hello', got %q (args: %v)", title, args)
 	}
 }
 

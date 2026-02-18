@@ -21,15 +21,19 @@ type EditModal struct {
 	width        int
 	height       int
 
-	// Field value pointers (huh binds to these)
-	title       string
-	status      string
-	priority    string
-	issueType   string
-	assignee    string
-	labels      string
-	description string
-	notes       string
+	// Field value pointers (huh binds to these).
+	// These MUST be *string (not string) so that huh's value bindings
+	// survive Bubbletea's value-receiver copy semantics. Without this,
+	// the form writes to a stale struct instance and BuildCreateArgs/
+	// BuildUpdateArgs reads empty strings from the current copy.
+	title       *string
+	status      *string
+	priority    *string
+	issueType   *string
+	assignee    *string
+	labels      *string
+	description *string
+	notes       *string
 
 	// Original values for dirty detection (update mode only)
 	originals map[string]string
@@ -44,28 +48,37 @@ type EditModal struct {
 
 // NewEditModal creates an edit modal pre-populated from an existing issue
 func NewEditModal(issue *model.Issue, theme Theme) EditModal {
+	title := issue.Title
+	status := string(issue.Status)
+	priority := formatPriority(issue.Priority)
+	issueType := string(issue.IssueType)
+	assignee := issue.Assignee
+	labels := strings.Join(issue.Labels, ", ")
+	description := issue.Description
+	notes := issue.Notes
+
 	m := EditModal{
 		theme:       theme,
 		issueID:     issue.ID,
-		title:       issue.Title,
-		status:      string(issue.Status),
-		priority:    formatPriority(issue.Priority),
-		issueType:   string(issue.IssueType),
-		assignee:    issue.Assignee,
-		labels:      strings.Join(issue.Labels, ", "),
-		description: issue.Description,
-		notes:       issue.Notes,
+		title:       &title,
+		status:      &status,
+		priority:    &priority,
+		issueType:   &issueType,
+		assignee:    &assignee,
+		labels:      &labels,
+		description: &description,
+		notes:       &notes,
 	}
 
 	m.originals = map[string]string{
-		"title":       m.title,
-		"status":      m.status,
-		"priority":    m.priority,
-		"type":        m.issueType,
-		"assignee":    m.assignee,
-		"labels":      m.labels,
-		"description": m.description,
-		"notes":       m.notes,
+		"title":       *m.title,
+		"status":      *m.status,
+		"priority":    *m.priority,
+		"type":        *m.issueType,
+		"assignee":    *m.assignee,
+		"labels":      *m.labels,
+		"description": *m.description,
+		"notes":       *m.notes,
 	}
 
 	m.form = buildEditForm(&m)
@@ -75,11 +88,24 @@ func NewEditModal(issue *model.Issue, theme Theme) EditModal {
 
 // NewCreateModal creates an edit modal with defaults for creating a new issue
 func NewCreateModal(theme Theme) EditModal {
+	title := ""
+	description := ""
+	priority := "P0"
+	issueType := "bug"
+	assignee := ""
+	labels := ""
+	notes := ""
+
 	m := EditModal{
 		theme:        theme,
 		isCreateMode: true,
-		priority:     "P0",
-		issueType:    "bug",
+		title:        &title,
+		description:  &description,
+		priority:     &priority,
+		issueType:    &issueType,
+		assignee:     &assignee,
+		labels:       &labels,
+		notes:        &notes,
 	}
 
 	m.form = buildCreateForm(&m)
@@ -90,20 +116,20 @@ func NewCreateModal(theme Theme) EditModal {
 func buildEditForm(m *EditModal) *huh.Form {
 	return huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().Title("Title").Value(&m.title),
+			huh.NewInput().Title("Title").Value(m.title),
 			huh.NewSelect[string]().Title("Status").
 				Options(makeOptions(getStatusOptions())...).
-				Value(&m.status),
-			huh.NewText().Title("Description").Value(&m.description).Lines(5),
+				Value(m.status),
+			huh.NewText().Title("Description").Value(m.description).Lines(5),
 			huh.NewSelect[string]().Title("Priority").
 				Options(makeOptions(getPriorityOptions())...).
-				Value(&m.priority),
+				Value(m.priority),
 			huh.NewSelect[string]().Title("Type").
 				Options(makeOptions(getTypeOptions())...).
-				Value(&m.issueType),
-			huh.NewInput().Title("Assignee").Value(&m.assignee),
-			huh.NewInput().Title("Labels").Value(&m.labels),
-			huh.NewText().Title("Notes").Value(&m.notes).Lines(3),
+				Value(m.issueType),
+			huh.NewInput().Title("Assignee").Value(m.assignee),
+			huh.NewInput().Title("Labels").Value(m.labels),
+			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).
 		WithShowHelp(true).
@@ -113,17 +139,17 @@ func buildEditForm(m *EditModal) *huh.Form {
 func buildCreateForm(m *EditModal) *huh.Form {
 	return huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().Title("Title").Value(&m.title),
-			huh.NewText().Title("Description").Value(&m.description).Lines(5),
+			huh.NewInput().Title("Title").Value(m.title),
+			huh.NewText().Title("Description").Value(m.description).Lines(5),
 			huh.NewSelect[string]().Title("Priority").
 				Options(makeOptions(getPriorityOptions())...).
-				Value(&m.priority),
+				Value(m.priority),
 			huh.NewSelect[string]().Title("Type").
 				Options(makeOptions(getTypeOptions())...).
-				Value(&m.issueType),
-			huh.NewInput().Title("Assignee").Value(&m.assignee),
-			huh.NewInput().Title("Labels").Value(&m.labels),
-			huh.NewText().Title("Notes").Value(&m.notes).Lines(3),
+				Value(m.issueType),
+			huh.NewInput().Title("Assignee").Value(m.assignee),
+			huh.NewInput().Title("Labels").Value(m.labels),
+			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).
 		WithShowHelp(true).
@@ -269,14 +295,14 @@ func (m EditModal) BuildUpdateArgs() map[string]string {
 	args := make(map[string]string)
 
 	fields := map[string]string{
-		"title":       m.title,
-		"status":      m.status,
-		"priority":    m.priority,
-		"type":        m.issueType,
-		"assignee":    m.assignee,
-		"labels":      m.labels,
-		"description": m.description,
-		"notes":       m.notes,
+		"title":       *m.title,
+		"status":      *m.status,
+		"priority":    *m.priority,
+		"type":        *m.issueType,
+		"assignee":    *m.assignee,
+		"labels":      *m.labels,
+		"description": *m.description,
+		"notes":       *m.notes,
 	}
 
 	for key, val := range fields {
@@ -300,13 +326,13 @@ func (m EditModal) BuildCreateArgs() map[string]string {
 	args := make(map[string]string)
 
 	fields := map[string]string{
-		"title":       m.title,
-		"priority":    m.priority,
-		"type":        m.issueType,
-		"assignee":    m.assignee,
-		"labels":      m.labels,
-		"description": m.description,
-		"notes":       m.notes,
+		"title":       *m.title,
+		"priority":    *m.priority,
+		"type":        *m.issueType,
+		"assignee":    *m.assignee,
+		"labels":      *m.labels,
+		"description": *m.description,
+		"notes":       *m.notes,
 	}
 
 	for key, val := range fields {
