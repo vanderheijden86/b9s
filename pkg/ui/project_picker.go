@@ -289,7 +289,6 @@ func (m *ProjectPickerModel) ViewMinimized() string {
 	}
 
 	t := m.theme
-	w := m.width
 
 	keyStyle := t.Renderer.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
@@ -334,12 +333,7 @@ func (m *ProjectPickerModel) ViewMinimized() string {
 	sep := sepStyle.Render(" \u2502 ")
 	line := "  " + projectInfo + sep + favSection
 
-	barStyle := t.Renderer.NewStyle().
-		Width(w).
-		Background(ColorBgHighlight).
-		Padding(0, 0)
-
-	return barStyle.Render(line)
+	return line
 }
 
 // ExpandedHeight returns the number of terminal lines the expanded view uses.
