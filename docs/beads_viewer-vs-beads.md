@@ -1,6 +1,7 @@
 # Beads Viewer (bv) vs Beads (bd): Separation of Concerns
 
-This document maps out what the original Beads Viewer (`steveyegge/beads_viewer`) handles versus what Beads (`steveyegge/beads`) handles, and where they overlap. Beadwork (`bw`) is a stripped-down fork of Beads Viewer that keeps only the TUI viewer/editor and removes the analysis, export, and agent protocol layers.
+This document maps out what the original Beads Viewer (`Dicklesworthstone/beads_viewer`) handles versus what Beads 
+(`steveyegge/beads`) handles, and where they overlap. Beadwork (`bw`) is a stripped-down fork of Beads Viewer that keeps only the TUI viewer/editor and removes the analysis, export, and agent protocol layers.
 
 ## Summary
 
