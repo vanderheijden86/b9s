@@ -394,7 +394,6 @@ type Model struct {
 	activeProjectFavN int               // Favorite number (1-9, or 0)
 	appConfig         config.Config     // Loaded app configuration
 	allProjects       []config.Project  // All known projects
-	pickerExpanded    bool              // Project picker expanded (true) or minimized (false)
 	projectPicker     ProjectPickerModel
 }
 
@@ -405,15 +404,11 @@ type labelCount struct {
 }
 
 // bodyHeight returns the available height for the main content area,
-// accounting for the picker header (expanded or minimized) and footer (bd-ey3).
+// accounting for the picker header and footer (bd-ey3, bd-ylz).
 func (m Model) bodyHeight() int {
 	headerH := 1 // default: single-line global header when no projects
 	if len(m.allProjects) > 0 {
-		if m.pickerExpanded {
-			headerH = m.projectPicker.ExpandedHeight()
-		} else {
-			headerH = m.projectPicker.MinimizedHeight()
-		}
+		headerH = m.projectPicker.Height()
 	}
 	h := m.height - headerH - 1 // -1 for footer
 	if h < 3 {
@@ -824,8 +819,6 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	for _, e := range errs {
 		debug.Log("project discovery: skipping %s", e)
 	}
-	// Initialize picker as expanded on startup (bd-ey3)
-	m.pickerExpanded = true
 	entries := m.buildProjectEntries()
 	m.projectPicker = NewProjectPicker(entries, m.theme)
 	return m
@@ -1710,18 +1703,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle keys when not filtering
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
-			case "P":
-				// Toggle project picker expanded/minimized (bd-ey3)
-				// Note: lowercase 'p' still does jump-to-parent in tree (bd-ryu)
-				m.pickerExpanded = !m.pickerExpanded
-				if m.pickerExpanded {
-					// Rebuild entries when expanding
-					entries := m.buildProjectEntries()
-					m.projectPicker = NewProjectPicker(entries, m.theme)
-					m.projectPicker.SetSize(m.width, m.height)
-				}
-				return m, nil
-
 			case "ctrl+c":
 				return m, tea.Quit
 
@@ -2908,16 +2889,11 @@ func (m Model) View() string {
 		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
 	}
 
-	// Always-visible project picker header (bd-ey3)
-	// Replaces the old renderGlobalHeader() - picker subsumes that role
+	// Always-visible compact project picker header (bd-ey3, bd-ylz)
 	var pickerHeader string
 	if len(m.allProjects) > 0 {
 		m.projectPicker.SetSize(m.width, m.height)
-		if m.pickerExpanded {
-			pickerHeader = m.projectPicker.ViewExpanded()
-		} else {
-			pickerHeader = m.projectPicker.ViewMinimized()
-		}
+		pickerHeader = m.projectPicker.View()
 	} else {
 		// No projects configured: fall back to the original global header
 		pickerHeader = m.renderGlobalHeader()
@@ -4146,15 +4122,6 @@ func (m Model) TreeDetailHidden() bool {
 	return m.treeDetailHidden
 }
 
-// ShowProjectPicker returns whether the project picker is expanded (bd-q5z.8, bd-ey3).
-func (m Model) ShowProjectPicker() bool {
-	return m.pickerExpanded
-}
-
-// PickerExpanded returns whether the project picker header is in expanded mode (bd-ey3).
-func (m Model) PickerExpanded() bool {
-	return m.pickerExpanded
-}
 
 // ActiveProjectName returns the name of the currently loaded project (bd-q5z.8).
 func (m Model) ActiveProjectName() string {

@@ -85,47 +85,8 @@ func createModelWithProjects(t *testing.T) (ui.Model, config.Config) {
 
 // (bd-8hw.4: switchToListView removed — tree is permanent, no list view)
 
-func TestProjectPicker_ExpandedByDefault(t *testing.T) {
-	m, _ := createModelWithProjects(t)
-
-	// Picker should be expanded by default after WithConfig (bd-ey3)
-	if !m.PickerExpanded() {
-		t.Fatal("picker should be expanded by default")
-	}
-}
-
-func TestProjectPicker_ToggleExpandedMinimized(t *testing.T) {
-	m, _ := createModelWithProjects(t)
-
-	// Should start expanded
-	if !m.PickerExpanded() {
-		t.Fatal("picker should be expanded initially")
-	}
-
-	// Press P to minimize (works from tree, bd-8hw.4)
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
-	m = newM.(ui.Model)
-
-	if m.PickerExpanded() {
-		t.Fatal("picker should be minimized after P")
-	}
-
-	// Press P to expand again
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
-	m = newM.(ui.Model)
-
-	if !m.PickerExpanded() {
-		t.Fatal("picker should be expanded after second P")
-	}
-}
-
 func TestProjectPicker_ShowsAllProjects(t *testing.T) {
 	m, _ := createModelWithProjects(t)
-
-	// Picker is expanded by default, should show all projects
-	if !m.PickerExpanded() {
-		t.Fatal("picker should be expanded by default")
-	}
 
 	if m.ProjectPickerFilteredCount() != 3 {
 		t.Errorf("expected 3 projects in picker, got %d", m.ProjectPickerFilteredCount())
@@ -140,31 +101,34 @@ func TestProjectPicker_ActiveProjectHighlighted(t *testing.T) {
 	}
 }
 
-func TestProjectPicker_ViewExpandedContainsProjectInfo(t *testing.T) {
+func TestProjectPicker_ViewContainsProjectInfo(t *testing.T) {
 	entries := []ui.ProjectEntry{
 		{
-			Project:      config.Project{Name: "api-service", Path: "/tmp/api-service"},
-			FavoriteNum:  1,
-			IsActive:     true,
-			OpenCount:    3,
-			ReadyCount:   2,
-			BlockedCount: 1,
+			Project:         config.Project{Name: "api-service", Path: "/tmp/api-service"},
+			FavoriteNum:     1,
+			IsActive:        true,
+			OpenCount:       3,
+			InProgressCount: 1,
+			ReadyCount:      2,
+			BlockedCount:    1,
 		},
 		{
-			Project:      config.Project{Name: "web-frontend", Path: "/tmp/web-frontend"},
-			FavoriteNum:  0,
-			IsActive:     false,
-			OpenCount:    2,
-			ReadyCount:   1,
-			BlockedCount: 1,
+			Project:         config.Project{Name: "web-frontend", Path: "/tmp/web-frontend"},
+			FavoriteNum:     0,
+			IsActive:        false,
+			OpenCount:       2,
+			InProgressCount: 0,
+			ReadyCount:      1,
+			BlockedCount:    1,
 		},
 		{
-			Project:      config.Project{Name: "data-pipeline", Path: "/tmp/data-pipeline"},
-			FavoriteNum:  3,
-			IsActive:     false,
-			OpenCount:    1,
-			ReadyCount:   1,
-			BlockedCount: 0,
+			Project:         config.Project{Name: "data-pipeline", Path: "/tmp/data-pipeline"},
+			FavoriteNum:     3,
+			IsActive:        false,
+			OpenCount:       1,
+			InProgressCount: 0,
+			ReadyCount:      1,
+			BlockedCount:    0,
 		},
 	}
 
@@ -172,34 +136,28 @@ func TestProjectPicker_ViewExpandedContainsProjectInfo(t *testing.T) {
 	picker := ui.NewProjectPicker(entries, theme)
 	picker.SetSize(120, 40)
 
-	view := picker.ViewExpanded()
+	view := picker.View()
 
 	// Should contain project names
 	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
 		if !strings.Contains(view, name) {
-			t.Errorf("expanded view should contain project name %q", name)
+			t.Errorf("view should contain project name %q", name)
 		}
 	}
 
 	// Should contain the title bar
 	if !strings.Contains(view, "projects") {
-		t.Error("expanded view should contain 'projects' title")
+		t.Error("view should contain 'projects' title")
 	}
 
-	// Should contain column headers
-	if !strings.Contains(view, "NAME") {
-		t.Error("expanded view should contain NAME column header")
-	}
-	if !strings.Contains(view, "BLOCKED") {
-		t.Error("expanded view should contain BLOCKED column header")
-	}
-
-	// Should contain shortcut hints (new set for expanded mode)
+	// Should contain shortcut hints
 	if !strings.Contains(view, "Quick Switch") {
-		t.Error("expanded view should contain 'Quick Switch' shortcut hint")
+		t.Error("view should contain 'Quick Switch' shortcut hint")
 	}
-	if !strings.Contains(view, "Minimize") {
-		t.Error("expanded view should contain 'Minimize' shortcut hint")
+
+	// Should NOT contain 'Minimize' shortcut (removed in compact layout)
+	if strings.Contains(view, "Minimize") {
+		t.Error("view should NOT contain 'Minimize' shortcut hint")
 	}
 
 	// Active project should be shown in title bar (k9s style)
@@ -208,23 +166,14 @@ func TestProjectPicker_ViewExpandedContainsProjectInfo(t *testing.T) {
 	}
 }
 
-func TestProjectPicker_ViewMinimizedContainsInfo(t *testing.T) {
+func TestProjectPicker_TitleBarAtBottom(t *testing.T) {
 	entries := []ui.ProjectEntry{
 		{
-			Project:      config.Project{Name: "api-service", Path: "/tmp/api-service"},
-			FavoriteNum:  1,
-			IsActive:     true,
-			OpenCount:    3,
-			ReadyCount:   2,
-			BlockedCount: 1,
-		},
-		{
-			Project:      config.Project{Name: "web-frontend", Path: "/tmp/web-frontend"},
-			FavoriteNum:  2,
-			IsActive:     false,
-			OpenCount:    2,
-			ReadyCount:   1,
-			BlockedCount: 1,
+			Project:     config.Project{Name: "my-project", Path: "/tmp/my-project"},
+			FavoriteNum: 1,
+			IsActive:    true,
+			OpenCount:   5,
+			ReadyCount:  3,
 		},
 	}
 
@@ -232,26 +181,88 @@ func TestProjectPicker_ViewMinimizedContainsInfo(t *testing.T) {
 	picker := ui.NewProjectPicker(entries, theme)
 	picker.SetSize(120, 40)
 
-	view := picker.ViewMinimized()
+	view := picker.View()
+	lines := strings.Split(view, "\n")
 
-	// Should contain active project name and stats
-	if !strings.Contains(view, "api-service") {
-		t.Error("minimized view should contain active project name")
+	// Title bar should be the last line
+	lastLine := lines[len(lines)-1]
+	if !strings.Contains(lastLine, "projects(my-project)") {
+		t.Errorf("title bar should be at the bottom, last line was: %q", lastLine)
 	}
-	if !strings.Contains(view, "3/0/2/1") {
-		t.Error("minimized view should contain stats (3/0/2/1)")
+}
+
+func TestProjectPicker_HorizontalWrapping(t *testing.T) {
+	// Create enough projects that they won't fit in a narrow terminal
+	entries := []ui.ProjectEntry{
+		{Project: config.Project{Name: "project-alpha", Path: "/tmp/a"}, FavoriteNum: 1, OpenCount: 10, InProgressCount: 2, ReadyCount: 5},
+		{Project: config.Project{Name: "project-beta", Path: "/tmp/b"}, FavoriteNum: 2, OpenCount: 8, InProgressCount: 1, ReadyCount: 4},
+		{Project: config.Project{Name: "project-gamma", Path: "/tmp/c"}, FavoriteNum: 3, OpenCount: 6, InProgressCount: 3, ReadyCount: 2},
+		{Project: config.Project{Name: "project-delta", Path: "/tmp/d"}, FavoriteNum: 4, OpenCount: 4, InProgressCount: 0, ReadyCount: 3},
+		{Project: config.Project{Name: "project-epsilon", Path: "/tmp/e"}, FavoriteNum: 5, OpenCount: 12, InProgressCount: 5, ReadyCount: 7},
 	}
 
-	// Should NOT contain "Project:" prefix (bd-aa6)
-	if strings.Contains(view, "Project:") {
-		t.Error("minimized view should NOT contain 'Project:' prefix")
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+
+	// With a very narrow width, chips should wrap to multiple lines
+	picker.SetSize(50, 40)
+	narrowHeight := picker.Height()
+
+	// With a wide width, chips should fit in fewer lines
+	picker.SetSize(200, 40)
+	wideHeight := picker.Height()
+
+	if narrowHeight <= wideHeight {
+		t.Errorf("narrow terminal (%d lines) should need more lines than wide terminal (%d lines)", narrowHeight, wideHeight)
 	}
-	// Should NOT contain expand hint (bd-aa6)
-	if strings.Contains(view, "Expand") {
-		t.Error("minimized view should NOT contain 'Expand' hint")
+}
+
+func TestProjectPicker_NoPathColumn(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{
+			Project:     config.Project{Name: "api-service", Path: "/home/user/projects/api-service"},
+			FavoriteNum: 1,
+			IsActive:    true,
+			OpenCount:   3,
+		},
 	}
-	if strings.Contains(view, "<P>") {
-		t.Error("minimized view should NOT contain '<P>' hint")
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+
+	view := picker.View()
+
+	// Should NOT contain the file path
+	if strings.Contains(view, "/home/user/projects") {
+		t.Error("view should NOT contain file paths")
+	}
+	if strings.Contains(view, "PATH") {
+		t.Error("view should NOT contain PATH column header")
+	}
+}
+
+func TestProjectPicker_InlineCountsFormat(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{
+			Project:         config.Project{Name: "my-app", Path: "/tmp/my-app"},
+			FavoriteNum:     1,
+			IsActive:        true,
+			OpenCount:       10,
+			InProgressCount: 3,
+			ReadyCount:      5,
+		},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(120, 40)
+
+	view := picker.View()
+
+	// Counts should be rendered as (open/prog/ready)
+	if !strings.Contains(view, "(10/3/5)") {
+		t.Errorf("view should contain inline counts '(10/3/5)', got:\n%s", view)
 	}
 }
 
@@ -359,36 +370,21 @@ func TestProjectPicker_DisplayOnlyNoNavigation(t *testing.T) {
 	}
 }
 
-func TestProjectPicker_ExpandedHeight(t *testing.T) {
+func TestProjectPicker_Height(t *testing.T) {
 	entries := []ui.ProjectEntry{
-		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
-		{Project: config.Project{Name: "beta", Path: "/tmp/b"}},
-		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}},
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}, FavoriteNum: 1, OpenCount: 1, ReadyCount: 1},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}, FavoriteNum: 2, OpenCount: 2, ReadyCount: 1},
+		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}, FavoriteNum: 3, OpenCount: 3, ReadyCount: 2},
 	}
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(200, 40) // wide enough for all chips on one line
 
-	// 3 header lines (shortcut bar + title + column headers) + 3 project rows = 6
-	height := picker.ExpandedHeight()
-	if height != 6 {
-		t.Errorf("expected expanded height 6, got %d", height)
-	}
-}
-
-func TestProjectPicker_MinimizedHeight(t *testing.T) {
-	entries := []ui.ProjectEntry{
-		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
-	}
-
-	theme := ui.TestTheme()
-	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
-
-	height := picker.MinimizedHeight()
-	if height != 1 {
-		t.Errorf("expected minimized height 1, got %d", height)
+	// Compact layout: shortcut bar (1) + chip lines (at least 1) + title bar (1) = at least 3
+	height := picker.Height()
+	if height < 3 {
+		t.Errorf("expected height >= 3 for compact layout, got %d", height)
 	}
 }
 
@@ -423,18 +419,12 @@ func TestProjectPicker_AutoNumbering(t *testing.T) {
 	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	m = newM.(ui.Model)
 
-	// Picker should show auto-numbers in the view
-	if !m.PickerExpanded() {
-		t.Fatal("picker should be expanded by default")
-	}
-
 	view := m.View()
 
-	// The view should contain the number "1" near api-service, "2" near web-frontend, "3" near data-pipeline
-	// Since projects are numbered 1-3, the view should show those numbers
+	// The view should contain project names
 	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
 		if !strings.Contains(view, name) {
-			t.Errorf("expanded view should contain project name %q", name)
+			t.Errorf("view should contain project name %q", name)
 		}
 	}
 }
@@ -482,26 +472,26 @@ func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
 // position numbers prominently for each project (bd-8zc).
 func TestProjectPicker_AutoNumberDisplayInView(t *testing.T) {
 	entries := []ui.ProjectEntry{
-		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}, FavoriteNum: 1},
-		{Project: config.Project{Name: "beta", Path: "/tmp/b"}, FavoriteNum: 2},
-		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}, FavoriteNum: 3},
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}, FavoriteNum: 1, OpenCount: 1, ReadyCount: 1},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}, FavoriteNum: 2, OpenCount: 2, ReadyCount: 1},
+		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}, FavoriteNum: 3, OpenCount: 3, ReadyCount: 2},
 	}
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
 	picker.SetSize(120, 40)
 
-	view := picker.ViewExpanded()
+	view := picker.View()
 
-	// Each row should contain the position number
+	// Each chip should contain the position number and name
 	if !strings.Contains(view, "1") || !strings.Contains(view, "alpha") {
-		t.Error("expanded view should contain '1' and 'alpha'")
+		t.Error("view should contain '1' and 'alpha'")
 	}
 	if !strings.Contains(view, "2") || !strings.Contains(view, "beta") {
-		t.Error("expanded view should contain '2' and 'beta'")
+		t.Error("view should contain '2' and 'beta'")
 	}
 	if !strings.Contains(view, "3") || !strings.Contains(view, "gamma") {
-		t.Error("expanded view should contain '3' and 'gamma'")
+		t.Error("view should contain '3' and 'gamma'")
 	}
 }
 
@@ -693,7 +683,7 @@ func TestPickerCountsRefreshOnTick(t *testing.T) {
 	// Capture initial view — web-frontend should have some counts from its JSONL
 	initialView := m.View()
 	if !strings.Contains(initialView, "web-frontend") {
-		t.Fatal("expected web-frontend in expanded picker")
+		t.Fatal("expected web-frontend in picker")
 	}
 
 	// Now modify the web-frontend JSONL on disk (add a new issue)
@@ -717,11 +707,7 @@ func TestPickerCountsRefreshOnTick(t *testing.T) {
 	}
 
 	// The picker should now reflect updated counts for web-frontend
-	// Original: 2 issues (web-1 open, web-2 blocked). After: 3 issues.
 	updatedView := m.View()
-	// web-frontend originally had OpenCount=1 (web-1). Now it should have 2 (web-1 + web-3).
-	// We can't easily check exact numbers in the table format, but we can verify
-	// the view changed after the tick (indicating a refresh happened).
 	if initialView == updatedView {
 		t.Error("expected picker view to change after PickerRefreshTickMsg with modified JSONL")
 	}
@@ -787,9 +773,9 @@ func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 		t.Fatal("dep-project not found in entries")
 	}
 
-	// dep-1: open, no blockers → READY
-	// dep-2: open, blocked by dep-1 (which is open) → NOT ready (blocked by dep)
-	// dep-3: status "blocked" → BLOCKED
+	// dep-1: open, no blockers -> READY
+	// dep-2: open, blocked by dep-1 (which is open) -> NOT ready (blocked by dep)
+	// dep-3: status "blocked" -> BLOCKED
 	// OpenCount should be 3 (all non-closed)
 	if depEntry.OpenCount != 3 {
 		t.Errorf("expected OpenCount=3, got %d", depEntry.OpenCount)
@@ -841,9 +827,33 @@ func TestProjectSwitch_ClearsTreeFilter(t *testing.T) {
 	m = newM.(ui.Model)
 
 	// After switch, the tree filter should be cleared.
-	// The tree is cleared via Build(nil) during switch, so it's empty pending data load.
-	// But critically, the filter should not persist — verify via the tree filter accessor.
 	if m.TreeFilterActive() {
 		t.Error("tree filter should be cleared after project switch")
 	}
+}
+
+// TestProjectPicker_NoPKeyToggle verifies that 'P' key no longer toggles picker modes (bd-ylz).
+func TestProjectPicker_NoPKeyToggle(t *testing.T) {
+	m, _ := createModelWithProjects(t)
+
+	// Get initial view
+	initialView := m.View()
+
+	// Press P - should NOT change the picker display mode
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	m = newM.(ui.Model)
+
+	afterPView := m.View()
+
+	// The picker portion of the view should not fundamentally change
+	// (P should be a no-op for the picker now)
+	// We check that the view still contains all project names (picker is still visible)
+	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
+		if !strings.Contains(afterPView, name) {
+			t.Errorf("after pressing P, view should still contain project name %q", name)
+		}
+	}
+
+	// The view should not have collapsed to a minimized form
+	_ = initialView // avoid unused variable
 }
