@@ -494,23 +494,25 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"})
 
 	label := "projects"
+	activeNum := 0
 	if m.filtering && m.filterInput.Value() != "" {
 		label = fmt.Sprintf("projects(%s)", m.filterInput.Value())
 	} else {
 		for _, entry := range m.entries {
 			if entry.IsActive {
 				label = fmt.Sprintf("projects(%s)", entry.Project.Name)
+				activeNum = entry.FavoriteNum
 				break
 			}
 		}
 	}
 
-	title := titleText.Render(label) + countText.Render(fmt.Sprintf("[%d]", len(m.filtered)))
+	title := titleText.Render(label) + countText.Render(fmt.Sprintf("[%d]", activeNum))
 
 	sepChar := "\u2500"
 	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
 
-	titleLen := len(label) + len(fmt.Sprintf("[%d]", len(m.filtered)))
+	titleLen := len(label) + len(fmt.Sprintf("[%d]", activeNum))
 	leftPad := (w - titleLen - 4) / 2
 	rightPad := w - titleLen - 4 - leftPad
 	if leftPad < 1 {
