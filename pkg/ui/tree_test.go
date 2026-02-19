@@ -3149,7 +3149,8 @@ func TestTreeAdvancedFilterStatusOpen(t *testing.T) {
 	}
 }
 
-// TestFlatModeViewIndicator verifies the view shows a [FLAT] or [TREE] indicator
+// TestFlatModeViewIndicator verifies the view shows a [FLAT] indicator in flat mode
+// and no [TREE] badge in tree mode (bd-4s6: tree is default, no badge needed)
 func TestFlatModeViewIndicator(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "test-1", Title: "Test", Priority: 1, IssueType: model.TypeTask, Status: model.StatusOpen},
@@ -3159,10 +3160,10 @@ func TestFlatModeViewIndicator(t *testing.T) {
 	tree.Build(issues)
 	tree.SetSize(100, 20)
 
-	// Tree mode should show TREE indicator
+	// Tree mode: no [TREE] badge (it's the default)
 	view := tree.View()
-	if !strings.Contains(view, "TREE") {
-		t.Errorf("expected TREE indicator in tree mode view")
+	if strings.Contains(view, "[TREE]") {
+		t.Errorf("tree mode should not show [TREE] badge (it's the default)")
 	}
 
 	// Flat mode should show FLAT indicator

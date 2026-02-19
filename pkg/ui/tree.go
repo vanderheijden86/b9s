@@ -1169,9 +1169,8 @@ func (t *TreeModel) renderEmptyState() string {
 
 // RenderHeader returns a styled header row for the tree view, matching the main
 // list view's column header style: primary background, bold white/dark foreground.
-// Layout: "  [TREE] TYPE PRI STATUS  TITLE  [sort]  ID"
+// Layout: "  [mode] [filter] STATUS  TITLE  [sort]  ID"
 // ID is a compact column at the end (bd-03l).
-// Includes a [TREE]/[FLAT] mode indicator badge (bd-39v).
 func (t *TreeModel) RenderHeader() string {
 	width := t.width
 	if width <= 0 {
@@ -1183,15 +1182,19 @@ func (t *TreeModel) RenderHeader() string {
 		Bold(true).
 		Width(width)
 
-	modeBadge := "TREE"
+	modeBadge := ""
 	if t.flatMode {
-		modeBadge = "FLAT"
+		modeBadge = "[FLAT] "
 	}
 	if t.occurMode {
-		modeBadge = fmt.Sprintf("OCCUR[%s](%d)", t.occurPattern, len(t.flatList))
+		modeBadge = fmt.Sprintf("[OCCUR[%s](%d)] ", t.occurPattern, len(t.flatList))
+	}
+	filterBadge := ""
+	if t.currentFilter != "" && t.currentFilter != "all" {
+		filterBadge = fmt.Sprintf("[%s] ", strings.ToUpper(t.currentFilter))
 	}
 	sortBadge := fmt.Sprintf("%s %s", t.sortField.String(), t.sortDirection.Indicator())
-	headerText := fmt.Sprintf("  [%s] TYPE PRI STATUS  TITLE  [%s]  ID", modeBadge, sortBadge)
+	headerText := fmt.Sprintf("  %s%sSTATUS  TITLE  [%s]  ID", modeBadge, filterBadge, sortBadge)
 	return headerStyle.Render(headerText)
 }
 
@@ -1235,18 +1238,6 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool) string {
 	leftSide.WriteString(indicatorStyle.Render(indicator))
 	leftSide.WriteString(" ")
 
-	// ── Type icon with color ──
-	icon, iconColor := t.theme.GetTypeIcon(string(issue.IssueType))
-	iconDisplayWidth := lipgloss.Width(icon)
-	leftSide.WriteString(r.NewStyle().Foreground(iconColor).Render(icon))
-	leftSide.WriteString(" ")
-
-	// ── Priority badge (polished, matching delegate) ──
-	prioBadge := RenderPriorityBadge(issue.Priority)
-	prioBadgeWidth := lipgloss.Width(prioBadge)
-	leftSide.WriteString(prioBadge)
-	leftSide.WriteString(" ")
-
 	// ── Status badge (polished, matching delegate) ──
 	statusBadge := RenderStatusBadge(string(issue.Status))
 	statusBadgeWidth := lipgloss.Width(statusBadge)
@@ -1254,9 +1245,8 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool) string {
 	leftSide.WriteString(" ")
 
 	// ── Calculate fixed widths (ID moved to right side, bd-03l) ──
-	// prefix + indicator(1) + space(1) + icon(measured) + space(1) + prio(measured) + space(1)
-	// + status(measured) + space(1)
-	fixedWidth := prefixWidth + 1 + 1 + iconDisplayWidth + 1 + prioBadgeWidth + 1 + statusBadgeWidth + 1
+	// prefix + indicator(1) + space(1) + status(measured) + space(1)
+	fixedWidth := prefixWidth + 1 + 1 + statusBadgeWidth + 1
 
 	// ── Right side: age + short ID (bd-03l) ──
 	rightWidth := 0

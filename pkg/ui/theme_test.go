@@ -60,12 +60,12 @@ func TestGetTypeIcon(t *testing.T) {
 		wantIcon string
 		wantCol  lipgloss.AdaptiveColor
 	}{
-		{"bug", "🐛", theme.Bug},
-		{"feature", "✨", theme.Feature},
-		{"task", "📋", theme.Task},
-		{"epic", "🚀", theme.Epic}, // Changed from 🏔️ - variation selector caused width issues
-		{"chore", "🧹", theme.Chore},
-		{"unknown", "•", theme.Subtext},
+		{"bug", "!", theme.Bug},
+		{"feature", "*", theme.Feature},
+		{"task", "-", theme.Task},
+		{"epic", "E", theme.Epic},
+		{"chore", "~", theme.Chore},
+		{"unknown", "·", theme.Subtext},
 	}
 
 	for _, tt := range tests {

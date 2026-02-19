@@ -299,9 +299,8 @@ type Model struct {
 	list             list.Model
 	viewport         viewport.Model
 	renderer         *MarkdownRenderer
-	board            BoardModel
-	shortcutsSidebar ShortcutsSidebar // bv-3qi5
-	tree             TreeModel        // Hierarchical tree view (bv-gllx)
+	board BoardModel
+	tree  TreeModel // Hierarchical tree view (bv-gllx)
 	theme            Theme
 
 	// Update State
@@ -325,8 +324,7 @@ type Model struct {
 	ready                bool
 	width                int
 	height               int
-	showShortcutsSidebar bool // bv-3qi5 toggleable shortcuts sidebar
-	pickerVisible        bool // bd-2me: Shift+P toggles picker panel
+	pickerVisible bool // bd-2me: Shift+P toggles picker panel
 
 	// Filter and sort state
 	currentFilter string
@@ -692,7 +690,6 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 
 	// Initialize sub-components
 	board := NewBoardModel(issues, theme)
-	shortcutsSidebar := NewShortcutsSidebar(theme)
 
 	// Initialize label picker (bv-126)
 	labelSet := make(map[string]int)
@@ -782,9 +779,8 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		list:                l,
 		viewport:            vp,
 		renderer:            renderer,
-		board:               board,
-		shortcutsSidebar:    shortcutsSidebar,
-		tree:                treeModel,
+		board: board,
+		tree:  treeModel,
 		theme:               theme,
 		currentFilter:       "all",
 		focused:             focusTree, // Tree view is the default on launch (bd-dxc)
@@ -1635,43 +1631,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle shortcuts sidebar toggle (; or F2) - bv-3qi5
-		if (msg.String() == ";" || msg.String() == "f2") && m.list.FilterState() != list.Filtering {
-			m.showShortcutsSidebar = !m.showShortcutsSidebar
-			if m.showShortcutsSidebar {
-				m.shortcutsSidebar.ResetScroll()
-				m.statusMsg = "Shortcuts sidebar: ; hide | j/k scroll"
-				m.statusIsError = false
-			} else {
-				m.statusMsg = ""
-			}
-			return m, nil
-		}
-
 		// Handle Shift+P to toggle project picker panel (bd-2me)
 		if msg.String() == "P" && m.list.FilterState() != list.Filtering {
 			m.pickerVisible = !m.pickerVisible
 			// Resize tree/board after toggling to reclaim/yield space
 			m.tree.SetSize(m.width, m.bodyHeight())
 			return m, nil
-		}
-
-		// Handle shortcuts sidebar scrolling (j/k, arrows, ctrl+j/k when sidebar visible) - bv-3qi5, bd-jk0
-		// Only intercept navigation keys when the sidebar content actually overflows.
-		// Otherwise let keys pass through to the view handler for normal navigation.
-		if m.showShortcutsSidebar && m.list.FilterState() != list.Filtering {
-			m.shortcutsSidebar.SetContext(ContextFromFocus(m.focused))
-			m.shortcutsSidebar.SetSize(m.shortcutsSidebar.Width(), m.bodyHeight())
-			if m.shortcutsSidebar.NeedsScroll() {
-				switch msg.String() {
-				case "j", "down", "ctrl+j":
-					m.shortcutsSidebar.ScrollDown()
-					return m, nil
-				case "k", "up", "ctrl+k":
-					m.shortcutsSidebar.ScrollUp()
-					return m, nil
-				}
-			}
 		}
 
 		// If help is showing, handle navigation keys for scrolling
@@ -2840,15 +2805,6 @@ func (m Model) View() string {
 		body = m.tree.View()
 	}
 
-	// Add shortcuts sidebar if enabled (bv-3qi5)
-	if m.showShortcutsSidebar {
-		// Update sidebar context based on current focus
-		m.shortcutsSidebar.SetContext(ContextFromFocus(m.focused))
-		m.shortcutsSidebar.SetSize(m.shortcutsSidebar.Width(), m.bodyHeight())
-		sidebar := m.shortcutsSidebar.View()
-		body = lipgloss.JoinHorizontal(lipgloss.Top, body, sidebar)
-	}
-
 	footer := m.renderFooter()
 
 	// Ensure the final output fits exactly in the terminal height
@@ -2867,6 +2823,10 @@ func (m Model) View() string {
 	if len(m.allProjects) > 0 && m.pickerVisible {
 		m.projectPicker.SetSize(m.width, m.height)
 		pickerHeader = m.projectPicker.View()
+	} else if len(m.allProjects) > 0 && !m.pickerVisible {
+		// Minimized one-line bar: show project numbers + names, highlight active (bd-4s6)
+		m.projectPicker.SetSize(m.width, m.height)
+		pickerHeader = m.projectPicker.ViewMinimized()
 	} else if len(m.allProjects) == 0 {
 		// No projects configured: fall back to the original global header
 		pickerHeader = m.renderGlobalHeader()
