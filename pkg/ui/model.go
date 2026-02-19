@@ -1713,9 +1713,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focused = focusTree
 					return m, nil
 				}
-				// Tree detail-only mode: ESC returns to tree-only (bd-80u)
-				if m.treeViewActive && m.treeDetailHidden && m.focused == focusDetail {
-					m.focused = focusTree
+				// Detail mode: ESC returns to previous view (bd-80u, bd-yo4)
+				if m.focused == focusDetail {
+					if m.isBoardView {
+						m.focused = focusBoard
+					} else {
+						m.focused = focusTree
+					}
 					return m, nil
 				}
 				// Tree view: sort popup escape (bd-u81) takes precedence
@@ -1938,10 +1942,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case focusDetail:
 				// Enter returns to previous view from detail (bd-y0m, bd-yo4)
 				if msg.String() == "enter" {
-					if m.treeViewActive {
-						m.focused = focusTree
-					} else {
+					if m.isBoardView {
 						m.focused = focusBoard
+					} else {
+						m.focused = focusTree
 					}
 				} else if m.treeViewActive && msg.String() == "d" {
 					// Toggle detail panel from detail focus in tree view (bd-80u)
@@ -2800,6 +2804,9 @@ func (m Model) View() string {
 	} else if m.snapshotInitPending && m.snapshot == nil {
 		body = m.renderLoadingScreen()
 		isOverlay = true
+	} else if m.focused == focusDetail && m.isBoardView {
+		// Board detail-only mode: full-screen viewport (bd-yo4)
+		body = m.viewport.View()
 	} else if m.focused == focusTree || (m.focused == focusDetail && m.treeViewActive) {
 		// Hierarchical tree view (bv-gllx) with split view support (bd-xfd)
 		if m.focused == focusDetail && m.treeDetailHidden {
