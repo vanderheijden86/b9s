@@ -1300,16 +1300,16 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	if selected {
 		cardStyle = cardStyle.
 			Background(t.Highlight).
-			Border(lipgloss.NormalBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(borderColor)
 	} else if isCurrentMatch {
 		cardStyle = cardStyle.
 			Background(lipgloss.AdaptiveColor{Light: "#e1bee7", Dark: "#4a148c"}).
-			Border(lipgloss.NormalBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(borderColor)
 	} else {
 		cardStyle = cardStyle.
-			Border(lipgloss.NormalBorder()).
+			Border(lipgloss.ThickBorder()).
 			BorderForeground(borderColor)
 	}
 
@@ -1469,7 +1469,7 @@ func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) s
 	// Full rectangle border for expanded card (bd-f7g)
 	cardStyle = cardStyle.
 		Background(t.Highlight).
-		Border(lipgloss.NormalBorder()).
+		Border(lipgloss.ThickBorder()).
 		BorderForeground(borderColor)
 
 	// ══════════════════════════════════════════════════════════════════════════
