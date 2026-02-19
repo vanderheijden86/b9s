@@ -343,14 +343,14 @@ func createDeepTreeIssues() []model.Issue {
 }
 
 // ============================================================================
-// Tests: Enter cycles node visibility, TAB/Shift+TAB/1-9 removed (bd-8zc)
-// TAB is now tree↔detail focus switching only.
-// 1-9 are now project switching only.
-// Enter does CycleNodeVisibility (expand/collapse cycling).
+// Tests: Tab cycles node visibility, Enter opens detail, 1-9 project switch (bd-1of)
+// Tab does CycleNodeVisibility (expand/collapse cycling) in tree-only mode.
+// Enter opens detail view (always).
+// 1-9 are project switching only.
 // ============================================================================
 
-// TestTreeNavEnterCycleFolded verifies Enter cycles from folded to children-visible (bd-8zc).
-func TestTreeNavEnterCycleFolded(t *testing.T) {
+// TestTreeNavTabCycleFolded verifies Tab cycles from folded to children-visible (bd-1of).
+func TestTreeNavTabCycleFolded(t *testing.T) {
 	cleanTreeState(t)
 	issues := createDeepTreeIssues()
 	m := ui.NewModel(issues, "")
@@ -360,17 +360,18 @@ func TestTreeNavEnterCycleFolded(t *testing.T) {
 	m = sendKey(t, m, "h") // collapse epic-1
 	countAfterCollapse := m.TreeNodeCount()
 
-	// Now Enter should expand to show direct children only
-	m = sendSpecialKey(t, m, tea.KeyEnter)
-	countAfterEnter := m.TreeNodeCount()
+	// Now Tab should expand to show direct children only
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+	countAfterTab := m.TreeNodeCount()
 
-	if countAfterEnter <= countAfterCollapse {
-		t.Errorf("Enter should expand folded node: had %d nodes, got %d", countAfterCollapse, countAfterEnter)
+	if countAfterTab <= countAfterCollapse {
+		t.Errorf("Tab should expand folded node: had %d nodes, got %d", countAfterCollapse, countAfterTab)
 	}
 }
 
-// TestTreeNavEnterCycleChildrenToSubtree verifies Enter cycles from children-visible to subtree-visible (bd-8zc).
-func TestTreeNavEnterCycleChildrenToSubtree(t *testing.T) {
+// TestTreeNavTabCycleChildrenToSubtree verifies Tab cycles from children-visible to subtree-visible (bd-1of).
+func TestTreeNavTabCycleChildrenToSubtree(t *testing.T) {
 	cleanTreeState(t)
 	issues := createDeepTreeIssues()
 	m := ui.NewModel(issues, "")
@@ -382,17 +383,18 @@ func TestTreeNavEnterCycleChildrenToSubtree(t *testing.T) {
 
 	countBefore := m.TreeNodeCount()
 
-	// Enter on epic-1 which already has children visible should expand full subtree
-	m = sendSpecialKey(t, m, tea.KeyEnter)
-	countAfterFirstEnter := m.TreeNodeCount()
+	// Tab on epic-1 which already has children visible should expand full subtree
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+	countAfterFirstTab := m.TreeNodeCount()
 
-	if countAfterFirstEnter <= countBefore {
-		t.Errorf("Enter should expand subtree: had %d nodes, got %d", countBefore, countAfterFirstEnter)
+	if countAfterFirstTab <= countBefore {
+		t.Errorf("Tab should expand subtree: had %d nodes, got %d", countBefore, countAfterFirstTab)
 	}
 }
 
-// TestTreeNavEnterCycleBackToFolded verifies Enter eventually cycles back to folded state (bd-8zc).
-func TestTreeNavEnterCycleBackToFolded(t *testing.T) {
+// TestTreeNavTabCycleBackToFolded verifies Tab eventually cycles back to folded state (bd-1of).
+func TestTreeNavTabCycleBackToFolded(t *testing.T) {
 	cleanTreeState(t)
 	issues := createDeepTreeIssues()
 	m := ui.NewModel(issues, "")
@@ -403,18 +405,21 @@ func TestTreeNavEnterCycleBackToFolded(t *testing.T) {
 	collapsedCount := m.TreeNodeCount()
 
 	// Cycle through: folded -> children -> subtree -> folded
-	m = sendSpecialKey(t, m, tea.KeyEnter)
-	m = sendSpecialKey(t, m, tea.KeyEnter)
-	m = sendSpecialKey(t, m, tea.KeyEnter)
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = newM.(ui.Model)
 
 	finalCount := m.TreeNodeCount()
 	if finalCount != collapsedCount {
-		t.Errorf("Enter cycle should return to folded state: had %d, got %d", collapsedCount, finalCount)
+		t.Errorf("Tab cycle should return to folded state: had %d, got %d", collapsedCount, finalCount)
 	}
 }
 
-// TestTreeNavEnterOnLeafDoesNothing verifies Enter on a leaf node does nothing (bd-8zc).
-func TestTreeNavEnterOnLeafDoesNothing(t *testing.T) {
+// TestTreeNavEnterOnLeafOpensDetail verifies Enter on a leaf node opens detail view (bd-1of).
+func TestTreeNavEnterOnLeafOpensDetail(t *testing.T) {
 	cleanTreeState(t)
 	issues := createNavTestIssues()
 	m := ui.NewModel(issues, "")
@@ -426,12 +431,11 @@ func TestTreeNavEnterOnLeafDoesNothing(t *testing.T) {
 		t.Fatalf("expected task-1, got %q", m.TreeSelectedID())
 	}
 
-	countBefore := m.TreeNodeCount()
+	// Enter should open detail (not do nothing)
 	m = sendSpecialKey(t, m, tea.KeyEnter)
-	countAfter := m.TreeNodeCount()
 
-	if countBefore != countAfter {
-		t.Errorf("Enter on leaf node should not change node count: had %d, got %d", countBefore, countAfter)
+	if m.FocusState() != "detail" {
+		t.Errorf("Enter on leaf should open detail, got focus %q", m.FocusState())
 	}
 }
 

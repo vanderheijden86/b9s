@@ -67,7 +67,7 @@ func TestUpdateMsgSetsUpdateAvailable(t *testing.T) {
 }
 
 // TestNarrowWindowTreeDetailHidden verifies that in a narrow window (width <= SplitViewThreshold),
-// treeDetailHidden is true so Space opens full-screen detail (bd-6eg, bd-8zc).
+// treeDetailHidden is true so Enter opens full-screen detail (bd-6eg, bd-1of).
 func TestNarrowWindowTreeDetailHidden(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "1", Title: "Test issue", Status: model.StatusOpen},
@@ -85,12 +85,12 @@ func TestNarrowWindowTreeDetailHidden(t *testing.T) {
 		t.Fatalf("expected focusTree, got %v", m.focused)
 	}
 
-	// Space should open detail-only view (bd-8zc: Space=detail, Enter=expand)
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" ")})
+	// Enter should open detail-only view (bd-1of: Enter=detail, Tab=fold)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(Model)
 
 	if m.focused != focusDetail {
-		t.Fatalf("expected Space to open detail view in narrow window, got focus %v", m.focused)
+		t.Fatalf("expected Enter to open detail view in narrow window, got focus %v", m.focused)
 	}
 
 	// Esc should return to tree

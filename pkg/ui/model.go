@@ -2263,19 +2263,16 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		}
 		m.statusIsError = false
 
-	// Inline card expansion (bv-i3ii)
-	case "d":
+	// Inline card expansion (bd-1of: Tab replaces d for card cycling)
+	case "tab":
 		m.board.ToggleExpand()
 		if m.board.HasExpandedCard() {
-			m.statusMsg = "📋 Card expanded (d=collapse, j/k=auto-collapse)"
+			m.statusMsg = "📋 Card expanded (tab=collapse, j/k=auto-collapse)"
 		} else {
 			m.statusMsg = "📋 Card collapsed"
 		}
 		m.statusIsError = false
 
-	// Detail panel (bv-r6kh)
-	case "tab":
-		m.board.ToggleDetail()
 	case "ctrl+j":
 		if m.board.IsDetailShown() {
 			m.board.DetailScrollDown(3)
@@ -2285,26 +2282,9 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 			m.board.DetailScrollUp(3)
 		}
 
-	// Exit to detail view
+	// Enter opens detail panel (bd-1of: replaces Tab for detail)
 	case "enter":
-		if selected := m.board.SelectedIssue(); selected != nil {
-			for i, item := range m.list.Items() {
-				if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selected.ID {
-					m.list.Select(i)
-					break
-				}
-			}
-			m.isBoardView = false
-			m.focused = focusTree
-			if m.isSplitView {
-				m.focused = focusDetail
-			} else {
-				m.showDetails = true
-				m.focused = focusDetail
-				m.viewport.GotoTop()
-			}
-			m.updateViewportContent()
-		}
+		m.board.ToggleDetail()
 	}
 	return m
 }
@@ -2371,21 +2351,21 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "k", "up":
 		m.tree.MoveUp()
 		m.syncTreeToDetail()
-	case "enter":
-		// Enter always toggles expand/collapse on current node (bd-8zc)
-		m.tree.CycleNodeVisibility()
-		m.syncTreeToDetail()
-	case " ":
-		// Space opens detail view (bd-8zc)
-		if m.treeDetailHidden {
-			// Tree-only mode: show detail-only view
+	case "tab":
+		// Tab cycles node visibility in tree-only mode (bd-1of)
+		// In split view with detail visible, Tab is handled by Model.Update for focus switching
+		if m.treeDetailHidden || !m.isSplitView {
+			m.tree.CycleNodeVisibility()
 			m.syncTreeToDetail()
-			m.focused = focusDetail
-		} else if m.isSplitView {
-			// Split view: switch focus to detail pane
-			m.syncTreeToDetail()
-			m.focused = focusDetail
 		}
+	case "shift+tab":
+		// Shift+Tab cycles global visibility (bd-1of)
+		m.tree.CycleGlobalVisibility()
+		m.syncTreeToDetail()
+	case "enter":
+		// Enter always opens detail view (bd-1of)
+		m.syncTreeToDetail()
+		m.focused = focusDetail
 	case "ctrl+a":
 		m.tree.ToggleExpandCollapseAll()
 		m.syncTreeToDetail()
@@ -2690,19 +2670,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 			}
 		}
 		return m, true
-	case " ":
-		// Open status picker modal (bd-a83)
-		// Skip if filtering is active
-		if m.list.SettingFilter() || m.list.FilterState() == list.Filtering {
-			return m, false
-		}
-		if issue := m.getSelectedIssue(); issue != nil {
-			m.statusPicker = NewStatusPickerModel(string(issue.Status), m.theme)
-			m.statusPicker.SetSize(m.width, m.height-1)
-			m.showStatusPicker = true
-			m.focused = focusStatusPicker
-		}
-		return m, true
+	// Space removed from list view (bd-1of)
 	case "e":
 		// Open edit modal (bd-a83)
 		// Skip if filtering is active
@@ -2768,12 +2736,7 @@ func (m Model) handleHelpKeys(msg tea.KeyMsg) Model {
 		m.showHelp = false
 		m.helpScroll = 0
 		m.focused = m.restoreFocusFromHelp()
-	case " ": // Space opens interactive tutorial (bv-0trk, bv-8y31)
-		m.showHelp = false
-		m.helpScroll = 0
-		m.showTutorial = true
-		m.tutorialModel.SetSize(m.width, m.height)
-		m.focused = focusTutorial
+	// Space removed from help overlay (bd-1of)
 	default:
 		// Any other key dismisses help and restores previous focus
 		m.showHelp = false
@@ -3499,9 +3462,9 @@ func (m *Model) renderFooter() string {
 	case "tree":
 		hints = []hint{
 			{"1-9", "project"},
-			{"h/l", "fold"},
-			{"j/k", "nav"},
+			{"tab", "fold"},
 			{"enter", "detail"},
+			{"j/k", "nav"},
 			{"s", "sort"},
 			{"/", "search"},
 			{"e", "edit"},
@@ -3510,12 +3473,12 @@ func (m *Model) renderFooter() string {
 	case "board":
 		hints = []hint{
 			{"1-9", "project"},
-			{"h/l", "column"},
+			{"tab", "fold"},
+			{"enter", "detail"},
 			{"j/k", "card"},
 			{"m", "move"},
 			{"s", "swim"},
 			{"/", "search"},
-			{"e", "edit"},
 			{"q", "back"},
 		}
 	case "split":
