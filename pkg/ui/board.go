@@ -934,9 +934,9 @@ func (b BoardModel) View(width, height int) string {
 	// Minimum column width for readability, NO maximum cap (bv-ic17)
 	minColWidth := 28
 
-	// Calculate available width (subtract gaps between columns)
+	// Calculate available width: 1-char separator between columns (bd-8b9)
 	gaps := numCols - 1
-	availableWidth := boardWidth - (gaps * 2) // 2 chars gap between columns
+	availableWidth := boardWidth - gaps // 1 char separator per gap
 
 	// Distribute width evenly across columns, respecting minimum
 	baseWidth := availableWidth / numCols
@@ -1122,25 +1122,19 @@ func (b BoardModel) View(width, height int) string {
 		// Column content
 		content := lipgloss.JoinVertical(lipgloss.Left, cards...)
 
-		// Column container
+		// Column container — no border, uses separators between columns (bd-8b9)
 		colStyle := t.Renderer.NewStyle().
 			Width(baseWidth).
 			Height(colHeight).
-			Padding(0, 1).
-			Border(lipgloss.RoundedBorder())
-
-		if isFocused {
-			colStyle = colStyle.BorderForeground(columnColors[colIdx])
-		} else {
-			colStyle = colStyle.BorderForeground(t.Secondary)
-		}
+			Padding(0, 1)
 
 		column := lipgloss.JoinVertical(lipgloss.Center, header, colStyle.Render(content))
 		renderedCols = append(renderedCols, column)
 	}
 
-	// Join columns with gaps
-	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, renderedCols...)
+	// Join columns with solid vertical separators (bd-8b9)
+	// Build a separator the same height as the columns
+	columnsView := b.joinColumnsWithSeparators(renderedCols, t)
 
 	// Build title bar with swimlane mode and hidden column indicator (bv-tf6j)
 	titleBar := b.renderTitleBar(boardWidth, t)
@@ -1178,6 +1172,46 @@ func (b BoardModel) renderTitleBar(width int, t Theme) string {
 		Padding(0, 0, 1, 0) // Bottom padding
 
 	return titleStyle.Render(title)
+}
+
+// joinColumnsWithSeparators joins rendered columns with solid vertical separators (bd-8b9).
+func (b BoardModel) joinColumnsWithSeparators(cols []string, t Theme) string {
+	if len(cols) == 0 {
+		return ""
+	}
+	if len(cols) == 1 {
+		return cols[0]
+	}
+
+	// Split each column into lines
+	colLines := make([][]string, len(cols))
+	maxLines := 0
+	for i, col := range cols {
+		colLines[i] = strings.Split(col, "\n")
+		if len(colLines[i]) > maxLines {
+			maxLines = len(colLines[i])
+		}
+	}
+
+	// Pad columns to same number of lines
+	for i := range colLines {
+		for len(colLines[i]) < maxLines {
+			colLines[i] = append(colLines[i], "")
+		}
+	}
+
+	sep := t.Renderer.NewStyle().Foreground(t.Secondary).Render("│")
+
+	var rows []string
+	for row := 0; row < maxLines; row++ {
+		var parts []string
+		for i := range colLines {
+			parts = append(parts, colLines[i][row])
+		}
+		rows = append(rows, strings.Join(parts, sep))
+	}
+
+	return strings.Join(rows, "\n")
 }
 
 // getAgeColor returns a color based on issue age (bv-1daf)
