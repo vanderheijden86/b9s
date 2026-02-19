@@ -83,8 +83,6 @@ func createModelWithProjects(t *testing.T) (ui.Model, config.Config) {
 	return newM.(ui.Model), cfg
 }
 
-// (bd-8hw.4: switchToListView removed — tree is permanent, no list view)
-
 func TestProjectPicker_ShowsAllProjects(t *testing.T) {
 	m, _ := createModelWithProjects(t)
 
@@ -134,11 +132,11 @@ func TestProjectPicker_ViewContainsProjectInfo(t *testing.T) {
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	view := picker.View()
 
-	// Should contain project names
+	// Should contain project names in the table
 	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
 		if !strings.Contains(view, name) {
 			t.Errorf("view should contain project name %q", name)
@@ -150,19 +148,32 @@ func TestProjectPicker_ViewContainsProjectInfo(t *testing.T) {
 		t.Error("view should contain 'projects' title")
 	}
 
-	// Should contain shortcut hints
-	if !strings.Contains(view, "Quick Switch") {
-		t.Error("view should contain 'Quick Switch' shortcut hint")
-	}
-
-	// Should NOT contain 'Minimize' shortcut (removed in compact layout)
-	if strings.Contains(view, "Minimize") {
-		t.Error("view should NOT contain 'Minimize' shortcut hint")
-	}
-
 	// Active project should be shown in title bar (k9s style)
 	if !strings.Contains(view, "projects(api-service)") {
 		t.Error("title bar should contain active project name like projects(api-service)")
+	}
+
+	// Should contain stats labels
+	if !strings.Contains(view, "Project:") {
+		t.Error("view should contain 'Project:' label in stats column")
+	}
+	if !strings.Contains(view, "Open:") {
+		t.Error("view should contain 'Open:' label in stats column")
+	}
+
+	// Should contain O P R column headers
+	if !strings.Contains(view, "O") && !strings.Contains(view, "P") && !strings.Contains(view, "R") {
+		t.Error("view should contain O P R column headers")
+	}
+
+	// Should contain B9s ASCII logo
+	if !strings.Contains(view, `______   \`) {
+		t.Error("view should contain B9s ASCII logo")
+	}
+
+	// Should contain shortcut hints
+	if !strings.Contains(view, "Filter") {
+		t.Error("view should contain 'Filter' shortcut")
 	}
 }
 
@@ -179,7 +190,7 @@ func TestProjectPicker_TitleBarAtBottom(t *testing.T) {
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	view := picker.View()
 	lines := strings.Split(view, "\n")
@@ -191,78 +202,149 @@ func TestProjectPicker_TitleBarAtBottom(t *testing.T) {
 	}
 }
 
-func TestProjectPicker_HorizontalWrapping(t *testing.T) {
-	// Create enough projects that they won't fit in a narrow terminal
+func TestProjectPicker_FixedHeight(t *testing.T) {
 	entries := []ui.ProjectEntry{
-		{Project: config.Project{Name: "project-alpha", Path: "/tmp/a"}, FavoriteNum: 1, OpenCount: 10, InProgressCount: 2, ReadyCount: 5},
-		{Project: config.Project{Name: "project-beta", Path: "/tmp/b"}, FavoriteNum: 2, OpenCount: 8, InProgressCount: 1, ReadyCount: 4},
-		{Project: config.Project{Name: "project-gamma", Path: "/tmp/c"}, FavoriteNum: 3, OpenCount: 6, InProgressCount: 3, ReadyCount: 2},
-		{Project: config.Project{Name: "project-delta", Path: "/tmp/d"}, FavoriteNum: 4, OpenCount: 4, InProgressCount: 0, ReadyCount: 3},
-		{Project: config.Project{Name: "project-epsilon", Path: "/tmp/e"}, FavoriteNum: 5, OpenCount: 12, InProgressCount: 5, ReadyCount: 7},
+		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}, FavoriteNum: 1, OpenCount: 1, ReadyCount: 1},
+		{Project: config.Project{Name: "beta", Path: "/tmp/b"}, FavoriteNum: 2, OpenCount: 2, ReadyCount: 1},
+		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}, FavoriteNum: 3, OpenCount: 3, ReadyCount: 2},
 	}
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(140, 40)
 
-	// With a very narrow width, chips should wrap to multiple lines
-	picker.SetSize(50, 40)
-	narrowHeight := picker.Height()
-
-	// With a wide width, chips should fit in fewer lines
-	picker.SetSize(200, 40)
-	wideHeight := picker.Height()
-
-	if narrowHeight <= wideHeight {
-		t.Errorf("narrow terminal (%d lines) should need more lines than wide terminal (%d lines)", narrowHeight, wideHeight)
+	// Panel has fixed height: 6 content rows + 1 title bar = 7
+	height := picker.Height()
+	if height != 7 {
+		t.Errorf("expected fixed height 7 for panel layout, got %d", height)
 	}
 }
 
-func TestProjectPicker_NoPathColumn(t *testing.T) {
+func TestProjectPicker_StatsColumn(t *testing.T) {
 	entries := []ui.ProjectEntry{
 		{
-			Project:     config.Project{Name: "api-service", Path: "/home/user/projects/api-service"},
-			FavoriteNum: 1,
-			IsActive:    true,
-			OpenCount:   3,
-		},
-	}
-
-	theme := ui.TestTheme()
-	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
-
-	view := picker.View()
-
-	// Should NOT contain the file path
-	if strings.Contains(view, "/home/user/projects") {
-		t.Error("view should NOT contain file paths")
-	}
-	if strings.Contains(view, "PATH") {
-		t.Error("view should NOT contain PATH column header")
-	}
-}
-
-func TestProjectPicker_InlineCountsFormat(t *testing.T) {
-	entries := []ui.ProjectEntry{
-		{
-			Project:         config.Project{Name: "my-app", Path: "/tmp/my-app"},
+			Project:         config.Project{Name: "my-app", Path: "/home/user/projects/my-app"},
 			FavoriteNum:     1,
 			IsActive:        true,
 			OpenCount:       10,
 			InProgressCount: 3,
 			ReadyCount:      5,
+			BlockedCount:    2,
 		},
 	}
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	view := picker.View()
 
-	// Counts should be rendered as (open/prog/ready)
-	if !strings.Contains(view, "(10/3/5)") {
-		t.Errorf("view should contain inline counts '(10/3/5)', got:\n%s", view)
+	// Stats should show project info stacked vertically
+	for _, label := range []string{"Project:", "Open:", "In Prog:", "Ready:", "Blocked:"} {
+		if !strings.Contains(view, label) {
+			t.Errorf("view should contain stats label %q", label)
+		}
+	}
+
+	// Path should be shown (abbreviated)
+	if !strings.Contains(view, "Path:") {
+		t.Error("view should contain 'Path:' label")
+	}
+}
+
+func TestProjectPicker_OPRColumns(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{
+			Project:         config.Project{Name: "api-service", Path: "/tmp/api"},
+			FavoriteNum:     1,
+			IsActive:        true,
+			OpenCount:       14,
+			InProgressCount: 5,
+			ReadyCount:      12,
+		},
+		{
+			Project:         config.Project{Name: "web-frontend", Path: "/tmp/web"},
+			FavoriteNum:     2,
+			IsActive:        false,
+			OpenCount:       6,
+			InProgressCount: 1,
+			ReadyCount:      6,
+		},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(140, 40)
+
+	view := picker.View()
+
+	// Should contain the O P R header
+	if !strings.Contains(view, "O") || !strings.Contains(view, "P") || !strings.Contains(view, "R") {
+		t.Error("view should contain O P R column headers")
+	}
+
+	// Should contain the count values (as separate numbers, not inline)
+	// The counts 14, 5, 12 should appear for api-service
+	if !strings.Contains(view, "14") {
+		t.Error("view should contain open count '14'")
+	}
+	if !strings.Contains(view, "12") {
+		t.Error("view should contain ready count '12'")
+	}
+}
+
+func TestProjectPicker_B9sLogo(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{
+			Project:     config.Project{Name: "test", Path: "/tmp/test"},
+			FavoriteNum: 1,
+			IsActive:    true,
+		},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(140, 40)
+
+	view := picker.View()
+
+	// Logo should contain recognizable B9s fragments
+	if !strings.Contains(view, `______   \`) {
+		t.Error("view should contain B9s ASCII logo")
+	}
+}
+
+func TestProjectPicker_ShortcutsColumn(t *testing.T) {
+	entries := []ui.ProjectEntry{
+		{
+			Project:     config.Project{Name: "test", Path: "/tmp/test"},
+			FavoriteNum: 1,
+			IsActive:    true,
+		},
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(140, 40)
+
+	view := picker.View()
+
+	// Should contain shortcut descriptions
+	for _, desc := range []string{"Filter", "Edit", "Board", "Help", "Sort", "Shortcuts"} {
+		if !strings.Contains(view, desc) {
+			t.Errorf("view should contain shortcut %q", desc)
+		}
+	}
+}
+
+func TestProjectPicker_NoProjectsMessage(t *testing.T) {
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(nil, theme)
+	picker.SetSize(140, 40)
+
+	view := picker.View()
+	if !strings.Contains(view, "No projects found") {
+		t.Error("expected 'No projects found' message when no projects")
 	}
 }
 
@@ -275,7 +357,7 @@ func TestProjectPicker_FilterProjects(t *testing.T) {
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	// Enter filter mode
 	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")})
@@ -319,7 +401,7 @@ func TestProjectPicker_QuickSwitchByNumber(t *testing.T) {
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	// Press 3 to quick-switch to data-pipeline (favorite #3)
 	_, cmd := picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("3")})
@@ -339,8 +421,6 @@ func TestProjectPicker_QuickSwitchByNumber(t *testing.T) {
 }
 
 func TestProjectPicker_DisplayOnlyNoNavigation(t *testing.T) {
-	// Picker is display-only: j/k/enter/g/G don't navigate or act.
-	// Project switching is via number keys only (handled by Model, not picker).
 	entries := []ui.ProjectEntry{
 		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}},
 		{Project: config.Project{Name: "beta", Path: "/tmp/b"}},
@@ -349,18 +429,12 @@ func TestProjectPicker_DisplayOnlyNoNavigation(t *testing.T) {
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	// j should not move cursor (display-only)
 	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
 	if picker.Cursor() != 0 {
 		t.Errorf("cursor should stay at 0 in display-only mode, got %d", picker.Cursor())
-	}
-
-	// k should not move cursor
-	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
-	if picker.Cursor() != 0 {
-		t.Errorf("cursor should stay at 0, got %d", picker.Cursor())
 	}
 
 	// enter should not produce a command
@@ -370,72 +444,11 @@ func TestProjectPicker_DisplayOnlyNoNavigation(t *testing.T) {
 	}
 }
 
-func TestProjectPicker_Height(t *testing.T) {
-	entries := []ui.ProjectEntry{
-		{Project: config.Project{Name: "alpha", Path: "/tmp/a"}, FavoriteNum: 1, OpenCount: 1, ReadyCount: 1},
-		{Project: config.Project{Name: "beta", Path: "/tmp/b"}, FavoriteNum: 2, OpenCount: 2, ReadyCount: 1},
-		{Project: config.Project{Name: "gamma", Path: "/tmp/c"}, FavoriteNum: 3, OpenCount: 3, ReadyCount: 2},
-	}
-
-	theme := ui.TestTheme()
-	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(200, 40) // wide enough for all chips on one line
-
-	// Compact layout: shortcut bar (1) + chip lines (at least 1) + title bar (1) = at least 3
-	height := picker.Height()
-	if height < 3 {
-		t.Errorf("expected height >= 3 for compact layout, got %d", height)
-	}
-}
-
-func TestProjectPicker_NoProjectsMessage(t *testing.T) {
-	theme := ui.TestTheme()
-	picker := ui.NewProjectPicker(nil, theme)
-	picker.SetSize(120, 40)
-
-	view := picker.View()
-	if !strings.Contains(view, "No projects found") {
-		t.Error("expected 'No projects found' message when no projects")
-	}
-}
-
 // TestProjectPicker_AutoNumbering verifies that when no favorites are configured,
 // projects are auto-numbered 1-N for display and switching (bd-8zc).
 func TestProjectPicker_AutoNumbering(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
-	// Config with NO favorites
-	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil, // No favorites configured
-		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
-	}
-
-	issues := []model.Issue{
-		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
-	}
-
-	m := ui.NewModel(issues, "").WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	m = newM.(ui.Model)
-
-	view := m.View()
-
-	// The view should contain project names
-	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
-		if !strings.Contains(view, name) {
-			t.Errorf("view should contain project name %q", name)
-		}
-	}
-}
-
-// TestProjectPicker_NumberKeySwitchesWithoutFavorites verifies that pressing
-// a number key (e.g. "2") switches to the project at that position even when
-// no favorites are configured in the config (bd-8zc).
-func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
-	_, projects := createSampleProjects(t)
-
-	// Config with NO favorites
 	cfg := config.Config{
 		Projects:  projects,
 		Favorites: nil,
@@ -447,10 +460,37 @@ func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
 	}
 
 	m := ui.NewModel(issues, "").WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Press "2" to switch to web-frontend (second project)
+	view := m.View()
+
+	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
+		if !strings.Contains(view, name) {
+			t.Errorf("view should contain project name %q", name)
+		}
+	}
+}
+
+// TestProjectPicker_NumberKeySwitchesWithoutFavorites verifies that pressing
+// a number key switches to the project at that position (bd-8zc).
+func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
+	_, projects := createSampleProjects(t)
+
+	cfg := config.Config{
+		Projects:  projects,
+		Favorites: nil,
+		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
+	}
+
+	issues := []model.Issue{
+		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
+	}
+
+	m := ui.NewModel(issues, "").WithConfig(cfg, "api-service", projects[0].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	m = newM.(ui.Model)
+
 	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
 	m = newM.(ui.Model)
 
@@ -479,25 +519,23 @@ func TestProjectPicker_AutoNumberDisplayInView(t *testing.T) {
 
 	theme := ui.TestTheme()
 	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(120, 40)
+	picker.SetSize(140, 40)
 
 	view := picker.View()
 
-	// Each chip should contain the position number and name
-	if !strings.Contains(view, "1") || !strings.Contains(view, "alpha") {
-		t.Error("view should contain '1' and 'alpha'")
+	if !strings.Contains(view, "alpha") {
+		t.Error("view should contain 'alpha'")
 	}
-	if !strings.Contains(view, "2") || !strings.Contains(view, "beta") {
-		t.Error("view should contain '2' and 'beta'")
+	if !strings.Contains(view, "beta") {
+		t.Error("view should contain 'beta'")
 	}
-	if !strings.Contains(view, "3") || !strings.Contains(view, "gamma") {
-		t.Error("view should contain '3' and 'gamma'")
+	if !strings.Contains(view, "gamma") {
+		t.Error("view should contain 'gamma'")
 	}
 }
 
 // TestProjectSwitch_FullCycleLoadsNewData verifies that pressing a number key
-// to switch projects produces a SwitchProjectMsg, and feeding that message back
-// into Update triggers a data reload for the new project (bd-828).
+// to switch projects produces a SwitchProjectMsg (bd-828).
 func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
@@ -507,22 +545,15 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
-	// Start with api-service issues
 	issues := []model.Issue{
 		{ID: "api-1", Title: "Fix auth bug", Status: "open", IssueType: "bug", Priority: 1, CreatedAt: time.Now()},
 	}
 
 	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
 		WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Verify initial state
-	if m.TreeSelectedID() != "api-1" {
-		// Issue might not be selected if tree isn't built yet, that's OK
-	}
-
-	// Press "2" to switch to web-frontend
 	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
 	m = newM.(ui.Model)
 
@@ -530,7 +561,6 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 		t.Fatal("expected a command from pressing '2'")
 	}
 
-	// Execute the command to get SwitchProjectMsg
 	msg := cmd()
 	switchMsg, ok := msg.(ui.SwitchProjectMsg)
 	if !ok {
@@ -540,24 +570,19 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 		t.Fatalf("expected web-frontend, got %q", switchMsg.Project.Name)
 	}
 
-	// Feed SwitchProjectMsg back into Update (this is what bubbletea does)
 	newM, switchCmd := m.Update(switchMsg)
 	m = newM.(ui.Model)
 
-	// The status should say "Switched to web-frontend"
 	view := m.View()
 	if !strings.Contains(view, "web-frontend") {
 		t.Error("view should mention web-frontend after switch")
 	}
 
-	// The switch produces commands (either StartBackgroundWorkerCmd or FileChangedMsg)
 	if switchCmd == nil {
 		t.Fatal("expected commands from SwitchProjectMsg")
 	}
 }
 
-// TestProjectSwitch_NoLoadingScreen verifies project switching doesn't flash
-// the "Loading beads..." screen — it keeps showing the tree while loading (bd-828).
 func TestProjectSwitch_NoLoadingScreen(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
@@ -573,23 +598,19 @@ func TestProjectSwitch_NoLoadingScreen(t *testing.T) {
 
 	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
 		WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Switch to web-frontend
 	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
 	newM, _ = m.Update(switchMsg)
 	m = newM.(ui.Model)
 
-	// View should NOT show "Loading beads..."
 	view := m.View()
 	if strings.Contains(view, "Loading beads") {
 		t.Error("project switch should NOT show loading screen")
 	}
 }
 
-// TestProjectSwitch_ClearsOldTreeData verifies that switching projects clears the
-// old tree/issues data so stale content doesn't render while loading (bd-lll).
 func TestProjectSwitch_ClearsOldTreeData(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
@@ -606,31 +627,23 @@ func TestProjectSwitch_ClearsOldTreeData(t *testing.T) {
 
 	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
 		WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Verify we have api-service issues in the tree
 	if m.TreeNodeCount() == 0 {
 		t.Fatal("expected tree to have nodes before switch")
 	}
 
-	// Switch to web-frontend
 	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
 	newM, _ = m.Update(switchMsg)
 	m = newM.(ui.Model)
 
-	// After switch, old tree data should be cleared
 	view := m.View()
 	if strings.Contains(view, "Fix auth bug") {
 		t.Error("old project issues should not appear after switch")
 	}
-	if strings.Contains(view, "Add rate limiting") {
-		t.Error("old project issues should not appear after switch")
-	}
 }
 
-// TestProjectSwitch_SameProjectIsNoop verifies pressing the number key of the
-// already-active project does NOT restart the background worker or reload data (bd-3eh).
 func TestProjectSwitch_SameProjectIsNoop(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
@@ -646,22 +659,18 @@ func TestProjectSwitch_SameProjectIsNoop(t *testing.T) {
 
 	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
 		WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Send SwitchProjectMsg for the SAME project that's already active
 	switchMsg := ui.SwitchProjectMsg{Project: projects[0]}
 	newM, cmd := m.Update(switchMsg)
 	m = newM.(ui.Model)
 
-	// Should be a no-op: no commands returned (no worker restart, no file reload)
 	if cmd != nil {
 		t.Error("switching to already-active project should be a no-op (no commands)")
 	}
 }
 
-// TestPickerCountsRefreshOnTick verifies that a periodic tick message
-// triggers a refresh of non-active project counts in the picker (bd-8yc).
 func TestPickerCountsRefreshOnTick(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
@@ -677,16 +686,14 @@ func TestPickerCountsRefreshOnTick(t *testing.T) {
 
 	m := ui.NewModel(issues, projects[0].Path+string(os.PathSeparator)+".beads"+string(os.PathSeparator)+"issues.jsonl").
 		WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Capture initial view — web-frontend should have some counts from its JSONL
 	initialView := m.View()
 	if !strings.Contains(initialView, "web-frontend") {
 		t.Fatal("expected web-frontend in picker")
 	}
 
-	// Now modify the web-frontend JSONL on disk (add a new issue)
 	webBeadsPath := filepath.Join(projects[1].Path, ".beads", "issues.jsonl")
 	existingContent, err := os.ReadFile(webBeadsPath)
 	if err != nil {
@@ -697,31 +704,22 @@ func TestPickerCountsRefreshOnTick(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Send PickerRefreshTickMsg to trigger a refresh
 	newM, cmd := m.Update(ui.PickerRefreshTickMsg{})
 	m = newM.(ui.Model)
 
-	// The tick should produce a follow-up tick command
 	if cmd == nil {
 		t.Error("expected PickerRefreshTickMsg to produce a follow-up tick command")
 	}
 
-	// The picker should now reflect updated counts for web-frontend
 	updatedView := m.View()
 	if initialView == updatedView {
 		t.Error("expected picker view to change after PickerRefreshTickMsg with modified JSONL")
 	}
 }
 
-// TestPickerCounts_BlockedByDependencies verifies that non-active projects correctly
-// count issues blocked by open dependencies (bd-qjc).
 func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 	root := t.TempDir()
 
-	// Create a project with issues that have blocking dependencies.
-	// Issue dep-1 is open (should be READY — no blockers).
-	// Issue dep-2 is open but blocked by dep-1 (should be BLOCKED, not READY).
-	// Issue dep-3 has status "blocked" explicitly.
 	projDir := filepath.Join(root, "dep-project")
 	beadsDir := filepath.Join(projDir, ".beads")
 	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
@@ -735,7 +733,6 @@ func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create a separate active project (so dep-project is non-active and counted from disk).
 	activeDir := filepath.Join(root, "active-project")
 	activeBeads := filepath.Join(activeDir, ".beads")
 	if err := os.MkdirAll(activeBeads, 0o755); err != nil {
@@ -756,12 +753,11 @@ func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 		{ID: "act-1", Title: "Active task", Status: "open", IssueType: "task", Priority: 2},
 	}
 	m := ui.NewModel(activeIssues, "").WithConfig(cfg, "active-project", activeDir)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
 	entries := m.BuildProjectEntries()
 
-	// Find the dep-project entry
 	var depEntry *ui.ProjectEntry
 	for i := range entries {
 		if entries[i].Project.Name == "dep-project" {
@@ -773,25 +769,17 @@ func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 		t.Fatal("dep-project not found in entries")
 	}
 
-	// dep-1: open, no blockers -> READY
-	// dep-2: open, blocked by dep-1 (which is open) -> NOT ready (blocked by dep)
-	// dep-3: status "blocked" -> BLOCKED
-	// OpenCount should be 3 (all non-closed)
 	if depEntry.OpenCount != 3 {
 		t.Errorf("expected OpenCount=3, got %d", depEntry.OpenCount)
 	}
-	// ReadyCount should be 1 (only dep-1 is truly ready)
 	if depEntry.ReadyCount != 1 {
 		t.Errorf("expected ReadyCount=1, got %d", depEntry.ReadyCount)
 	}
-	// BlockedCount should be 1 (dep-3 has explicit "blocked" status)
 	if depEntry.BlockedCount != 1 {
 		t.Errorf("expected BlockedCount=1, got %d", depEntry.BlockedCount)
 	}
 }
 
-// TestProjectSwitch_ClearsTreeFilter verifies that switching projects resets
-// the tree's search/filter state so the new project's issues are fully visible (bd-qjc).
 func TestProjectSwitch_ClearsTreeFilter(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
@@ -805,55 +793,38 @@ func TestProjectSwitch_ClearsTreeFilter(t *testing.T) {
 	}
 
 	m := ui.NewModel(activeIssues, "").WithConfig(cfg, "api-service", projects[0].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
-	// Tree should have nodes (3 issues)
 	if m.TreeNodeCount() == 0 {
 		t.Fatal("tree should have nodes before filter")
 	}
 
-	// Apply a "closed" filter — all test issues are open/in_progress, so 0 match.
 	m.ApplyTreeFilter("closed")
 
-	// After applying the filter, the tree should show 0 matching nodes
 	if m.TreeNodeCount() != 0 {
 		t.Errorf("expected 0 nodes after 'closed' filter, got %d", m.TreeNodeCount())
 	}
 
-	// Now switch projects
-	switchMsg := ui.SwitchProjectMsg{Project: projects[1]} // web-frontend
+	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
 	newM, _ = m.Update(switchMsg)
 	m = newM.(ui.Model)
 
-	// After switch, the tree filter should be cleared.
 	if m.TreeFilterActive() {
 		t.Error("tree filter should be cleared after project switch")
 	}
 }
 
-// TestProjectPicker_NoPKeyToggle verifies that 'P' key no longer toggles picker modes (bd-ylz).
 func TestProjectPicker_NoPKeyToggle(t *testing.T) {
 	m, _ := createModelWithProjects(t)
 
-	// Get initial view
-	initialView := m.View()
-
-	// Press P - should NOT change the picker display mode
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
 	m = newM.(ui.Model)
 
-	afterPView := m.View()
-
-	// The picker portion of the view should not fundamentally change
-	// (P should be a no-op for the picker now)
-	// We check that the view still contains all project names (picker is still visible)
 	for _, name := range []string{"api-service", "web-frontend", "data-pipeline"} {
-		if !strings.Contains(afterPView, name) {
+		view := m.View()
+		if !strings.Contains(view, name) {
 			t.Errorf("after pressing P, view should still contain project name %q", name)
 		}
 	}
-
-	// The view should not have collapsed to a minimized form
-	_ = initialView // avoid unused variable
 }

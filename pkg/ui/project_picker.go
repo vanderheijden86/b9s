@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
@@ -34,7 +35,7 @@ type ToggleFavoriteMsg struct {
 }
 
 // ProjectPickerModel is an always-visible k9s-style header for selecting projects.
-// It renders as a compact horizontal layout: shortcut bar, project chips, and title bar.
+// It renders as a multi-column panel: stats | project table (# NAME O P R) | shortcuts | B9s logo.
 // Project switching is done via number keys 1-9 or filter mode.
 type ProjectPickerModel struct {
 	entries     []ProjectEntry
@@ -46,6 +47,14 @@ type ProjectPickerModel struct {
 	filtering   bool
 	theme       Theme
 }
+
+// panelRows is the fixed number of content rows in the picker panel.
+// Matches the B9s logo height (6 lines). Title bar adds 1 more.
+const panelRows = 6
+
+// maxVisibleProjects is the max number of projects shown in the table.
+// Row 0 = column headers, so 5 project rows fit in 6 panel rows.
+const maxVisibleProjects = 5
 
 // NewProjectPicker creates a new project picker.
 func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
@@ -88,9 +97,6 @@ func (m ProjectPickerModel) Update(msg tea.Msg) (ProjectPickerModel, tea.Cmd) {
 }
 
 // updateNormal handles keys in display-only mode.
-// Only filter entry (/) and number-key quick-switch are active.
-// Navigation (j/k/enter) is intentionally omitted — the picker is display-only.
-// Project switching is done via number keys 1-9, handled at top priority in Model.Update.
 func (m ProjectPickerModel) updateNormal(msg tea.KeyMsg) (ProjectPickerModel, tea.Cmd) {
 	switch msg.String() {
 	case "/":
@@ -214,88 +220,280 @@ func (m *ProjectPickerModel) nextAvailableFavoriteSlot(entry ProjectEntry) int {
 	return 0
 }
 
-// View renders the compact horizontal project picker (bd-ylz).
-// Layout: shortcut bar + (optional filter line) + horizontal project chips + title bar at bottom.
+// b9sLogo returns the ASCII art logo lines.
+func b9sLogo() []string {
+	return []string{
+		`__________  ________`,
+		`\______   \/   __   \______`,
+		` |    |  _/\____    /  ___/`,
+		` |    |   \   /    /\___ \`,
+		` |______  /  /____//____  >`,
+		`        \/              \/`,
+	}
+}
+
+// pickerShortcuts returns the shortcut definitions for the picker panel.
+func pickerShortcuts() []struct{ key, desc string } {
+	return []struct{ key, desc string }{
+		{"</>", "Filter"},
+		{"<e>", "Edit"},
+		{"<b>", "Board"},
+		{"<?>", "Help"},
+		{"<s>", "Sort"},
+		{"<;>", "Shortcuts"},
+	}
+}
+
+// View renders the k9s-style multi-column project picker panel (bd-b4u).
+// Layout: [stats] [project table with O P R columns] [shortcuts] [B9s logo]
+// Bottom: title bar divider.
 func (m *ProjectPickerModel) View() string {
 	if m.width == 0 {
 		m.width = 80
 	}
 
 	w := m.width
+	t := m.theme
 
-	var sections []string
+	// --- Build each column as []string of panelRows lines ---
 
-	// --- Shortcut hints (k9s style) ---
-	sections = append(sections, m.renderShortcutBar(w))
+	// Column 1: Stats
+	statsLines := m.renderStatsColumn()
 
-	// --- Filter input (shown inline when filtering) ---
-	if m.filtering {
-		t := m.theme
-		filterStyle := t.Renderer.NewStyle().
-			Foreground(t.Primary).
-			Width(w)
-		sections = append(sections, filterStyle.Render("  / "+m.filterInput.View()))
+	// Column 2: Project table (# NAME ... O P R)
+	tableLines := m.renderProjectTable()
+
+	// Column 3: Shortcuts
+	shortcutLines := m.renderShortcutsColumn()
+
+	// Column 4: B9s logo
+	logoLines := m.renderLogoColumn()
+
+	// --- Determine column widths ---
+	statsWidth := m.maxLineWidth(statsLines)
+	if statsWidth < 28 {
+		statsWidth = 28
+	}
+	shortcutsWidth := m.maxLineWidth(shortcutLines)
+	if shortcutsWidth < 16 {
+		shortcutsWidth = 16
+	}
+	logoWidth := m.maxLineWidth(logoLines)
+	gap := 2 // gap between columns
+
+	// Table gets remaining space
+	tableWidth := w - statsWidth - shortcutsWidth - logoWidth - gap*3
+	if tableWidth < 30 {
+		tableWidth = 30
 	}
 
-	// --- Project chips (horizontal flow, wrapping) ---
-	if len(m.filtered) == 0 {
-		t := m.theme
-		dimStyle := t.Renderer.NewStyle().
-			Foreground(t.Secondary).
-			Italic(true)
-		sections = append(sections, dimStyle.Render("  No projects found. Configure scan_paths in ~/.config/bw/config.yaml"))
-	} else {
-		chipLines := m.renderProjectChips(w)
-		sections = append(sections, chipLines...)
+	// --- Style each column with fixed width ---
+	statsStyle := t.Renderer.NewStyle().Width(statsWidth)
+	tableStyle := t.Renderer.NewStyle().Width(tableWidth)
+	shortcutsStyle := t.Renderer.NewStyle().Width(shortcutsWidth)
+	logoStyle := t.Renderer.NewStyle().Width(logoWidth)
+	gapStr := strings.Repeat(" ", gap)
+
+	// --- Join columns row by row ---
+	var rows []string
+	for i := 0; i < panelRows; i++ {
+		row := statsStyle.Render(safeIndex(statsLines, i)) +
+			gapStr +
+			tableStyle.Render(safeIndex(tableLines, i)) +
+			gapStr +
+			shortcutsStyle.Render(safeIndex(shortcutLines, i)) +
+			gapStr +
+			logoStyle.Render(safeIndex(logoLines, i))
+		rows = append(rows, row)
 	}
 
-	// --- Title bar at bottom (divider between picker and tree) ---
-	sections = append(sections, m.renderTitleBar(w))
+	// --- Title bar at bottom ---
+	rows = append(rows, m.renderTitleBar(w))
 
-	return strings.Join(sections, "\n")
+	return strings.Join(rows, "\n")
 }
 
-// Height returns the number of terminal lines the compact picker uses.
+// Height returns the number of terminal lines the picker panel uses.
 func (m *ProjectPickerModel) Height() int {
-	lines := 1 // shortcut bar
+	return panelRows + 1 // content rows + title bar
+}
+
+// renderStatsColumn renders the left stats column.
+// Lines: Project, Path, Open, In Prog, Ready, Blocked.
+func (m *ProjectPickerModel) renderStatsColumn() []string {
+	t := m.theme
+
+	labelStyle := t.Renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
+		Bold(true)
+	valueStyle := t.Renderer.NewStyle().
+		Foreground(t.Base.GetForeground())
+
+	// Find active project
+	var activeName, activePath string
+	var activeOpen, activeProg, activeReady, activeBlocked int
+	for _, entry := range m.entries {
+		if entry.IsActive {
+			activeName = entry.Project.Name
+			activePath = abbreviatePath(entry.Project.Path)
+			activeOpen = entry.OpenCount
+			activeProg = entry.InProgressCount
+			activeReady = entry.ReadyCount
+			activeBlocked = entry.BlockedCount
+			break
+		}
+	}
+	if activeName == "" && len(m.entries) > 0 {
+		activeName = m.entries[0].Project.Name
+		activePath = abbreviatePath(m.entries[0].Project.Path)
+	}
+
+	// Filter mode: replace path line with filter input
+	pathLine := labelStyle.Render(" Path:    ") + valueStyle.Render(activePath)
 	if m.filtering {
-		lines++ // filter input line
+		pathLine = labelStyle.Render(" Filter:  ") + t.Renderer.NewStyle().Foreground(t.Primary).Render(m.filterInput.View())
 	}
+
+	return []string{
+		labelStyle.Render(" Project: ") + valueStyle.Render(activeName),
+		pathLine,
+		labelStyle.Render(" Open:    ") + valueStyle.Render(fmt.Sprintf("%d", activeOpen)),
+		labelStyle.Render(" In Prog: ") + valueStyle.Render(fmt.Sprintf("%d", activeProg)),
+		labelStyle.Render(" Ready:   ") + valueStyle.Render(fmt.Sprintf("%d", activeReady)),
+		labelStyle.Render(" Blocked: ") + valueStyle.Render(fmt.Sprintf("%d", activeBlocked)),
+	}
+}
+
+// renderProjectTable renders the project list with # NAME and O P R columns.
+func (m *ProjectPickerModel) renderProjectTable() []string {
+	t := m.theme
+
+	headerStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary).
+		Bold(true)
+	numStyle := t.Renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
+		Bold(true)
+	activeStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+	normalStyle := t.Renderer.NewStyle().
+		Foreground(t.Base.GetForeground())
+	cursorStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+	dimStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary).
+		Italic(true)
+
+	// Find max name width for alignment
+	nameW := 12 // minimum
+	for _, idx := range m.filtered {
+		entry := m.entries[idx]
+		if len(entry.Project.Name) > nameW {
+			nameW = len(entry.Project.Name)
+		}
+	}
+	if nameW > 20 {
+		nameW = 20
+	}
+
+	lines := make([]string, panelRows)
+
+	// Row 0: column headers (right-aligned O P R above the number columns)
+	lines[0] = headerStyle.Render(fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+
 	if len(m.filtered) == 0 {
-		lines++ // "No projects found" message
-	} else {
-		lines += m.projectChipLineCount(m.width)
+		lines[1] = dimStyle.Render(" No projects found")
+		return lines
 	}
-	lines++ // title bar at bottom
+
+	// Rows 1-5: project entries
+	visible := len(m.filtered)
+	if visible > maxVisibleProjects {
+		visible = maxVisibleProjects
+	}
+
+	for i := 0; i < visible; i++ {
+		entry := m.entries[m.filtered[i]]
+		isCursor := m.filtering && i == m.cursor
+
+		// Number
+		numStr := " "
+		if entry.FavoriteNum > 0 {
+			numStr = fmt.Sprintf("%d", entry.FavoriteNum)
+		}
+
+		// Name (truncated if needed)
+		name := entry.Project.Name
+		if len(name) > nameW {
+			name = name[:nameW-3] + "..."
+		}
+
+		// Build the row text with fixed-width columns
+		rowText := fmt.Sprintf(" <%s> %-*s  %3d %3d %3d",
+			numStr, nameW, name,
+			entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
+
+		switch {
+		case isCursor:
+			lines[i+1] = cursorStyle.Render(rowText)
+		case entry.IsActive:
+			lines[i+1] = activeStyle.Render(rowText)
+		default:
+			// Style number separately for color
+			numPart := numStyle.Render(fmt.Sprintf(" <%s>", numStr))
+			restText := fmt.Sprintf(" %-*s  %3d %3d %3d",
+				nameW, name,
+				entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
+			lines[i+1] = numPart + normalStyle.Render(restText)
+		}
+	}
+
+	if len(m.filtered) > maxVisibleProjects {
+		remaining := len(m.filtered) - maxVisibleProjects
+		if visible < panelRows-1 {
+			lines[visible+1] = dimStyle.Render(fmt.Sprintf("      ... +%d more", remaining))
+		}
+	}
+
 	return lines
 }
 
-// renderShortcutBar renders the k9s-style shortcut hints at the top.
-func (m *ProjectPickerModel) renderShortcutBar(w int) string {
+// renderShortcutsColumn renders the shortcuts column.
+func (m *ProjectPickerModel) renderShortcutsColumn() []string {
 	t := m.theme
 
 	keyStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}).
+		Foreground(lipgloss.AdaptiveColor{Light: "#7D56F4", Dark: "#BD93F9"}).
 		Bold(true)
 	descStyle := t.Renderer.NewStyle().
-		Foreground(t.Subtext)
+		Foreground(t.Base.GetForeground())
 
-	shortcuts := []struct {
-		key  string
-		desc string
-	}{
-		{"<1-9>", "Quick Switch"},
-		{"</>", "Filter"},
+	shortcuts := pickerShortcuts()
+	lines := make([]string, panelRows)
+
+	for i := 0; i < len(shortcuts) && i < panelRows; i++ {
+		s := shortcuts[i]
+		lines[i] = keyStyle.Render(fmt.Sprintf("%-7s", s.key)) + " " + descStyle.Render(s.desc)
 	}
 
-	var parts []string
-	for _, s := range shortcuts {
-		parts = append(parts, keyStyle.Render(s.key)+" "+descStyle.Render(s.desc))
+	return lines
+}
+
+// renderLogoColumn renders the B9s ASCII art logo.
+func (m *ProjectPickerModel) renderLogoColumn() []string {
+	t := m.theme
+	logoStyle := t.Renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"})
+
+	logo := b9sLogo()
+	lines := make([]string, panelRows)
+	for i := 0; i < len(logo) && i < panelRows; i++ {
+		lines[i] = logoStyle.Render(logo[i])
 	}
 
-	line := strings.Join(parts, "  ")
-
-	return " " + line
+	return lines
 }
 
 // renderTitleBar renders the k9s-style title bar with resource type and count.
@@ -309,8 +507,6 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 	countText := t.Renderer.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"})
 
-	// Show active project in title bar like k9s: projects(active-name)[count]
-	// When filtering, show the filter text instead.
 	label := "projects"
 	if m.filtering && m.filterInput.Value() != "" {
 		label = fmt.Sprintf("projects(%s)", m.filterInput.Value())
@@ -325,11 +521,9 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 
 	title := titleText.Render(label) + countText.Render(fmt.Sprintf("[%d]", len(m.filtered)))
 
-	// Center the title with separator lines
 	sepChar := "\u2500"
 	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
 
-	// Calculate padding (approximate since styled text has zero-width codes)
 	titleLen := len(label) + len(fmt.Sprintf("[%d]", len(m.filtered)))
 	leftPad := (w - titleLen - 4) / 2
 	rightPad := w - titleLen - 4 - leftPad
@@ -343,122 +537,37 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 	return sepStyle.Render(strings.Repeat(sepChar, leftPad)) + " " + title + " " + sepStyle.Render(strings.Repeat(sepChar, rightPad))
 }
 
-// renderProjectChips flows project chips horizontally, wrapping at terminal width.
-// Returns one string per line of chips.
-func (m *ProjectPickerModel) renderProjectChips(w int) []string {
-	var lines []string
-	var currentLine strings.Builder
-	currentLen := 0
-	indent := "  " // 2-space indent
-	indentLen := 2
-
-	for i := 0; i < len(m.filtered); i++ {
-		entry := m.entries[m.filtered[i]]
-		isCursor := m.filtering && i == m.cursor
-		chip := m.renderChip(entry, isCursor)
-		chipTextLen := m.chipTextLen(entry)
-
-		// Check if chip fits on current line
-		if currentLen > indentLen && currentLen+chipTextLen+2 > w {
-			// Wrap to next line
-			lines = append(lines, currentLine.String())
-			currentLine.Reset()
-			currentLen = 0
+// maxLineWidth returns the max visible width across a set of pre-rendered lines.
+// Uses lipgloss.Width to account for ANSI escape codes.
+func (m *ProjectPickerModel) maxLineWidth(lines []string) int {
+	maxW := 0
+	for _, line := range lines {
+		w := lipgloss.Width(line)
+		if w > maxW {
+			maxW = w
 		}
-
-		if currentLen == 0 {
-			currentLine.WriteString(indent)
-			currentLen = indentLen
-		} else {
-			currentLine.WriteString("  ") // gap between chips
-			currentLen += 2
-		}
-
-		currentLine.WriteString(chip)
-		currentLen += chipTextLen
 	}
-
-	if currentLen > 0 {
-		lines = append(lines, currentLine.String())
-	}
-
-	return lines
+	return maxW
 }
 
-// renderChip renders a single project chip: "N name(open/prog/ready)"
-func (m *ProjectPickerModel) renderChip(entry ProjectEntry, isCursor bool) string {
-	t := m.theme
-
-	// Favorite number
-	numStr := " "
-	if entry.FavoriteNum > 0 {
-		numStr = fmt.Sprintf("%d", entry.FavoriteNum)
+// safeIndex returns lines[i] or empty string if out of bounds.
+func safeIndex(lines []string, i int) string {
+	if i < len(lines) {
+		return lines[i]
 	}
-
-	// Counts: (open/prog/ready)
-	counts := fmt.Sprintf("(%d/%d/%d)", entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
-
-	text := fmt.Sprintf("%s %s%s", numStr, entry.Project.Name, counts)
-
-	if isCursor {
-		// Cursor highlight during filter mode
-		return t.Renderer.NewStyle().
-			Foreground(t.Primary).
-			Bold(true).
-			Render(text)
-	}
-
-	if entry.IsActive {
-		// Active project: bold + primary color
-		return t.Renderer.NewStyle().
-			Foreground(t.Primary).
-			Bold(true).
-			Render(text)
-	}
-
-	// Normal project
-	return t.Renderer.NewStyle().
-		Foreground(t.Base.GetForeground()).
-		Render(text)
+	return ""
 }
 
-// chipTextLen returns the visible character length of a chip (without ANSI codes).
-func (m *ProjectPickerModel) chipTextLen(entry ProjectEntry) int {
-	numStr := " "
-	if entry.FavoriteNum > 0 {
-		numStr = fmt.Sprintf("%d", entry.FavoriteNum)
+// abbreviatePath replaces the user's home directory with ~ in a path.
+func abbreviatePath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
 	}
-	counts := fmt.Sprintf("(%d/%d/%d)", entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
-	return len(numStr) + 1 + len(entry.Project.Name) + len(counts)
-}
-
-// projectChipLineCount predicts how many lines the chip section will use at the given width.
-func (m *ProjectPickerModel) projectChipLineCount(w int) int {
-	if len(m.filtered) == 0 {
-		return 0
+	if strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
 	}
-
-	lines := 1
-	currentLen := 2 // indent
-	indentLen := 2
-
-	for i := 0; i < len(m.filtered); i++ {
-		entry := m.entries[m.filtered[i]]
-		chipLen := m.chipTextLen(entry)
-
-		if currentLen > indentLen && currentLen+chipLen+2 > w {
-			lines++
-			currentLen = indentLen
-		}
-
-		if currentLen == indentLen {
-			currentLen += chipLen
-		} else {
-			currentLen += chipLen + 2
-		}
-	}
-
-	return lines
+	return path
 }
 
 // Filtering returns whether the picker is in filter mode.
