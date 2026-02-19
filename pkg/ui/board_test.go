@@ -1841,3 +1841,169 @@ func TestInlineCardExpansion_ShowsDescription(t *testing.T) {
 		t.Error("Expanded card should show description content")
 	}
 }
+
+// TestBoardCardInViewRendering verifies cards inside the full View() render
+// as proper rectangles without re-wrapping by the column container.
+func TestBoardCardInViewRendering(t *testing.T) {
+	theme := createTheme()
+	issues := []model.Issue{
+		{
+			ID:        "bd-qal",
+			Title:     "Set HOMEBREW_TAP_GITHUB_TOKEN in CI workflow",
+			Status:    model.StatusOpen,
+			Priority:  1,
+			IssueType: model.TypeTask,
+			CreatedAt: createTime(48),
+			UpdatedAt: createTime(24),
+		},
+	}
+
+	// Simulate narrow split pane: total width ~90, height 30
+	for _, totalWidth := range []int{60, 80, 100, 120} {
+		t.Run(fmt.Sprintf("total_%d", totalWidth), func(t *testing.T) {
+			b := ui.NewBoardModel(issues, theme)
+			output := b.View(totalWidth, 30)
+
+			lines := strings.Split(output, "\n")
+			t.Logf("total_width=%d, total_lines=%d", totalWidth, len(lines))
+
+			// Find lines containing ThickBorder top ┏ and bottom ┗
+			var cardTopLines, cardBottomLines []int
+			for i, line := range lines {
+				stripped := stripAnsiCodes(line)
+				if strings.Contains(stripped, "┏") && strings.Contains(stripped, "┓") {
+					cardTopLines = append(cardTopLines, i)
+				}
+				if strings.Contains(stripped, "┗") && strings.Contains(stripped, "┛") {
+					cardBottomLines = append(cardBottomLines, i)
+				}
+			}
+
+			t.Logf("card top borders at lines: %v", cardTopLines)
+			t.Logf("card bottom borders at lines: %v", cardBottomLines)
+
+			// For each card, check it's exactly 5 lines tall (top + 3 content + bottom)
+			for idx, topLine := range cardTopLines {
+				if idx >= len(cardBottomLines) {
+					t.Errorf("card %d: found top border at line %d but no matching bottom border", idx, topLine)
+					continue
+				}
+				bottomLine := cardBottomLines[idx]
+				cardHeight := bottomLine - topLine + 1
+				if cardHeight != 5 {
+					t.Errorf("card %d: expected 5 lines (border+3+border), got %d (lines %d-%d)",
+						idx, cardHeight, topLine, bottomLine)
+					// Dump the card lines for debugging
+					for li := topLine; li <= bottomLine && li < len(lines); li++ {
+						t.Logf("  card_line[%d]: %q", li-topLine, stripAnsiCodes(lines[li]))
+					}
+				}
+			}
+
+			// Dump first 20 lines for visual inspection
+			for i := 0; i < len(lines) && i < 20; i++ {
+				t.Logf("  view[%02d]: %q", i, stripAnsiCodes(lines[i]))
+			}
+		})
+	}
+}
+
+// stripAnsiCodes removes ANSI escape sequences for width measurement.
+func stripAnsiCodes(s string) string {
+	var result strings.Builder
+	i := 0
+	for i < len(s) {
+		if s[i] == '\x1b' && i+1 < len(s) && s[i+1] == '[' {
+			// Skip until we find the terminating letter
+			j := i + 2
+			for j < len(s) && !((s[j] >= 'A' && s[j] <= 'Z') || (s[j] >= 'a' && s[j] <= 'z')) {
+				j++
+			}
+			if j < len(s) {
+				j++ // skip the terminating letter
+			}
+			i = j
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+	return result.String()
+}
+
+// TestBoardCardRectangleRendering verifies cards render as fixed-size rectangles
+// with thick borders at various widths, including narrow split-pane widths.
+func TestBoardCardRectangleRendering(t *testing.T) {
+	theme := createTheme()
+
+	issues := []model.Issue{
+		{
+			ID:        "bd-qal",
+			Title:     "Set HOMEBREW_TAP_GITHUB_TOKEN in CI workflow",
+			Status:    model.StatusOpen,
+			Priority:  1,
+			IssueType: model.TypeTask,
+			CreatedAt: createTime(48),
+			UpdatedAt: createTime(24),
+		},
+	}
+
+	b := ui.NewBoardModel(issues, theme)
+
+	// Test at various widths including very narrow (split pane)
+	widths := []int{16, 20, 24, 28, 32, 40, 60}
+
+	for _, textW := range widths {
+		t.Run(fmt.Sprintf("width_%d", textW), func(t *testing.T) {
+			card := b.TestRenderCard(issues[0], textW, false)
+
+			// Split into lines (strip the trailing margin line)
+			lines := strings.Split(card, "\n")
+			// Remove trailing empty lines from MarginBottom
+			for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+				lines = lines[:len(lines)-1]
+			}
+
+			// Log actual output for debugging
+			t.Logf("textW=%d, lines=%d", textW, len(lines))
+			for i, line := range lines {
+				stripped := stripAnsiCodes(line)
+				t.Logf("  line[%d] len=%d: %q", i, len([]rune(stripped)), stripped)
+			}
+
+			// MUST be exactly 5 lines: top border + 3 content + bottom border
+			if len(lines) != 5 {
+				t.Errorf("card should be exactly 5 lines (border+3content+border), got %d", len(lines))
+				return
+			}
+
+			// Check border characters
+			firstStripped := stripAnsiCodes(lines[0])
+			lastStripped := stripAnsiCodes(lines[len(lines)-1])
+
+			if !strings.HasPrefix(firstStripped, "┏") || !strings.HasSuffix(firstStripped, "┓") {
+				t.Errorf("top border should be ┏━━━┓, got %q", firstStripped)
+			}
+			if !strings.HasPrefix(lastStripped, "┗") || !strings.HasSuffix(lastStripped, "┛") {
+				t.Errorf("bottom border should be ┗━━━┛, got %q", lastStripped)
+			}
+
+			// All lines should be the same visible width
+			expectedWidth := len([]rune(firstStripped))
+			for i, line := range lines {
+				w := len([]rune(stripAnsiCodes(line)))
+				if w != expectedWidth {
+					t.Errorf("line[%d] width=%d, expected %d (same as border)", i, w, expectedWidth)
+				}
+			}
+
+			// Content lines should have ┃ on left and right
+			for i := 1; i <= 3; i++ {
+				stripped := stripAnsiCodes(lines[i])
+				if !strings.HasPrefix(stripped, "┃") || !strings.HasSuffix(stripped, "┃") {
+					t.Errorf("content line[%d] should have ┃ borders, got %q", i, stripped)
+				}
+			}
+		})
+	}
+}

@@ -1088,19 +1088,24 @@ func (b BoardModel) View(width, height int) string {
 			isSelected := isFocused && rowIdx == sel
 
 			// Check if this card is expanded (bv-i3ii)
+			// Card text width = baseWidth - 6:
+			// - 2 for column padding (Padding(0,1))
+			// - 2 for card border (ThickBorder)
+			// - 2 for card padding (Padding(0,1))
 			var card string
+			cardTextW := baseWidth - 6
 			if b.IsCardExpanded(issue.ID) {
-				card = b.renderExpandedCard(issue, baseWidth-4, colIdx, rowIdx)
+				card = b.renderExpandedCard(issue, cardTextW, colIdx, rowIdx)
 			} else {
-				card = b.renderCard(issue, baseWidth-4, isSelected, colIdx, rowIdx)
+				card = b.renderCard(issue, cardTextW, isSelected, colIdx, rowIdx)
 			}
 			cards = append(cards, card)
 		}
 
-		// Empty column placeholder
+		// Empty column placeholder (baseWidth-2 = column content area)
 		if issueCount == 0 {
 			emptyStyle := t.Renderer.NewStyle().
-				Width(baseWidth-4).
+				Width(baseWidth-2).
 				Height(colHeight-2).
 				Align(lipgloss.Center, lipgloss.Center).
 				Foreground(t.Secondary).
@@ -1112,7 +1117,7 @@ func (b BoardModel) View(width, height int) string {
 		if issueCount > visibleCards {
 			scrollInfo := fmt.Sprintf("↕ %d/%d", sel+1, issueCount)
 			scrollStyle := t.Renderer.NewStyle().
-				Width(baseWidth - 4).
+				Width(baseWidth - 2).
 				Align(lipgloss.Center).
 				Foreground(t.Secondary).
 				Italic(true)
@@ -1427,6 +1432,12 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 		return c
 	}
 	return cardStyle.Render(padLine(line1) + "\n" + padLine(line2) + "\n" + padLine(line3))
+}
+
+// TestRenderCard exposes renderCard for testing. Width is the text area width
+// (total card width = width + 4 for padding + border).
+func (b BoardModel) TestRenderCard(issue model.Issue, width int, selected bool) string {
+	return b.renderCard(issue, width, selected, 0, 0)
 }
 
 // renderExpandedCard creates an expanded inline view of a card (bv-i3ii)
