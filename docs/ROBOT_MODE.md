@@ -2,7 +2,7 @@
 
 This document is the comprehensive guide for integrating AI agents with beadwork's robot mode. It covers the robot protocol, CLI reference, output schemas, and advanced topics for building agent workflows on top of `bw`.
 
-> **Credit:** The robot protocol, cognitive offloading architecture, and all robot commands described here were designed and implemented by [@Dicklesworthstone](https://github.com/Dicklesworthstone) in the original [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer). Beadwork is a community fork that builds on this foundation.
+> **Credit:** The robot protocol, cognitive offloading architecture, and all robot commands described here were designed and implemented by [@Dicklesworthstone](https://github.com/Dicklesworthstone) in the original [b9s](https://github.com/Dicklesworthstone/beads_viewer). Beadwork is a community fork that builds on this foundation.
 
 ← [Back to README](../README.md)
 

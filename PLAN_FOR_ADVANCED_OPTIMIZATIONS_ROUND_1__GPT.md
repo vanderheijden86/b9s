@@ -142,7 +142,7 @@ runs = 50
 for _ in range(warmup):
     subprocess.run(
         cmd,
-        cwd='/data/projects/beads_viewer',
+        cwd='/data/projects/b9s',
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -154,7 +154,7 @@ for _ in range(runs):
     t0 = time.perf_counter()
     subprocess.run(
         cmd,
-        cwd='/data/projects/beads_viewer',
+        cwd='/data/projects/b9s',
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

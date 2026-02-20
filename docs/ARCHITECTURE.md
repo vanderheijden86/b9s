@@ -2,7 +2,7 @@
 
 This document describes the technical architecture, algorithms, and engineering decisions behind beadwork (`bw`). It covers the graph analysis engine, TUI rendering pipeline, performance characteristics, and design philosophy.
 
-> **Credit:** The architecture, graph analysis engine, and all algorithms described here were designed and implemented by [@Dicklesworthstone](https://github.com/Dicklesworthstone) in the original [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer). Beadwork is a community fork that builds on this foundation.
+> **Credit:** The architecture, graph analysis engine, and all algorithms described here were designed and implemented by [@Dicklesworthstone](https://github.com/Dicklesworthstone) in the original [b9s](https://github.com/Dicklesworthstone/beads_viewer). Beadwork is a community fork that builds on this foundation.
 
 ← [Back to README](../README.md)
 

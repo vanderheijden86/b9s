@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["bv contributors"]
 description = "High-performance graph algorithms for bv static viewer"
-repository = "https://github.com/Dicklesworthstone/beads_viewer"
+repository = "https://github.com/Dicklesworthstone/b9s"
 license = "MIT"
 
 [lib]

@@ -39,7 +39,7 @@ record_fail() { ((TESTS_FAILED++)) || true; log_fail "$1"; }
 record_skip() { ((TESTS_SKIPPED++)) || true; log_skip "$1"; }
 
 log "=========================================="
-log "BV (BEADS VIEWER) TOON E2E TEST"
+log "BV (B9S) TOON E2E TEST"
 log "=========================================="
 log ""
 
@@ -268,7 +268,7 @@ if [[ $failed_cmds -gt 0 ]]; then
 fi
 log ""
 
-# Phase 7: Go Unit Tests (if in beads_viewer repo)
+# Phase 7: Go Unit Tests (if in b9s repo)
 log "--- Phase 7: Unit Tests ---"
 
 if [[ -d "$PROJECT_DIR/cmd/bv" ]]; then
@@ -285,7 +285,7 @@ if [[ -d "$PROJECT_DIR/cmd/bv" ]]; then
         record_fail "go test TOON tests failed (exit $test_exit)"
     fi
 else
-    record_skip "beads_viewer repo not found"
+    record_skip "b9s repo not found"
 fi
 log ""
 

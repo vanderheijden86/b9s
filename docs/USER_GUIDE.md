@@ -2,7 +2,7 @@
 
 ← [Back to README](../README.md)
 
-> **Credit:** The TUI interface, views, and all features described here were originally designed and implemented by [@Dicklesworthstone](https://github.com/Dicklesworthstone) in [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer). Beadwork is a community fork that builds on this foundation.
+> **Credit:** The TUI interface, views, and all features described here were originally designed and implemented by [@Dicklesworthstone](https://github.com/Dicklesworthstone) in [b9s](https://github.com/Dicklesworthstone/beads_viewer). Beadwork is a community fork that builds on this foundation.
 
 Complete guide to beadwork's interactive TUI, covering all views, features, keyboard shortcuts, configuration, and troubleshooting.
 

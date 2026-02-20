@@ -1,12 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Install script for beads_viewer (bv) on Windows.
+    Install script for b9s (bv) on Windows.
 .DESCRIPTION
     Builds and installs bv from source using Go.
     Pre-built Windows binaries are not yet available, so Go 1.21+ is required.
 .EXAMPLE
-    irm https://raw.githubusercontent.com/Dicklesworthstone/beads_viewer/main/install.ps1 | iex
+    irm https://raw.githubusercontent.com/Dicklesworthstone/b9s/main/install.ps1 | iex
 #>
 
 [CmdletBinding()]
@@ -15,7 +15,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$REPO = "github.com/Dicklesworthstone/beads_viewer"
+$REPO = "github.com/Dicklesworthstone/b9s"
 $BIN_NAME = "bv"
 $MIN_GO_VERSION = "1.21"
 

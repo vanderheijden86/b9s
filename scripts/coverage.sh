@@ -29,14 +29,14 @@ mkdir -p "$COVERAGE_DIR"
 
 threshold_for_pkg() {
 	case "$1" in
-		github.com/Dicklesworthstone/beads_viewer/pkg/analysis) echo 75 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/export) echo 80 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/recipe) echo 90 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/ui) echo 55 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/loader) echo 80 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/updater) echo 55 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/watcher) echo 80 ;;
-		github.com/Dicklesworthstone/beads_viewer/pkg/workspace) echo 85 ;;
+		github.com/Dicklesworthstone/b9s/pkg/analysis) echo 75 ;;
+		github.com/Dicklesworthstone/b9s/pkg/export) echo 80 ;;
+		github.com/Dicklesworthstone/b9s/pkg/recipe) echo 90 ;;
+		github.com/Dicklesworthstone/b9s/pkg/ui) echo 55 ;;
+		github.com/Dicklesworthstone/b9s/pkg/loader) echo 80 ;;
+		github.com/Dicklesworthstone/b9s/pkg/updater) echo 55 ;;
+		github.com/Dicklesworthstone/b9s/pkg/watcher) echo 80 ;;
+		github.com/Dicklesworthstone/b9s/pkg/workspace) echo 85 ;;
 		*) echo "" ;;
 	esac
 }
@@ -83,7 +83,7 @@ pkg_total_coverage() {
 		{
 			file = $1
 			sub(/:.*/, "", file)          # strip :line.col,line.col
-			if (file !~ /^github.com\/Dicklesworthstone\/beads_viewer\/pkg\//) {
+			if (file !~ /^github.com\/Dicklesworthstone\/b9s\/pkg\//) {
 				next
 			}
 			stmts = $2

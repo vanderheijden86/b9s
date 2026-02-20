@@ -9,11 +9,11 @@
 
 Beadwork is a terminal-based interface for browsing, editing, and managing issues stored in `.beads/issues.jsonl`. It renders your issue data as an interactive TUI with list, tree, and kanban board views, a detail panel with Markdown rendering, and inline editing.
 
-Originally forked from [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), beadwork has been **stripped to its core**: the TUI viewer. Added features are a full-fledged treeview and editing capabilities. The upstream project's graph analysis engine, robot protocol, export wizards, semantic search, drift detection, recipe system, and other advanced features have been removed to keep the tool small, fast, and focused on the primary use case: reading and updating issues from the terminal.
+Originally forked from [b9s](https://github.com/Dicklesworthstone/beads_viewer), beadwork has been **stripped to its core**: the TUI viewer. Added features are a full-fledged treeview and editing capabilities. The upstream project's graph analysis engine, robot protocol, export wizards, semantic search, drift detection, recipe system, and other advanced features have been removed to keep the tool small, fast, and focused on the primary use case: reading and updating issues from the terminal.
 
 ### Why strip it down?
 
-The upstream beads_viewer is an impressive piece of software with a graph analysis engine (PageRank, betweenness, HITS, critical path), AI agent protocols, static site export, time-travel diffs, sprint analytics, and more. That breadth is its strength, but it also means ~90k lines of Go source code, ~108k lines of tests, heavy dependencies like `gonum`, and complexity that isn't needed if all you want is a terminal viewer/editor.
+The upstream b9s is an impressive piece of software with a graph analysis engine (PageRank, betweenness, HITS, critical path), AI agent protocols, static site export, time-travel diffs, sprint analytics, and more. That breadth is its strength, but it also means ~90k lines of Go source code, ~108k lines of tests, heavy dependencies like `gonum`, and complexity that isn't needed if all you want is a terminal viewer/editor.
 
 Beadwork takes the opposite approach: **do fewer things well**. By stripping the codebase down to ~27k lines of source and ~26k lines of tests, and removing heavy vendor dependencies like `gonum`, beadwork starts faster, compiles faster, and is easier to understand, maintain, and contribute to.
 
@@ -49,9 +49,9 @@ Beadwork takes the opposite approach: **do fewer things well**. By stripping the
 
 ### Relationship to the original
 
-Full credit goes to [@Dicklesworthstone](https://github.com/Dicklesworthstone) for the original architecture and implementation of beads_viewer. The Bubbletea model structure, the background worker pattern, the file watcher integration, and the foundational UI components are all his work. Beadwork simply removes the features we don't use and makes different UX choices where our workflows diverge.
+Full credit goes to [@Dicklesworthstone](https://github.com/Dicklesworthstone) for the original architecture and implementation of b9s. The Bubbletea model structure, the background worker pattern, the file watcher integration, and the foundational UI components are all his work. Beadwork simply removes the features we don't use and makes different UX choices where our workflows diverge.
 
-Per the upstream project's [contribution guidelines](https://github.com/Dicklesworthstone/beads_viewer/blob/main/CONTRIBUTING.md), beads_viewer does not accept external pull requests. Beadwork exists as a separate fork for users who want a leaner tool and the ability to contribute.
+Per the upstream project's [contribution guidelines](https://github.com/Dicklesworthstone/beads_viewer/blob/main/CONTRIBUTING.md), b9s does not accept external pull requests. Beadwork exists as a separate fork for users who want a leaner tool and the ability to contribute.
 
 ## Installation
 
@@ -103,7 +103,7 @@ Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutor
 ## Acknowledgments
 
 - **Steve Yegge** for the vision behind [Beads](https://github.com/steveyegge/beads), a refreshingly simple approach to issue tracking that respects developers' workflows.
-- **[@Dicklesworthstone](https://github.com/Dicklesworthstone)** for the original [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), whose architecture and implementation form the foundation of this project.
+- **[@Dicklesworthstone](https://github.com/Dicklesworthstone)** for the original [b9s](https://github.com/Dicklesworthstone/beads_viewer), whose architecture and implementation form the foundation of this project.
 - The **[Charm](https://charm.sh)** team for [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Lip Gloss](https://github.com/charmbracelet/lipgloss), [Bubbles](https://github.com/charmbracelet/bubbles), [Huh](https://github.com/charmbracelet/huh), and [Glamour](https://github.com/charmbracelet/glamour), the terminal UI libraries that make building beautiful CLI tools a joy.
 
 ## License

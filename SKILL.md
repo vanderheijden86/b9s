@@ -1,9 +1,9 @@
 ---
 name: bv
-description: "Beads Viewer - Graph-aware triage engine for Beads projects. Computes PageRank, betweenness, critical path, and cycles. Use --robot-* flags for AI agents."
+description: "B9s - Graph-aware triage engine for Beads projects. Computes PageRank, betweenness, critical path, and cycles. Use --robot-* flags for AI agents."
 ---
 
-# BV - Beads Viewer
+# BV - B9s
 
 A graph-aware triage engine for Beads projects (`.beads/beads.jsonl`). Computes 9 graph metrics, generates execution plans, and provides deterministic recommendations. Human TUI for browsing; robot flags for AI agents.
 

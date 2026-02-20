@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document captures a rigorous performance analysis of beads_viewer following a data-driven methodology. The analysis identified a single dominant hotspot responsible for 71% of memory allocations and 49% of CPU time, with a clear optimization path that is provably isomorphic (outputs unchanged).
+This document captures a rigorous performance analysis of b9s following a data-driven methodology. The analysis identified a single dominant hotspot responsible for 71% of memory allocations and 49% of CPU time, with a clear optimization path that is provably isomorphic (outputs unchanged).
 
 **Key Finding**: Buffer pooling for `singleSourceBetweenness` can eliminate **60-80%** of allocations from the dominant hotspot, with potential for 90%+ when combined with additional caching.
 
@@ -85,13 +85,13 @@ env.update({'BV_ROBOT': '1', 'BV_NO_BROWSER': '1', 'BV_TEST_MODE': '1'})
 
 warmup, runs = 5, 50
 for _ in range(warmup):
-    subprocess.run(cmd, cwd='/data/projects/beads_viewer', env=env,
+    subprocess.run(cmd, cwd='/data/projects/b9s', env=env,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
 samples = []
 for _ in range(runs):
     t0 = time.perf_counter()
-    subprocess.run(cmd, cwd='/data/projects/beads_viewer', env=env,
+    subprocess.run(cmd, cwd='/data/projects/b9s', env=env,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     samples.append(time.perf_counter() - t0)
 

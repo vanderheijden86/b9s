@@ -138,21 +138,21 @@ func TestAppendToGitignore(t *testing.T) {
 			name:            "new file",
 			existingContent: "",
 			pattern:         ".bv/",
-			wantContains:    []string{"# bv (beads viewer)", ".bv/"},
+			wantContains:    []string{"# bv (b9s)", ".bv/"},
 			wantPrefix:      "#", // should start with comment, not blank line
 		},
 		{
 			name:            "existing file with newline",
 			existingContent: "node_modules/\n",
 			pattern:         ".bv/",
-			wantContains:    []string{"node_modules/", "# bv (beads viewer)", ".bv/"},
+			wantContains:    []string{"node_modules/", "# bv (b9s)", ".bv/"},
 			wantPrefix:      "node_modules/",
 		},
 		{
 			name:            "existing file without trailing newline",
 			existingContent: "node_modules/",
 			pattern:         ".bv/",
-			wantContains:    []string{"node_modules/", "# bv (beads viewer)", ".bv/"},
+			wantContains:    []string{"node_modules/", "# bv (b9s)", ".bv/"},
 			wantPrefix:      "node_modules/",
 		},
 	}
@@ -280,7 +280,7 @@ func TestEnsureBVInGitignore(t *testing.T) {
 		}
 
 		// Should still have just .bv, not add .bv/
-		if strings.Contains(string(content), "# bv (beads viewer)") {
+		if strings.Contains(string(content), "# bv (b9s)") {
 			t.Errorf("should not add when .bv already present, got:\n%s", content)
 		}
 	})

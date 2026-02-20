@@ -15,7 +15,7 @@ Dropped 365 nodes (cum <= 0.32s)
      2.47s  3.87% 21.76%      5.41s  8.47%  runtime.mapaccess1_fast64
      2.22s  3.47% 25.23%      2.22s  3.47%  internal/runtime/maps.h2 (inline)
         2s  3.13% 28.36%      2.76s  4.32%  runtime.findObject
-     1.87s  2.93% 31.29%     41.32s 64.67%  github.com/Dicklesworthstone/beads_viewer/pkg/analysis.singleSourceBetweenness
+     1.87s  2.93% 31.29%     41.32s 64.67%  github.com/Dicklesworthstone/b9s/pkg/analysis.singleSourceBetweenness
      1.85s  2.90% 34.18%      1.85s  2.90%  runtime.memclrNoHeapPointers
      1.63s  2.55% 36.74%      1.63s  2.55%  runtime.tgkill
      1.47s  2.30% 39.04%      1.49s  2.33%  runtime.(*gcBits).bitp (inline)
@@ -29,7 +29,7 @@ Dropped 365 nodes (cum <= 0.32s)
      0.96s  1.50% 53.98%      0.96s  1.50%  runtime.nextFreeFast (inline)
      0.94s  1.47% 55.45%      0.94s  1.47%  runtime.(*mspan).divideByElemSize (inline)
      0.88s  1.38% 56.83%      0.89s  1.39%  runtime.pageIndexOf (inline)
-     0.87s  1.36% 58.19%      9.01s 14.10%  github.com/Dicklesworthstone/beads_viewer/pkg/analysis.(*brandesBuffers).reset
+     0.87s  1.36% 58.19%      9.01s 14.10%  github.com/Dicklesworthstone/b9s/pkg/analysis.(*brandesBuffers).reset
      0.86s  1.35% 59.54%      0.86s  1.35%  runtime.procyield
      0.81s  1.27% 60.81%      1.58s  2.47%  runtime.mapaccess2_fast64
      0.69s  1.08% 61.89%      0.69s  1.08%  internal/runtime/maps.(*groupReference).key (inline)
@@ -52,12 +52,12 @@ Dropped 51 nodes (cum <= 0.06GB)
       flat  flat%   sum%        cum   cum%
     3.21GB 25.61% 25.61%     3.21GB 25.61%  gonum.org/v1/gonum/graph/iterator.newMapIterEdges (inline)
     2.48GB 19.76% 45.37%     2.48GB 19.76%  gonum.org/v1/gonum/graph/iterator.(*mapIter).next
-    2.37GB 18.93% 64.30%    12.42GB 99.12%  github.com/Dicklesworthstone/beads_viewer/pkg/analysis.singleSourceBetweenness
-    1.52GB 12.17% 76.48%     1.52GB 12.17%  github.com/Dicklesworthstone/beads_viewer/pkg/analysis.(*brandesBuffers).reset
+    2.37GB 18.93% 64.30%    12.42GB 99.12%  github.com/Dicklesworthstone/b9s/pkg/analysis.singleSourceBetweenness
+    1.52GB 12.17% 76.48%     1.52GB 12.17%  github.com/Dicklesworthstone/b9s/pkg/analysis.(*brandesBuffers).reset
     1.20GB  9.57% 86.04%     4.41GB 35.18%  gonum.org/v1/gonum/graph/iterator.NewNodesByEdge (inline)
     0.86GB  6.86% 92.90%     0.87GB  6.97%  gonum.org/v1/gonum/graph/iterator.(*Nodes).NodeSlice
-    0.75GB  5.95% 98.85%     0.75GB  5.95%  github.com/Dicklesworthstone/beads_viewer/pkg/analysis.init.func1
-    0.05GB  0.37% 99.22%    12.46GB 99.48%  github.com/Dicklesworthstone/beads_viewer/pkg/analysis.ApproxBetweenness.func2
+    0.75GB  5.95% 98.85%     0.75GB  5.95%  github.com/Dicklesworthstone/b9s/pkg/analysis.init.func1
+    0.05GB  0.37% 99.22%    12.46GB 99.48%  github.com/Dicklesworthstone/b9s/pkg/analysis.ApproxBetweenness.func2
          0     0% 99.22%     0.87GB  6.97%  gonum.org/v1/gonum/graph.NodesOf
          0     0% 99.22%     2.46GB 19.65%  gonum.org/v1/gonum/graph/iterator.(*NodesByEdge).Next
          0     0% 99.22%     4.41GB 35.18%  gonum.org/v1/gonum/graph/simple.(*DirectedGraph).From (inline)

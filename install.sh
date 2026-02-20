@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_OWNER="Dicklesworthstone"
-REPO_NAME="beads_viewer"
+REPO_NAME="b9s"
 BIN_NAME="bv"
 
 TMP_DIRS=()

@@ -204,7 +204,7 @@ func main() {
 	defer m.Stop()
 
 	if err := runTUIProgram(m); err != nil {
-		fmt.Printf("Error running beads viewer: %v\n", err)
+		fmt.Printf("Error running b9s: %v\n", err)
 		os.Exit(1)
 	}
 }

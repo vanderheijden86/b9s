@@ -22,7 +22,7 @@ benchmarks/current.txt
 .bw/
 .bv/
 beads_report_beadwork_*.md
-beads_report_beads_viewer_*.md
+beads_report_b9s_*.md
 
 # Nix build artifacts
 result
@@ -37,7 +37,7 @@ pkg/export/wasm_scorer/target/
 pkg/export/wasm_scorer/pkg/
 node_modules/
 beadwork_graph*.html
-beads_viewer_graph*.html
+b9s_graph*.html
 test-results/
 
 # Nested beads state

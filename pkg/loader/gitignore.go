@@ -117,7 +117,7 @@ func appendToGitignore(path string, pattern string) error {
 	var toWrite string
 	if len(content) == 0 {
 		// New file: just add comment and pattern (no leading blank line)
-		toWrite = "# bv (beads viewer) local config and caches\n" + pattern + "\n"
+		toWrite = "# bv (b9s) local config and caches\n" + pattern + "\n"
 	} else {
 		// Existing file: ensure proper separation
 		if content[len(content)-1] != '\n' {
@@ -125,7 +125,7 @@ func appendToGitignore(path string, pattern string) error {
 			toWrite = "\n"
 		}
 		// Add blank line separator, comment, and pattern
-		toWrite += "\n# bv (beads viewer) local config and caches\n" + pattern + "\n"
+		toWrite += "\n# bv (b9s) local config and caches\n" + pattern + "\n"
 	}
 
 	if _, err := file.WriteString(toWrite); err != nil {
