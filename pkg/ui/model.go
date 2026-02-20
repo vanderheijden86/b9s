@@ -273,7 +273,7 @@ func CheckUpdateCmd() tea.Cmd {
 	}
 }
 
-// Model is the main Bubble Tea model for the beads viewer
+// Model is the main Bubble Tea model for b9s
 type Model struct {
 	// Data
 	issues       []model.Issue
@@ -519,13 +519,15 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 					if isClosedLikeStatus(iss.Status) {
 						continue
 					}
-					entry.OpenCount++
-					if iss.Status == "in_progress" {
+					// Count open vs in_progress separately (bd-o23v)
+					switch {
+					case iss.Status == "in_progress":
 						entry.InProgressCount++
-					}
-					if iss.Status == model.StatusBlocked {
+					case iss.Status == model.StatusBlocked:
 						entry.BlockedCount++
-						continue
+						continue // blocked issues can't be ready
+					default:
+						entry.OpenCount++
 					}
 					// Check if blocked by open dependencies
 					isBlocked := false

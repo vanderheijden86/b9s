@@ -782,8 +782,9 @@ func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 		t.Fatal("dep-project not found in entries")
 	}
 
-	if depEntry.OpenCount != 3 {
-		t.Errorf("expected OpenCount=3, got %d", depEntry.OpenCount)
+	// OpenCount excludes blocked and in_progress (bd-o23v)
+	if depEntry.OpenCount != 2 {
+		t.Errorf("expected OpenCount=2, got %d", depEntry.OpenCount)
 	}
 	if depEntry.ReadyCount != 1 {
 		t.Errorf("expected ReadyCount=1, got %d", depEntry.ReadyCount)
