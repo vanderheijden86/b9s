@@ -437,7 +437,7 @@ func (m Model) currentViewName() string {
 // Format:  bw | projectname (1)      list view | ○12 ◉5 ◈3 ●2
 func (m Model) renderGlobalHeader() string {
 	// Left side: app name + project
-	appName := lipgloss.NewStyle().Bold(true).Foreground(ColorText).Render("b9s")
+	appName := lipgloss.NewStyle().Bold(true).Foreground(ColorWarning).Render("b9s")
 	sep := lipgloss.NewStyle().Foreground(ColorMuted).Render(" | ")
 
 	projectLabel := m.activeProjectName
@@ -476,11 +476,10 @@ func (m Model) renderGlobalHeader() string {
 	}
 	filler := lipgloss.NewStyle().Width(fillerWidth).Render("")
 
-	headerBg := lipgloss.NewStyle().
-		Width(m.width).
-		Background(ColorBgHighlight)
+	headerStyle := lipgloss.NewStyle().
+		Width(m.width)
 
-	return headerBg.Render(leftParts + filler + rightParts)
+	return headerStyle.Render(leftParts + filler + rightParts)
 }
 
 // buildProjectEntries constructs the project picker display data from config.
@@ -1724,6 +1723,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 
 			case "esc":
+				// Tree search/sort escape takes highest priority (bd-c55q, bd-wf8, bd-u81)
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSearchMode() {
+					m.tree.ClearSearch()
+					return m, nil
+				}
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSortPopupOpen() {
+					m.tree.CloseSortPopup()
+					return m, nil
+				}
 				// Escape closes modals and goes back
 				if m.showDetails && !m.isSplitView {
 					m.showDetails = false
@@ -1748,16 +1756,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						m.focused = focusTree
 					}
-					return m, nil
-				}
-				// Tree view: sort popup escape (bd-u81) takes precedence
-				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSortPopupOpen() {
-					m.tree.CloseSortPopup()
-					return m, nil
-				}
-				// Tree view: search mode escape (bd-wf8) takes precedence
-				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSearchMode() {
-					m.tree.ClearSearch()
 					return m, nil
 				}
 				// Tree view: first ESC clears tree filter, second exits tree view (bd-kob)
@@ -2839,7 +2837,7 @@ func (m Model) renderQuitConfirm() string {
 	t := m.theme
 
 	boxStyle := t.Renderer.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.NormalBorder()).
 		BorderForeground(t.Blocked).
 		Padding(1, 3).
 		Align(lipgloss.Center)
@@ -2881,8 +2879,8 @@ func (m Model) renderListWithHeader() string {
 
 	// Render column header
 	headerStyle := t.Renderer.NewStyle().
-		Background(t.Primary).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Background(t.Highlight).
+		Foreground(lipgloss.AdaptiveColor{Light: "#101010", Dark: "#101010"}).
 		Bold(true).
 		Width(m.width - 2)
 
@@ -2970,8 +2968,8 @@ func (m Model) renderSplitView() string {
 
 	// Create header row for list
 	headerStyle := t.Renderer.NewStyle().
-		Background(t.Primary).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Background(t.Highlight).
+		Foreground(lipgloss.AdaptiveColor{Light: "#101010", Dark: "#101010"}).
 		Bold(true).
 		Width(listInnerWidth)
 
@@ -3364,7 +3362,7 @@ func (m *Model) renderHelpOverlay() string {
 
 	// Outer container
 	containerStyle := t.Renderer.NewStyle().
-		Border(lipgloss.DoubleBorder()).
+		Border(lipgloss.NormalBorder()).
 		BorderForeground(t.Primary).
 		Padding(1, 2)
 
@@ -3381,31 +3379,17 @@ func (m *Model) renderHelpOverlay() string {
 }
 
 func (m *Model) renderFooter() string {
-	// ══════════════════════════════════════════════════════════════════════════
-	// POLISHED FOOTER - Stripe-level status bar with visual hierarchy
-	// ══════════════════════════════════════════════════════════════════════════
-
-	// If there's a status message, show it prominently with polished styling
+	// k9s-style single-line status/shortcut bar.
 	if m.statusMsg != "" {
-		var msgStyle lipgloss.Style
+		var statusStyle lipgloss.Style
+		prefix := "INFO: "
 		if m.statusIsError {
-			msgStyle = lipgloss.NewStyle().
-				Background(ColorPrioCriticalBg).
-				Foreground(ColorPrioCritical).
-				Bold(true).
-				Padding(0, 2)
+			statusStyle = lipgloss.NewStyle().Foreground(ColorPrioCritical).Bold(true)
+			prefix = "ERR: "
 		} else {
-			msgStyle = lipgloss.NewStyle().
-				Background(ColorStatusOpenBg).
-				Foreground(ColorSuccess).
-				Bold(true).
-				Padding(0, 2)
+			statusStyle = lipgloss.NewStyle().Foreground(ColorInfo)
 		}
-		prefix := "✓ "
-		if m.statusIsError {
-			prefix = "✗ "
-		}
-		msgSection := msgStyle.Render(prefix + m.statusMsg)
+		msgSection := " " + statusStyle.Render(prefix+m.statusMsg)
 		remaining := m.width - lipgloss.Width(msgSection)
 		if remaining < 0 {
 			remaining = 0
@@ -3414,11 +3398,8 @@ func (m *Model) renderFooter() string {
 		return lipgloss.JoinHorizontal(lipgloss.Bottom, msgSection, filler)
 	}
 
-	// ─────────────────────────────────────────────────────────────────────────
-	// CONTEXT-SENSITIVE SHORTCUT BAR
-	// ─────────────────────────────────────────────────────────────────────────
-	keyStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	labelStyle := lipgloss.NewStyle().Foreground(ColorText)
+	keyStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	labelStyle := lipgloss.NewStyle().Foreground(ColorSubtext)
 
 	// Build shortcut hints based on current view
 	type hint struct {
@@ -4064,6 +4045,10 @@ func (m Model) TreeDetailHidden() bool {
 	return m.treeDetailHidden
 }
 
+// TreeIsSearchMode returns whether the tree search bar is active (bd-c55q).
+func (m Model) TreeIsSearchMode() bool {
+	return m.tree.IsSearchMode()
+}
 
 // ActiveProjectName returns the name of the currently loaded project (bd-q5z.8).
 func (m Model) ActiveProjectName() string {

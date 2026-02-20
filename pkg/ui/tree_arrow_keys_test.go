@@ -481,6 +481,51 @@ func TestTreeViewSortPopupEscCloses(t *testing.T) {
 	}
 }
 
+// TestTreeViewSearchEscClosesSearchNotApp verifies that pressing Esc while in
+// tree search mode exits search instead of showing the quit confirmation (bd-c55q).
+func TestTreeViewSearchEscClosesSearchNotApp(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, "")
+
+	// Set realistic terminal size
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = newM.(ui.Model)
+
+	m = enterTreeView(t, m)
+
+	// Enter search mode with '/'
+	m = sendKey(t, m, "/")
+	if !m.TreeIsSearchMode() {
+		t.Fatal("expected search mode after '/'")
+	}
+
+	// Type some characters
+	m = sendKey(t, m, "s")
+	m = sendKey(t, m, "t")
+
+	if !m.TreeIsSearchMode() {
+		t.Fatal("search mode should still be active after typing")
+	}
+
+	// Press Esc - should exit search, NOT show quit confirmation
+	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m = newM.(ui.Model)
+
+	if m.TreeIsSearchMode() {
+		t.Error("search mode should be closed after Esc")
+	}
+	if m.FocusState() != "tree" {
+		t.Errorf("focus should remain on tree after Esc from search, got %q", m.FocusState())
+	}
+	// Should NOT trigger quit
+	if cmd != nil {
+		msg := cmd()
+		if _, isQuit := msg.(tea.QuitMsg); isQuit {
+			t.Error("Esc during search should NOT trigger quit")
+		}
+	}
+}
+
 // TestTreeViewSortPopupSKeyCloses verifies that pressing 's' again closes the popup.
 func TestTreeViewSortPopupSKeyCloses(t *testing.T) {
 	issues := createTreeTestIssues()
