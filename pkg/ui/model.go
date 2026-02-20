@@ -494,13 +494,20 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 		}
 		// Load issue counts if this is the active project
 		if entry.IsActive {
-			entry.OpenCount = m.countOpen
 			entry.ReadyCount = m.countReady
 			entry.BlockedCount = m.countBlocked
-			// Count in_progress from active issue data
+			// Count open vs in_progress separately (bd-o23v)
 			for _, iss := range m.issues {
-				if iss.Status == "in_progress" {
+				if isClosedLikeStatus(iss.Status) {
+					continue
+				}
+				switch {
+				case iss.Status == "in_progress":
 					entry.InProgressCount++
+				case iss.Status == model.StatusBlocked:
+					// already counted via m.countBlocked
+				default:
+					entry.OpenCount++
 				}
 			}
 		} else {
