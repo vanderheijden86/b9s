@@ -143,14 +143,9 @@ func TestProjectPicker_ViewContainsProjectInfo(t *testing.T) {
 		}
 	}
 
-	// Should contain the title bar
-	if !strings.Contains(view, "projects") {
-		t.Error("view should contain 'projects' title")
-	}
-
-	// Active project should be shown in title bar (k9s style)
-	if !strings.Contains(view, "projects(api-service)") {
-		t.Error("title bar should contain active project name like projects(api-service)")
+	// Should contain the title bar with active project name
+	if !strings.Contains(view, "api-service") {
+		t.Error("title bar should contain active project name")
 	}
 
 	// Should contain O P R column headers
@@ -189,7 +184,7 @@ func TestProjectPicker_TitleBarAtBottom(t *testing.T) {
 
 	// Title bar should be the last line
 	lastLine := lines[len(lines)-1]
-	if !strings.Contains(lastLine, "projects(my-project)") {
+	if !strings.Contains(lastLine, "my-project") {
 		t.Errorf("title bar should be at the bottom, last line was: %q", lastLine)
 	}
 }
@@ -874,7 +869,7 @@ func TestProjectPicker_ShiftPToggle(t *testing.T) {
 
 	// Minimized view should still show title bar with active project
 	view := m.View()
-	if !strings.Contains(view, "projects(api-service)") {
+	if !strings.Contains(view, "api-service") {
 		t.Error("minimized title bar should appear when picker is hidden")
 	}
 
@@ -888,7 +883,7 @@ func TestProjectPicker_ShiftPToggle(t *testing.T) {
 
 	// Project names should appear again
 	view = m.View()
-	if !strings.Contains(view, "projects(api-service)") {
+	if !strings.Contains(view, "api-service") {
 		t.Error("picker title bar should appear when visible")
 	}
 }
@@ -928,9 +923,6 @@ func TestProjectPicker_MinimizedShowsOnlyTitleBar(t *testing.T) {
 	output := m.View()
 
 	// The minimized view should contain the title bar with active project
-	if !strings.Contains(output, "projects(") {
-		t.Error("minimized view should contain 'projects(' title bar prefix")
-	}
 	if !strings.Contains(output, "api-service") {
 		t.Error("minimized view should contain active project name 'api-service'")
 	}
