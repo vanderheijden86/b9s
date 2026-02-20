@@ -1031,27 +1031,11 @@ func (t *TreeModel) View() string {
 		isSelected := i == t.cursor
 		line := t.renderNode(node, isSelected, maxIDWidth)
 
-		rowWidth := t.width - 1
-		if rowWidth <= 0 {
-			rowWidth = 80
-		}
-		if isSelected {
-			// Full-line background highlight with dark text (bd-hdgh)
-			rowStyle := t.theme.Renderer.NewStyle().
-				Width(rowWidth).MaxWidth(rowWidth).
-				Background(t.theme.Highlight).
-				Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}).
-				Bold(true)
-			line = rowStyle.Render(line)
-		} else {
-			// Non-selected rows get same width for alignment (bd-hdgh)
-			rowStyle := t.theme.Renderer.NewStyle().
-				Width(rowWidth).MaxWidth(rowWidth)
-			if t.IsFilterDimmed(node) {
-				// Context ancestors shown with muted/faint styling (bd-05v)
-				rowStyle = rowStyle.Foreground(t.theme.Muted).Faint(true)
-			}
-			line = rowStyle.Render(line)
+		// renderNode already applies Width + Background for selected rows (bd-hdgh)
+		if !isSelected && t.IsFilterDimmed(node) {
+			// Context ancestors shown with muted/faint styling (bd-05v)
+			dimStyle := t.theme.Renderer.NewStyle().Foreground(t.theme.Muted).Faint(true)
+			line = dimStyle.Render(line)
 		}
 
 		sb.WriteString(line)
@@ -1400,8 +1384,11 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 
 	row := leftSide.String() + strings.Repeat(" ", padding) + rightSide
 
-	// Apply row width clamping
+	// Apply row width clamping and selection background (bd-hdgh)
 	rowStyle := r.NewStyle().Width(width).MaxWidth(width)
+	if isSelected {
+		rowStyle = rowStyle.Background(t.theme.Highlight).Bold(true)
+	}
 	row = rowStyle.Render(row)
 
 	return row
