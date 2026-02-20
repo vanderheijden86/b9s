@@ -29,7 +29,6 @@ B9s takes the opposite approach: **do fewer things well**. By stripping the code
 - **Inline editing** of title, status, priority, type, assignee, labels, description, and notes (via huh forms)
 - **Issue creation** directly from the TUI (`Ctrl+n`)
 - **Label filtering** with count display
-- **Workspace mode** for multi-repo projects with repo picker overlay
 - **Live reload** on file changes (filesystem watcher with debounce + optional background snapshot loading)
 - **Self-updating** (`--update`, `--check-update`, `--rollback`)
 - **Repository prefix filtering** (`--repo`)
@@ -90,7 +89,7 @@ Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutor
 | `E` | Tree view |
 | `e` | Edit issue |
 | `Ctrl+n` | Create new issue |
-| `w` | Repo picker (workspace mode) |
+| `?` | Keyboard shortcuts help |
 | `[` / `]` | Resize split pane |
 
 ## Acknowledgments
