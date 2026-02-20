@@ -1752,21 +1752,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "tab":
-				// Tab toggles focus between tree and detail (bd-y0m)
-				if m.focused == focusTree {
-					m.syncTreeToDetail()
-					if m.treeDetailHidden {
-						m.treeDetailHidden = false
-					}
-					m.focused = focusDetail
-					return m, nil
-				} else if m.focused == focusDetail && m.treeViewActive {
-					m.focused = focusTree
-					return m, nil
-				} else if m.focused == focusList {
-					m.focused = focusDetail
-					return m, nil
-				}
+				// Tab is always fold (CycleNodeVisibility) — handled by view-specific keys (bd-lt1l)
+				// Falls through to handleTreeKeys / handleBoardKeys / handleListKeys
 
 			case "<":
 				// Shrink list pane (move divider left)
@@ -2352,6 +2339,10 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		m.syncTreeToDetail()
 	case "k", "up":
 		m.tree.MoveUp()
+		m.syncTreeToDetail()
+	case "tab":
+		// Tab always cycles node visibility (bd-lt1l)
+		m.tree.CycleNodeVisibility()
 		m.syncTreeToDetail()
 	case "shift+tab":
 		// Shift+Tab cycles global visibility (bd-1of)
@@ -3480,7 +3471,7 @@ func (m *Model) renderFooter() string {
 	case "split":
 		hints = []hint{
 			{"1-9", "project"},
-			{"tab", "focus"},
+			{"tab", "fold"},
 			{"</>", "resize"},
 			{"t", "tree"},
 			{"b", "board"},

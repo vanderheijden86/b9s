@@ -350,8 +350,9 @@ func createDeepTreeIssues() []model.Issue {
 // 1-9 are project switching only.
 // ============================================================================
 
-// TestTreeNavTabTogglesFocus verifies Tab toggles focus tree↔detail (bd-y0m).
-func TestTreeNavTabTogglesFocus(t *testing.T) {
+// TestTreeNavTabFoldsInSplitView verifies Tab always folds (CycleNodeVisibility),
+// never toggles focus (bd-lt1l).
+func TestTreeNavTabFoldsInSplitView(t *testing.T) {
 	cleanTreeState(t)
 	issues := createDeepTreeIssues()
 	m := ui.NewModel(issues, "")
@@ -361,20 +362,12 @@ func TestTreeNavTabTogglesFocus(t *testing.T) {
 		t.Fatalf("expected focus 'tree', got %q", m.FocusState())
 	}
 
-	// Tab should toggle to detail
+	// Tab should stay on tree (fold), not switch to detail
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "detail" {
-		t.Errorf("Tab should toggle to detail, got %q", m.FocusState())
-	}
-
-	// Tab again should return to tree
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = newM.(ui.Model)
-
 	if m.FocusState() != "tree" {
-		t.Errorf("Tab should toggle back to tree, got %q", m.FocusState())
+		t.Errorf("Tab should stay on tree (fold), got %q", m.FocusState())
 	}
 }
 

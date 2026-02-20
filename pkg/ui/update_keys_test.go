@@ -30,19 +30,14 @@ func TestUpdateHelpQuitAndTabFocus(t *testing.T) {
 		t.Fatalf("expected help overlay dismissed back to tree, got focus %v", m.focused)
 	}
 
-	// Tree is permanent (bd-8hw.4). Tab in tree+split toggles tree/detail.
+	// Tab always folds (CycleNodeVisibility), never switches focus (bd-lt1l).
 	if m.focused != focusTree {
 		t.Fatalf("expected tree focus, got %v", m.focused)
 	}
 	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = updated.(Model)
-	if m.focused != focusDetail {
-		t.Fatalf("expected detail focus after tab from tree, got %v", m.focused)
-	}
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = updated.(Model)
 	if m.focused != focusTree {
-		t.Fatalf("expected tree focus after second tab, got %v", m.focused)
+		t.Fatalf("expected tree focus to remain after tab (fold), got %v", m.focused)
 	}
 
 	// Escape should show quit confirm, 'y' should issue tea.Quit

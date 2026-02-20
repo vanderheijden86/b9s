@@ -763,9 +763,9 @@ func TestTreeViewSpaceDoesNothingInSplitMode(t *testing.T) {
 	}
 }
 
-// TestTreeViewTabShowsDetailWhenHidden verifies Tab toggles focus to detail
-// and unhides the detail panel when it was hidden via 'd' toggle (bd-y0m).
-func TestTreeViewTabShowsDetailWhenHidden(t *testing.T) {
+// TestTreeViewTabFoldsWhenDetailHidden verifies Tab folds (CycleNodeVisibility)
+// even when detail is hidden via 'd' toggle (bd-lt1l).
+func TestTreeViewTabFoldsWhenDetailHidden(t *testing.T) {
 	issues := createTreeTestIssues()
 	m := ui.NewModel(issues, "")
 
@@ -781,15 +781,12 @@ func TestTreeViewTabShowsDetailWhenHidden(t *testing.T) {
 		t.Fatal("expected detail hidden after 'd'")
 	}
 
-	// Tab should toggle focus to detail and unhide it
+	// Tab should fold, not switch focus
 	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "detail" {
-		t.Errorf("Tab should toggle focus to detail, got %q", m.FocusState())
-	}
-	if m.TreeDetailHidden() {
-		t.Error("Tab should unhide detail panel when toggling to detail")
+	if m.FocusState() != "tree" {
+		t.Errorf("Tab should stay on tree (fold), got %q", m.FocusState())
 	}
 }
 
@@ -799,22 +796,20 @@ func TestTreeViewDetailToggleResetsFromDetail(t *testing.T) {
 	issues := createTreeTestIssues()
 	m := ui.NewModel(issues, "")
 
-	// Make it a split view so Tab works
+	// Make it a split view
 	newM, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
 	m = newM.(ui.Model)
 
 	m = enterTreeView(t, m)
 
-	// Tab to detail
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	// Enter to go to detail
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = newM.(ui.Model)
 	if m.FocusState() != "detail" {
-		t.Fatalf("Expected focus 'detail' after Tab, got %q", m.FocusState())
+		t.Fatalf("Expected focus 'detail' after Enter, got %q", m.FocusState())
 	}
 
 	// Press 'd' to hide detail - focus should snap to tree
-	// Note: 'd' in detail panel is handled in handleTreeKeys when treeViewActive
-	// We need to verify this works from the global handler
 	m = sendKey(t, m, "d")
 	if m.FocusState() != "tree" {
 		t.Errorf("Expected focus 'tree' after 'd' from detail, got %q", m.FocusState())
@@ -933,25 +928,17 @@ func TestTreeDetailAutoHideFocusSnap(t *testing.T) {
 	m = newM.(ui.Model)
 	m = enterTreeView(t, m)
 
-	// Tab to detail
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = newM.(ui.Model)
-	if m.FocusState() != "detail" {
-		t.Fatalf("Expected focus 'detail' after Tab, got %q", m.FocusState())
-	}
-
-	// Tab back to tree so we can adjust ratio
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = newM.(ui.Model)
-
-	// Increase ratio to 0.8
+	// Increase ratio to 0.8 first
 	for i := 0; i < 8; i++ {
 		m = sendKey(t, m, ">")
 	}
 
-	// Tab to detail
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	// Enter to go to detail
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = newM.(ui.Model)
+	if m.FocusState() != "detail" {
+		t.Fatalf("Expected focus 'detail' after Enter, got %q", m.FocusState())
+	}
 
 	// Resize to trigger auto-hide while focused on detail.
 	// With ratio 0.8 at width 200: detail=38 -> auto-hide
@@ -972,7 +959,9 @@ func TestTreeDetailAutoHideFocusSnap(t *testing.T) {
 // ============================================================================
 
 // TestTreeViewTabTogglesFocusToDetail verifies Tab toggles focus from tree to detail (bd-y0m).
-func TestTreeViewTabTogglesFocusToDetail(t *testing.T) {
+// TestTreeViewTabFoldsInsteadOfTogglingFocus verifies Tab always folds
+// (CycleNodeVisibility) and never switches focus to detail (bd-lt1l).
+func TestTreeViewTabFoldsInsteadOfTogglingFocus(t *testing.T) {
 	issues := createTreeTestIssues() // epic-1 with children task-1, task-2
 	m := ui.NewModel(issues, "")
 	m = enterTreeView(t, m)
@@ -987,20 +976,20 @@ func TestTreeViewTabTogglesFocusToDetail(t *testing.T) {
 		t.Fatalf("expected focus 'tree', got %q", m.FocusState())
 	}
 
-	// Press Tab — should switch focus to detail
+	initialCount := m.TreeNodeCount()
+
+	// Press Tab — should fold (CycleNodeVisibility), NOT switch focus
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = newM.(ui.Model)
 
-	if m.FocusState() != "detail" {
-		t.Errorf("Tab should toggle focus to detail, got %q", m.FocusState())
+	if m.FocusState() != "tree" {
+		t.Errorf("Tab should keep focus on tree (fold), got %q", m.FocusState())
 	}
 
-	// Press Tab again — should switch focus back to tree
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = newM.(ui.Model)
-
-	if m.FocusState() != "tree" {
-		t.Errorf("Tab should toggle focus back to tree, got %q", m.FocusState())
+	// Node count should change (children collapsed)
+	afterTab := m.TreeNodeCount()
+	if afterTab == initialCount {
+		t.Errorf("Tab should cycle node visibility, but count unchanged at %d", initialCount)
 	}
 }
 
@@ -1117,7 +1106,9 @@ func TestTreeViewNumberKeysDontExpandLevels(t *testing.T) {
 
 // TestTreeViewTabInSplitViewTogglesFocus verifies Tab in split view still toggles
 // focus between tree and detail (context-dependent behavior).
-func TestTreeViewTabInSplitViewTogglesFocus(t *testing.T) {
+// TestTreeViewTabFoldsInSplitView verifies Tab always folds in split view,
+// never toggles focus between tree and detail (bd-lt1l).
+func TestTreeViewTabFoldsInSplitView(t *testing.T) {
 	issues := createTreeTestIssues()
 	m := ui.NewModel(issues, "")
 
@@ -1130,18 +1121,19 @@ func TestTreeViewTabInSplitViewTogglesFocus(t *testing.T) {
 		t.Fatal("Expected detail visible in split mode")
 	}
 
-	// Tab should toggle focus to detail in split mode
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = newM.(ui.Model)
-	if m.FocusState() != "detail" {
-		t.Errorf("Expected focus 'detail' after Tab in split mode, got %q", m.FocusState())
-	}
+	initialCount := m.TreeNodeCount()
 
-	// Tab again should return to tree
+	// Tab should fold, NOT toggle focus to detail
 	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	m = newM.(ui.Model)
 	if m.FocusState() != "tree" {
-		t.Errorf("Expected focus 'tree' after second Tab in split mode, got %q", m.FocusState())
+		t.Errorf("Expected focus to stay on 'tree' after Tab in split mode, got %q", m.FocusState())
+	}
+
+	// Node count should change (fold happened)
+	afterTab := m.TreeNodeCount()
+	if afterTab == initialCount {
+		t.Errorf("Tab should cycle node visibility in split mode, but count unchanged at %d", initialCount)
 	}
 }
 
