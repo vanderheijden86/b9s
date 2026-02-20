@@ -997,8 +997,19 @@ func (t *TreeModel) View() string {
 		sb.WriteString("\n")
 	}
 
+	// Count extra header lines that consume body space (bd-tf1v)
+	extraLines := len(stickyLines)
+	if t.xrayRoot != nil && t.xrayRoot.Issue != nil {
+		extraLines++
+	}
+
 	// Get visible range - O(1) calculation based on viewportOffset and height
 	start, end := t.visibleRange()
+
+	// Reduce visible nodes to compensate for sticky/xray lines (bd-tf1v)
+	if extraLines > 0 && end-start > extraLines {
+		end -= extraLines
+	}
 
 	// Compute max short ID width across visible nodes for column alignment (bd-uyzc)
 	maxIDWidth := 0

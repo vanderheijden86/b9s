@@ -4082,3 +4082,52 @@ func TestTreeNode_ShortIDAtEnd(t *testing.T) {
 		}
 	}
 }
+
+// TestTreeViewOutputFitsHeight verifies that the tree View() output never
+// exceeds t.height lines, even with sticky scroll lines present (bd-tf1v).
+func TestTreeViewOutputFitsHeight(t *testing.T) {
+	now := time.Now()
+	// Create a deep hierarchy: epic → task → subtask, so scrolling produces sticky lines
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic One", Status: model.StatusOpen, Priority: 1, IssueType: model.TypeEpic, CreatedAt: now},
+	}
+	// Add 30 child tasks under epic-1 to force scrolling
+	for i := 1; i <= 30; i++ {
+		issues = append(issues, model.Issue{
+			ID:        fmt.Sprintf("task-%d", i),
+			Title:     fmt.Sprintf("Task %d under epic", i),
+			Status:    model.StatusOpen,
+			Priority:  2,
+			IssueType: model.TypeTask,
+			CreatedAt: now.Add(-time.Duration(i) * time.Minute),
+			Dependencies: []*model.Dependency{
+				{IssueID: fmt.Sprintf("task-%d", i), DependsOnID: "epic-1", Type: model.DepParentChild},
+			},
+		})
+	}
+
+	theme := DefaultTheme(nil)
+	tree := NewTreeModel(theme)
+	tree.Build(issues)
+	viewHeight := 15
+	tree.SetSize(80, viewHeight)
+
+	// Scroll down to trigger sticky lines (epic-1 goes off-screen)
+	for i := 0; i < 20; i++ {
+		tree.MoveDown()
+	}
+
+	// Verify sticky lines exist
+	stickyLines := tree.StickyScrollLines()
+	if len(stickyLines) == 0 {
+		t.Fatal("expected sticky lines when scrolled past parent")
+	}
+
+	view := tree.View()
+	lines := strings.Split(strings.TrimRight(view, "\n"), "\n")
+
+	if len(lines) > viewHeight {
+		t.Errorf("tree View() output %d lines exceeds height %d (sticky lines: %d)",
+			len(lines), viewHeight, len(stickyLines))
+	}
+}
