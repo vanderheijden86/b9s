@@ -851,7 +851,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.backgroundWorker != nil {
 		switch msg.(type) {
-		case tea.KeyMsg, tea.MouseMsg:
+		case tea.KeyMsg:
 			m.backgroundWorker.recordActivity()
 		}
 	}
@@ -1949,49 +1949,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, cmd)
 				}
 			}
-		}
-
-	case tea.MouseMsg:
-		// Handle mouse wheel scrolling
-		switch msg.Button {
-		case tea.MouseButtonWheelUp:
-			// Scroll up based on current focus
-			switch m.focused {
-			case focusList:
-				if m.list.Index() > 0 {
-					m.list.Select(m.list.Index() - 1)
-					// Sync detail panel in split view mode
-					if m.isSplitView {
-						m.updateViewportContent()
-					}
-				}
-			case focusDetail:
-				m.viewport.ScrollUp(3)
-			case focusBoard:
-				m.board.MoveUp()
-			case focusTree:
-				m.tree.MoveUp()
-			}
-			return m, nil
-		case tea.MouseButtonWheelDown:
-			// Scroll down based on current focus
-			switch m.focused {
-			case focusList:
-				if m.list.Index() < len(m.list.Items())-1 {
-					m.list.Select(m.list.Index() + 1)
-					// Sync detail panel in split view mode
-					if m.isSplitView {
-						m.updateViewportContent()
-					}
-				}
-			case focusDetail:
-				m.viewport.ScrollDown(3)
-			case focusBoard:
-				m.board.MoveDown()
-			case focusTree:
-				m.tree.MoveDown()
-			}
-			return m, nil
 		}
 
 	case tea.WindowSizeMsg:
@@ -3500,6 +3457,15 @@ func (m *Model) renderFooter() string {
 			{"?", "help"},
 			{"q", "quit"},
 		}
+	}
+
+	// Add picker toggle hint if multiple projects exist (bd-e4un)
+	if len(m.allProjects) > 1 {
+		pickerLabel := "hide"
+		if !m.pickerVisible {
+			pickerLabel = "show"
+		}
+		hints = append(hints, hint{"P", pickerLabel})
 	}
 
 	var hintParts []string
