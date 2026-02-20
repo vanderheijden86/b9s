@@ -1338,19 +1338,29 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	fixedWidth := prefixWidth + 1 + 1 + typeIconWidth + statusBadgeWidth + 1
 
 	// ── Right side: age + short ID (bd-03l) ──
+	// Use dark text when selected (highlight background needs contrast, bd-hdgh)
 	rightWidth := 0
 	var rightParts []string
+	darkFg := lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}
 
 	if width > 60 {
 		ageStr := FormatTimeRel(issue.CreatedAt)
-		rightParts = append(rightParts, t.theme.MutedText.Render(fmt.Sprintf("%8s", ageStr)))
+		ageStyle := t.theme.MutedText
+		if isSelected {
+			ageStyle = r.NewStyle().Foreground(darkFg)
+		}
+		rightParts = append(rightParts, ageStyle.Render(fmt.Sprintf("%8s", ageStr)))
 		rightWidth += 9
 	}
 
 	// Short ID suffix at the far right, right-aligned to maxIDWidth for column alignment (bd-03l, bd-uyzc)
 	shortID := shortIDSuffix(issue.ID)
 	paddedID := fmt.Sprintf("%*s", maxIDWidth, shortID)
-	rightParts = append(rightParts, t.theme.SecondaryText.Render(paddedID))
+	idStyle := t.theme.SecondaryText
+	if isSelected {
+		idStyle = r.NewStyle().Foreground(darkFg)
+	}
+	rightParts = append(rightParts, idStyle.Render(paddedID))
 	rightWidth += maxIDWidth + 1
 
 	// ── Bookmark indicator (bd-k4n) ──
@@ -1383,7 +1393,7 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 
 	titleStyle := r.NewStyle()
 	if isSelected {
-		titleStyle = titleStyle.Foreground(t.theme.Primary).Bold(true)
+		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}).Bold(true)
 	} else if isCurrentMatch {
 		// Current search match: bright yellow foreground + bold
 		titleStyle = titleStyle.
@@ -1396,33 +1406,46 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	} else {
 		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"})
 	}
-	leftSide.WriteString(titleStyle.Render(title))
 
 	// ── Right side ──
 	rightSide := strings.Join(rightParts, " ")
-
-	// ── Combine: left + padding + right ──
-	leftLen := lipgloss.Width(leftSide.String())
 	rightLen := lipgloss.Width(rightSide)
-	padding := width - leftLen - rightLen
+
+	// ── Build highlighted portion (title + padding + right) separately (bd-hdgh) ──
+	// The highlight background starts at the title, not the full row.
+	leftLen := lipgloss.Width(leftSide.String())
+	padding := width - leftLen - titleWidth - rightLen - 2 // -2 for spaces around right
 	if padding < 0 {
 		padding = 0
 	}
 
-	row := leftSide.String() + strings.Repeat(" ", padding) + rightSide
+	// Title portion: title + padding + right side
+	titlePortion := titleStyle.Render(title) + strings.Repeat(" ", padding) + " " + rightSide
 
-	// Apply row width clamping (bd-hdgh)
-	rowStyle := r.NewStyle().Width(width).MaxWidth(width)
-	row = rowStyle.Render(row)
-
-	// For selected rows, inject the background ANSI code throughout the string
-	// so it persists through inner SGR resets from styled segments (bd-hdgh)
 	if isSelected {
+		// Calculate remaining width for the highlighted portion
+		highlightWidth := width - leftLen
+		if highlightWidth < 1 {
+			highlightWidth = 1
+		}
+		// Pad to fill the rest of the row
+		visualW := lipgloss.Width(titlePortion)
+		if visualW < highlightWidth {
+			titlePortion += strings.Repeat(" ", highlightWidth-visualW)
+		}
+		// Inject background through all inner resets so it spans the full title area
 		bgSeq := bgSeqFromColor(t.theme.Highlight, r)
 		if bgSeq != "" {
-			row = injectBackground(row, bgSeq)
+			titlePortion = injectBackground(titlePortion, bgSeq)
 		}
 	}
+
+	leftSide.WriteString(titlePortion)
+	row := leftSide.String()
+
+	// Apply row width clamping
+	rowStyle := r.NewStyle().Width(width).MaxWidth(width)
+	row = rowStyle.Render(row)
 
 	return row
 }
