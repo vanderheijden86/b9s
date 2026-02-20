@@ -165,15 +165,15 @@ func (t Theme) GetStatusColor(s string) lipgloss.AdaptiveColor {
 func (t Theme) GetTypeIcon(typ string) (string, lipgloss.AdaptiveColor) {
 	switch typ {
 	case "bug":
-		return "B", t.Bug
+		return "●", t.Bug
 	case "feature":
-		return "F", t.Feature
+		return "▲", t.Feature
 	case "task":
-		return "T", t.Task
+		return "✔", t.Task
 	case "epic":
-		return "E", t.Epic
+		return "♦", t.Epic // 1-cell diamond (⚡ is 2 cells, misaligns)
 	case "chore":
-		return "C", t.Chore
+		return "○", t.Chore
 	default:
 		return "·", t.Subtext
 	}

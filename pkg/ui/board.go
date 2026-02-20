@@ -1316,7 +1316,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	// ══════════════════════════════════════════════════════════════════════════
 	// LINE 1: Type icon + Priority (P0/P1/P2) + ID + Age with color (bv-1daf)
 	// ══════════════════════════════════════════════════════════════════════════
-	typeBadge := RenderTypeBadge(string(issue.IssueType))
+	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
 
 	// Priority as P0/P1/P2 text (clearer than emoji flame levels)
 	prioText := formatPriority(issue.Priority)
@@ -1328,7 +1328,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	}
 
 	// Truncate ID for narrow cards - reserve space for age indicator
-	maxIDLen := width - 14 // Badge(1) + space + P#(2) + space + age(6) + spacing
+	maxIDLen := width - 14 // Icon(1) + space + P#(2) + space + age(6) + spacing
 	if maxIDLen < 6 {
 		maxIDLen = 6
 	}
@@ -1343,7 +1343,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	ageStyled := t.Renderer.NewStyle().Foreground(ageColor).Render(ageText)
 
 	line1 := fmt.Sprintf("%s %s %s %s",
-		typeBadge,
+		t.Renderer.NewStyle().Foreground(iconColor).Render(icon),
 		prioStyle.Render(prioText),
 		t.Renderer.NewStyle().Bold(true).Foreground(t.Secondary).Render(displayID),
 		ageStyled,
@@ -1485,7 +1485,7 @@ func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) s
 	// ══════════════════════════════════════════════════════════════════════════
 	// HEADER: Type icon + Priority + ID + Expand indicator
 	// ══════════════════════════════════════════════════════════════════════════
-	typeBadge := RenderTypeBadge(string(issue.IssueType))
+	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
 	prioText := formatPriority(issue.Priority)
 	prioStyle := t.Renderer.NewStyle().Bold(true)
 	if issue.Priority <= 1 {
@@ -1495,7 +1495,7 @@ func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) s
 	}
 
 	header := fmt.Sprintf("%s %s %s ▼",
-		typeBadge,
+		t.Renderer.NewStyle().Foreground(iconColor).Render(icon),
 		prioStyle.Render(prioText),
 		t.Renderer.NewStyle().Bold(true).Foreground(t.Primary).Render(issue.ID),
 	)
@@ -1646,8 +1646,8 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 			var content strings.Builder
 
 			// Header with ID and type
-			typeChar, _ := t.GetTypeIcon(string(issue.IssueType))
-			content.WriteString(fmt.Sprintf("## [%s] %s\n\n", typeChar, issue.ID))
+			icon, _ := t.GetTypeIcon(string(issue.IssueType))
+			content.WriteString(fmt.Sprintf("## %s %s\n\n", icon, issue.ID))
 
 			// Title
 			content.WriteString(fmt.Sprintf("**%s**\n\n", issue.Title))
