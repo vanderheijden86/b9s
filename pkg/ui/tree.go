@@ -212,11 +212,10 @@ const (
 	TreeModeBlocking                      // blocking deps (future)
 )
 
-// selectionGutterWidth is the width reserved on the left of every tree row
-// so the Selected style's left border (1 char) + PaddingLeft(1) doesn't shift
-// the tree connectors out of alignment. Non-selected rows get equivalent
-// blank padding. Must match theme.Selected border + padding geometry.
-const selectionGutterWidth = 2
+// selectionGutterWidth is the width reserved on the left of every tree row.
+// Set to 0 since we now use full-line background highlighting instead of
+// a left border gutter (bd-hdgh).
+const selectionGutterWidth = 0
 
 // IssueTreeNode represents a node in the hierarchical issue tree
 type IssueTreeNode struct {
@@ -990,9 +989,7 @@ func (t *TreeModel) View() string {
 
 	// Render sticky scroll lines if parent is off-screen (bd-2z9)
 	stickyLines := t.StickyScrollLines()
-	gutterPad := strings.Repeat(" ", selectionGutterWidth)
 	for _, stickyLine := range stickyLines {
-		sb.WriteString(gutterPad)
 		sb.WriteString(stickyLine)
 		sb.WriteString("\n")
 	}
@@ -1034,19 +1031,25 @@ func (t *TreeModel) View() string {
 		isSelected := i == t.cursor
 		line := t.renderNode(node, isSelected, maxIDWidth)
 
+		rowWidth := t.width - 1
+		if rowWidth <= 0 {
+			rowWidth = 80
+		}
 		if isSelected {
-			// Highlight selected row — the Selected style's left border+padding
-			// provides the gutter naturally (bd-6yz)
-			line = t.theme.Selected.Render(line)
+			// Full-line background highlight (bd-hdgh)
+			rowStyle := t.theme.Renderer.NewStyle().
+				Width(rowWidth).MaxWidth(rowWidth).
+				Background(t.theme.Highlight).Bold(true)
+			line = rowStyle.Render(line)
 		} else {
-			// Non-selected rows get blank gutter padding to keep tree
-			// connectors aligned with the selected row (bd-6yz)
-			line = strings.Repeat(" ", selectionGutterWidth) + line
+			// Non-selected rows get same width for alignment (bd-hdgh)
+			rowStyle := t.theme.Renderer.NewStyle().
+				Width(rowWidth).MaxWidth(rowWidth)
 			if t.IsFilterDimmed(node) {
 				// Context ancestors shown with muted/faint styling (bd-05v)
-				dimStyle := t.theme.Renderer.NewStyle().Foreground(t.theme.Muted).Faint(true)
-				line = dimStyle.Render(line)
+				rowStyle = rowStyle.Foreground(t.theme.Muted).Faint(true)
 			}
+			line = rowStyle.Render(line)
 		}
 
 		sb.WriteString(line)
@@ -1219,12 +1222,12 @@ func (t *TreeModel) RenderHeader() string {
 	}
 
 	// Build left side to match row column positions:
-	// gutter(2) + expand(1) + space(1) + icon(1) + space(1) = 6 chars before STATUS
-	leftPrefix := "  " + modeBadge + filterBadge
+	// expand(1) + space(1) + icon(1) + space(1) = 4 chars before STATUS (bd-hdgh)
+	leftPrefix := modeBadge + filterBadge
 	leftPrefixWidth := lipgloss.Width(leftPrefix)
 
-	// Pad to align STATUS with the status badge column (position 6 from content start)
-	statusCol := selectionGutterWidth + 1 + 1 + 1 + 1 // gutter + expand + space + icon + space
+	// Pad to align STATUS with the status badge column
+	statusCol := 1 + 1 + 1 + 1 // expand + space + icon + space
 	if leftPrefixWidth < statusCol {
 		leftPrefix += strings.Repeat(" ", statusCol-leftPrefixWidth)
 	}
