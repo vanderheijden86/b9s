@@ -1349,15 +1349,15 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 		rightWidth += 14 // 12 age + 2 gap before ID
 	}
 
-	// Short ID suffix at the far right, right-aligned to maxIDWidth for column alignment (bd-03l, bd-uyzc)
+	// Short ID suffix at the far right, left-aligned to maxIDWidth for column alignment (bd-03l, bd-uyzc)
 	shortID := shortIDSuffix(issue.ID)
-	paddedID := fmt.Sprintf("%*s", maxIDWidth, shortID)
+	paddedID := fmt.Sprintf("%-*s", maxIDWidth, shortID)
 	idStyle := t.theme.SecondaryText
 	if isSelected {
 		idStyle = r.NewStyle().Foreground(darkFg)
 	}
 	rightParts = append(rightParts, idStyle.Render(paddedID))
-	rightWidth += maxIDWidth + 1
+	rightWidth += maxIDWidth
 
 	// ── Bookmark indicator (bd-k4n) ──
 	isBookmarked := t.bookmarks[issue.ID]
