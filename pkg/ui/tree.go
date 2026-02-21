@@ -1206,9 +1206,18 @@ func (t *TreeModel) RenderHeader() string {
 		filterBadge = fmt.Sprintf("[%s] ", strings.ToUpper(t.currentFilter))
 	}
 
+	// Left: badges + "Issue" label aligned to where title text starts in rows
+	// Row left side at depth 0: expand(1) + space(1) + icon(1) + space(1) + status(4) + space(1) = 9
 	leftPrefix := modeBadge + filterBadge
+	leftPrefixWidth := lipgloss.Width(leftPrefix)
+	issueCol := 9 // where the title column starts in rows
+	if leftPrefixWidth < issueCol {
+		leftPrefix += strings.Repeat(" ", issueCol-leftPrefixWidth)
+	}
+	leftPrefix += "Issue"
+	leftPrefixWidth = lipgloss.Width(leftPrefix)
 
-	// Right side: [sort label] padded to age column width, then ID label right-aligned
+	// Right side: sort badge (left-aligned in age column) + ID label (left-aligned)
 	sortBadge := fmt.Sprintf("[%s %s]", t.sortField.String(), t.sortDirection.Indicator())
 
 	// Compute maxIDWidth from visible nodes (same as View does)
@@ -1225,13 +1234,13 @@ func (t *TreeModel) RenderHeader() string {
 		}
 	}
 
-	// Right side matches row: age(12) + space(2) + ID(maxIDWidth)
-	rightID := fmt.Sprintf("%*s", maxIDWidth, "ID")
-	rightSide := fmt.Sprintf("%12s  %s", sortBadge, rightID)
+	// Right side matches row: age(12) + gap(2) + ID(maxIDWidth)
+	// Left-align sort badge in the 12-char age column, left-align ID in its column
+	rightSide := fmt.Sprintf("%-12s  %-*s", sortBadge, maxIDWidth, "ID")
 	rightWidth := lipgloss.Width(rightSide)
 
-	// Fill space between left badges and right columns
-	fillWidth := width - lipgloss.Width(leftPrefix) - rightWidth
+	// Fill space between "Issue" label and right columns
+	fillWidth := width - leftPrefixWidth - rightWidth
 	if fillWidth < 0 {
 		fillWidth = 0
 	}
