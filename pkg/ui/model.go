@@ -2879,8 +2879,7 @@ func (m Model) renderListWithHeader() string {
 
 	// Render column header
 	headerStyle := t.Renderer.NewStyle().
-		Background(t.Highlight).
-		Foreground(lipgloss.AdaptiveColor{Light: "#101010", Dark: "#101010"}).
+		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
 		Bold(true).
 		Width(m.width - 2)
 
@@ -2968,8 +2967,7 @@ func (m Model) renderSplitView() string {
 
 	// Create header row for list
 	headerStyle := t.Renderer.NewStyle().
-		Background(t.Highlight).
-		Foreground(lipgloss.AdaptiveColor{Light: "#101010", Dark: "#101010"}).
+		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
 		Bold(true).
 		Width(listInnerWidth)
 

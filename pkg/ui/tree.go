@@ -847,7 +847,7 @@ func (t *TreeModel) RenderSortPopup() string {
 
 	// Wrap in a bordered box
 	boxStyle := r.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.NormalBorder()).
 		BorderForeground(t.theme.Primary).
 		Padding(0, 1)
 
@@ -1189,8 +1189,7 @@ func (t *TreeModel) RenderHeader() string {
 		width = 80
 	}
 	headerStyle := t.theme.Renderer.NewStyle().
-		Background(t.theme.Primary).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
 		Bold(true).
 		Width(width)
 
@@ -2993,4 +2992,3 @@ func (t *TreeModel) XRayTitle() string {
 	}
 	return ""
 }
-
