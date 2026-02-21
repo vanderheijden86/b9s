@@ -3412,6 +3412,7 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"1-9", "project"},
 			{"tab", "fold"},
+			{"⇧tab", "fold all"},
 			{"enter", "detail"},
 			{"j/k", "nav"},
 			{"s", "sort"},
@@ -3423,6 +3424,7 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"1-9", "project"},
 			{"tab", "fold"},
+			{"⇧tab", "fold all"},
 			{"enter", "detail"},
 			{"j/k", "card"},
 			{"m", "move"},
