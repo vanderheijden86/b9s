@@ -1909,6 +1909,101 @@ func TestTreeFilterNoDimmedWithoutFilter(t *testing.T) {
 	}
 }
 
+// TestTreeTabCollapseWorksWhenFiltered verifies that TAB collapse works on
+// context ancestor nodes when a filter is active (bd-thpt).
+// Bug: when filtered, context ancestors always show children because
+// appendFilteredVisible checks (node.Expanded || isContext), so collapsing
+// via TAB (setting Expanded=false) has no visual effect.
+func TestTreeTabCollapseWorksWhenFiltered(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusClosed, CreatedAt: now},
+		{
+			ID: "task-open", Title: "Open Task", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-open", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Filter to "open" - task-open matches, epic-1 is context ancestor
+	tree.ApplyFilter("open")
+
+	// Both nodes should be visible: epic-1 (context) + task-open (match)
+	if tree.NodeCount() != 2 {
+		t.Fatalf("expected 2 visible nodes after open filter, got %d", tree.NodeCount())
+	}
+
+	// Cursor should be on epic-1 (first node)
+	if sel := tree.SelectedNode(); sel == nil || sel.Issue.ID != "epic-1" {
+		t.Fatalf("expected cursor on epic-1, got %v", sel)
+	}
+
+	// TAB to collapse epic-1
+	tree.CycleNodeVisibility()
+
+	// After collapse, only epic-1 should be visible (child hidden)
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 visible node after TAB collapse on context ancestor, got %d", tree.NodeCount())
+		for i := 0; i < tree.NodeCount(); i++ {
+			t.Logf("  visible[%d]: %s", i, tree.flatList[i].Issue.ID)
+		}
+	}
+
+	// TAB again to re-expand
+	tree.CycleNodeVisibility()
+
+	// Should be back to 2 nodes
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes after TAB re-expand, got %d", tree.NodeCount())
+	}
+}
+
+// TestTreeTabCollapseWorksWhenFilteredMatchAndContext verifies that TAB collapse
+// works when a node is both a filter match AND a context ancestor (bd-thpt).
+// Example: open epic with open children, filtered to "open".
+func TestTreeTabCollapseWorksWhenFilteredMatchAndContext(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{ID: "epic-1", Title: "Epic", Priority: 1, IssueType: model.TypeEpic, Status: model.StatusOpen, CreatedAt: now},
+		{
+			ID: "task-1", Title: "Task 1", Priority: 2, IssueType: model.TypeTask, Status: model.StatusOpen, CreatedAt: now.Add(time.Hour),
+			Dependencies: []*model.Dependency{{IssueID: "task-1", DependsOnID: "epic-1", Type: model.DepParentChild}},
+		},
+	}
+
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	// Filter to "open" - both match; epic-1 is also a context ancestor
+	tree.ApplyFilter("open")
+
+	initialCount := tree.NodeCount()
+	if initialCount != 2 {
+		t.Fatalf("expected 2 visible nodes, got %d", initialCount)
+	}
+
+	// Cursor on epic-1
+	if sel := tree.SelectedNode(); sel == nil || sel.Issue.ID != "epic-1" {
+		t.Fatalf("expected cursor on epic-1, got %v", sel)
+	}
+
+	// TAB to collapse
+	tree.CycleNodeVisibility()
+
+	if tree.NodeCount() != 1 {
+		t.Errorf("expected 1 visible node after TAB collapse (match+context), got %d", tree.NodeCount())
+	}
+
+	// TAB to re-expand
+	tree.CycleNodeVisibility()
+
+	if tree.NodeCount() != 2 {
+		t.Errorf("expected 2 visible nodes after re-expand, got %d", tree.NodeCount())
+	}
+}
+
 // TestTreeSetGlobalIssueMap verifies the global issue map is stored
 func TestTreeSetGlobalIssueMap(t *testing.T) {
 	tree := NewTreeModel(newTreeTestTheme())

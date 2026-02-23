@@ -909,6 +909,15 @@ func (t *TreeModel) ApplyFilter(filter string) {
 		}
 	}
 
+	// Expand context ancestors so matching descendants are visible (bd-thpt).
+	// This replaces the old approach of force-showing children in
+	// appendFilteredVisible, which prevented TAB collapse from working.
+	for id := range t.contextAncestors {
+		if node, ok := t.issueMap[id]; ok {
+			node.Expanded = true
+		}
+	}
+
 	t.rebuildFlatList()
 }
 
@@ -2203,9 +2212,10 @@ func (t *TreeModel) appendFilteredVisible(node *IssueTreeNode) {
 
 	t.flatList = append(t.flatList, node)
 
-	// Context ancestors show their children even if not explicitly expanded
-	// to ensure matching descendants are visible
-	if node.Expanded || isContext {
+	// Respect node.Expanded state so TAB collapse works (bd-thpt).
+	// Context ancestors are expanded when the filter is first applied
+	// (in ApplyFilter), but the user can collapse them via TAB.
+	if node.Expanded {
 		for _, child := range node.Children {
 			t.appendFilteredVisible(child)
 		}
@@ -2861,6 +2871,13 @@ func (t *TreeModel) ApplyAdvancedFilter(filter string) {
 				}
 				ancestor = ancestor.Parent
 			}
+		}
+	}
+
+	// Expand context ancestors so matching descendants are visible (bd-thpt).
+	for id := range t.contextAncestors {
+		if node, ok := t.issueMap[id]; ok {
+			node.Expanded = true
 		}
 	}
 
