@@ -821,6 +821,7 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
 	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
+	m.issueWriter.SetWorkDir(projectPath)
 	projects, errs := config.DiscoverProjectsWithErrors(cfg)
 	for _, e := range errs {
 		debug.Log("project discovery: skipping %s", e)
@@ -1196,6 +1197,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activeProjectName = msg.Project.Name
 		m.activeProjectPath = msg.Project.ResolvedPath()
 		m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(msg.Project.Name)
+		m.issueWriter.SetWorkDir(msg.Project.ResolvedPath())
 		// Determine new beads path
 		beadsDir := filepath.Join(msg.Project.ResolvedPath(), ".beads")
 		newPath, err := loader.FindJSONLPath(beadsDir)

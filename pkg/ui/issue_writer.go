@@ -32,6 +32,7 @@ type BdResultMsg struct {
 type IssueWriter struct {
 	bdPath    string
 	available bool
+	workDir   string // Project directory for bd commands; empty = inherit process CWD
 }
 
 // NewIssueWriter creates a new IssueWriter, detecting bd availability
@@ -46,6 +47,12 @@ func NewIssueWriter() *IssueWriter {
 // IsAvailable returns whether the bd CLI was found
 func (w *IssueWriter) IsAvailable() bool {
 	return w.available
+}
+
+// SetWorkDir sets the working directory for bd commands.
+// When set, all bd commands run in this directory instead of the process CWD.
+func (w *IssueWriter) SetWorkDir(dir string) {
+	w.workDir = dir
 }
 
 // UpdateIssue runs bd update <id> with the given field values
@@ -115,8 +122,12 @@ func (w *IssueWriter) buildCloseArgs(id, reason string) []string {
 // runBdCmd executes a bd command asynchronously and returns the result
 func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) tea.Cmd {
 	bdPath := w.bdPath
+	workDir := w.workDir
 	return func() tea.Msg {
 		cmd := exec.Command(bdPath, args...)
+		if workDir != "" {
+			cmd.Dir = workDir
+		}
 		output, err := cmd.CombinedOutput()
 		outStr := strings.TrimSpace(string(output))
 
