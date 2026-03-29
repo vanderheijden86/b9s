@@ -146,6 +146,29 @@ func main() {
 	beadsDir, _ := loader.GetBeadsDir("")
 	beadsPath, _ := loader.FindJSONLPath(beadsDir)
 
+	// Detect source type and create Dolt watcher if applicable
+	detectedSourceType := datasource.SourceTypeJSONLLocal
+	var doltWatcher *datasource.DoltWatcher
+	if sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
+		BeadsDir:               beadsDir,
+		ValidateAfterDiscovery: false,
+	}); discErr == nil {
+		for i, s := range sources {
+			if s.Type == datasource.SourceTypeDolt {
+				detectedSourceType = datasource.SourceTypeDolt
+				dw, dwErr := datasource.NewDoltWatcher(sources[i], 500*time.Millisecond)
+				if dwErr == nil {
+					if err := dw.Start(); err != nil {
+						dw.Stop()
+					} else {
+						doltWatcher = dw
+					}
+				}
+				break
+			}
+		}
+	}
+
 	// Automatically ensure .bv/ is in .gitignore
 	projectDir := filepath.Dir(beadsDir)
 	_ = loader.EnsureBVInGitignore(projectDir)
@@ -200,7 +223,10 @@ func main() {
 	projectPath := projectDir
 
 	// Launch TUI
-	m := ui.NewModel(issues, beadsPath).WithConfig(appCfg, projectName, projectPath)
+	m := ui.NewModel(issues, beadsPath).
+		WithSourceType(detectedSourceType).
+		WithDoltWatcher(doltWatcher).
+		WithConfig(appCfg, projectName, projectPath)
 	defer m.Stop()
 
 	if err := runTUIProgram(m); err != nil {
