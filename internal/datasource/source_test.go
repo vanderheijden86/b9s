@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -764,6 +765,24 @@ func TestDiscoverSources_Dolt(t *testing.T) {
 	}
 }
 
+// TestLoadFromSource_DoltType verifies that LoadFromSource dispatches to DoltReader
+// for SourceTypeDolt sources. It expects a connection error (not "unknown source type")
+// when the target port is not listening.
+func TestLoadFromSource_DoltType(t *testing.T) {
+	source := DataSource{
+		Type:  SourceTypeDolt,
+		Path:  "127.0.0.1:19999",
+		Valid: true,
+	}
+	_, err := LoadFromSource(source)
+	if err == nil {
+		t.Fatal("Expected error connecting to non-existent Dolt server")
+	}
+	if !strings.Contains(err.Error(), "Dolt") {
+		t.Errorf("Expected error to mention Dolt, got: %v", err)
+	}
+}
+
 // TestDiscoverSources_DoltNotDetectedWithoutMetadata tests that no Dolt source is
 // detected when .beads/dolt/ exists but metadata.json is absent.
 func TestDiscoverSources_DoltNotDetectedWithoutMetadata(t *testing.T) {
@@ -791,5 +810,21 @@ func TestDiscoverSources_DoltNotDetectedWithoutMetadata(t *testing.T) {
 		if s.Type == SourceTypeDolt {
 			t.Error("Dolt source should not be detected without metadata.json")
 		}
+	}
+}
+
+// TestValidateSource_Dolt_NoServer verifies that validation fails cleanly when
+// no Dolt server is reachable on the given address.
+func TestValidateSource_Dolt_NoServer(t *testing.T) {
+	source := DataSource{
+		Type: SourceTypeDolt,
+		Path: "127.0.0.1:19999",
+	}
+	err := ValidateSource(&source)
+	if err == nil {
+		t.Fatal("Expected validation to fail with no server")
+	}
+	if source.Valid {
+		t.Fatal("Expected source.Valid to be false")
 	}
 }
