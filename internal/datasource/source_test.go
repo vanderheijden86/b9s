@@ -717,3 +717,79 @@ func createEmptySQLiteDB(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 }
+
+// TestDiscoverSources_Dolt tests that a Dolt source is detected when metadata.json
+// specifies "database": "dolt" and a .beads/dolt/ directory exists.
+func TestDiscoverSources_Dolt(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write metadata.json indicating dolt backend
+	metadataPath := filepath.Join(beadsDir, "metadata.json")
+	if err := os.WriteFile(metadataPath, []byte(`{"database": "dolt"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the dolt directory (used for modtime)
+	doltDir := filepath.Join(beadsDir, "dolt")
+	if err := os.MkdirAll(doltDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := DiscoverSources(DiscoveryOptions{
+		BeadsDir:               beadsDir,
+		ValidateAfterDiscovery: false,
+	})
+	if err != nil {
+		t.Fatalf("DiscoverSources failed: %v", err)
+	}
+
+	found := false
+	for _, s := range sources {
+		if s.Type == SourceTypeDolt {
+			found = true
+			if s.Priority != PriorityDolt {
+				t.Errorf("Expected priority %d, got %d", PriorityDolt, s.Priority)
+			}
+			if s.Path != "127.0.0.1:3306" {
+				t.Errorf("Expected path 127.0.0.1:3306, got %s", s.Path)
+			}
+		}
+	}
+	if !found {
+		t.Error("Dolt source not found")
+	}
+}
+
+// TestDiscoverSources_DoltNotDetectedWithoutMetadata tests that no Dolt source is
+// detected when .beads/dolt/ exists but metadata.json is absent.
+func TestDiscoverSources_DoltNotDetectedWithoutMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create dolt directory but NO metadata.json
+	doltDir := filepath.Join(beadsDir, "dolt")
+	if err := os.MkdirAll(doltDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := DiscoverSources(DiscoveryOptions{
+		BeadsDir:               beadsDir,
+		ValidateAfterDiscovery: false,
+	})
+	if err != nil {
+		t.Fatalf("DiscoverSources failed: %v", err)
+	}
+
+	for _, s := range sources {
+		if s.Type == SourceTypeDolt {
+			t.Error("Dolt source should not be detected without metadata.json")
+		}
+	}
+}
