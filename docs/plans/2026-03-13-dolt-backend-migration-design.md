@@ -1,8 +1,8 @@
 # Dolt Backend Migration Design
 
-**Date:** 2026-03-13
-**Status:** Deferred (capturing context for future implementation)
-**Beads task:** bd-18c8
+**Date:** 2026-03-13 (updated 2026-03-29)
+**Status:** Active implementation
+**Beads epic:** bd-7uea (supersedes bd-18c8)
 
 ## Table of Contents
 
@@ -15,6 +15,8 @@
 - [Current b9s Data Layer Architecture](#current-b9s-data-layer-architecture)
 - [The Dilemma for b9s](#the-dilemma-for-b9s)
 - [Migration Strategy](#migration-strategy)
+- [Research Findings (2026-03-29)](#research-findings-2026-03-29)
+- [Revised Migration Plan](#revised-migration-plan)
 - [Open Questions](#open-questions)
 - [References](#references)
 
@@ -422,15 +424,165 @@ The file watcher won't work for Dolt (no file changes to detect). Options:
 
 ---
 
+## Research Findings (2026-03-29)
+
+Investigation of the upstream `bd` repo (v0.62.0, latest as of 2026-03-22) resolved several open questions from the original design and eliminated the JSONL-as-intermediary approach.
+
+### Finding 1: JSONL-Only Mode No Longer Exists
+
+The progression was JSONL -> SQLite -> Dolt. By `bd` v0.60, all legacy sync/JSONL scaffolding was removed:
+
+- `bd sync` is a **deprecated no-op** since v0.51.0
+- There is no `backend: jsonl` config option
+- `bd init` creates a Dolt database, period
+- The only backend choices are `dolt.mode: embedded` (default) vs `dolt.mode: server`
+
+JSONL survives only as an interchange/export format:
+- `bd export` writes JSONL on demand (manual)
+- `bd init --from-jsonl` bootstraps a Dolt DB from JSONL
+- `export.auto: true` config writes JSONL after mutations (disabled by default, throttled to 60s)
+
+**Implication:** There is no JSONL-only user population to support. Dolt reads are not optional.
+
+### Finding 2: bd Does NOT Write JSONL After Mutations
+
+This is the critical finding. After every `bd update`/`create`/`close`, the `PersistentPostRun` chain executes:
+
+```
+bd update <id> --status=in_progress
+       |
+       v
+  Writes to Dolt only
+       |
+       v
+  PersistentPostRun:
+    1. maybeAutoCommit()    [dolt.auto-commit: on]      -> Dolt VC commit (default: ON)
+    2. maybeAutoBackup()    [backup.enabled: false]      -> Dolt backup (default: OFF)
+    3. maybeAutoExport()    [export.auto: false]          -> JSONL export (default: OFF)
+    4. maybeAutoPush()      [dolt.auto-push: auto]       -> Dolt remote push
+```
+
+Even with `export.auto: true`, the JSONL export is:
+- Throttled to 60s intervals (`export.interval: 60s`)
+- Written to `.beads/export.jsonl` (not `issues.jsonl`)
+- A separate config the user must opt into
+
+**Implication:** The "just keep reading JSONL" approach is dead. After a `bd` upgrade, there is no JSONL to read. The read-after-write cycle breaks:
+
+```
+User edits in b9s -> bd update -> Dolt updated -> JSONL not written -> nothing to watch -> UI stale
+```
+
+### Finding 3: No Fallback Mode Needed
+
+Since Dolt is the sole backend, there is no scenario where we detect Dolt mode but need to fall back to JSONL:
+
+- If `bd` is Dolt-mode: read from Dolt via MySQL protocol
+- If `bd` is an older version using JSONL/SQLite: existing readers handle it
+- There is no "Dolt detected but server down, try JSONL" case because there is no JSONL being written
+
+The appropriate failure mode is: **connect to Dolt or show an error**. A stale JSONL file from before migration would be worse than an error (silent stale data).
+
+### Finding 4: Embedded vs Server is a bd Concern, Not b9s
+
+Both embedded and server mode expose the MySQL wire protocol:
+- **Embedded mode:** `bd` runs the Dolt engine in-process. Single writer. No external server.
+- **Server mode:** `dolt sql-server` on port 3306. Multi-writer. `bd` auto-starts it.
+
+For b9s, both modes look identical: connect to MySQL on localhost:3306. The server lifecycle is managed by `bd`, not by b9s. If the server isn't running, `bd` commands also fail, so the user has a bigger problem.
+
+### Finding 5: Write Path Unchanged
+
+b9s delegates all writes to `bd` CLI (`exec.Command("bd", args...)`). This works identically with Dolt. No write-path changes needed.
+
+---
+
+## Revised Migration Plan
+
+Based on the research findings, the original 5-phase plan simplifies. The JSONL shim approach (Option B) is eliminated. Fallback logic is unnecessary.
+
+### Phase 1: DoltReader via MySQL Protocol
+
+Add `go-sql-driver/mysql` dependency and create `internal/datasource/dolt.go`:
+
+```go
+type DoltReader struct {
+    db     *sql.DB
+    source DataSource
+}
+
+func NewDoltReader(source DataSource) (*DoltReader, error) {
+    // Connect to localhost:3306 (or configured port)
+    // Read-only connection (no writes from b9s)
+    dsn := "root@tcp(127.0.0.1:3306)/beads?parseTime=true&readOnly=true"
+    db, err := sql.Open("mysql", dsn)
+    // ...
+}
+
+func (r *DoltReader) LoadIssues() ([]model.Issue, error) {
+    // Query issues table, load deps + comments
+    // Reuse patterns from SQLiteReader (same SQL, different driver)
+}
+```
+
+The SQLiteReader already demonstrates the pattern: same tables, different driver. Port the queries.
+
+### Phase 2: Discovery Update
+
+Update `DiscoverSources()` to detect Dolt:
+
+```
+Detection signals (check in order):
+1. .beads/metadata.json contains "database": "dolt"
+2. .beads/dolt/ directory exists
+3. .beads/config.yaml contains dolt-related config
+```
+
+Add `SourceTypeDolt` with priority 110 (above SQLite's 100). When Dolt is detected, it short-circuits: no need to discover JSONL/SQLite sources.
+
+### Phase 3: Polling Watcher for Dolt
+
+Replace file-based watcher with DB polling when source is Dolt:
+
+```go
+// Poll Dolt for changes using commit hash comparison
+func (w *DoltWatcher) poll() bool {
+    var hash string
+    w.db.QueryRow("SELECT HASHOF('HEAD')").Scan(&hash)
+    if hash != w.lastHash {
+        w.lastHash = hash
+        return true  // changed
+    }
+    return false
+}
+```
+
+Using Dolt's `HASHOF('HEAD')` is ideal: single query, detects any change (issues, deps, comments), no per-table polling needed. The existing watcher already supports polling mode as a fallback for remote filesystems; extend this pattern.
+
+### Phase 4: Upgrade bd and Verify
+
+- Upgrade local `bd` to v0.62+
+- Run `bd init` (or migration script if migrating from JSONL)
+- Verify b9s reads from Dolt correctly
+- Verify b9s writes (create/edit/close) work through new `bd`
+- Verify live reload via polling watcher
+
+### What Stays the Same
+
+- JSONL reader: kept for users on older `bd` versions
+- SQLite reader: kept for compatibility
+- Write path: unchanged (shells out to `bd`)
+- UI layer: unchanged (receives `[]model.Issue` regardless of source)
+
+---
+
 ## Open Questions
 
-1. **Dolt schema**: What exact tables and columns does `bd` v0.56+ create? The SQLiteReader's schema may not match Dolt's. Need to inspect a real Dolt database.
-2. **Embedded vs. Server**: Should b9s connect via MySQL protocol even in embedded mode, or use the Dolt Go library directly? The MySQL approach is simpler and works for both modes.
-3. **Connection lifecycle**: When should b9s connect/disconnect? On startup? On demand? Keep-alive?
-4. **Error handling**: What happens when the Dolt server is down? Graceful fallback to JSONL export?
-5. **Dolt Go SDK**: Does Dolt have a Go library for embedded access, or must we always go through MySQL protocol?
-6. **bd version detection**: How does b9s detect whether the local `bd` is JSONL-mode or Dolt-mode? Check `bd --version`? Check `.beads/metadata.json`?
-7. **Watcher polling interval**: What's an acceptable latency for detecting changes? 1s? 2s? Configurable?
+1. **Dolt schema**: What exact tables and columns does `bd` v0.62 create? Need to install `bd` v0.62, run `bd init`, and inspect the schema. The SQLiteReader's queries may need adjustments.
+2. **Connection lifecycle**: Connect on startup and keep alive? Or connect on demand per reload? Keep-alive is simpler but needs reconnection logic.
+3. **Polling interval**: What latency is acceptable for detecting changes? `HASHOF('HEAD')` is cheap, so 500ms polling should be fine. Make it configurable.
+4. **Port configuration**: Default is 3306, but users may configure a different port. Where does `bd` store the port? Check `.beads/config.yaml` for `dolt.port` or similar.
+5. **Authentication**: Does the local Dolt server require credentials? Default appears to be `root` with no password, but verify.
 
 ---
 
