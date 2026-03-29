@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
@@ -233,6 +234,14 @@ func WatchFileCmd(w *watcher.Watcher) tea.Cmd {
 	}
 }
 
+// DoltWatchCmd returns a command that waits for Dolt database changes and sends FileChangedMsg
+func DoltWatchCmd(w *datasource.DoltWatcher) tea.Cmd {
+	return func() tea.Msg {
+		<-w.Changed()
+		return FileChangedMsg{}
+	}
+}
+
 // StartBackgroundWorkerCmd starts the background worker and triggers an initial refresh.
 func StartBackgroundWorkerCmd(w *BackgroundWorker) tea.Cmd {
 	return func() tea.Msg {
@@ -281,6 +290,8 @@ type Model struct {
 	issueMap     map[string]*model.Issue
 	beadsPath    string           // Path to beads.jsonl for reloading
 	watcher      *watcher.Watcher // File watcher for live reload
+	doltWatcher  *datasource.DoltWatcher // Dolt polling watcher for live reload
+	sourceType   datasource.SourceType   // What backend we loaded from
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -850,6 +861,21 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	return m
 }
 
+// WithSourceType sets the backend source type on the model. This determines
+// which watcher (file or Dolt) is used for live reload.
+func (m Model) WithSourceType(st datasource.SourceType) Model {
+	m.sourceType = st
+	return m
+}
+
+// WithDoltWatcher sets a pre-created DoltWatcher on the model. The caller is
+// responsible for having called Start() on the watcher before passing it here.
+// The model's Stop() method will call Stop() on the watcher.
+func (m Model) WithDoltWatcher(dw *datasource.DoltWatcher) Model {
+	m.doltWatcher = dw
+	return m
+}
+
 func (m Model) Init() tea.Cmd {
 	// Note: ReadyTimeoutCmd is no longer needed since the model is now
 	// initialized as ready with default dimensions in NewModel().
@@ -861,6 +887,8 @@ func (m Model) Init() tea.Cmd {
 		cmds = append(cmds, StartBackgroundWorkerCmd(m.backgroundWorker))
 		cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(m.backgroundWorker))
 		cmds = append(cmds, workerPollTickCmd())
+	} else if m.doltWatcher != nil {
+		cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
 	} else if m.watcher != nil {
 		cmds = append(cmds, WatchFileCmd(m.watcher))
 	}
@@ -1235,6 +1263,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(bw))
 		} else {
 			// Fallback: no background worker, use watcher + FileChangedMsg
+			// TODO(dolt): detect target project's backend type and create DoltWatcher if needed
+			if m.doltWatcher != nil {
+				m.doltWatcher.Stop()
+				m.doltWatcher = nil
+			}
 			w, watchErr := watcher.NewWatcher(newPath)
 			if watchErr == nil {
 				m.watcher = w
@@ -1269,12 +1302,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// File changed on disk - reload issues
 		// In background mode the BackgroundWorker owns file watching and snapshot building.
 		if m.backgroundWorker != nil {
-			if m.watcher != nil {
+			if m.doltWatcher != nil {
+				cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			} else if m.watcher != nil {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
 			return m, tea.Batch(cmds...)
 		}
-		if m.beadsPath == "" {
+		if m.beadsPath == "" && m.doltWatcher == nil {
+			// No reload source available: re-queue the file watcher if present and return.
 			if m.watcher != nil {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
@@ -1297,34 +1333,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			debug.Log("refresh: file change detected path=%s", m.beadsPath)
 		}
 
-		// Reload issues from disk
+		// Reload issues from the appropriate backend
 		var reloadWarnings []string
 		var loadStart time.Time
 		if profileRefresh {
 			loadStart = time.Now()
 		}
-		loadedIssues, err := loader.LoadIssuesFromFileWithOptionsPooled(m.beadsPath, loader.ParseOptions{
-			WarningHandler: func(msg string) {
-				reloadWarnings = append(reloadWarnings, msg)
-			},
-			BufferSize: envMaxLineSizeBytes(),
-		})
+		var newIssues []model.Issue
+		var err error
+		if m.sourceType == datasource.SourceTypeDolt {
+			// Dolt: reload through smart datasource path
+			newIssues, err = datasource.LoadIssues("")
+		} else {
+			// JSONL/SQLite: use existing fast pooled loader
+			loadedIssues, loadErr := loader.LoadIssuesFromFileWithOptionsPooled(m.beadsPath, loader.ParseOptions{
+				WarningHandler: func(msg string) {
+					reloadWarnings = append(reloadWarnings, msg)
+				},
+				BufferSize: envMaxLineSizeBytes(),
+			})
+			err = loadErr
+			if err == nil {
+				if len(m.pooledIssues) > 0 {
+					loader.ReturnIssuePtrsToPool(m.pooledIssues)
+				}
+				m.pooledIssues = loadedIssues.PoolRefs
+				newIssues = loadedIssues.Issues
+			}
+		}
 		if profileRefresh {
 			recordTiming("load_issues", time.Since(loadStart))
 		}
 		if err != nil {
 			m.statusMsg = fmt.Sprintf("Reload error: %v", err)
 			m.statusIsError = true
-			if m.watcher != nil {
+			if m.doltWatcher != nil {
+				cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			} else if m.watcher != nil {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
 			return m, tea.Batch(cmds...)
 		}
-		if len(m.pooledIssues) > 0 {
-			loader.ReturnIssuePtrsToPool(m.pooledIssues)
-		}
-		m.pooledIssues = loadedIssues.PoolRefs
-		newIssues := loadedIssues.Issues
 
 		// Store selected issue ID to restore position after reload
 		var selectedID string
@@ -1516,8 +1565,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewportContent()
 
 		// Re-start watching for next change
-		if m.watcher != nil && !autoEnabled {
-			cmds = append(cmds, WatchFileCmd(m.watcher))
+		if !autoEnabled {
+			if m.doltWatcher != nil {
+				cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			} else if m.watcher != nil {
+				cmds = append(cmds, WatchFileCmd(m.watcher))
+			}
 		}
 		return m, tea.Batch(cmds...)
 
@@ -1650,7 +1703,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 
-			if m.beadsPath == "" && m.watcher == nil {
+			if m.beadsPath == "" && m.watcher == nil && m.doltWatcher == nil {
 				m.statusMsg = "Refresh unavailable"
 				m.statusIsError = true
 				return m, nil
@@ -4595,6 +4648,9 @@ func (m *Model) openInEditor() {
 func (m *Model) Stop() {
 	if m.backgroundWorker != nil {
 		m.backgroundWorker.Stop()
+	}
+	if m.doltWatcher != nil {
+		m.doltWatcher.Stop()
 	}
 	if m.watcher != nil {
 		m.watcher.Stop()
