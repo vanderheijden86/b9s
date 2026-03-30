@@ -52,8 +52,8 @@ type ProjectPickerModel struct {
 const panelRows = 6
 
 // maxVisibleProjects is the max number of projects shown in the table.
-// Row 0 = column headers, so 5 project rows fit in 6 panel rows.
-const maxVisibleProjects = 5
+// Row 0 = column headers, so 10 project rows fit in 11 panel rows.
+const maxVisibleProjects = 10
 
 // NewProjectPicker creates a new project picker.
 func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
