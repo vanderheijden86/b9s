@@ -1,6 +1,7 @@
 package ui_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -512,8 +513,10 @@ func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
 	}
-	if switchMsg.Project.Name != "web-frontend" {
-		t.Errorf("expected 'web-frontend', got %q", switchMsg.Project.Name)
+	// After sorting (active first, then alphabetical), position 2 is "data-pipeline"
+	// (api-service=1 [active], data-pipeline=2, web-frontend=3).
+	if switchMsg.Project.Name != "data-pipeline" {
+		t.Errorf("expected 'data-pipeline', got %q", switchMsg.Project.Name)
 	}
 }
 
@@ -602,16 +605,17 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
 	}
-	if switchMsg.Project.Name != "web-frontend" {
-		t.Fatalf("expected web-frontend, got %q", switchMsg.Project.Name)
+	// After sorting (active first, then alphabetical), position 2 is "data-pipeline".
+	if switchMsg.Project.Name != "data-pipeline" {
+		t.Fatalf("expected data-pipeline, got %q", switchMsg.Project.Name)
 	}
 
 	newM, switchCmd := m.Update(switchMsg)
 	m = newM.(ui.Model)
 
 	view := m.View()
-	if !strings.Contains(view, "web-frontend") {
-		t.Error("view should mention web-frontend after switch")
+	if !strings.Contains(view, "data-pipeline") {
+		t.Error("view should mention data-pipeline after switch")
 	}
 
 	if switchCmd == nil {
@@ -896,12 +900,14 @@ func TestProjectPicker_NumberKeysWorkWhenHidden(t *testing.T) {
 	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
 	m = newM.(ui.Model)
 
-	// Number keys should still switch projects even when picker is hidden
-	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
+	// Number keys should still switch projects even when picker is hidden.
+	// createModelWithProjects uses Favorites{1: "api-service", 3: "data-pipeline"},
+	// so pressing "3" switches to data-pipeline via the configured favorite.
+	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("3")})
 	m = newM.(ui.Model)
 
 	if cmd == nil {
-		t.Fatal("expected a command from pressing '2' with picker hidden")
+		t.Fatal("expected a command from pressing '3' with picker hidden")
 	}
 
 	msg := cmd()
@@ -909,8 +915,8 @@ func TestProjectPicker_NumberKeysWorkWhenHidden(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
 	}
-	if switchMsg.Project.Name != "web-frontend" {
-		t.Errorf("expected 'web-frontend', got %q", switchMsg.Project.Name)
+	if switchMsg.Project.Name != "data-pipeline" {
+		t.Errorf("expected 'data-pipeline', got %q", switchMsg.Project.Name)
 	}
 }
 
@@ -973,5 +979,206 @@ func TestProjectPicker_NarrowTerminalDropsColumns(t *testing.T) {
 	// Logo should NOT appear at narrow widths
 	if strings.Contains(view, `______`) {
 		t.Error("logo should be dropped at 60 chars width")
+	}
+}
+
+// TestProjectPicker_ActiveProjectPinnedFirst verifies that when no favorites are
+// configured, the active project is sorted to position 1 so it is always visible
+// even when it would otherwise be beyond the 10-entry visible window (bd-i8t3).
+func TestProjectPicker_ActiveProjectPinnedFirst(t *testing.T) {
+	// Build 12 projects where the active one is the last alphabetically.
+	var entries []ui.ProjectEntry
+	names := []string{
+		"alpha", "bravo", "charlie", "delta", "echo",
+		"foxtrot", "golf", "hotel", "india", "juliet",
+		"kilo", "zulu-active",
+	}
+	for _, name := range names {
+		entries = append(entries, ui.ProjectEntry{
+			Project:  config.Project{Name: name, Path: "/tmp/" + name},
+			IsActive: name == "zulu-active",
+		})
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(160, 40)
+
+	// The picker receives entries already numbered by buildProjectEntries in model.go.
+	// To simulate that path, we test via the full Model instead.
+	_, projects := createSampleProjects(t) // 3 projects
+
+	// Make a large project set with the active project deep in the list.
+	allProjects := make([]config.Project, 0, 12)
+	allProjects = append(allProjects, projects...)
+	for i := 3; i < 12; i++ {
+		allProjects = append(allProjects, config.Project{
+			Name: fmt.Sprintf("project-%02d", i),
+			Path: t.TempDir(),
+		})
+	}
+
+	// Active project is "web-frontend" which is NOT the first alphabetically among these.
+	// With auto-numbering sorted, "web-frontend" must receive position 1.
+	cfg := config.Config{
+		Projects:  allProjects,
+		Favorites: nil,
+		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
+	}
+
+	m := ui.NewModel(nil, "").WithConfig(cfg, "web-frontend", projects[1].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m = newM.(ui.Model)
+
+	// Pressing "1" must switch to the active project "web-frontend".
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+	if cmd == nil {
+		t.Fatal("expected a command from pressing '1'")
+	}
+	msg := cmd()
+	switchMsg, ok := msg.(ui.SwitchProjectMsg)
+	if !ok {
+		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
+	}
+	if switchMsg.Project.Name != "web-frontend" {
+		t.Errorf("expected active project 'web-frontend' at position 1, got %q", switchMsg.Project.Name)
+	}
+}
+
+// TestProjectPicker_ScrollWithJK verifies that j/k scroll the visible window
+// through projects in normal (non-filter) mode (bd-i8t3).
+func TestProjectPicker_ScrollWithJK(t *testing.T) {
+	entries := make([]ui.ProjectEntry, 12)
+	for i := range entries {
+		entries[i] = ui.ProjectEntry{
+			Project:     config.Project{Name: fmt.Sprintf("proj-%02d", i+1), Path: "/tmp/p"},
+			FavoriteNum: i + 1,
+		}
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(160, 40)
+
+	// Initially no scroll.
+	if picker.ScrollOffset() != 0 {
+		t.Fatalf("expected initial scroll offset 0, got %d", picker.ScrollOffset())
+	}
+
+	// Press j to scroll down.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	if picker.ScrollOffset() != 1 {
+		t.Errorf("expected scroll offset 1 after j, got %d", picker.ScrollOffset())
+	}
+
+	// Press j again.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	if picker.ScrollOffset() != 2 {
+		t.Errorf("expected scroll offset 2 after second j, got %d", picker.ScrollOffset())
+	}
+
+	// Press k to scroll up.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	if picker.ScrollOffset() != 1 {
+		t.Errorf("expected scroll offset 1 after k, got %d", picker.ScrollOffset())
+	}
+
+	// Press k again — back to 0.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	if picker.ScrollOffset() != 0 {
+		t.Errorf("expected scroll offset 0 after k at top, got %d", picker.ScrollOffset())
+	}
+
+	// Press k at top boundary — must not go negative.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	if picker.ScrollOffset() != 0 {
+		t.Errorf("expected scroll offset to stay at 0 at top boundary, got %d", picker.ScrollOffset())
+	}
+
+	// Scroll to max limit: 12 entries - 10 visible = max offset 2.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	if picker.ScrollOffset() != 2 {
+		t.Errorf("expected scroll offset capped at 2 (max), got %d", picker.ScrollOffset())
+	}
+}
+
+// TestProjectPicker_ScrollResetOnFilter verifies that scrollOffset resets to 0
+// when entering filter mode so the user sees results from the start (bd-i8t3).
+func TestProjectPicker_ScrollResetOnFilter(t *testing.T) {
+	entries := make([]ui.ProjectEntry, 12)
+	for i := range entries {
+		entries[i] = ui.ProjectEntry{
+			Project:     config.Project{Name: fmt.Sprintf("proj-%02d", i+1), Path: "/tmp/p"},
+			FavoriteNum: i + 1,
+		}
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(160, 40)
+
+	// Scroll down two steps.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	if picker.ScrollOffset() != 2 {
+		t.Fatalf("expected scroll offset 2 before filter, got %d", picker.ScrollOffset())
+	}
+
+	// Enter filter mode.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")})
+	if !picker.Filtering() {
+		t.Fatal("expected filter mode after /")
+	}
+	if picker.ScrollOffset() != 0 {
+		t.Errorf("expected scroll offset reset to 0 on filter enter, got %d", picker.ScrollOffset())
+	}
+}
+
+// TestProjectPicker_DownIndicatorOnOverflow verifies that the "↓ N more" indicator
+// appears in the view when the list overflows the visible window (bd-i8t3).
+func TestProjectPicker_DownIndicatorOnOverflow(t *testing.T) {
+	entries := make([]ui.ProjectEntry, 12)
+	for i := range entries {
+		entries[i] = ui.ProjectEntry{
+			Project:     config.Project{Name: fmt.Sprintf("proj-%02d", i+1), Path: "/tmp/p"},
+			FavoriteNum: i + 1,
+		}
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(160, 40)
+
+	view := picker.View()
+	plain := stripAnsiCodes(view)
+	if !strings.Contains(plain, "↓") {
+		t.Errorf("expected down-scroll indicator when list overflows 10, view:\n%s", plain)
+	}
+}
+
+// TestProjectPicker_UpIndicatorWhenScrolled verifies that the "↑ N more above"
+// indicator appears after scrolling down (bd-i8t3).
+func TestProjectPicker_UpIndicatorWhenScrolled(t *testing.T) {
+	entries := make([]ui.ProjectEntry, 12)
+	for i := range entries {
+		entries[i] = ui.ProjectEntry{
+			Project:     config.Project{Name: fmt.Sprintf("proj-%02d", i+1), Path: "/tmp/p"},
+			FavoriteNum: i + 1,
+		}
+	}
+
+	theme := ui.TestTheme()
+	picker := ui.NewProjectPicker(entries, theme)
+	picker.SetSize(160, 40)
+
+	// Scroll down one step.
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+
+	view := picker.View()
+	plain := stripAnsiCodes(view)
+	if !strings.Contains(plain, "↑") {
+		t.Errorf("expected up-scroll indicator after scrolling down, view:\n%s", plain)
 	}
 }

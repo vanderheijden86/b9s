@@ -566,7 +566,7 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 		entries = append(entries, entry)
 	}
 
-	// Auto-number projects 1-9 when no favorites are configured (bd-8zc)
+	// Determine whether any explicit favorites are configured.
 	hasFavorites := false
 	for _, e := range entries {
 		if e.FavoriteNum > 0 {
@@ -574,7 +574,32 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 			break
 		}
 	}
-	if !hasFavorites {
+
+	if hasFavorites {
+		// When favorites are explicitly configured, sort by FavoriteNum to keep them
+		// in their assigned order, with un-favorited entries alphabetically at the end.
+		// The active project should already have a FavoriteNum, so it stays in its slot.
+		sort.SliceStable(entries, func(i, j int) bool {
+			iFav := entries[i].FavoriteNum > 0
+			jFav := entries[j].FavoriteNum > 0
+			if iFav != jFav {
+				return iFav
+			}
+			if iFav && jFav {
+				return entries[i].FavoriteNum < entries[j].FavoriteNum
+			}
+			return entries[i].Project.Name < entries[j].Project.Name
+		})
+	} else {
+		// No favorites configured: sort with active project first, then alphabetical,
+		// so auto-numbering assigns 1 to the active project making it always visible (bd-i8t3).
+		sort.SliceStable(entries, func(i, j int) bool {
+			if entries[i].IsActive != entries[j].IsActive {
+				return entries[i].IsActive
+			}
+			return entries[i].Project.Name < entries[j].Project.Name
+		})
+		// Auto-number 1-9 after sorting so the active project is always position 1.
 		for i := range entries {
 			if i >= 9 {
 				break
@@ -1721,6 +1746,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Shift+J / Shift+K scroll the project picker list when more than 10 projects
+		// exist and the overflow is not reachable via number keys alone (bd-i8t3).
+		if m.pickerVisible && len(m.allProjects) > maxVisibleProjects {
+			switch msg.String() {
+			case "J":
+				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("j"),
+				})
+				return m, nil
+			case "K":
+				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("k"),
+				})
+				return m, nil
+			}
+		}
+
 		// If help is showing, handle navigation keys for scrolling
 		if m.focused == focusHelp {
 			m = m.handleHelpKeys(msg)
@@ -1742,18 +1786,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Project switching keys (bd-8hw.3, bd-8zc) - number keys 1-9 ALWAYS switch regardless of focus
 		// Handled at top priority so they work from any view/state.
-		// First checks config favorites, then falls back to positional numbering.
+		// First checks config favorites, then falls back to the picker's assigned numbering
+		// (which reflects the sorted order: active first, then alphabetical) (bd-i8t3).
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
 			// Check config favorites first
 			if proj := m.appConfig.FavoriteProject(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
-			// Auto-number fallback: 1-N maps to project list order (bd-8zc)
-			idx := n - 1
-			if idx < len(m.allProjects) {
-				proj := m.allProjects[idx]
-				return m, func() tea.Msg { return SwitchProjectMsg{Project: proj} }
+			// Auto-number fallback: use the picker's assigned FavoriteNum so the displayed
+			// number always matches what pressing the key does (bd-8zc, bd-i8t3).
+			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
+				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
 		}
 
