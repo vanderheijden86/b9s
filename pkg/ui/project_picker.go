@@ -51,8 +51,9 @@ type ProjectPickerModel struct {
 const maxVisibleProjects = 10
 
 // panelRows is the fixed number of content rows in the picker panel.
-// Row 0 = column headers + maxVisibleProjects data rows. Title bar adds 1 more.
-const panelRows = maxVisibleProjects + 1
+// Row 0 = column headers, rows 1-5 = data rows (two columns of 5 when >5 projects).
+// Title bar adds 1 more.
+const panelRows = 6
 
 // NewProjectPicker creates a new project picker.
 func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
@@ -360,6 +361,7 @@ func (m *ProjectPickerModel) ViewMinimized() string {
 }
 
 // renderProjectTable renders the project list with # NAME and O P R columns.
+// When there are more than 5 visible projects, it renders two columns of 5 side by side.
 func (m *ProjectPickerModel) renderProjectTable() []string {
 	t := m.theme
 
@@ -381,7 +383,8 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		Foreground(t.Secondary).
 		Italic(true)
 
-	// Find max name width for alignment
+	// Find max name width for alignment — cap narrower when two columns are likely
+	// (we compute this before knowing visible count, so use a reasonable cap).
 	nameW := 12 // minimum
 	for _, idx := range m.filtered {
 		entry := m.entries[idx]
@@ -396,11 +399,17 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 	lines := make([]string, panelRows)
 
 	// Row 0: column headers or filter input
+	const colSep = "  │  "
 	if m.filtering {
 		filterStyle := t.Renderer.NewStyle().Foreground(t.Primary)
 		lines[0] = headerStyle.Render(" > ") + filterStyle.Render(m.filterInput.View())
 	} else {
-		lines[0] = headerStyle.Render(fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+		singleHdr := fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R")
+		if len(m.filtered) > 5 {
+			lines[0] = headerStyle.Render(singleHdr + colSep + fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+		} else {
+			lines[0] = headerStyle.Render(singleHdr)
+		}
 	}
 
 	if len(m.filtered) == 0 {
@@ -408,18 +417,24 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		return lines
 	}
 
-	// Rows 1-5: project entries
+	// Total projects to display (capped at maxVisibleProjects).
 	visible := len(m.filtered)
 	if visible > maxVisibleProjects {
 		visible = maxVisibleProjects
 	}
 
-	for i := 0; i < visible; i++ {
+	useTwoColumns := visible > 5
+	// Number of data rows to fill (always 5 to keep panel height fixed).
+	const dataRows = panelRows - 1 // 5
+
+	// renderRow produces the styled string for filtered index i (1-based display position = i+1).
+	renderRow := func(i int) string {
 		entry := m.entries[m.filtered[i]]
 		isCursor := m.filtering && i == m.cursor
 
-		// Number
-		numStr := " "
+		// Display number: use FavoriteNum if set, otherwise 1-based position.
+		displayPos := i + 1
+		numStr := fmt.Sprintf("%d", displayPos)
 		if entry.FavoriteNum > 0 {
 			numStr = fmt.Sprintf("%d", entry.FavoriteNum)
 		}
@@ -430,31 +445,55 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 			name = name[:nameW-3] + "..."
 		}
 
-		// Build the row text with fixed-width columns
 		rowText := fmt.Sprintf(" <%s> %-*s  %3d %3d %3d",
 			numStr, nameW, name,
 			entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
 
 		switch {
 		case isCursor:
-			lines[i+1] = cursorStyle.Render(rowText)
+			return cursorStyle.Render(rowText)
 		case entry.IsActive:
-			lines[i+1] = activeStyle.Render(rowText)
+			return activeStyle.Render(rowText)
 		default:
-			// Style number separately for color
 			numPart := numStyle.Render(fmt.Sprintf(" <%s>", numStr))
 			restText := fmt.Sprintf(" %-*s  %3d %3d %3d",
 				nameW, name,
 				entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
-			lines[i+1] = numPart + normalStyle.Render(restText)
+			return numPart + normalStyle.Render(restText)
 		}
 	}
 
+	for row := 0; row < dataRows; row++ {
+		leftIdx := row
+		rightIdx := row + 5
+
+		if leftIdx >= visible {
+			// No entry for this slot — leave blank.
+			lines[row+1] = ""
+			continue
+		}
+
+		leftStr := renderRow(leftIdx)
+
+		if useTwoColumns {
+			if rightIdx < visible {
+				lines[row+1] = leftStr + colSep + renderRow(rightIdx)
+			} else {
+				// Right column exists structurally but this slot is empty.
+				lines[row+1] = leftStr
+			}
+		} else {
+			lines[row+1] = leftStr
+		}
+	}
+
+	// Overflow indicator — show below the last data row if there are more than maxVisibleProjects.
 	if len(m.filtered) > maxVisibleProjects {
 		remaining := len(m.filtered) - maxVisibleProjects
-		if visible < panelRows-1 {
-			lines[visible+1] = dimStyle.Render(fmt.Sprintf("      ... +%d more", remaining))
-		}
+		// The last data row slot is panelRows-1. If all 5 rows are used by entries
+		// there is no spare slot inside the panel; we overwrite the last entry row
+		// with the indicator (same approach as original code).
+		lines[panelRows-1] = dimStyle.Render(fmt.Sprintf("      ... +%d more", remaining))
 	}
 
 	return lines

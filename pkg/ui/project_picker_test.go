@@ -201,10 +201,10 @@ func TestProjectPicker_FixedHeight(t *testing.T) {
 	picker := ui.NewProjectPicker(entries, theme)
 	picker.SetSize(140, 40)
 
-	// Panel has fixed height: (maxVisibleProjects+1) content rows + 1 title bar = 12
+	// Panel has fixed height: 6 content rows (header + 5 data rows) + 1 title bar = 7
 	height := picker.Height()
-	if height != 12 {
-		t.Errorf("expected fixed height 12 for panel layout, got %d", height)
+	if height != 7 {
+		t.Errorf("expected fixed height 7 for panel layout, got %d", height)
 	}
 }
 
