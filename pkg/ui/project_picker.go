@@ -47,13 +47,12 @@ type ProjectPickerModel struct {
 	theme       Theme
 }
 
-// panelRows is the fixed number of content rows in the picker panel.
-// Matches the B9s logo height (6 lines). Title bar adds 1 more.
-const panelRows = 6
-
 // maxVisibleProjects is the max number of projects shown in the table.
-// Row 0 = column headers, so 10 project rows fit in 11 panel rows.
 const maxVisibleProjects = 10
+
+// panelRows is the fixed number of content rows in the picker panel.
+// Row 0 = column headers + maxVisibleProjects data rows. Title bar adds 1 more.
+const panelRows = maxVisibleProjects + 1
 
 // NewProjectPicker creates a new project picker.
 func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
@@ -232,16 +231,20 @@ func b9sLogo() []string {
 }
 
 // pickerShortcuts returns the shortcut definitions for the picker panel (bd-2me).
-// Two columns of real keybindings, 6 rows matching panelRows.
+// Two columns of real keybindings, padded to panelRows with empty entries.
 func pickerShortcuts() [panelRows][2]struct{ key, desc string } {
-	return [panelRows][2]struct{ key, desc string }{
+	var shortcuts [panelRows][2]struct{ key, desc string }
+	defs := [][2]struct{ key, desc string }{
 		{{"o", "Open"}, {"b", "Board"}},
 		{{"c", "Closed"}, {"g", "Graph"}},
 		{{"r", "Ready"}, {"h", "History"}},
 		{{"a", "All"}, {"i", "Insights"}},
 		{{"/", "Search"}, {"?", "Help"}},
-		{{"", ""}, {"", ""}},
 	}
+	for i, d := range defs {
+		shortcuts[i] = d
+	}
+	return shortcuts
 }
 
 // View renders the k9s-style multi-column project picker panel (bd-b4u, bd-qyr).
