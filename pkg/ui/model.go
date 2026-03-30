@@ -591,15 +591,13 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 			return entries[i].Project.Name < entries[j].Project.Name
 		})
 	} else {
-		// No favorites configured: sort with active project first, then alphabetical,
-		// so auto-numbering assigns 1 to the active project making it always visible (bd-i8t3).
+		// No favorites configured: sort alphabetically for stable numbering.
+		// Numbers must not change when switching projects (bd-jorl).
+		// Active project is always visible via j/k scrolling if it falls beyond position 10.
 		sort.SliceStable(entries, func(i, j int) bool {
-			if entries[i].IsActive != entries[j].IsActive {
-				return entries[i].IsActive
-			}
 			return entries[i].Project.Name < entries[j].Project.Name
 		})
-		// Auto-number 1-9 after sorting so the active project is always position 1.
+		// Auto-number 1-9 after sorting.
 		for i := range entries {
 			if i >= 9 {
 				break

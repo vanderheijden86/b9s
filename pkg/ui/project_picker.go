@@ -68,13 +68,33 @@ func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
 		indices[i] = i
 	}
 
+	// Auto-scroll so the active project is visible (bd-jorl).
+	scrollOffset := 0
+	if len(entries) > maxVisibleProjects {
+		for i, e := range entries {
+			if e.IsActive && i >= maxVisibleProjects {
+				// Place active project in the middle of the visible window.
+				scrollOffset = i - maxVisibleProjects/2
+				maxScroll := len(entries) - maxVisibleProjects
+				if scrollOffset > maxScroll {
+					scrollOffset = maxScroll
+				}
+				if scrollOffset < 0 {
+					scrollOffset = 0
+				}
+				break
+			}
+		}
+	}
+
 	return ProjectPickerModel{
-		entries:     entries,
-		filtered:    indices,
-		cursor:      0,
-		filterInput: ti,
-		filtering:   false,
-		theme:       theme,
+		entries:      entries,
+		filtered:     indices,
+		cursor:       0,
+		scrollOffset: scrollOffset,
+		filterInput:  ti,
+		filtering:    false,
+		theme:        theme,
 	}
 }
 

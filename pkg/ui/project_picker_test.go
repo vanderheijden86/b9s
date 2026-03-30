@@ -982,33 +982,12 @@ func TestProjectPicker_NarrowTerminalDropsColumns(t *testing.T) {
 	}
 }
 
-// TestProjectPicker_ActiveProjectPinnedFirst verifies that when no favorites are
-// configured, the active project is sorted to position 1 so it is always visible
-// even when it would otherwise be beyond the 10-entry visible window (bd-i8t3).
-func TestProjectPicker_ActiveProjectPinnedFirst(t *testing.T) {
-	// Build 12 projects where the active one is the last alphabetically.
-	var entries []ui.ProjectEntry
-	names := []string{
-		"alpha", "bravo", "charlie", "delta", "echo",
-		"foxtrot", "golf", "hotel", "india", "juliet",
-		"kilo", "zulu-active",
-	}
-	for _, name := range names {
-		entries = append(entries, ui.ProjectEntry{
-			Project:  config.Project{Name: name, Path: "/tmp/" + name},
-			IsActive: name == "zulu-active",
-		})
-	}
+// TestProjectPicker_StableNumbering verifies that project numbers are alphabetically
+// stable and do not change when the active project changes (bd-jorl).
+func TestProjectPicker_StableNumbering(t *testing.T) {
+	_, projects := createSampleProjects(t) // api-service, web-frontend, data-pipeline
 
-	theme := ui.TestTheme()
-	picker := ui.NewProjectPicker(entries, theme)
-	picker.SetSize(160, 40)
-
-	// The picker receives entries already numbered by buildProjectEntries in model.go.
-	// To simulate that path, we test via the full Model instead.
-	_, projects := createSampleProjects(t) // 3 projects
-
-	// Make a large project set with the active project deep in the list.
+	// Make a large project set.
 	allProjects := make([]config.Project, 0, 12)
 	allProjects = append(allProjects, projects...)
 	for i := 3; i < 12; i++ {
@@ -1018,30 +997,37 @@ func TestProjectPicker_ActiveProjectPinnedFirst(t *testing.T) {
 		})
 	}
 
-	// Active project is "web-frontend" which is NOT the first alphabetically among these.
-	// With auto-numbering sorted, "web-frontend" must receive position 1.
 	cfg := config.Config{
 		Projects:  allProjects,
 		Favorites: nil,
 		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
-	m := ui.NewModel(nil, "").WithConfig(cfg, "web-frontend", projects[1].Path)
-	newM, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
-	m = newM.(ui.Model)
+	// Build with "web-frontend" active.
+	m1 := ui.NewModel(nil, "").WithConfig(cfg, "web-frontend", projects[1].Path)
+	newM1, _ := m1.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m1 = newM1.(ui.Model)
 
-	// Pressing "1" must switch to the active project "web-frontend".
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
-	if cmd == nil {
-		t.Fatal("expected a command from pressing '1'")
-	}
-	msg := cmd()
-	switchMsg, ok := msg.(ui.SwitchProjectMsg)
-	if !ok {
-		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
-	}
-	if switchMsg.Project.Name != "web-frontend" {
-		t.Errorf("expected active project 'web-frontend' at position 1, got %q", switchMsg.Project.Name)
+	// Build with "api-service" active.
+	m2 := ui.NewModel(nil, "").WithConfig(cfg, "api-service", projects[0].Path)
+	newM2, _ := m2.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m2 = newM2.(ui.Model)
+
+	// Pressing "1" should give the same project regardless of which is active
+	// (alphabetically first = "api-service").
+	for _, m := range []ui.Model{m1, m2} {
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+		if cmd == nil {
+			t.Fatal("expected a command from pressing '1'")
+		}
+		msg := cmd()
+		switchMsg, ok := msg.(ui.SwitchProjectMsg)
+		if !ok {
+			t.Fatalf("expected SwitchProjectMsg, got %T", msg)
+		}
+		if switchMsg.Project.Name != "api-service" {
+			t.Errorf("expected 'api-service' at position 1 (stable alphabetical), got %q", switchMsg.Project.Name)
+		}
 	}
 }
 
