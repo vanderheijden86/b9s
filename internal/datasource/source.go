@@ -4,11 +4,13 @@
 package datasource
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,10 +25,13 @@ const (
 	SourceTypeJSONLWorktree SourceType = "jsonl_worktree"
 	// SourceTypeJSONLLocal is a local JSONL file
 	SourceTypeJSONLLocal SourceType = "jsonl_local"
+	// SourceTypeDolt is a Dolt MySQL-compatible database
+	SourceTypeDolt SourceType = "dolt"
 )
 
 // Priority values for source types (higher = more authoritative)
 const (
+	PriorityDolt          = 110
 	PrioritySQLite        = 100
 	PriorityJSONLWorktree = 80
 	PriorityJSONLLocal    = 50
@@ -110,6 +115,13 @@ func DiscoverSources(opts DiscoveryOptions) ([]DataSource, error) {
 
 	var sources []DataSource
 
+	// Discover Dolt database (highest priority)
+	doltSources, err := discoverDoltSources(beadsDir, opts)
+	if err != nil && opts.Verbose {
+		opts.Logger(fmt.Sprintf("Dolt discovery warning: %v", err))
+	}
+	sources = append(sources, doltSources...)
+
 	// Discover SQLite database
 	sqliteSources, err := discoverSQLiteSources(beadsDir, opts)
 	if err != nil && opts.Verbose {
@@ -164,6 +176,74 @@ func DiscoverSources(opts DiscoveryOptions) ([]DataSource, error) {
 	}
 
 	return sources, nil
+}
+
+// discoverDoltSources detects a Dolt MySQL-compatible database by reading
+// .beads/metadata.json. If the metadata specifies "database": "dolt", a
+// DataSource is returned using the dolt directory modtime as a freshness proxy.
+// The port is read from .beads/config.yaml using simple string parsing; it
+// defaults to 3306 when not present.
+func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, error) {
+	// Read and parse metadata.json
+	metadataPath := filepath.Join(beadsDir, "metadata.json")
+	metadataBytes, err := os.ReadFile(metadataPath)
+	if err != nil {
+		// No metadata.json — Dolt not configured
+		return nil, nil
+	}
+
+	var metadata struct {
+		Database string `json:"database"`
+	}
+	if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
+		if opts.Verbose {
+			opts.Logger(fmt.Sprintf("Dolt discovery: failed to parse metadata.json: %v", err))
+		}
+		return nil, nil
+	}
+
+	if metadata.Database != "dolt" {
+		return nil, nil
+	}
+
+	// Use dolt directory modtime as a freshness proxy
+	doltDir := filepath.Join(beadsDir, "dolt")
+	info, err := os.Stat(doltDir)
+	if err != nil {
+		if opts.Verbose {
+			opts.Logger(fmt.Sprintf("Dolt discovery: dolt dir not found: %v", err))
+		}
+		return nil, nil
+	}
+
+	// Read port from config.yaml using simple string parsing; default to 3306
+	port := 3306
+	configPath := filepath.Join(beadsDir, "config.yaml")
+	if configBytes, err := os.ReadFile(configPath); err == nil {
+		for _, line := range strings.Split(string(configBytes), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "dolt-port:") {
+				val := strings.TrimSpace(strings.TrimPrefix(line, "dolt-port:"))
+				if p, err := strconv.Atoi(val); err == nil && p > 0 {
+					port = p
+				}
+			}
+		}
+	}
+
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	source := DataSource{
+		Type:     SourceTypeDolt,
+		Path:     addr,
+		Priority: PriorityDolt,
+		ModTime:  info.ModTime(),
+	}
+
+	if opts.Verbose {
+		opts.Logger(fmt.Sprintf("Found Dolt: %s (mod=%s)", addr, info.ModTime().Format(time.RFC3339)))
+	}
+
+	return []DataSource{source}, nil
 }
 
 // discoverSQLiteSources finds SQLite databases in the beads directory

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -715,5 +716,115 @@ func createEmptySQLiteDB(t *testing.T, path string) {
 	`)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestDiscoverSources_Dolt tests that a Dolt source is detected when metadata.json
+// specifies "database": "dolt" and a .beads/dolt/ directory exists.
+func TestDiscoverSources_Dolt(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write metadata.json indicating dolt backend
+	metadataPath := filepath.Join(beadsDir, "metadata.json")
+	if err := os.WriteFile(metadataPath, []byte(`{"database": "dolt"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the dolt directory (used for modtime)
+	doltDir := filepath.Join(beadsDir, "dolt")
+	if err := os.MkdirAll(doltDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := DiscoverSources(DiscoveryOptions{
+		BeadsDir:               beadsDir,
+		ValidateAfterDiscovery: false,
+	})
+	if err != nil {
+		t.Fatalf("DiscoverSources failed: %v", err)
+	}
+
+	found := false
+	for _, s := range sources {
+		if s.Type == SourceTypeDolt {
+			found = true
+			if s.Priority != PriorityDolt {
+				t.Errorf("Expected priority %d, got %d", PriorityDolt, s.Priority)
+			}
+			if s.Path != "127.0.0.1:3306" {
+				t.Errorf("Expected path 127.0.0.1:3306, got %s", s.Path)
+			}
+		}
+	}
+	if !found {
+		t.Error("Dolt source not found")
+	}
+}
+
+// TestLoadFromSource_DoltType verifies that LoadFromSource dispatches to DoltReader
+// for SourceTypeDolt sources. It expects a connection error (not "unknown source type")
+// when the target port is not listening.
+func TestLoadFromSource_DoltType(t *testing.T) {
+	source := DataSource{
+		Type:  SourceTypeDolt,
+		Path:  "127.0.0.1:19999",
+		Valid: true,
+	}
+	_, err := LoadFromSource(source)
+	if err == nil {
+		t.Fatal("Expected error connecting to non-existent Dolt server")
+	}
+	if !strings.Contains(err.Error(), "Dolt") {
+		t.Errorf("Expected error to mention Dolt, got: %v", err)
+	}
+}
+
+// TestDiscoverSources_DoltNotDetectedWithoutMetadata tests that no Dolt source is
+// detected when .beads/dolt/ exists but metadata.json is absent.
+func TestDiscoverSources_DoltNotDetectedWithoutMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create dolt directory but NO metadata.json
+	doltDir := filepath.Join(beadsDir, "dolt")
+	if err := os.MkdirAll(doltDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := DiscoverSources(DiscoveryOptions{
+		BeadsDir:               beadsDir,
+		ValidateAfterDiscovery: false,
+	})
+	if err != nil {
+		t.Fatalf("DiscoverSources failed: %v", err)
+	}
+
+	for _, s := range sources {
+		if s.Type == SourceTypeDolt {
+			t.Error("Dolt source should not be detected without metadata.json")
+		}
+	}
+}
+
+// TestValidateSource_Dolt_NoServer verifies that validation fails cleanly when
+// no Dolt server is reachable on the given address.
+func TestValidateSource_Dolt_NoServer(t *testing.T) {
+	source := DataSource{
+		Type: SourceTypeDolt,
+		Path: "127.0.0.1:19999",
+	}
+	err := ValidateSource(&source)
+	if err == nil {
+		t.Fatal("Expected validation to fail with no server")
+	}
+	if source.Valid {
+		t.Fatal("Expected source.Valid to be false")
 	}
 }

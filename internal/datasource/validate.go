@@ -63,6 +63,8 @@ func ValidateSourceWithOptions(source *DataSource, opts ValidationOptions) error
 		err = validateSQLite(source, opts)
 	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree:
 		err = validateJSONL(source, opts)
+	case SourceTypeDolt:
+		err = validateDolt(source, opts)
 	default:
 		err = fmt.Errorf("unknown source type: %s", source.Type)
 	}
@@ -279,6 +281,30 @@ func validateJSONL(source *DataSource, opts ValidationOptions) error {
 		opts.Logger(fmt.Sprintf("JSONL validation passed: %s (%d issues, %d errors)", source.Path, validLines, errorLines))
 	}
 
+	return nil
+}
+
+// validateDolt validates a Dolt database by attempting to connect and ping it.
+func validateDolt(source *DataSource, opts ValidationOptions) error {
+	reader, err := NewDoltReader(*source)
+	if err != nil {
+		source.Valid = false
+		source.ValidationError = fmt.Sprintf("cannot connect: %v", err)
+		return err
+	}
+	defer reader.Close()
+
+	if opts.CountIssues {
+		count, err := reader.CountIssues()
+		if err != nil {
+			source.Valid = false
+			source.ValidationError = fmt.Sprintf("cannot count issues: %v", err)
+			return err
+		}
+		source.IssueCount = count
+	}
+
+	source.Valid = true
 	return nil
 }
 

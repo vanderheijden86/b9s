@@ -37,23 +37,24 @@ type ToggleFavoriteMsg struct {
 // It renders as a multi-column panel: project table (# NAME O P R) | shortcuts | B9s logo.
 // Project switching is done via number keys 1-9 or filter mode.
 type ProjectPickerModel struct {
-	entries     []ProjectEntry
-	filtered    []int // indices into entries
-	cursor      int   // only used during filter mode for selecting results
-	width       int
-	height      int
-	filterInput textinput.Model
-	filtering   bool
-	theme       Theme
+	entries      []ProjectEntry
+	filtered     []int // indices into entries
+	cursor       int   // only used during filter mode for selecting results
+	scrollOffset int   // index of the first visible project row (normal mode scrolling, bd-i8t3)
+	width        int
+	height       int
+	filterInput  textinput.Model
+	filtering    bool
+	theme        Theme
 }
 
-// panelRows is the fixed number of content rows in the picker panel.
-// Matches the B9s logo height (6 lines). Title bar adds 1 more.
-const panelRows = 6
-
 // maxVisibleProjects is the max number of projects shown in the table.
-// Row 0 = column headers, so 5 project rows fit in 6 panel rows.
-const maxVisibleProjects = 5
+const maxVisibleProjects = 10
+
+// panelRows is the fixed number of content rows in the picker panel.
+// Row 0 = column headers, rows 1-5 = data rows (two columns of 5 when >5 projects).
+// Title bar adds 1 more.
+const panelRows = 6
 
 // NewProjectPicker creates a new project picker.
 func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
@@ -67,13 +68,33 @@ func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
 		indices[i] = i
 	}
 
+	// Auto-scroll so the active project is visible (bd-jorl).
+	scrollOffset := 0
+	if len(entries) > maxVisibleProjects {
+		for i, e := range entries {
+			if e.IsActive && i >= maxVisibleProjects {
+				// Place active project in the middle of the visible window.
+				scrollOffset = i - maxVisibleProjects/2
+				maxScroll := len(entries) - maxVisibleProjects
+				if scrollOffset > maxScroll {
+					scrollOffset = maxScroll
+				}
+				if scrollOffset < 0 {
+					scrollOffset = 0
+				}
+				break
+			}
+		}
+	}
+
 	return ProjectPickerModel{
-		entries:     entries,
-		filtered:    indices,
-		cursor:      0,
-		filterInput: ti,
-		filtering:   false,
-		theme:       theme,
+		entries:      entries,
+		filtered:     indices,
+		cursor:       0,
+		scrollOffset: scrollOffset,
+		filterInput:  ti,
+		filtering:    false,
+		theme:        theme,
 	}
 }
 
@@ -101,8 +122,23 @@ func (m ProjectPickerModel) updateNormal(msg tea.KeyMsg) (ProjectPickerModel, te
 	case "/":
 		m.filtering = true
 		m.cursor = 0
+		m.scrollOffset = 0
 		m.filterInput.SetValue("")
 		m.filterInput.Focus()
+	case "j", "down":
+		// Scroll the visible window down through the project list (bd-i8t3).
+		maxScroll := len(m.filtered) - maxVisibleProjects
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if m.scrollOffset < maxScroll {
+			m.scrollOffset++
+		}
+	case "k", "up":
+		// Scroll the visible window up (bd-i8t3).
+		if m.scrollOffset > 0 {
+			m.scrollOffset--
+		}
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		n := int(msg.String()[0] - '0')
 		for _, entry := range m.entries {
@@ -232,16 +268,20 @@ func b9sLogo() []string {
 }
 
 // pickerShortcuts returns the shortcut definitions for the picker panel (bd-2me).
-// Two columns of real keybindings, 6 rows matching panelRows.
+// Two columns of real keybindings, padded to panelRows with empty entries.
 func pickerShortcuts() [panelRows][2]struct{ key, desc string } {
-	return [panelRows][2]struct{ key, desc string }{
+	var shortcuts [panelRows][2]struct{ key, desc string }
+	defs := [][2]struct{ key, desc string }{
 		{{"o", "Open"}, {"b", "Board"}},
 		{{"c", "Closed"}, {"g", "Graph"}},
 		{{"r", "Ready"}, {"h", "History"}},
 		{{"a", "All"}, {"i", "Insights"}},
-		{{"/", "Search"}, {"?", "Help"}},
-		{{"", ""}, {"", ""}},
+		{{"/", "Search"}, {"[]", "Scroll"}},
 	}
+	for i, d := range defs {
+		shortcuts[i] = d
+	}
+	return shortcuts
 }
 
 // View renders the k9s-style multi-column project picker panel (bd-b4u, bd-qyr).
@@ -357,6 +397,7 @@ func (m *ProjectPickerModel) ViewMinimized() string {
 }
 
 // renderProjectTable renders the project list with # NAME and O P R columns.
+// When there are more than 5 visible projects, it renders two columns of 5 side by side.
 func (m *ProjectPickerModel) renderProjectTable() []string {
 	t := m.theme
 
@@ -378,7 +419,8 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		Foreground(t.Secondary).
 		Italic(true)
 
-	// Find max name width for alignment
+	// Find max name width for alignment — cap narrower when two columns are likely
+	// (we compute this before knowing visible count, so use a reasonable cap).
 	nameW := 12 // minimum
 	for _, idx := range m.filtered {
 		entry := m.entries[idx]
@@ -393,11 +435,17 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 	lines := make([]string, panelRows)
 
 	// Row 0: column headers or filter input
+	const colSep = "  │  "
 	if m.filtering {
 		filterStyle := t.Renderer.NewStyle().Foreground(t.Primary)
 		lines[0] = headerStyle.Render(" > ") + filterStyle.Render(m.filterInput.View())
 	} else {
-		lines[0] = headerStyle.Render(fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+		singleHdr := fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R")
+		if len(m.filtered) > 5 {
+			lines[0] = headerStyle.Render(singleHdr + colSep + fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+		} else {
+			lines[0] = headerStyle.Render(singleHdr)
+		}
 	}
 
 	if len(m.filtered) == 0 {
@@ -405,18 +453,38 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		return lines
 	}
 
-	// Rows 1-5: project entries
-	visible := len(m.filtered)
+	// Total projects available for display.
+	total := len(m.filtered)
+
+	// Clamp scrollOffset so it never exceeds the valid range.
+	maxScroll := total - maxVisibleProjects
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.scrollOffset > maxScroll {
+		m.scrollOffset = maxScroll
+	}
+
+	// Number of projects in the current view window.
+	visible := total - m.scrollOffset
 	if visible > maxVisibleProjects {
 		visible = maxVisibleProjects
 	}
 
-	for i := 0; i < visible; i++ {
+	// Use two columns whenever the total list exceeds a single column of 5 entries.
+	// This keeps the layout stable as the user scrolls near the end of a long list.
+	useTwoColumns := total > 5
+	// Number of data rows to fill (always 5 to keep panel height fixed).
+	const dataRows = panelRows - 1 // 5
+
+	// renderRow produces the styled string for filtered index i (absolute, not window-relative).
+	renderRow := func(i int) string {
 		entry := m.entries[m.filtered[i]]
 		isCursor := m.filtering && i == m.cursor
 
-		// Number
-		numStr := " "
+		// Display number: use FavoriteNum if set, otherwise 1-based position.
+		displayPos := i + 1
+		numStr := fmt.Sprintf("%d", displayPos)
 		if entry.FavoriteNum > 0 {
 			numStr = fmt.Sprintf("%d", entry.FavoriteNum)
 		}
@@ -427,31 +495,61 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 			name = name[:nameW-3] + "..."
 		}
 
-		// Build the row text with fixed-width columns
-		rowText := fmt.Sprintf(" <%s> %-*s  %3d %3d %3d",
+		rowText := fmt.Sprintf("<%2s> %-*s  %3d %3d %3d",
 			numStr, nameW, name,
 			entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
 
 		switch {
 		case isCursor:
-			lines[i+1] = cursorStyle.Render(rowText)
+			return cursorStyle.Render(rowText)
 		case entry.IsActive:
-			lines[i+1] = activeStyle.Render(rowText)
+			return activeStyle.Render(rowText)
 		default:
-			// Style number separately for color
-			numPart := numStyle.Render(fmt.Sprintf(" <%s>", numStr))
+			numPart := numStyle.Render(fmt.Sprintf("<%2s>", numStr))
 			restText := fmt.Sprintf(" %-*s  %3d %3d %3d",
 				nameW, name,
 				entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
-			lines[i+1] = numPart + normalStyle.Render(restText)
+			return numPart + normalStyle.Render(restText)
 		}
 	}
 
-	if len(m.filtered) > maxVisibleProjects {
-		remaining := len(m.filtered) - maxVisibleProjects
-		if visible < panelRows-1 {
-			lines[visible+1] = dimStyle.Render(fmt.Sprintf("      ... +%d more", remaining))
+	// startIdx is the index of the first entry shown in the left column (bd-i8t3).
+	startIdx := m.scrollOffset
+
+	for row := 0; row < dataRows; row++ {
+		leftIdx := startIdx + row
+		rightIdx := startIdx + row + 5
+
+		if leftIdx >= total {
+			lines[row+1] = ""
+			continue
 		}
+
+		leftStr := renderRow(leftIdx)
+
+		if useTwoColumns {
+			if rightIdx < total {
+				lines[row+1] = leftStr + colSep + renderRow(rightIdx)
+			} else {
+				lines[row+1] = leftStr
+			}
+		} else {
+			lines[row+1] = leftStr
+		}
+	}
+
+	// Scroll indicators in the header row (don't steal data rows).
+	if m.scrollOffset > 0 || total > startIdx+maxVisibleProjects {
+		var parts []string
+		if m.scrollOffset > 0 {
+			parts = append(parts, fmt.Sprintf("↑%d", m.scrollOffset))
+		}
+		if total > startIdx+maxVisibleProjects {
+			remaining := total - (startIdx + maxVisibleProjects)
+			parts = append(parts, fmt.Sprintf("↓%d", remaining))
+		}
+		scrollInfo := dimStyle.Render("  " + strings.Join(parts, " "))
+		lines[0] = lines[0] + scrollInfo
 	}
 
 	return lines
@@ -595,6 +693,29 @@ func safeIndex(lines []string, i int) string {
 // Filtering returns whether the picker is in filter mode.
 func (m *ProjectPickerModel) Filtering() bool {
 	return m.filtering
+}
+
+// ScrollOffset returns the current scroll position (index of the first visible entry).
+func (m *ProjectPickerModel) ScrollOffset() int {
+	return m.scrollOffset
+}
+
+// ProjectByFavoriteNum returns the project whose displayed number equals n, or nil.
+// The displayed number matches: the entry's FavoriteNum if set, otherwise 1-based position.
+// This is used by the main model to ensure pressing a number key always selects the project
+// whose on-screen label shows that number (bd-i8t3, bd-8zc).
+func (m *ProjectPickerModel) ProjectByFavoriteNum(n int) *config.Project {
+	for i, entry := range m.entries {
+		displayNum := i + 1
+		if entry.FavoriteNum > 0 {
+			displayNum = entry.FavoriteNum
+		}
+		if displayNum == n {
+			p := entry.Project
+			return &p
+		}
+	}
+	return nil
 }
 
 // Cursor returns the current cursor position.

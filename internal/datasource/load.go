@@ -81,6 +81,14 @@ func LoadFromSource(source DataSource) ([]model.Issue, error) {
 		defer reader.Close()
 		return reader.LoadIssues()
 
+	case SourceTypeDolt:
+		reader, err := NewDoltReader(source)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open Dolt source %s: %w", source.Path, err)
+		}
+		defer reader.Close()
+		return reader.LoadIssues()
+
 	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree:
 		return loader.LoadIssuesFromFile(source.Path)
 

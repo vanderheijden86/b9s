@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
@@ -233,6 +234,14 @@ func WatchFileCmd(w *watcher.Watcher) tea.Cmd {
 	}
 }
 
+// DoltWatchCmd returns a command that waits for Dolt database changes and sends FileChangedMsg
+func DoltWatchCmd(w *datasource.DoltWatcher) tea.Cmd {
+	return func() tea.Msg {
+		<-w.Changed()
+		return FileChangedMsg{}
+	}
+}
+
 // StartBackgroundWorkerCmd starts the background worker and triggers an initial refresh.
 func StartBackgroundWorkerCmd(w *BackgroundWorker) tea.Cmd {
 	return func() tea.Msg {
@@ -281,6 +290,8 @@ type Model struct {
 	issueMap     map[string]*model.Issue
 	beadsPath    string           // Path to beads.jsonl for reloading
 	watcher      *watcher.Watcher // File watcher for live reload
+	doltWatcher  *datasource.DoltWatcher // Dolt polling watcher for live reload
+	sourceType   datasource.SourceType   // What backend we loaded from
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -555,7 +566,7 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 		entries = append(entries, entry)
 	}
 
-	// Auto-number projects 1-9 when no favorites are configured (bd-8zc)
+	// Determine whether any explicit favorites are configured.
 	hasFavorites := false
 	for _, e := range entries {
 		if e.FavoriteNum > 0 {
@@ -563,7 +574,30 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 			break
 		}
 	}
-	if !hasFavorites {
+
+	if hasFavorites {
+		// When favorites are explicitly configured, sort by FavoriteNum to keep them
+		// in their assigned order, with un-favorited entries alphabetically at the end.
+		// The active project should already have a FavoriteNum, so it stays in its slot.
+		sort.SliceStable(entries, func(i, j int) bool {
+			iFav := entries[i].FavoriteNum > 0
+			jFav := entries[j].FavoriteNum > 0
+			if iFav != jFav {
+				return iFav
+			}
+			if iFav && jFav {
+				return entries[i].FavoriteNum < entries[j].FavoriteNum
+			}
+			return entries[i].Project.Name < entries[j].Project.Name
+		})
+	} else {
+		// No favorites configured: sort alphabetically for stable numbering.
+		// Numbers must not change when switching projects (bd-jorl).
+		// Active project is always visible via j/k scrolling if it falls beyond position 10.
+		sort.SliceStable(entries, func(i, j int) bool {
+			return entries[i].Project.Name < entries[j].Project.Name
+		})
+		// Auto-number 1-9 after sorting.
 		for i := range entries {
 			if i >= 9 {
 				break
@@ -850,6 +884,21 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	return m
 }
 
+// WithSourceType sets the backend source type on the model. This determines
+// which watcher (file or Dolt) is used for live reload.
+func (m Model) WithSourceType(st datasource.SourceType) Model {
+	m.sourceType = st
+	return m
+}
+
+// WithDoltWatcher sets a pre-created DoltWatcher on the model. The caller is
+// responsible for having called Start() on the watcher before passing it here.
+// The model's Stop() method will call Stop() on the watcher.
+func (m Model) WithDoltWatcher(dw *datasource.DoltWatcher) Model {
+	m.doltWatcher = dw
+	return m
+}
+
 func (m Model) Init() tea.Cmd {
 	// Note: ReadyTimeoutCmd is no longer needed since the model is now
 	// initialized as ready with default dimensions in NewModel().
@@ -861,6 +910,8 @@ func (m Model) Init() tea.Cmd {
 		cmds = append(cmds, StartBackgroundWorkerCmd(m.backgroundWorker))
 		cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(m.backgroundWorker))
 		cmds = append(cmds, workerPollTickCmd())
+	} else if m.doltWatcher != nil {
+		cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
 	} else if m.watcher != nil {
 		cmds = append(cmds, WatchFileCmd(m.watcher))
 	}
@@ -1235,6 +1286,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(bw))
 		} else {
 			// Fallback: no background worker, use watcher + FileChangedMsg
+			// TODO(dolt): detect target project's backend type and create DoltWatcher if needed
+			if m.doltWatcher != nil {
+				m.doltWatcher.Stop()
+				m.doltWatcher = nil
+			}
 			w, watchErr := watcher.NewWatcher(newPath)
 			if watchErr == nil {
 				m.watcher = w
@@ -1269,12 +1325,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// File changed on disk - reload issues
 		// In background mode the BackgroundWorker owns file watching and snapshot building.
 		if m.backgroundWorker != nil {
-			if m.watcher != nil {
+			if m.doltWatcher != nil {
+				cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			} else if m.watcher != nil {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
 			return m, tea.Batch(cmds...)
 		}
-		if m.beadsPath == "" {
+		if m.beadsPath == "" && m.doltWatcher == nil {
+			// No reload source available: re-queue the file watcher if present and return.
 			if m.watcher != nil {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
@@ -1297,34 +1356,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			debug.Log("refresh: file change detected path=%s", m.beadsPath)
 		}
 
-		// Reload issues from disk
+		// Reload issues from the appropriate backend
 		var reloadWarnings []string
 		var loadStart time.Time
 		if profileRefresh {
 			loadStart = time.Now()
 		}
-		loadedIssues, err := loader.LoadIssuesFromFileWithOptionsPooled(m.beadsPath, loader.ParseOptions{
-			WarningHandler: func(msg string) {
-				reloadWarnings = append(reloadWarnings, msg)
-			},
-			BufferSize: envMaxLineSizeBytes(),
-		})
+		var newIssues []model.Issue
+		var err error
+		if m.sourceType == datasource.SourceTypeDolt {
+			// Dolt: reload through smart datasource path
+			newIssues, err = datasource.LoadIssues("")
+		} else {
+			// JSONL/SQLite: use existing fast pooled loader
+			loadedIssues, loadErr := loader.LoadIssuesFromFileWithOptionsPooled(m.beadsPath, loader.ParseOptions{
+				WarningHandler: func(msg string) {
+					reloadWarnings = append(reloadWarnings, msg)
+				},
+				BufferSize: envMaxLineSizeBytes(),
+			})
+			err = loadErr
+			if err == nil {
+				if len(m.pooledIssues) > 0 {
+					loader.ReturnIssuePtrsToPool(m.pooledIssues)
+				}
+				m.pooledIssues = loadedIssues.PoolRefs
+				newIssues = loadedIssues.Issues
+			}
+		}
 		if profileRefresh {
 			recordTiming("load_issues", time.Since(loadStart))
 		}
 		if err != nil {
 			m.statusMsg = fmt.Sprintf("Reload error: %v", err)
 			m.statusIsError = true
-			if m.watcher != nil {
+			if m.doltWatcher != nil {
+				cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			} else if m.watcher != nil {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
 			return m, tea.Batch(cmds...)
 		}
-		if len(m.pooledIssues) > 0 {
-			loader.ReturnIssuePtrsToPool(m.pooledIssues)
-		}
-		m.pooledIssues = loadedIssues.PoolRefs
-		newIssues := loadedIssues.Issues
 
 		// Store selected issue ID to restore position after reload
 		var selectedID string
@@ -1516,8 +1588,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewportContent()
 
 		// Re-start watching for next change
-		if m.watcher != nil && !autoEnabled {
-			cmds = append(cmds, WatchFileCmd(m.watcher))
+		if !autoEnabled {
+			if m.doltWatcher != nil {
+				cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			} else if m.watcher != nil {
+				cmds = append(cmds, WatchFileCmd(m.watcher))
+			}
 		}
 		return m, tea.Batch(cmds...)
 
@@ -1650,7 +1726,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 
-			if m.beadsPath == "" && m.watcher == nil {
+			if m.beadsPath == "" && m.watcher == nil && m.doltWatcher == nil {
 				m.statusMsg = "Refresh unavailable"
 				m.statusIsError = true
 				return m, nil
@@ -1666,6 +1742,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Resize tree/board after toggling to reclaim/yield space
 			m.tree.SetSize(m.width, m.bodyHeight())
 			return m, nil
+		}
+
+		// [ / ] scroll the project picker list when more than 10 projects
+		// exist and the overflow is not reachable via number keys alone (bd-y41x).
+		if m.pickerVisible && len(m.allProjects) > maxVisibleProjects {
+			switch msg.String() {
+			case "]":
+				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("j"),
+				})
+				return m, nil
+			case "[":
+				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{
+					Type:  tea.KeyRunes,
+					Runes: []rune("k"),
+				})
+				return m, nil
+			}
 		}
 
 		// If help is showing, handle navigation keys for scrolling
@@ -1689,18 +1784,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Project switching keys (bd-8hw.3, bd-8zc) - number keys 1-9 ALWAYS switch regardless of focus
 		// Handled at top priority so they work from any view/state.
-		// First checks config favorites, then falls back to positional numbering.
+		// First checks config favorites, then falls back to the picker's assigned numbering
+		// (which reflects the sorted order: active first, then alphabetical) (bd-i8t3).
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
 			// Check config favorites first
 			if proj := m.appConfig.FavoriteProject(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
-			// Auto-number fallback: 1-N maps to project list order (bd-8zc)
-			idx := n - 1
-			if idx < len(m.allProjects) {
-				proj := m.allProjects[idx]
-				return m, func() tea.Msg { return SwitchProjectMsg{Project: proj} }
+			// Auto-number fallback: use the picker's assigned FavoriteNum so the displayed
+			// number always matches what pressing the key does (bd-8zc, bd-i8t3).
+			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
+				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
 		}
 
@@ -4595,6 +4690,9 @@ func (m *Model) openInEditor() {
 func (m *Model) Stop() {
 	if m.backgroundWorker != nil {
 		m.backgroundWorker.Stop()
+	}
+	if m.doltWatcher != nil {
+		m.doltWatcher.Stop()
 	}
 	if m.watcher != nil {
 		m.watcher.Stop()
