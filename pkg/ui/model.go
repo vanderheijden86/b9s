@@ -1744,17 +1744,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Shift+J / Shift+K scroll the project picker list when more than 10 projects
-		// exist and the overflow is not reachable via number keys alone (bd-i8t3).
+		// [ / ] scroll the project picker list when more than 10 projects
+		// exist and the overflow is not reachable via number keys alone (bd-y41x).
 		if m.pickerVisible && len(m.allProjects) > maxVisibleProjects {
 			switch msg.String() {
-			case "J":
+			case "]":
 				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{
 					Type:  tea.KeyRunes,
 					Runes: []rune("j"),
 				})
 				return m, nil
-			case "K":
+			case "[":
 				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{
 					Type:  tea.KeyRunes,
 					Runes: []rune("k"),

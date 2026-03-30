@@ -276,7 +276,7 @@ func pickerShortcuts() [panelRows][2]struct{ key, desc string } {
 		{{"c", "Closed"}, {"g", "Graph"}},
 		{{"r", "Ready"}, {"h", "History"}},
 		{{"a", "All"}, {"i", "Insights"}},
-		{{"/", "Search"}, {"?", "Help"}},
+		{{"/", "Search"}, {"[]", "Scroll"}},
 	}
 	for i, d := range defs {
 		shortcuts[i] = d
