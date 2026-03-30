@@ -495,7 +495,7 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 			name = name[:nameW-3] + "..."
 		}
 
-		rowText := fmt.Sprintf(" <%s> %-*s  %3d %3d %3d",
+		rowText := fmt.Sprintf("<%2s> %-*s  %3d %3d %3d",
 			numStr, nameW, name,
 			entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
 
@@ -505,7 +505,7 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		case entry.IsActive:
 			return activeStyle.Render(rowText)
 		default:
-			numPart := numStyle.Render(fmt.Sprintf(" <%s>", numStr))
+			numPart := numStyle.Render(fmt.Sprintf("<%2s>", numStr))
 			restText := fmt.Sprintf(" %-*s  %3d %3d %3d",
 				nameW, name,
 				entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
