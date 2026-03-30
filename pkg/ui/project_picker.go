@@ -520,15 +520,7 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		leftIdx := startIdx + row
 		rightIdx := startIdx + row + 5
 
-		// Show scroll-up indicator in the first slot when scrolled down (bd-i8t3).
-		if row == 0 && m.scrollOffset > 0 {
-			indicator := dimStyle.Render(fmt.Sprintf(" ↑ %d more above", m.scrollOffset))
-			lines[row+1] = indicator
-			continue
-		}
-
 		if leftIdx >= total {
-			// No entry for this slot — leave blank.
 			lines[row+1] = ""
 			continue
 		}
@@ -539,7 +531,6 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 			if rightIdx < total {
 				lines[row+1] = leftStr + colSep + renderRow(rightIdx)
 			} else {
-				// Right column exists structurally but this slot is empty.
 				lines[row+1] = leftStr
 			}
 		} else {
@@ -547,12 +538,18 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		}
 	}
 
-	// Scroll-down indicator: overwrite last data row when there are entries beyond the
-	// current visible window (bd-i8t3). The window holds maxVisibleProjects entries starting
-	// at startIdx. Only show when total exceeds the window end.
-	if total > startIdx+maxVisibleProjects {
-		remaining := total - (startIdx + maxVisibleProjects)
-		lines[panelRows-1] = dimStyle.Render(fmt.Sprintf("      ... ↓ %d more", remaining))
+	// Scroll indicators in the header row (don't steal data rows).
+	if m.scrollOffset > 0 || total > startIdx+maxVisibleProjects {
+		var parts []string
+		if m.scrollOffset > 0 {
+			parts = append(parts, fmt.Sprintf("↑%d", m.scrollOffset))
+		}
+		if total > startIdx+maxVisibleProjects {
+			remaining := total - (startIdx + maxVisibleProjects)
+			parts = append(parts, fmt.Sprintf("↓%d", remaining))
+		}
+		scrollInfo := dimStyle.Render("  " + strings.Join(parts, " "))
+		lines[0] = lines[0] + scrollInfo
 	}
 
 	return lines
