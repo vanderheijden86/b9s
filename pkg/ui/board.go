@@ -1459,7 +1459,16 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 		}
 		return c
 	}
-	return cardStyle.Render(padLine(line1) + "\n" + padLine(line2) + "\n" + padLine(line3))
+	content := padLine(line1) + "\n" + padLine(line2) + "\n" + padLine(line3)
+	if selected {
+		// Inner styled text resets ANSI background. Re-inject the highlight
+		// background after every reset so the entire card is filled (bd-yqrq).
+		bgSeq := bgSeqFromColor(t.Highlight, t.Renderer)
+		if bgSeq != "" {
+			content = injectBackground(content, bgSeq)
+		}
+	}
+	return cardStyle.Render(content)
 }
 
 // TestRenderCard exposes renderCard for testing. Width is the text area width
@@ -1634,7 +1643,13 @@ func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) s
 	}
 	parts = append(parts, separator, timestamps)
 
-	return cardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	// Expanded card is always selected; inject highlight background (bd-yqrq).
+	bgSeq := bgSeqFromColor(t.Highlight, t.Renderer)
+	if bgSeq != "" {
+		content = injectBackground(content, bgSeq)
+	}
+	return cardStyle.Render(content)
 }
 
 // renderDetailPanel renders the detail panel for the selected issue (bv-r6kh)
