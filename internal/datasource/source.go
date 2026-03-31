@@ -41,7 +41,7 @@ const (
 type DataSource struct {
 	// Type identifies the source type
 	Type SourceType `json:"type"`
-	// Path is the absolute path to the source file
+	// Path is the absolute path to the source file (or host:port for Dolt)
 	Path string `json:"path"`
 	// Priority determines preference when timestamps are equal (higher = preferred)
 	Priority int `json:"priority"`
@@ -55,6 +55,10 @@ type DataSource struct {
 	IssueCount int `json:"issue_count"`
 	// Size is the file size in bytes
 	Size int64 `json:"size"`
+	// Database is the Dolt database name (only used for SourceTypeDolt)
+	Database string `json:"database,omitempty"`
+	// User is the Dolt connection user (only used for SourceTypeDolt)
+	User string `json:"user,omitempty"`
 }
 
 // String returns a human-readable description of the source
@@ -178,69 +182,118 @@ func DiscoverSources(opts DiscoveryOptions) ([]DataSource, error) {
 	return sources, nil
 }
 
-// discoverDoltSources detects a Dolt MySQL-compatible database by reading
-// .beads/metadata.json. If the metadata specifies "database": "dolt", a
-// DataSource is returned using the dolt directory modtime as a freshness proxy.
-// The port is read from .beads/config.yaml using simple string parsing; it
-// defaults to 3306 when not present.
-func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, error) {
-	// Read and parse metadata.json
-	metadataPath := filepath.Join(beadsDir, "metadata.json")
-	metadataBytes, err := os.ReadFile(metadataPath)
-	if err != nil {
-		// No metadata.json — Dolt not configured
-		return nil, nil
+// doltConfig holds Dolt connection settings parsed from .beads/config.yaml.
+type doltConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Database string
+}
+
+// parseDoltConfig reads Dolt settings from config.yaml using simple line parsing.
+func parseDoltConfig(beadsDir string) doltConfig {
+	cfg := doltConfig{
+		Host:     "127.0.0.1",
+		Port:     3306,
+		User:     "root",
+		Database: "beads",
 	}
 
-	var metadata struct {
-		Database string `json:"database"`
-	}
-	if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
-		if opts.Verbose {
-			opts.Logger(fmt.Sprintf("Dolt discovery: failed to parse metadata.json: %v", err))
-		}
-		return nil, nil
-	}
-
-	if metadata.Database != "dolt" {
-		return nil, nil
-	}
-
-	// Use dolt directory modtime as a freshness proxy
-	doltDir := filepath.Join(beadsDir, "dolt")
-	info, err := os.Stat(doltDir)
-	if err != nil {
-		if opts.Verbose {
-			opts.Logger(fmt.Sprintf("Dolt discovery: dolt dir not found: %v", err))
-		}
-		return nil, nil
-	}
-
-	// Read port from config.yaml using simple string parsing; default to 3306
-	port := 3306
 	configPath := filepath.Join(beadsDir, "config.yaml")
-	if configBytes, err := os.ReadFile(configPath); err == nil {
-		for _, line := range strings.Split(string(configBytes), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "dolt-port:") {
-				val := strings.TrimSpace(strings.TrimPrefix(line, "dolt-port:"))
-				if p, err := strconv.Atoi(val); err == nil && p > 0 {
-					port = p
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return cfg
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Try "dolt.key: value" format (canonical)
+		// Also "dolt-port: value" for backward compat
+		parseVal := func(prefixes []string) (string, bool) {
+			for _, prefix := range prefixes {
+				if strings.HasPrefix(line, prefix) {
+					val := strings.TrimSpace(strings.TrimPrefix(line, prefix))
+					val = strings.Trim(val, `"'`)
+					return val, true
 				}
 			}
+			return "", false
+		}
+
+		if val, ok := parseVal([]string{"dolt.host:", "dolt-host:"}); ok && val != "" {
+			cfg.Host = val
+		}
+		if val, ok := parseVal([]string{"dolt.port:", "dolt-port:"}); ok {
+			if p, err := strconv.Atoi(val); err == nil && p > 0 {
+				cfg.Port = p
+			}
+		}
+		if val, ok := parseVal([]string{"dolt.user:", "dolt-user:"}); ok && val != "" {
+			cfg.User = val
+		}
+		if val, ok := parseVal([]string{"dolt.database:", "dolt-database:"}); ok && val != "" {
+			cfg.Database = val
 		}
 	}
 
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	return cfg
+}
+
+// discoverDoltSources detects a Dolt backend via .beads/metadata.json or
+// .beads/config.yaml dolt.host setting. Returns a DataSource with connection
+// details parsed from config.yaml.
+func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, error) {
+	isDolt := false
+
+	// Detection method 1: metadata.json with "database": "dolt"
+	metadataPath := filepath.Join(beadsDir, "metadata.json")
+	if metadataBytes, err := os.ReadFile(metadataPath); err == nil {
+		var metadata struct {
+			Database string `json:"database"`
+		}
+		if json.Unmarshal(metadataBytes, &metadata) == nil && metadata.Database == "dolt" {
+			isDolt = true
+		}
+	}
+
+	// Detection method 2: config.yaml has dolt.host set
+	if !isDolt {
+		cfg := parseDoltConfig(beadsDir)
+		if cfg.Host != "127.0.0.1" {
+			isDolt = true
+		}
+	}
+
+	if !isDolt {
+		return nil, nil
+	}
+
+	cfg := parseDoltConfig(beadsDir)
+
+	// Use dolt directory modtime as a freshness proxy if it exists;
+	// otherwise use current time (remote Dolt server without local dolt dir).
+	modTime := time.Now()
+	doltDir := filepath.Join(beadsDir, "dolt")
+	if info, err := os.Stat(doltDir); err == nil {
+		modTime = info.ModTime()
+	}
+
+	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	source := DataSource{
 		Type:     SourceTypeDolt,
 		Path:     addr,
 		Priority: PriorityDolt,
-		ModTime:  info.ModTime(),
+		ModTime:  modTime,
+		Database: cfg.Database,
+		User:     cfg.User,
 	}
 
 	if opts.Verbose {
-		opts.Logger(fmt.Sprintf("Found Dolt: %s (mod=%s)", addr, info.ModTime().Format(time.RFC3339)))
+		opts.Logger(fmt.Sprintf("Found Dolt: %s/%s (user=%s, mod=%s)", addr, cfg.Database, cfg.User, modTime.Format(time.RFC3339)))
 	}
 
 	return []DataSource{source}, nil

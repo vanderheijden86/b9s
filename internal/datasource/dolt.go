@@ -3,6 +3,7 @@ package datasource
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -17,9 +18,13 @@ type DoltReader struct {
 }
 
 // NewDoltReader opens a connection to a Dolt server using the MySQL protocol.
-// The DataSource.Path field must be the host:port address of the Dolt SQL server.
-// The connection is verified with a ping before returning; if the ping fails,
-// the connection is closed and an error is returned.
+// Connection details come from the DataSource fields:
+//   - Path: host:port address (default "127.0.0.1:3306")
+//   - Database: database name (default "beads")
+//   - User: MySQL user (default "root")
+//
+// The password is read from the BEADS_DOLT_PASSWORD environment variable.
+// The connection is verified with a ping before returning.
 func NewDoltReader(source DataSource) (*DoltReader, error) {
 	if source.Type != SourceTypeDolt {
 		return nil, fmt.Errorf("source is not Dolt: %s", source.Type)
@@ -29,8 +34,22 @@ func NewDoltReader(source DataSource) (*DoltReader, error) {
 	if addr == "" {
 		addr = "127.0.0.1:3306"
 	}
+	dbName := source.Database
+	if dbName == "" {
+		dbName = "beads"
+	}
+	user := source.User
+	if user == "" {
+		user = "root"
+	}
+	password := os.Getenv("BEADS_DOLT_PASSWORD")
 
-	dsn := fmt.Sprintf("root@tcp(%s)/beads?parseTime=true&timeout=5s&readTimeout=10s", addr)
+	var dsn string
+	if password != "" {
+		dsn = fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true&timeout=5s&readTimeout=10s", user, password, addr, dbName)
+	} else {
+		dsn = fmt.Sprintf("%s@tcp(%s)/%s?parseTime=true&timeout=5s&readTimeout=10s", user, addr, dbName)
+	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open Dolt connection: %w", err)

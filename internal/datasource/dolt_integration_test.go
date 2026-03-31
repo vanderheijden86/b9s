@@ -1,9 +1,12 @@
 package datasource
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -15,18 +18,53 @@ import (
 
 // Integration tests for the Dolt backend.
 //
-// These tests require a live Dolt SQL server. Set the following env vars:
+// Configuration is loaded from .env.test in the repo root (auto-detected).
+// Override with env vars: B9S_TEST_DOLT_HOST, B9S_TEST_DOLT_PORT, B9S_TEST_DOLT_USER.
+// Password comes from BEADS_DOLT_PASSWORD (not stored in .env.test).
 //
-//   B9S_TEST_DOLT_DSN=root@tcp(osen.co:3306)/b9s_test
-//
-// Or individual components:
-//
-//   B9S_TEST_DOLT_HOST=osen.co
-//   B9S_TEST_DOLT_PORT=3306
-//   B9S_TEST_DOLT_USER=root
-//
-// The tests create a temporary database (b9s_test_<timestamp>), populate it
-// with test data, run all assertions, and drop it on cleanup.
+// The tests create a temporary database, populate it with test data,
+// run all assertions, and drop it on cleanup.
+
+func init() {
+	loadEnvTestFile()
+}
+
+// loadEnvTestFile reads .env.test from the repo root and sets env vars
+// that are not already set (env vars take precedence over file).
+func loadEnvTestFile() {
+	// Find .env.test relative to this test file's location
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return
+	}
+	// Walk up from internal/datasource/ to repo root
+	repoRoot := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
+	envPath := filepath.Join(repoRoot, ".env.test")
+
+	f, err := os.Open(envPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+		// Don't override existing env vars
+		if _, exists := os.LookupEnv(key); !exists {
+			os.Setenv(key, val)
+		}
+	}
+}
 
 const testDBPrefix = "b9s_inttest_"
 
@@ -702,20 +740,24 @@ func TestDoltIntegration_WatcherDetectsChange(t *testing.T) {
 	}
 
 	source := DataSource{
-		Type: SourceTypeDolt,
-		Path: addr,
+		Type:     SourceTypeDolt,
+		Path:     addr,
+		Database: dbName,
+		User:     user,
 	}
 
-	// Create watcher using a direct connection to our test DB
-	watcher, err := NewDoltWatcher(source, 200*time.Millisecond)
+	// Create watcher connected to our test DB
+	dw, err := NewDoltWatcher(source, 200*time.Millisecond)
 	if err != nil {
-		// The watcher connects to "beads" by default, not our test DB.
-		// We need to test the watcher concept manually with a raw reader.
-		t.Skip("DoltWatcher connects to 'beads' DB; testing change detection with raw reader instead")
+		t.Fatalf("NewDoltWatcher failed: %v", err)
 	}
-	defer watcher.Stop()
+	defer dw.Stop()
 
-	// For the watcher test, we test the underlying GetHeadHash change detection
+	// Start the watcher to get baseline hash
+	if err := dw.Start(); err != nil {
+		t.Fatalf("watcher Start failed: %v", err)
+	}
+
 	reader := newTestDoltReader(t, dbName, addr)
 	defer reader.Close()
 
@@ -749,6 +791,14 @@ func TestDoltIntegration_WatcherDetectsChange(t *testing.T) {
 		t.Error("HEAD hash should change after commit; watcher would not detect this change")
 	}
 	t.Logf("Hash before: %s, after: %s", hash1[:12], hash2[:12])
+
+	// The watcher should detect the change within a few poll cycles
+	select {
+	case <-dw.Changed():
+		t.Log("Watcher detected the change")
+	case <-time.After(3 * time.Second):
+		t.Error("Watcher did not detect change within 3s")
+	}
 }
 
 // ---------------------------------------------------------------------------
