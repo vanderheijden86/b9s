@@ -282,6 +282,21 @@ func CheckUpdateCmd() tea.Cmd {
 	}
 }
 
+// DatabaseHealth holds the result of a database / data source health check.
+type DatabaseHealth struct {
+	Backend    string        // e.g. "Dolt (MySQL protocol)", "JSONL (flat file)", "SQLite"
+	Server     string        // host:port (Dolt only)
+	Database   string        // database name (Dolt only)
+	User       string        // connection user (Dolt only)
+	FilePath   string        // file path (JSONL / SQLite only)
+	FileSize   string        // human-readable file size (JSONL / SQLite only)
+	Connected  bool          // true when ping succeeded (Dolt only)
+	Latency    time.Duration // round-trip latency for the connection ping (Dolt only)
+	HeadHash   string        // Dolt HEAD commit hash (truncated)
+	IssueCount int           // non-tombstone issue count
+	Error      string        // error message when connection failed
+}
+
 // Model is the main Bubble Tea model for b9s
 type Model struct {
 	// Data
@@ -293,6 +308,7 @@ type Model struct {
 	doltWatcher  *datasource.DoltWatcher // Dolt polling watcher for live reload
 	sourceType   datasource.SourceType   // What backend we loaded from
 	sourceInfo   string                  // Human-readable datasource description for title bar
+	doltSource   datasource.DataSource   // Dolt DataSource used for on-demand health checks
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -333,6 +349,8 @@ type Model struct {
 	showHelp             bool
 	helpScroll           int // Scroll offset for help overlay
 	showQuitConfirm      bool
+	showDBHealth         bool           // True when database health popup is visible
+	dbHealth             DatabaseHealth // Cached result of the last health check
 	ready                bool
 	width                int
 	height               int
@@ -905,6 +923,13 @@ func (m Model) WithDoltWatcher(dw *datasource.DoltWatcher) Model {
 func (m Model) WithSourceInfo(info string) Model {
 	m.sourceInfo = info
 	m.projectPicker.SetSourceInfo(info)
+	return m
+}
+
+// WithDoltSource stores the Dolt DataSource used for on-demand health checks
+// triggered by the Shift+D database health popup.
+func (m Model) WithDoltSource(s datasource.DataSource) Model {
+	m.doltSource = s
 	return m
 }
 
@@ -1754,6 +1779,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pickerVisible = !m.pickerVisible
 			// Resize tree/board after toggling to reclaim/yield space
 			m.tree.SetSize(m.width, m.bodyHeight())
+			return m, nil
+		}
+
+		// Handle Shift+D to toggle database health popup (bd-597f)
+		if msg.String() == "D" && m.pickerVisible && m.list.FilterState() != list.Filtering {
+			m.showDBHealth = !m.showDBHealth
+			if m.showDBHealth {
+				m.dbHealth = m.buildDatabaseHealth()
+			}
+			return m, nil
+		}
+
+		// Consume all keys while the database health popup is visible
+		if m.showDBHealth {
+			switch msg.String() {
+			case "esc", "D":
+				m.showDBHealth = false
+			}
 			return m, nil
 		}
 
@@ -2858,6 +2901,10 @@ func (m Model) View() string {
 	if m.showQuitConfirm {
 		body = m.renderQuitConfirm()
 		isOverlay = true
+	} else if m.showDBHealth {
+		// Database health popup (bd-597f)
+		body = m.renderDBHealthModal()
+		isOverlay = true
 	} else if m.showEditModal {
 		// Edit modal (bd-a83)
 		body = m.editModal.View()
@@ -2976,6 +3023,150 @@ func (m Model) renderQuitConfirm() string {
 		lipgloss.Center,
 		box,
 	)
+}
+
+// renderDBHealthModal renders the centered database health popup (bd-597f).
+func (m Model) renderDBHealthModal() string {
+	t := m.theme
+	h := m.dbHealth
+
+	var lines []string
+	lines = append(lines, "")
+
+	addLine := func(label, value string) {
+		lines = append(lines, fmt.Sprintf("  %-12s %s", label, value))
+	}
+
+	addLine("Backend:", h.Backend)
+
+	if h.Server != "" {
+		// Dolt-specific fields
+		addLine("Server:", h.Server)
+		addLine("Database:", h.Database)
+		addLine("User:", h.User)
+		if h.Connected {
+			addLine("Status:", "Connected \u2713")
+			addLine("Latency:", h.Latency.Round(time.Millisecond).String())
+			if h.HeadHash != "" {
+				display := h.HeadHash
+				if len(display) > 16 {
+					display = display[:16] + "..."
+				}
+				addLine("HEAD:", display)
+			}
+		} else {
+			addLine("Status:", "Disconnected \u2717")
+			if h.Error != "" {
+				addLine("Error:", h.Error)
+			}
+		}
+	}
+
+	if h.FilePath != "" {
+		addLine("File:", h.FilePath)
+		if h.FileSize != "" {
+			addLine("File size:", h.FileSize)
+		}
+	}
+
+	addLine("Issues:", fmt.Sprintf("%d", h.IssueCount))
+
+	lines = append(lines, "")
+	lines = append(lines, "  Press D or ESC to close")
+	lines = append(lines, "")
+
+	content := strings.Join(lines, "\n")
+
+	title := "Data Source"
+	if h.Server != "" {
+		title = "Database Health"
+	}
+
+	titleStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+
+	modalStyle := t.Renderer.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Primary).
+		Padding(0, 1)
+
+	box := modalStyle.Render(titleStyle.Render(" "+title+" ") + content)
+
+	return lipgloss.Place(
+		m.width,
+		m.height-1,
+		lipgloss.Center,
+		lipgloss.Center,
+		box,
+	)
+}
+
+// buildDatabaseHealth collects connection and metadata for the health popup (bd-597f).
+func (m Model) buildDatabaseHealth() DatabaseHealth {
+	h := DatabaseHealth{
+		IssueCount: len(m.issues),
+	}
+
+	switch m.sourceType {
+	case datasource.SourceTypeDolt:
+		h.Backend = "Dolt (MySQL protocol)"
+		h.Server = m.doltSource.Path
+		h.Database = m.doltSource.Database
+		if h.Database == "" {
+			h.Database = "beads"
+		}
+		h.User = m.doltSource.User
+		if h.User == "" {
+			h.User = "root"
+		}
+
+		start := time.Now()
+		reader, err := datasource.NewDoltReader(m.doltSource)
+		if err != nil {
+			h.Connected = false
+			h.Error = err.Error()
+			return h
+		}
+		defer reader.Close()
+		h.Latency = time.Since(start)
+		h.Connected = true
+
+		if hash, err := reader.GetHeadHash(); err == nil {
+			h.HeadHash = hash
+		}
+		if count, err := reader.CountIssues(); err == nil {
+			h.IssueCount = count
+		}
+
+	case datasource.SourceTypeSQLite:
+		h.Backend = "SQLite"
+		h.FilePath = m.beadsPath
+		if info, err := os.Stat(m.beadsPath); err == nil {
+			h.FileSize = formatBytes(info.Size())
+		}
+
+	default:
+		h.Backend = "JSONL (flat file)"
+		h.FilePath = m.beadsPath
+		if info, err := os.Stat(m.beadsPath); err == nil {
+			h.FileSize = formatBytes(info.Size())
+		}
+	}
+
+	return h
+}
+
+// formatBytes returns a human-readable file size string.
+func formatBytes(b int64) string {
+	switch {
+	case b >= 1024*1024:
+		return fmt.Sprintf("%.1f MB", float64(b)/(1024*1024))
+	case b >= 1024:
+		return fmt.Sprintf("%.1f KB", float64(b)/1024)
+	default:
+		return fmt.Sprintf("%d B", b)
+	}
 }
 
 func (m Model) renderListWithHeader() string {

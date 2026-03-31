@@ -150,6 +150,7 @@ func main() {
 	// If Dolt is detected but connection fails, fall back to JSONL/SQLite.
 	detectedSourceType := datasource.SourceTypeJSONLLocal
 	var doltWatcher *datasource.DoltWatcher
+	var doltSource datasource.DataSource
 	sourceInfo := ""
 	if sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
 		BeadsDir:               beadsDir,
@@ -169,6 +170,7 @@ func main() {
 						// Connection failed: fall back, don't claim Dolt mode
 					} else {
 						doltWatcher = dw
+						doltSource = sources[i]
 						detectedSourceType = datasource.SourceTypeDolt
 						sourceInfo = doltLabel + " ✓"
 					}
@@ -244,6 +246,7 @@ func main() {
 	m := ui.NewModel(issues, beadsPath).
 		WithSourceType(detectedSourceType).
 		WithDoltWatcher(doltWatcher).
+		WithDoltSource(doltSource).
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath)
 	defer m.Stop()
