@@ -1814,6 +1814,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "esc", "D":
 				m.showDBHealth = false
+			case "c", "C":
+				// Copy error or connection info to clipboard
+				var copyText string
+				if m.dbHealth.Error != "" {
+					copyText = m.dbHealth.Error
+				} else if m.dbHealth.DoltAttempt != nil && m.dbHealth.DoltAttempt.Error != "" {
+					copyText = m.dbHealth.DoltAttempt.Error
+				} else if m.dbHealth.Server != "" {
+					copyText = fmt.Sprintf("dolt://%s/%s", m.dbHealth.Server, m.dbHealth.Database)
+				} else {
+					copyText = m.dbHealth.FilePath
+				}
+				if copyText != "" {
+					if err := clipboard.WriteAll(copyText); err != nil {
+						m.statusMsg = fmt.Sprintf("Copy failed: %v", err)
+						m.statusIsError = true
+					} else {
+						m.statusMsg = "Copied to clipboard"
+						m.statusIsError = false
+					}
+				}
+				m.showDBHealth = false
 			}
 			return m, nil
 		}
@@ -3098,16 +3120,33 @@ func (m Model) renderDBHealthModal() string {
 		addLine("  Server:", h.DoltAttempt.Server)
 		addLine("  Database:", h.DoltAttempt.Database)
 		addLine("  User:", h.DoltAttempt.User)
+		// Show error, wrapping long messages to fit the modal
 		errMsg := h.DoltAttempt.Error
-		// Truncate long error messages
-		if len(errMsg) > 50 {
-			errMsg = errMsg[:50] + "..."
+		maxErrW := 45
+		if len(errMsg) <= maxErrW {
+			lines = append(lines, "  "+fmt.Sprintf("  %-12s %s", "Error:", errStyle.Render(errMsg)))
+		} else {
+			lines = append(lines, "  "+fmt.Sprintf("  %-12s %s", "Error:", errStyle.Render(errMsg[:maxErrW])))
+			for errMsg = errMsg[maxErrW:]; len(errMsg) > 0; {
+				chunk := errMsg
+				if len(chunk) > maxErrW {
+					chunk = errMsg[:maxErrW]
+					errMsg = errMsg[maxErrW:]
+				} else {
+					errMsg = ""
+				}
+				lines = append(lines, "  "+fmt.Sprintf("  %-12s %s", "", errStyle.Render(chunk)))
+			}
 		}
-		lines = append(lines, "  "+fmt.Sprintf("  %-12s %s", "Error:", errStyle.Render(errMsg)))
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "  Press D or ESC to close")
+	hasError := h.Error != "" || (h.DoltAttempt != nil && h.DoltAttempt.Error != "")
+	if hasError {
+		lines = append(lines, "  C: copy error   D/ESC: close")
+	} else {
+		lines = append(lines, "  C: copy info   D/ESC: close")
+	}
 	lines = append(lines, "")
 
 	content := strings.Join(lines, "\n")
