@@ -282,6 +282,15 @@ func CheckUpdateCmd() tea.Cmd {
 	}
 }
 
+// DoltFailure captures details when a Dolt connection was attempted but failed,
+// causing fallback to JSONL/SQLite.
+type DoltFailure struct {
+	Server   string // host:port that was attempted
+	Database string // database name
+	User     string // connection user
+	Error    string // connection error message
+}
+
 // DatabaseHealth holds the result of a database / data source health check.
 type DatabaseHealth struct {
 	Backend    string        // e.g. "Dolt (MySQL protocol)", "JSONL (flat file)", "SQLite"
@@ -294,7 +303,8 @@ type DatabaseHealth struct {
 	Latency    time.Duration // round-trip latency for the connection ping (Dolt only)
 	HeadHash   string        // Dolt HEAD commit hash (truncated)
 	IssueCount int           // non-tombstone issue count
-	Error      string        // error message when connection failed
+	Error       string       // error message when connection failed
+	DoltAttempt *DoltFailure // non-nil when Dolt was configured but connection failed (fallback mode)
 }
 
 // Model is the main Bubble Tea model for b9s
@@ -309,6 +319,7 @@ type Model struct {
 	sourceType   datasource.SourceType   // What backend we loaded from
 	sourceInfo   string                  // Human-readable datasource description for title bar
 	doltSource   datasource.DataSource   // Dolt DataSource used for on-demand health checks
+	doltFailure  *DoltFailure            // Non-nil when Dolt was detected but connection failed
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -930,6 +941,13 @@ func (m Model) WithSourceInfo(info string) Model {
 // triggered by the Shift+D database health popup.
 func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	m.doltSource = s
+	return m
+}
+
+// WithDoltFailure records a failed Dolt connection attempt so the health popup
+// can show what was tried and why it failed, even when the source fell back to JSONL.
+func (m Model) WithDoltFailure(f *DoltFailure) Model {
+	m.doltFailure = f
 	return m
 }
 
@@ -3071,6 +3089,23 @@ func (m Model) renderDBHealthModal() string {
 
 	addLine("Issues:", fmt.Sprintf("%d", h.IssueCount))
 
+	// Show failed Dolt connection attempt when falling back to JSONL/SQLite
+	if h.DoltAttempt != nil {
+		warnStyle := t.Renderer.NewStyle().Foreground(lipgloss.Color("#FF8800"))
+		errStyle := t.Renderer.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+		lines = append(lines, "")
+		lines = append(lines, "  "+warnStyle.Render("Dolt configured but not connected:"))
+		addLine("  Server:", h.DoltAttempt.Server)
+		addLine("  Database:", h.DoltAttempt.Database)
+		addLine("  User:", h.DoltAttempt.User)
+		errMsg := h.DoltAttempt.Error
+		// Truncate long error messages
+		if len(errMsg) > 50 {
+			errMsg = errMsg[:50] + "..."
+		}
+		lines = append(lines, "  "+fmt.Sprintf("  %-12s %s", "Error:", errStyle.Render(errMsg)))
+	}
+
 	lines = append(lines, "")
 	lines = append(lines, "  Press D or ESC to close")
 	lines = append(lines, "")
@@ -3152,6 +3187,11 @@ func (m Model) buildDatabaseHealth() DatabaseHealth {
 		if info, err := os.Stat(m.beadsPath); err == nil {
 			h.FileSize = formatBytes(info.Size())
 		}
+	}
+
+	// Attach Dolt failure info if Dolt was attempted but failed
+	if m.doltFailure != nil && m.sourceType != datasource.SourceTypeDolt {
+		h.DoltAttempt = m.doltFailure
 	}
 
 	return h
