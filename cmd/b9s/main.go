@@ -146,38 +146,44 @@ func main() {
 	beadsDir, _ := loader.GetBeadsDir("")
 	beadsPath, _ := loader.FindJSONLPath(beadsDir)
 
-	// Detect source type and create Dolt watcher if applicable
+	// Detect source type and create Dolt watcher if applicable.
+	// If Dolt is detected but connection fails, fall back to JSONL/SQLite.
 	detectedSourceType := datasource.SourceTypeJSONLLocal
 	var doltWatcher *datasource.DoltWatcher
-	sourceInfo := fmt.Sprintf("jsonl %s", beadsPath)
+	sourceInfo := ""
 	if sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
 		BeadsDir:               beadsDir,
 		ValidateAfterDiscovery: false,
 	}); discErr == nil {
 		for i, s := range sources {
 			if s.Type == datasource.SourceTypeDolt {
-				detectedSourceType = datasource.SourceTypeDolt
 				db := s.Database
 				if db == "" {
 					db = "beads"
 				}
-				sourceInfo = fmt.Sprintf("dolt://%s/%s", s.Path, db)
+				doltLabel := fmt.Sprintf("dolt://%s/%s", s.Path, db)
 				dw, dwErr := datasource.NewDoltWatcher(sources[i], 500*time.Millisecond)
 				if dwErr == nil {
 					if err := dw.Start(); err != nil {
 						dw.Stop()
-						sourceInfo += " ✗"
+						// Connection failed: fall back, don't claim Dolt mode
 					} else {
 						doltWatcher = dw
-						sourceInfo += " ✓"
+						detectedSourceType = datasource.SourceTypeDolt
+						sourceInfo = doltLabel + " ✓"
 					}
-				} else {
-					sourceInfo += " ✗"
 				}
 				break
 			} else if s.Type == datasource.SourceTypeSQLite {
 				sourceInfo = fmt.Sprintf("sqlite %s", filepath.Base(s.Path))
 			}
+		}
+	}
+	if sourceInfo == "" {
+		if beadsPath != "" {
+			sourceInfo = fmt.Sprintf("jsonl %s", filepath.Base(beadsPath))
+		} else {
+			sourceInfo = "no source"
 		}
 	}
 
