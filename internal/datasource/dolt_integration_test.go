@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -937,5 +938,558 @@ func TestDoltIntegration_EmptyDatabase(t *testing.T) {
 	}
 	if count != 0 {
 		t.Errorf("expected count 0, got %d", count)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Test: Full create/edit/close cycle via SQL (simulates bd CLI writes)
+// ---------------------------------------------------------------------------
+
+// openMutationDB opens a raw SQL connection to the test database for writes.
+func openMutationDB(t *testing.T, dbName, addr string) *sql.DB {
+	t.Helper()
+	user := os.Getenv("B9S_TEST_DOLT_USER")
+	if user == "" {
+		user = "root"
+	}
+	dsn := buildDSN(user, os.Getenv("BEADS_DOLT_PASSWORD"), addr, dbName)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		t.Fatalf("cannot open mutation connection: %v", err)
+	}
+	return db
+}
+
+func TestDoltIntegration_CreateIssueAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	dbName, addr, cleanup := testDB(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+	db := openMutationDB(t, dbName, addr)
+	defer db.Close()
+
+	// Verify initial count
+	before, err := reader.CountIssues()
+	if err != nil {
+		t.Fatalf("CountIssues failed: %v", err)
+	}
+	if before != 4 {
+		t.Fatalf("expected 4 initial issues, got %d", before)
+	}
+
+	// Create a new issue (simulates bd create)
+	_, err = db.Exec(`INSERT INTO issues
+		(id, title, description, status, priority, issue_type, assignee, created_at, updated_at, labels, notes)
+		VALUES ('test-new-001', 'Implement dark theme', 'Add dark mode support to the UI',
+		'open', 2, 'feature', 'charlie', NOW(), NOW(), '["ui","theme"]', 'Requested by users')`)
+	if err != nil {
+		t.Fatalf("INSERT failed: %v", err)
+	}
+
+	// Read back via DoltReader
+	issue, err := reader.GetIssueByID("test-new-001")
+	if err != nil {
+		t.Fatalf("GetIssueByID after create failed: %v", err)
+	}
+
+	if issue.Title != "Implement dark theme" {
+		t.Errorf("expected title 'Implement dark theme', got %q", issue.Title)
+	}
+	if issue.Description != "Add dark mode support to the UI" {
+		t.Errorf("expected description, got %q", issue.Description)
+	}
+	if string(issue.Status) != "open" {
+		t.Errorf("expected status 'open', got %q", issue.Status)
+	}
+	if issue.Priority != 2 {
+		t.Errorf("expected priority 2, got %d", issue.Priority)
+	}
+	if string(issue.IssueType) != "feature" {
+		t.Errorf("expected type 'feature', got %q", issue.IssueType)
+	}
+	if issue.Assignee != "charlie" {
+		t.Errorf("expected assignee 'charlie', got %q", issue.Assignee)
+	}
+	if issue.Notes != "Requested by users" {
+		t.Errorf("expected notes, got %q", issue.Notes)
+	}
+	if len(issue.Labels) != 2 || issue.Labels[0] != "ui" || issue.Labels[1] != "theme" {
+		t.Errorf("expected labels [ui, theme], got %v", issue.Labels)
+	}
+
+	// Count should increase
+	after, err := reader.CountIssues()
+	if err != nil {
+		t.Fatalf("CountIssues after create failed: %v", err)
+	}
+	if after != before+1 {
+		t.Errorf("expected count %d after create, got %d", before+1, after)
+	}
+}
+
+func TestDoltIntegration_EditIssueFieldsAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	dbName, addr, cleanup := testDB(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+	db := openMutationDB(t, dbName, addr)
+	defer db.Close()
+
+	// Verify initial state
+	before, err := reader.GetIssueByID("test-001")
+	if err != nil {
+		t.Fatalf("initial read failed: %v", err)
+	}
+	if before.Title != "Fix login bug" {
+		t.Fatalf("expected initial title 'Fix login bug', got %q", before.Title)
+	}
+
+	// Edit multiple fields (simulates bd update --title=... --priority=... --notes=...)
+	_, err = db.Exec(`UPDATE issues SET
+		title = 'Fix SSO login bug',
+		priority = 0,
+		status = 'in_progress',
+		assignee = 'bob',
+		notes = 'Root cause found: token expiry',
+		updated_at = NOW()
+		WHERE id = 'test-001'`)
+	if err != nil {
+		t.Fatalf("UPDATE failed: %v", err)
+	}
+
+	// Read back
+	after, err := reader.GetIssueByID("test-001")
+	if err != nil {
+		t.Fatalf("read after edit failed: %v", err)
+	}
+
+	if after.Title != "Fix SSO login bug" {
+		t.Errorf("title not updated: got %q", after.Title)
+	}
+	if after.Priority != 0 {
+		t.Errorf("priority not updated: got %d", after.Priority)
+	}
+	if string(after.Status) != "in_progress" {
+		t.Errorf("status not updated: got %q", after.Status)
+	}
+	if after.Assignee != "bob" {
+		t.Errorf("assignee not updated: got %q", after.Assignee)
+	}
+	if after.Notes != "Root cause found: token expiry" {
+		t.Errorf("notes not updated: got %q", after.Notes)
+	}
+	if after.UpdatedAt.Before(before.UpdatedAt) || after.UpdatedAt.Equal(before.UpdatedAt) {
+		t.Error("updated_at should be newer after edit")
+	}
+}
+
+func TestDoltIntegration_CloseIssueAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	dbName, addr, cleanup := testDB(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+	db := openMutationDB(t, dbName, addr)
+	defer db.Close()
+
+	// Verify open before close
+	before, err := reader.GetIssueByID("test-001")
+	if err != nil {
+		t.Fatalf("initial read failed: %v", err)
+	}
+	if string(before.Status) != "open" {
+		t.Fatalf("expected initial status 'open', got %q", before.Status)
+	}
+
+	// Close issue (simulates bd close)
+	_, err = db.Exec(`UPDATE issues SET
+		status = 'closed',
+		closed_at = NOW(),
+		updated_at = NOW()
+		WHERE id = 'test-001'`)
+	if err != nil {
+		t.Fatalf("close UPDATE failed: %v", err)
+	}
+
+	// Read back
+	after, err := reader.GetIssueByID("test-001")
+	if err != nil {
+		t.Fatalf("read after close failed: %v", err)
+	}
+
+	if string(after.Status) != "closed" {
+		t.Errorf("expected status 'closed', got %q", after.Status)
+	}
+	if after.ClosedAt == nil {
+		t.Error("expected non-nil ClosedAt after close")
+	}
+}
+
+func TestDoltIntegration_AddDependencyAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	dbName, addr, cleanup := testDB(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+	db := openMutationDB(t, dbName, addr)
+	defer db.Close()
+
+	// test-003 has no deps initially
+	before, err := reader.GetIssueByID("test-003")
+	if err != nil {
+		t.Fatalf("initial read failed: %v", err)
+	}
+	if len(before.Dependencies) != 0 {
+		t.Fatalf("expected 0 deps initially, got %d", len(before.Dependencies))
+	}
+
+	// Add a dependency (simulates bd dep add)
+	_, err = db.Exec(`INSERT INTO dependencies (issue_id, depends_on_id, dependency_type)
+		VALUES ('test-003', 'test-001', 'blocks')`)
+	if err != nil {
+		t.Fatalf("INSERT dep failed: %v", err)
+	}
+
+	// Read back
+	after, err := reader.GetIssueByID("test-003")
+	if err != nil {
+		t.Fatalf("read after dep add failed: %v", err)
+	}
+
+	if len(after.Dependencies) != 1 {
+		t.Fatalf("expected 1 dep after add, got %d", len(after.Dependencies))
+	}
+	if after.Dependencies[0].DependsOnID != "test-001" {
+		t.Errorf("expected dep on test-001, got %q", after.Dependencies[0].DependsOnID)
+	}
+	if string(after.Dependencies[0].Type) != "blocks" {
+		t.Errorf("expected dep type 'blocks', got %q", after.Dependencies[0].Type)
+	}
+}
+
+func TestDoltIntegration_AddCommentAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	dbName, addr, cleanup := testDB(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+	db := openMutationDB(t, dbName, addr)
+	defer db.Close()
+
+	// test-003 has no comments initially
+	before, err := reader.GetIssueByID("test-003")
+	if err != nil {
+		t.Fatalf("initial read failed: %v", err)
+	}
+	if len(before.Comments) != 0 {
+		t.Fatalf("expected 0 comments initially, got %d", len(before.Comments))
+	}
+
+	// Add a comment
+	_, err = db.Exec(`INSERT INTO comments (issue_id, author, text, created_at)
+		VALUES ('test-003', 'dave', 'Docs look good, merging', NOW())`)
+	if err != nil {
+		t.Fatalf("INSERT comment failed: %v", err)
+	}
+
+	// Read back
+	after, err := reader.GetIssueByID("test-003")
+	if err != nil {
+		t.Fatalf("read after comment add failed: %v", err)
+	}
+
+	if len(after.Comments) != 1 {
+		t.Fatalf("expected 1 comment after add, got %d", len(after.Comments))
+	}
+	if after.Comments[0].Author != "dave" {
+		t.Errorf("expected author 'dave', got %q", after.Comments[0].Author)
+	}
+	if after.Comments[0].Text != "Docs look good, merging" {
+		t.Errorf("expected comment text, got %q", after.Comments[0].Text)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Test: Full bd CLI write path (skipped if bd not in PATH)
+// ---------------------------------------------------------------------------
+
+func skipIfNoBdCLI(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("bd"); err != nil {
+		t.Skip("bd CLI not found in PATH, skipping CLI integration test")
+	}
+}
+
+// setupBdProject creates a temp directory and runs `bd init --server` to create a
+// proper Dolt database with the full schema that bd expects. Returns the work
+// directory, database name, and a cleanup function.
+func setupBdProject(t *testing.T) (workDir, dbName, addr string, cleanup func()) {
+	t.Helper()
+
+	host := os.Getenv("B9S_TEST_DOLT_HOST")
+	if host == "" {
+		host = "osen.co"
+	}
+	port := os.Getenv("B9S_TEST_DOLT_PORT")
+	if port == "" {
+		port = "3306"
+	}
+	user := os.Getenv("B9S_TEST_DOLT_USER")
+	if user == "" {
+		user = "root"
+	}
+	password := os.Getenv("BEADS_DOLT_PASSWORD")
+	addr = fmt.Sprintf("%s:%s", host, port)
+
+	// Unique database name for this test
+	dbName = fmt.Sprintf("%s%d_bd", testDBPrefix, time.Now().UnixNano())
+
+	dir := t.TempDir()
+
+	// Init git first (bd requires it)
+	gitInit := exec.Command("git", "init")
+	gitInit.Dir = dir
+	if out, err := gitInit.CombinedOutput(); err != nil {
+		t.Fatalf("git init failed: %v\n%s", err, out)
+	}
+	// Need at least one commit
+	gitCommit := exec.Command("git", "commit", "--allow-empty", "-m", "init")
+	gitCommit.Dir = dir
+	gitCommit.Run()
+
+	// Run bd init to create the database with full schema
+	cmd := exec.Command("bd", "init",
+		"--server",
+		fmt.Sprintf("--server-host=%s", host),
+		fmt.Sprintf("--server-port=%s", port),
+		fmt.Sprintf("--server-user=%s", user),
+		fmt.Sprintf("--database=%s", dbName),
+		"--prefix=test",
+	)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(),
+		"BEADS_DOLT_SERVER_MODE=1",
+		fmt.Sprintf("BEADS_DOLT_SERVER_DATABASE=%s", dbName),
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bd init failed: %v\nOutput: %s", err, output)
+	}
+	t.Logf("bd init output: %s", strings.TrimSpace(string(output)))
+
+	cleanup = func() {
+		var cleanDSN string
+		if password != "" {
+			cleanDSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/?parseTime=true&timeout=10s", user, password, host, port)
+		} else {
+			cleanDSN = fmt.Sprintf("%s@tcp(%s:%s)/?parseTime=true&timeout=10s", user, host, port)
+		}
+		cleanDB, err := sql.Open("mysql", cleanDSN)
+		if err == nil {
+			cleanDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName))
+			cleanDB.Close()
+		}
+	}
+
+	return dir, dbName, addr, cleanup
+}
+
+func TestDoltIntegration_BdCLI_CreateAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	skipIfNoBdCLI(t)
+	workDir, dbName, addr, cleanup := setupBdProject(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+
+	// Count before
+	beforeCount, err := reader.CountIssues()
+	if err != nil {
+		t.Fatalf("CountIssues failed: %v", err)
+	}
+
+	// Run bd create
+	cmd := exec.Command("bd", "create",
+		"--title=Test issue from b9s",
+		"--description=Created by integration test",
+		"--type=task",
+		"--priority=2",
+	)
+	cmd.Dir = workDir
+	cmd.Env = append(os.Environ(),
+		"BEADS_DOLT_SERVER_MODE=1",
+		fmt.Sprintf("BEADS_DOLT_SERVER_DATABASE=%s", dbName),
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bd create failed: %v\nOutput: %s", err, output)
+	}
+	t.Logf("bd create output: %s", strings.TrimSpace(string(output)))
+
+	// Verify count increased
+	afterCount, err := reader.CountIssues()
+	if err != nil {
+		t.Fatalf("CountIssues after create failed: %v", err)
+	}
+	if afterCount != beforeCount+1 {
+		t.Errorf("expected count %d after bd create, got %d", beforeCount+1, afterCount)
+	}
+
+	// Find the new issue and verify fields
+	issues, err := reader.LoadIssuesFiltered(func(iss *model.Issue) bool {
+		return iss.Title == "Test issue from b9s"
+	})
+	if err != nil {
+		t.Fatalf("LoadIssuesFiltered failed: %v", err)
+	}
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue with title 'Test issue from b9s', got %d", len(issues))
+	}
+
+	created := issues[0]
+	if created.Description != "Created by integration test" {
+		t.Errorf("description mismatch: %q", created.Description)
+	}
+	if string(created.IssueType) != "task" {
+		t.Errorf("type mismatch: %q", created.IssueType)
+	}
+	if created.Priority != 2 {
+		t.Errorf("priority mismatch: %d", created.Priority)
+	}
+	t.Logf("Created issue: %s", created.ID)
+}
+
+func TestDoltIntegration_BdCLI_UpdateAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	skipIfNoBdCLI(t)
+	workDir, dbName, addr, cleanup := setupBdProject(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+
+	bdEnv := append(os.Environ(),
+		"BEADS_DOLT_SERVER_MODE=1",
+		fmt.Sprintf("BEADS_DOLT_SERVER_DATABASE=%s", dbName),
+	)
+
+	// First create an issue to update
+	createCmd := exec.Command("bd", "create",
+		"--title=Issue to update",
+		"--type=bug",
+		"--priority=1",
+	)
+	createCmd.Dir = workDir
+	createCmd.Env = bdEnv
+	createOut, err := createCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bd create (setup) failed: %v\nOutput: %s", err, createOut)
+	}
+
+	// Find the created issue ID
+	issues, err := reader.LoadIssuesFiltered(func(iss *model.Issue) bool {
+		return iss.Title == "Issue to update"
+	})
+	if err != nil || len(issues) == 0 {
+		t.Fatalf("could not find created issue: %v", err)
+	}
+	issueID := issues[0].ID
+	t.Logf("Created issue %s for update test", issueID)
+
+	// Run bd update to change title and status
+	cmd := exec.Command("bd", "update", issueID,
+		"--title=Issue updated via CLI",
+		"--status=in_progress",
+	)
+	cmd.Dir = workDir
+	cmd.Env = bdEnv
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bd update failed: %v\nOutput: %s", err, output)
+	}
+	t.Logf("bd update output: %s", strings.TrimSpace(string(output)))
+
+	// Read back and verify
+	after, err := reader.GetIssueByID(issueID)
+	if err != nil {
+		t.Fatalf("read after update failed: %v", err)
+	}
+
+	if after.Title != "Issue updated via CLI" {
+		t.Errorf("title not updated: got %q", after.Title)
+	}
+	if string(after.Status) != "in_progress" {
+		t.Errorf("status not updated: got %q", after.Status)
+	}
+}
+
+func TestDoltIntegration_BdCLI_CloseAndReadBack(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	skipIfNoBdCLI(t)
+	workDir, dbName, addr, cleanup := setupBdProject(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+
+	bdEnv := append(os.Environ(),
+		"BEADS_DOLT_SERVER_MODE=1",
+		fmt.Sprintf("BEADS_DOLT_SERVER_DATABASE=%s", dbName),
+	)
+
+	// First create an issue to close
+	createCmd := exec.Command("bd", "create",
+		"--title=Issue to close",
+		"--type=task",
+		"--priority=3",
+	)
+	createCmd.Dir = workDir
+	createCmd.Env = bdEnv
+	createOut, err := createCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bd create (setup) failed: %v\nOutput: %s", err, createOut)
+	}
+
+	// Find the created issue ID
+	issues, err := reader.LoadIssuesFiltered(func(iss *model.Issue) bool {
+		return iss.Title == "Issue to close"
+	})
+	if err != nil || len(issues) == 0 {
+		t.Fatalf("could not find created issue: %v", err)
+	}
+	issueID := issues[0].ID
+	t.Logf("Created issue %s for close test", issueID)
+
+	// Close it
+	cmd := exec.Command("bd", "close", issueID, "--reason=Fixed in PR #42")
+	cmd.Dir = workDir
+	cmd.Env = bdEnv
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bd close failed: %v\nOutput: %s", err, output)
+	}
+	t.Logf("bd close output: %s", strings.TrimSpace(string(output)))
+
+	// Read back and verify
+	after, err := reader.GetIssueByID(issueID)
+	if err != nil {
+		t.Fatalf("read after close failed: %v", err)
+	}
+
+	if string(after.Status) != "closed" {
+		t.Errorf("expected status 'closed', got %q", after.Status)
+	}
+	if after.ClosedAt != nil {
+		t.Logf("ClosedAt: %s", after.ClosedAt)
+	} else {
+		t.Log("Note: ClosedAt nil (bd v0.63 may store this differently)")
 	}
 }

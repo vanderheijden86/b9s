@@ -95,7 +95,7 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 			compacted_at, compacted_at_commit, original_size,
 			labels, design, acceptance_criteria, notes, source_repo
 		FROM issues
-		WHERE (tombstone IS NULL OR tombstone = 0)
+		WHERE status != 'tombstone'
 		ORDER BY updated_at DESC
 	`
 
@@ -134,7 +134,7 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 	query := `
 		SELECT id, title, description, status, priority, issue_type, created_at, updated_at
 		FROM issues
-		WHERE (tombstone IS NULL OR tombstone = 0)
+		WHERE status != 'tombstone'
 		ORDER BY updated_at DESC
 	`
 
@@ -353,7 +353,7 @@ func (r *DoltReader) GetIssueByID(id string) (*model.Issue, error) {
 // CountIssues returns the count of non-tombstone issues.
 func (r *DoltReader) CountIssues() (int, error) {
 	var count int
-	err := r.db.QueryRow("SELECT COUNT(*) FROM issues WHERE (tombstone IS NULL OR tombstone = 0)").Scan(&count)
+	err := r.db.QueryRow("SELECT COUNT(*) FROM issues WHERE status != 'tombstone'").Scan(&count)
 	if err != nil {
 		return 0, err
 	}
