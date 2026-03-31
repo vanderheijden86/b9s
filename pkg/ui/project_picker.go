@@ -46,6 +46,7 @@ type ProjectPickerModel struct {
 	filterInput  textinput.Model
 	filtering    bool
 	theme        Theme
+	sourceInfo   string // e.g. "dolt://osen.co:3306/b9s ✓" or "jsonl .beads/issues.jsonl"
 }
 
 // maxVisibleProjects is the max number of projects shown in the table.
@@ -96,6 +97,11 @@ func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
 		filtering:    false,
 		theme:        theme,
 	}
+}
+
+// SetSourceInfo sets the datasource description shown in the title bar.
+func (m *ProjectPickerModel) SetSourceInfo(info string) {
+	m.sourceInfo = info
 }
 
 // SetSize updates the picker dimensions.
@@ -654,10 +660,20 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 
 	sepChar := "\u2500"
 	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
+	dimText := t.Renderer.NewStyle().Foreground(t.Secondary)
+
+	// Source info on the left: "dolt://host:port/db ✓" or "jsonl .beads/issues.jsonl"
+	sourceStr := ""
+	sourceVisLen := 0
+	if m.sourceInfo != "" {
+		sourceStr = " " + dimText.Render(m.sourceInfo) + " "
+		sourceVisLen = len(m.sourceInfo) + 2
+	}
 
 	titleLen := len(label) + len(countStr)
-	leftPad := (w - titleLen - 4) / 2
-	rightPad := w - titleLen - 4 - leftPad
+	totalContent := sourceVisLen + titleLen + 4 // 4 = spaces around title
+	leftPad := (w - totalContent) / 2
+	rightPad := w - totalContent - leftPad
 	if leftPad < 1 {
 		leftPad = 1
 	}
@@ -665,7 +681,7 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 		rightPad = 1
 	}
 
-	return sepStyle.Render(strings.Repeat(sepChar, leftPad)) + " " + title + " " + sepStyle.Render(strings.Repeat(sepChar, rightPad))
+	return sourceStr + sepStyle.Render(strings.Repeat(sepChar, leftPad)) + " " + title + " " + sepStyle.Render(strings.Repeat(sepChar, rightPad))
 }
 
 // maxLineWidth returns the max visible width across a set of pre-rendered lines.

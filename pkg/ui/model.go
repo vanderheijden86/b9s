@@ -292,6 +292,7 @@ type Model struct {
 	watcher      *watcher.Watcher // File watcher for live reload
 	doltWatcher  *datasource.DoltWatcher // Dolt polling watcher for live reload
 	sourceType   datasource.SourceType   // What backend we loaded from
+	sourceInfo   string                  // Human-readable datasource description for title bar
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -881,6 +882,7 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.allProjects = projects
 	entries := m.buildProjectEntries()
 	m.projectPicker = NewProjectPicker(entries, m.theme)
+	m.projectPicker.SetSourceInfo(m.sourceInfo)
 	return m
 }
 
@@ -896,6 +898,13 @@ func (m Model) WithSourceType(st datasource.SourceType) Model {
 // The model's Stop() method will call Stop() on the watcher.
 func (m Model) WithDoltWatcher(dw *datasource.DoltWatcher) Model {
 	m.doltWatcher = dw
+	return m
+}
+
+// WithSourceInfo sets a human-readable datasource description shown in the title bar.
+func (m Model) WithSourceInfo(info string) Model {
+	m.sourceInfo = info
+	m.projectPicker.SetSourceInfo(info)
 	return m
 }
 
@@ -1020,6 +1029,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.allProjects) > 0 {
 			entries := m.buildProjectEntries()
 			m.projectPicker = NewProjectPicker(entries, m.theme)
+			m.projectPicker.SetSourceInfo(m.sourceInfo)
 			m.projectPicker.SetSize(m.width, m.height)
 		}
 		return m, pickerRefreshTickCmd()
@@ -1198,6 +1208,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.allProjects) > 0 {
 			pickerEntries := m.buildProjectEntries()
 			m.projectPicker = NewProjectPicker(pickerEntries, m.theme)
+			m.projectPicker.SetSourceInfo(m.sourceInfo)
 			m.projectPicker.SetSize(m.width, m.height)
 		}
 
@@ -1303,6 +1314,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Rebuild picker entries to reflect new active project (bd-ey3)
 		entries := m.buildProjectEntries()
 		m.projectPicker = NewProjectPicker(entries, m.theme)
+		m.projectPicker.SetSourceInfo(m.sourceInfo)
 		m.projectPicker.SetSize(m.width, m.height)
 		return m, tea.Batch(cmds...)
 
@@ -1318,6 +1330,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Refresh picker entries (always visible now, bd-ey3)
 		entries := m.buildProjectEntries()
 		m.projectPicker = NewProjectPicker(entries, m.theme)
+		m.projectPicker.SetSourceInfo(m.sourceInfo)
 		m.projectPicker.SetSize(m.width, m.height)
 		return m, nil
 

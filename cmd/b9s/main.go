@@ -149,6 +149,7 @@ func main() {
 	// Detect source type and create Dolt watcher if applicable
 	detectedSourceType := datasource.SourceTypeJSONLLocal
 	var doltWatcher *datasource.DoltWatcher
+	sourceInfo := fmt.Sprintf("jsonl %s", beadsPath)
 	if sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
 		BeadsDir:               beadsDir,
 		ValidateAfterDiscovery: false,
@@ -156,15 +157,26 @@ func main() {
 		for i, s := range sources {
 			if s.Type == datasource.SourceTypeDolt {
 				detectedSourceType = datasource.SourceTypeDolt
+				db := s.Database
+				if db == "" {
+					db = "beads"
+				}
+				sourceInfo = fmt.Sprintf("dolt://%s/%s", s.Path, db)
 				dw, dwErr := datasource.NewDoltWatcher(sources[i], 500*time.Millisecond)
 				if dwErr == nil {
 					if err := dw.Start(); err != nil {
 						dw.Stop()
+						sourceInfo += " ✗"
 					} else {
 						doltWatcher = dw
+						sourceInfo += " ✓"
 					}
+				} else {
+					sourceInfo += " ✗"
 				}
 				break
+			} else if s.Type == datasource.SourceTypeSQLite {
+				sourceInfo = fmt.Sprintf("sqlite %s", filepath.Base(s.Path))
 			}
 		}
 	}
@@ -226,6 +238,7 @@ func main() {
 	m := ui.NewModel(issues, beadsPath).
 		WithSourceType(detectedSourceType).
 		WithDoltWatcher(doltWatcher).
+		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath)
 	defer m.Stop()
 
