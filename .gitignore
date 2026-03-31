@@ -62,3 +62,8 @@ a.out
 target-*/
 .playwright-mcp/
 /b9s
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
