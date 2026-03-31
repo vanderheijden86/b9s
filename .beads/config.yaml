@@ -45,6 +45,13 @@
 #     - ~/beads-planning  # Personal planning repo
 #     - ~/work-planning   # Work planning repo
 
+# Centralized Dolt server (shared across machines/agents)
+# Password is in env var BEADS_DOLT_PASSWORD (not in this file)
+dolt.host: "osen.co"
+dolt.port: 3306
+dolt.user: "root"
+dolt.database: "b9s"
+
 # Integration settings (access with 'bd config get/set')
 # These are stored in the database, not in this file:
 # - jira.url
