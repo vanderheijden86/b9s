@@ -2978,7 +2978,9 @@ func (m Model) renderLoadingScreen() string {
 		"",
 		titleStyle.Render("Loading beads..."),
 	}
-	if m.beadsPath != "" {
+	if m.sourceInfo != "" {
+		lines = append(lines, "", subStyle.Render(m.sourceInfo))
+	} else if m.beadsPath != "" {
 		lines = append(lines, "", subStyle.Render(m.beadsPath))
 	}
 
