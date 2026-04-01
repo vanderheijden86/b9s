@@ -1654,7 +1654,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Auto-enable background mode after slow sync reloads (opt-out via B9S_BACKGROUND_MODE=0).
 		autoEnabled := false
 		slowReload := reloadDuration >= time.Second
-		if slowReload && m.backgroundWorker == nil && m.beadsPath != "" {
+		if slowReload && m.backgroundWorker == nil && m.beadsPath != "" && m.sourceType != datasource.SourceTypeDolt {
 			autoAllowed := true
 			if v := strings.TrimSpace(os.Getenv("B9S_BACKGROUND_MODE")); v != "" {
 				switch strings.ToLower(v) {
