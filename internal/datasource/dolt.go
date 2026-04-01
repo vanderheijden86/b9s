@@ -15,8 +15,9 @@ import (
 
 // DoltReader provides read access to a Dolt database via the MySQL protocol.
 type DoltReader struct {
-	db   *sql.DB
-	addr string
+	db             *sql.DB
+	addr           string
+	lastLoggedHash string // suppress repeated hash log lines
 }
 
 // NewDoltReader opens a connection to a Dolt server using the MySQL protocol.
@@ -358,7 +359,11 @@ func (r *DoltReader) GetHeadHash() (string, error) {
 		debug.Log("dolt: HASHOF('HEAD') failed: %v", err)
 		return "", fmt.Errorf("failed to get HEAD hash: %w", err)
 	}
-	debug.Log("dolt: HASHOF('HEAD') = %s", hash)
+	// Only log when hash changes (avoid flooding debug log with poll ticks)
+	if hash != r.lastLoggedHash {
+		debug.Log("dolt: HASHOF('HEAD') = %s", hash)
+		r.lastLoggedHash = hash
+	}
 	return hash, nil
 }
 

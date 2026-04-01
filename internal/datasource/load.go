@@ -73,12 +73,17 @@ func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
 		return nil, fmt.Errorf("no valid sources discovered")
 	}
 
-	best, err := SelectBestSource(sources)
+	// Use priority-first selection so Dolt (110) always beats JSONL (50).
+	// ModTime-first would let a recently-flushed JSONL file win over Dolt,
+	// which is wrong since Dolt is the authoritative source when configured.
+	opts := DefaultSelectionOptions()
+	opts.PreferFreshest = false
+	best, err := SelectBestSourceWithOptions(sources, opts)
 	if err != nil {
 		debug.Log("load: SelectBestSource failed: %v", err)
 		return nil, err
 	}
-	debug.Log("load: selected best source: type=%s path=%s db=%s", best.Type, best.Path, best.Database)
+	debug.Log("load: selected best source: type=%s path=%s db=%s (priority=%d)", best.Type, best.Path, best.Database, best.Priority)
 
 	return LoadFromSource(best)
 }
