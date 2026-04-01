@@ -329,6 +329,10 @@ type Model struct {
 	// snapshotInitPending is true until we receive the first BackgroundWorker snapshot
 	// (or an error), allowing a polished cold-start loading screen (bv-tspo).
 	snapshotInitPending bool
+	// isLoading is true while waiting for a data reload (e.g., Dolt query after
+	// project switch). When true, View() shows a loading screen instead of
+	// "no issues to display".
+	isLoading bool
 	// backgroundWorker manages async data loading (nil if background mode disabled)
 	backgroundWorker *BackgroundWorker
 	workerSpinnerIdx int // Spinner frame for background worker activity (bv-9nfy)
@@ -1146,6 +1150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Update legacy fields for backwards compatibility during migration
 		// Eventually these will be removed when all code reads from snapshot
+		m.isLoading = false
 		m.issues = msg.Snapshot.Issues
 		m.issueMap = msg.Snapshot.IssueMap
 		m.countOpen = msg.Snapshot.CountOpen
@@ -1374,6 +1379,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issues = nil
 		m.issueMap = nil
 		m.snapshot = nil
+		m.isLoading = true
 		m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
 		// Clear tree filter/search state so new project data isn't hidden (bd-qjc)
 		m.tree.ApplyFilter("all")
@@ -1493,6 +1499,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			recordTiming("load_issues", time.Since(loadStart))
 		}
 		if err != nil {
+			m.isLoading = false
 			m.statusMsg = fmt.Sprintf("Reload error: %v", err)
 			m.statusIsError = true
 			if m.doltWatcher != nil {
@@ -1524,6 +1531,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.issues = newIssues
+		m.isLoading = false
 
 		// Rebuild lookup map
 		var mapStart time.Time
@@ -3019,7 +3027,7 @@ func (m Model) View() string {
 		// Interactive tutorial (bv-8y31) - full screen overlay
 		body = m.tutorialModel.View()
 		isOverlay = true
-	} else if m.snapshotInitPending && m.snapshot == nil {
+	} else if (m.snapshotInitPending && m.snapshot == nil) || (m.isLoading && len(m.issues) == 0) {
 		body = m.renderLoadingScreen()
 		isOverlay = true
 	} else if m.focused == focusDetail && m.isBoardView {

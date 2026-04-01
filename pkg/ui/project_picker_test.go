@@ -623,7 +623,7 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 	}
 }
 
-func TestProjectSwitch_NoLoadingScreen(t *testing.T) {
+func TestProjectSwitch_ShowsLoadingScreen(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
@@ -646,8 +646,8 @@ func TestProjectSwitch_NoLoadingScreen(t *testing.T) {
 	m = newM.(ui.Model)
 
 	view := m.View()
-	if strings.Contains(view, "Loading beads") {
-		t.Error("project switch should NOT show loading screen")
+	if !strings.Contains(view, "Loading beads") {
+		t.Error("project switch should show loading screen while data is being fetched")
 	}
 }
 
