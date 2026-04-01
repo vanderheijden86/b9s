@@ -73,6 +73,128 @@ b9s
 
 Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutorial.
 
+## Dolt Backend
+
+B9s supports two data backends for reading issues: **JSONL** (flat file) and **Dolt** (versioned SQL database). The Dolt backend is powered by `bd` (the Beads CLI), which can run Dolt in two modes.
+
+### Embedded Mode (Default)
+
+When you run `bd init`, Beads creates a local embedded Dolt engine inside `.beads/embeddeddolt/`. No external server is needed. This is the default for new projects.
+
+```bash
+bd init
+```
+
+Data lives entirely on disk. The embedded engine runs in-process, supports single-writer access, and requires no network configuration. B9s reads from this local database automatically.
+
+**Limitations:** No `bd dolt push/pull`, no concurrent writers, no remote sync.
+
+### Remote Server Mode
+
+Remote mode connects to an external Dolt SQL server (self-hosted or [DoltHub](https://www.dolthub.com/)). This enables multi-user access, `push`/`pull` replication, and concurrent writes.
+
+```bash
+bd init --server \
+  --server-host=osen.co \
+  --server-port=3306 \
+  --server-user=root \
+  --database=myproject
+```
+
+To import existing JSONL issues into a new remote database:
+
+```bash
+bd init --from-jsonl --server \
+  --server-host=osen.co \
+  --server-port=3306 \
+  --server-user=root \
+  --database=myproject
+```
+
+Set the password via environment variable (never stored in config files):
+
+```bash
+export BEADS_DOLT_PASSWORD="your-password"
+```
+
+### How Mode Detection Works
+
+Beads determines the mode from these sources (highest priority first):
+
+1. **Environment variables**: `BEADS_DOLT_SERVER_MODE=1` forces remote mode
+2. **`.beads/metadata.json`**: `"dolt_mode": "server"` indicates remote mode
+3. **`.beads/config.yaml`**: presence of `dolt.host` indicates remote mode
+4. **Default**: embedded mode
+
+### Configuration Reference
+
+**`.beads/config.yaml`** (team defaults, checked into git):
+
+```yaml
+dolt.host: "osen.co"
+dolt.port: 3306
+dolt.user: "root"
+dolt.database: "myproject"
+```
+
+**Environment variables** (override config, useful for CI or per-user settings):
+
+| Variable | Purpose |
+|----------|---------|
+| `BEADS_DOLT_SERVER_MODE` | Set to `1` to force remote server mode |
+| `BEADS_DOLT_SERVER_HOST` | Dolt server hostname |
+| `BEADS_DOLT_SERVER_PORT` | Dolt server port |
+| `BEADS_DOLT_SERVER_USER` | MySQL user for Dolt server |
+| `BEADS_DOLT_PASSWORD` | Server password (never in config files) |
+
+### Remote Sync (Push/Pull)
+
+In remote mode, Beads supports Dolt-native version control:
+
+```bash
+bd dolt remote list          # List configured remotes
+bd dolt remote add origin https://dolthub.com/user/database
+bd dolt push                 # Push local commits to remote
+bd dolt pull                 # Pull remote commits
+bd dolt commit               # Create a Dolt commit from pending changes
+bd dolt show                 # Show connection status and details
+```
+
+These commands are only available in remote server mode. In embedded mode, data is local-only.
+
+### Switching Between Modes
+
+Use `bd backup` to safely migrate data between modes:
+
+```bash
+# Embedded -> Remote
+bd backup init /tmp/beads-backup
+bd backup sync
+bd init --force --server --server-host=osen.co --server-port=3306 --database=myproject
+bd backup restore --force /tmp/beads-backup
+
+# Remote -> Embedded
+bd backup init /tmp/beads-backup
+bd backup sync
+bd init --force
+bd backup restore --force /tmp/beads-backup
+```
+
+### Embedded vs Remote at a Glance
+
+| | Embedded | Remote Server |
+|--|----------|---------------|
+| **Setup** | `bd init` | `bd init --server` |
+| **Data location** | `.beads/embeddeddolt/` | Remote Dolt server |
+| **Concurrent writers** | No (file-locked) | Yes |
+| **Push/pull sync** | No | Yes |
+| **Network required** | No | Yes |
+| **Use case** | Personal, single machine | Teams, shared infra |
+
+### Fallback Behavior in B9s
+
+If b9s cannot connect to the configured Dolt server, it falls back to reading from `.beads/issues.jsonl`. Press `Shift+D` in the TUI to open the health popup, which shows the active datasource and any connection failure details.
+
 ## Keyboard Quick Reference
 
 | Key | Action | Key | Action |
