@@ -36,6 +36,37 @@ type Issue struct {
 	SourceRepo         string        `json:"source_repo,omitempty"`
 }
 
+// issueAlias is used by UnmarshalJSON to avoid infinite recursion.
+type issueAlias Issue
+
+// issueJSON captures both legacy and current JSONL field names.
+type issueJSON struct {
+	issueAlias
+	// bd v0.63 Dolt export uses "type" instead of "issue_type"
+	TypeAlt IssueType `json:"type"`
+	// bd v0.63 uses "due_at" instead of "due_date"
+	DueAt *time.Time `json:"due_at,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler so that Issue accepts both
+// "issue_type" and "type" fields, and both "due_date" and "due_at".
+func (i *Issue) UnmarshalJSON(data []byte) error {
+	var raw issueJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*i = Issue(raw.issueAlias)
+	// Fall back to "type" if "issue_type" was empty
+	if i.IssueType == "" && raw.TypeAlt != "" {
+		i.IssueType = raw.TypeAlt
+	}
+	// Fall back to "due_at" if "due_date" was nil
+	if i.DueDate == nil && raw.DueAt != nil {
+		i.DueDate = raw.DueAt
+	}
+	return nil
+}
+
 // Clone creates a deep copy of the issue
 func (i Issue) Clone() Issue {
 	clone := i
