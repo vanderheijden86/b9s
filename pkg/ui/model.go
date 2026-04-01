@@ -1468,9 +1468,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newIssues []model.Issue
 		var err error
 		if m.sourceType == datasource.SourceTypeDolt {
-			// Dolt: reload through smart datasource path
-			debug.Log("FileChangedMsg: reloading via datasource.LoadIssues (Dolt)")
-			newIssues, err = datasource.LoadIssues("")
+			// Dolt: reload through smart datasource path using active project dir
+			debug.Log("FileChangedMsg: reloading via datasource.LoadIssues (Dolt, project=%s)", m.activeProjectPath)
+			newIssues, err = datasource.LoadIssues(m.activeProjectPath)
 			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
 		} else {
 			// JSONL/SQLite: use existing fast pooled loader
