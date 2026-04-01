@@ -187,47 +187,50 @@ func testDB(t *testing.T) (dbName string, addr string, cleanup func()) {
 		t.Fatalf("cannot use test database: %v", err)
 	}
 
-	// Create beads schema
+	// Create beads schema (bd v0.63 compatible — minimal columns needed by DoltReader)
 	schema := []string{
 		`CREATE TABLE issues (
 			id VARCHAR(255) PRIMARY KEY,
-			title VARCHAR(1024) NOT NULL,
-			description TEXT,
-			status VARCHAR(50) NOT NULL DEFAULT 'open',
+			title VARCHAR(500) NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			status VARCHAR(32) NOT NULL DEFAULT 'open',
 			priority INT NOT NULL DEFAULT 2,
-			issue_type VARCHAR(50) NOT NULL DEFAULT 'task',
+			issue_type VARCHAR(32) NOT NULL DEFAULT 'task',
 			assignee VARCHAR(255),
 			estimated_minutes INT,
-			created_at DATETIME,
-			updated_at DATETIME,
-			due_date DATETIME,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			due_at DATETIME,
 			closed_at DATETIME,
-			external_ref VARCHAR(1024),
+			external_ref VARCHAR(255),
 			compaction_level INT DEFAULT 0,
 			compacted_at DATETIME,
-			compacted_at_commit VARCHAR(255),
-			original_size INT DEFAULT 0,
-			labels JSON,
-			design TEXT,
-			acceptance_criteria TEXT,
-			notes TEXT,
-			source_repo VARCHAR(255),
-			tombstone TINYINT DEFAULT 0
+			compacted_at_commit VARCHAR(64),
+			original_size INT,
+			design TEXT NOT NULL DEFAULT '',
+			acceptance_criteria TEXT NOT NULL DEFAULT '',
+			notes TEXT NOT NULL DEFAULT '',
+			source_repo VARCHAR(512) DEFAULT ''
+		)`,
+		`CREATE TABLE labels (
+			issue_id VARCHAR(255) NOT NULL,
+			label VARCHAR(255) NOT NULL,
+			PRIMARY KEY (issue_id, label)
 		)`,
 		`CREATE TABLE dependencies (
 			issue_id VARCHAR(255) NOT NULL,
 			depends_on_id VARCHAR(255) NOT NULL,
-			dependency_type VARCHAR(50) NOT NULL DEFAULT 'blocks',
-			created_at DATETIME,
-			created_by VARCHAR(255),
+			type VARCHAR(32) NOT NULL DEFAULT 'blocks',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			created_by VARCHAR(255) NOT NULL DEFAULT '',
 			PRIMARY KEY (issue_id, depends_on_id)
 		)`,
 		`CREATE TABLE comments (
-			id BIGINT AUTO_INCREMENT PRIMARY KEY,
+			id CHAR(36) NOT NULL PRIMARY KEY,
 			issue_id VARCHAR(255) NOT NULL,
-			author VARCHAR(255),
-			text TEXT,
-			created_at DATETIME
+			author VARCHAR(255) NOT NULL,
+			text TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,
 	}
 
@@ -242,25 +245,30 @@ func testDB(t *testing.T) (dbName string, addr string, cleanup func()) {
 	// Seed test data
 	now := time.Now().UTC().Format("2006-01-02 15:04:05")
 	seeds := []string{
-		fmt.Sprintf(`INSERT INTO issues (id, title, description, status, priority, issue_type, assignee, created_at, updated_at, labels, notes)
-			VALUES ('test-001', 'Fix login bug', 'Users cannot log in with SSO', 'open', 1, 'bug', 'alice', '%s', '%s', '["auth","urgent"]', 'Investigating SSO provider')`, now, now),
+		fmt.Sprintf(`INSERT INTO issues (id, title, description, status, priority, issue_type, assignee, created_at, updated_at, notes)
+			VALUES ('test-001', 'Fix login bug', 'Users cannot log in with SSO', 'open', 1, 'bug', 'alice', '%s', '%s', 'Investigating SSO provider')`, now, now),
 		fmt.Sprintf(`INSERT INTO issues (id, title, description, status, priority, issue_type, created_at, updated_at)
 			VALUES ('test-002', 'Add dark mode', 'Implement dark mode theme', 'in_progress', 2, 'feature', '%s', '%s')`, now, now),
 		fmt.Sprintf(`INSERT INTO issues (id, title, status, priority, issue_type, created_at, updated_at, closed_at)
 			VALUES ('test-003', 'Update docs', 'closed', 3, 'task', '%s', '%s', '%s')`, now, now, now),
-		fmt.Sprintf(`INSERT INTO issues (id, title, status, priority, issue_type, created_at, updated_at, tombstone)
-			VALUES ('test-004', 'Deleted issue', 'tombstone', 4, 'task', '%s', '%s', 1)`, now, now),
+		// test-004: soft-deleted via status='tombstone' (no tombstone column in v0.63)
+		fmt.Sprintf(`INSERT INTO issues (id, title, status, priority, issue_type, created_at, updated_at)
+			VALUES ('test-004', 'Deleted issue', 'tombstone', 4, 'task', '%s', '%s')`, now, now),
 		fmt.Sprintf(`INSERT INTO issues (id, title, description, status, priority, issue_type, created_at, updated_at, design, acceptance_criteria)
 			VALUES ('test-005', 'Epic: Auth overhaul', 'Complete auth rewrite', 'open', 0, 'epic', '%s', '%s', 'Use OAuth2 + PKCE', 'All tests pass, no regressions')`, now, now),
 
-		// Dependencies
-		`INSERT INTO dependencies (issue_id, depends_on_id, dependency_type) VALUES ('test-002', 'test-001', 'blocks')`,
-		`INSERT INTO dependencies (issue_id, depends_on_id, dependency_type) VALUES ('test-002', 'test-005', 'related')`,
+		// Labels (separate table in v0.63)
+		`INSERT INTO labels (issue_id, label) VALUES ('test-001', 'auth')`,
+		`INSERT INTO labels (issue_id, label) VALUES ('test-001', 'urgent')`,
 
-		// Comments
-		fmt.Sprintf(`INSERT INTO comments (issue_id, author, text, created_at) VALUES ('test-001', 'bob', 'Reproduced on staging', '%s')`, now),
-		fmt.Sprintf(`INSERT INTO comments (issue_id, author, text, created_at) VALUES ('test-001', 'alice', 'Fix in progress', '%s')`, now),
-		fmt.Sprintf(`INSERT INTO comments (issue_id, author, text, created_at) VALUES ('test-002', 'charlie', 'Design looks good', '%s')`, now),
+		// Dependencies (column is `type` not `dependency_type` in v0.63)
+		`INSERT INTO dependencies (issue_id, depends_on_id, type) VALUES ('test-002', 'test-001', 'blocks')`,
+		`INSERT INTO dependencies (issue_id, depends_on_id, type) VALUES ('test-002', 'test-005', 'related')`,
+
+		// Comments (id is CHAR(36) UUID in v0.63)
+		fmt.Sprintf(`INSERT INTO comments (id, issue_id, author, text, created_at) VALUES ('cmt-001', 'test-001', 'bob', 'Reproduced on staging', '%s')`, now),
+		fmt.Sprintf(`INSERT INTO comments (id, issue_id, author, text, created_at) VALUES ('cmt-002', 'test-001', 'alice', 'Fix in progress', '%s')`, now),
+		fmt.Sprintf(`INSERT INTO comments (id, issue_id, author, text, created_at) VALUES ('cmt-003', 'test-002', 'charlie', 'Design looks good', '%s')`, now),
 	}
 
 	for _, seed := range seeds {
@@ -914,12 +922,25 @@ func TestDoltIntegration_EmptyDatabase(t *testing.T) {
 	db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", dbName))
 	db.Exec(fmt.Sprintf("USE `%s`", dbName))
 	db.Exec(`CREATE TABLE issues (
-		id VARCHAR(255) PRIMARY KEY, title VARCHAR(1024), description TEXT,
-		status VARCHAR(50), priority INT, issue_type VARCHAR(50),
-		created_at DATETIME, updated_at DATETIME, tombstone TINYINT DEFAULT 0
+		id VARCHAR(255) PRIMARY KEY,
+		title VARCHAR(500) NOT NULL,
+		description TEXT NOT NULL DEFAULT '',
+		status VARCHAR(32) NOT NULL DEFAULT 'open',
+		priority INT NOT NULL DEFAULT 2,
+		issue_type VARCHAR(32) NOT NULL DEFAULT 'task',
+		assignee VARCHAR(255),
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		due_at DATETIME,
+		closed_at DATETIME,
+		design TEXT NOT NULL DEFAULT '',
+		acceptance_criteria TEXT NOT NULL DEFAULT '',
+		notes TEXT NOT NULL DEFAULT '',
+		source_repo VARCHAR(512) DEFAULT ''
 	)`)
-	db.Exec(`CREATE TABLE dependencies (issue_id VARCHAR(255), depends_on_id VARCHAR(255), dependency_type VARCHAR(50), PRIMARY KEY(issue_id, depends_on_id))`)
-	db.Exec(`CREATE TABLE comments (id BIGINT AUTO_INCREMENT PRIMARY KEY, issue_id VARCHAR(255), author VARCHAR(255), text TEXT, created_at DATETIME)`)
+	db.Exec(`CREATE TABLE labels (issue_id VARCHAR(255) NOT NULL, label VARCHAR(255) NOT NULL, PRIMARY KEY(issue_id, label))`)
+	db.Exec(`CREATE TABLE dependencies (issue_id VARCHAR(255) NOT NULL, depends_on_id VARCHAR(255) NOT NULL, type VARCHAR(32) NOT NULL DEFAULT 'blocks', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, created_by VARCHAR(255) NOT NULL DEFAULT '', PRIMARY KEY(issue_id, depends_on_id))`)
+	db.Exec(`CREATE TABLE comments (id CHAR(36) NOT NULL PRIMARY KEY, issue_id VARCHAR(255) NOT NULL, author VARCHAR(255) NOT NULL, text TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`)
 
 	reader := newTestDoltReader(t, dbName, addr)
 	defer reader.Close()
@@ -981,11 +1002,16 @@ func TestDoltIntegration_CreateIssueAndReadBack(t *testing.T) {
 
 	// Create a new issue (simulates bd create)
 	_, err = db.Exec(`INSERT INTO issues
-		(id, title, description, status, priority, issue_type, assignee, created_at, updated_at, labels, notes)
+		(id, title, description, status, priority, issue_type, assignee, created_at, updated_at, notes)
 		VALUES ('test-new-001', 'Implement dark theme', 'Add dark mode support to the UI',
-		'open', 2, 'feature', 'charlie', NOW(), NOW(), '["ui","theme"]', 'Requested by users')`)
+		'open', 2, 'feature', 'charlie', NOW(), NOW(), 'Requested by users')`)
 	if err != nil {
 		t.Fatalf("INSERT failed: %v", err)
+	}
+	// Labels are in a separate table in v0.63
+	_, err = db.Exec(`INSERT INTO labels (issue_id, label) VALUES ('test-new-001', 'ui'), ('test-new-001', 'theme')`)
+	if err != nil {
+		t.Fatalf("INSERT labels failed: %v", err)
 	}
 
 	// Read back via DoltReader
@@ -1015,8 +1041,13 @@ func TestDoltIntegration_CreateIssueAndReadBack(t *testing.T) {
 	if issue.Notes != "Requested by users" {
 		t.Errorf("expected notes, got %q", issue.Notes)
 	}
-	if len(issue.Labels) != 2 || issue.Labels[0] != "ui" || issue.Labels[1] != "theme" {
-		t.Errorf("expected labels [ui, theme], got %v", issue.Labels)
+	// Labels are sorted by the primary key (issue_id, label), so order is alphabetical.
+	labelSet := make(map[string]bool, len(issue.Labels))
+	for _, l := range issue.Labels {
+		labelSet[l] = true
+	}
+	if len(issue.Labels) != 2 || !labelSet["ui"] || !labelSet["theme"] {
+		t.Errorf("expected labels [ui, theme] (any order), got %v", issue.Labels)
 	}
 
 	// Count should increase
@@ -1150,7 +1181,7 @@ func TestDoltIntegration_AddDependencyAndReadBack(t *testing.T) {
 	}
 
 	// Add a dependency (simulates bd dep add)
-	_, err = db.Exec(`INSERT INTO dependencies (issue_id, depends_on_id, dependency_type)
+	_, err = db.Exec(`INSERT INTO dependencies (issue_id, depends_on_id, type)
 		VALUES ('test-003', 'test-001', 'blocks')`)
 	if err != nil {
 		t.Fatalf("INSERT dep failed: %v", err)
@@ -1192,9 +1223,9 @@ func TestDoltIntegration_AddCommentAndReadBack(t *testing.T) {
 		t.Fatalf("expected 0 comments initially, got %d", len(before.Comments))
 	}
 
-	// Add a comment
-	_, err = db.Exec(`INSERT INTO comments (issue_id, author, text, created_at)
-		VALUES ('test-003', 'dave', 'Docs look good, merging', NOW())`)
+	// Add a comment (id is CHAR(36) in v0.63 schema)
+	_, err = db.Exec(`INSERT INTO comments (id, issue_id, author, text, created_at)
+		VALUES ('cmt-new-001', 'test-003', 'dave', 'Docs look good, merging', NOW())`)
 	if err != nil {
 		t.Fatalf("INSERT comment failed: %v", err)
 	}

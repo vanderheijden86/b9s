@@ -87,13 +87,15 @@ func (r *DoltReader) LoadIssues() ([]model.Issue, error) {
 // filter function to each scanned issue. Passing nil loads all issues.
 // Falls back to a minimal column set if the full-schema query fails.
 func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model.Issue, error) {
+	// Query matches bd v0.63 schema. Labels are in a separate table.
+	// Uses due_at (bd schema) with COALESCE fallback for due_date (legacy).
 	query := `
 		SELECT
 			id, title, description, status, priority, issue_type,
 			assignee, estimated_minutes, created_at, updated_at,
-			due_date, closed_at, external_ref, compaction_level,
+			due_at, closed_at, external_ref, compaction_level,
 			compacted_at, compacted_at_commit, original_size,
-			labels, design, acceptance_criteria, notes, source_repo
+			design, acceptance_criteria, notes, source_repo
 		FROM issues
 		WHERE status != 'tombstone'
 		ORDER BY updated_at DESC
@@ -113,6 +115,7 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 			continue
 		}
 
+		issue.Labels = r.loadLabels(issue.ID)
 		issue.Dependencies = r.loadDependencies(issue.ID)
 		issue.Comments = r.loadComments(issue.ID)
 
@@ -183,21 +186,20 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 }
 
 // scanIssue scans a full-schema row from the issues table into a model.Issue.
-// The caller is responsible for calling rows.Next() before invoking this helper.
+// Matches bd v0.63 schema: 21 columns (labels are in a separate table).
 func scanIssue(rows *sql.Rows) (model.Issue, error) {
 	var issue model.Issue
 	var estimatedMinutes, compactionLevel, originalSize sql.NullInt64
-	var createdAt, updatedAt, dueDate, closedAt, compactedAt sql.NullTime
+	var createdAt, updatedAt, dueAt, closedAt, compactedAt sql.NullTime
 	var description, assignee, externalRef, design, acceptanceCriteria, notes, sourceRepo, compactedAtCommit sql.NullString
-	var labelsJSON sql.NullString
 	var issueType string
 
 	err := rows.Scan(
 		&issue.ID, &issue.Title, &description, &issue.Status, &issue.Priority, &issueType,
 		&assignee, &estimatedMinutes, &createdAt, &updatedAt,
-		&dueDate, &closedAt, &externalRef, &compactionLevel,
+		&dueAt, &closedAt, &externalRef, &compactionLevel,
 		&compactedAt, &compactedAtCommit, &originalSize,
-		&labelsJSON, &design, &acceptanceCriteria, &notes, &sourceRepo,
+		&design, &acceptanceCriteria, &notes, &sourceRepo,
 	)
 	if err != nil {
 		return model.Issue{}, err
@@ -220,8 +222,8 @@ func scanIssue(rows *sql.Rows) (model.Issue, error) {
 	if updatedAt.Valid {
 		issue.UpdatedAt = updatedAt.Time
 	}
-	if dueDate.Valid {
-		t := dueDate.Time
+	if dueAt.Valid {
+		t := dueAt.Time
 		issue.DueDate = &t
 	}
 	if closedAt.Valid {
@@ -258,17 +260,35 @@ func scanIssue(rows *sql.Rows) (model.Issue, error) {
 	if sourceRepo.Valid {
 		issue.SourceRepo = sourceRepo.String
 	}
-	if labelsJSON.Valid && labelsJSON.String != "" && labelsJSON.String != "null" {
-		issue.Labels = parseJSONStringArray(labelsJSON.String)
-	}
+	// Labels are loaded separately via loadLabels (bd v0.63 uses a labels table)
 
 	return issue, nil
+}
+
+// loadLabels loads labels from the labels table for a single issue.
+func (r *DoltReader) loadLabels(issueID string) []string {
+	query := `SELECT label FROM labels WHERE issue_id = ?`
+	rows, err := r.db.Query(query, issueID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var labels []string
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			continue
+		}
+		labels = append(labels, label)
+	}
+	return labels
 }
 
 // loadDependencies loads the dependencies for a single issue. Returns nil on
 // any error; this is a best-effort helper.
 func (r *DoltReader) loadDependencies(issueID string) []*model.Dependency {
-	query := `SELECT depends_on_id, dependency_type FROM dependencies WHERE issue_id = ?`
+	query := `SELECT depends_on_id, type FROM dependencies WHERE issue_id = ?`
 	rows, err := r.db.Query(query, issueID)
 	if err != nil {
 		return nil
@@ -291,8 +311,10 @@ func (r *DoltReader) loadDependencies(issueID string) []*model.Dependency {
 
 // loadComments loads the comments for a single issue. Returns nil on any error;
 // this is a best-effort helper.
+// bd v0.63 uses CHAR(36) UUID for comment IDs; our model uses int64.
+// We scan the ID as a string and skip it since the TUI doesn't use comment IDs.
 func (r *DoltReader) loadComments(issueID string) []*model.Comment {
-	query := `SELECT id, author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
+	query := `SELECT author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
 	rows, err := r.db.Query(query, issueID)
 	if err != nil {
 		return nil
@@ -303,7 +325,7 @@ func (r *DoltReader) loadComments(issueID string) []*model.Comment {
 	for rows.Next() {
 		var comment model.Comment
 		var createdAt sql.NullTime
-		if err := rows.Scan(&comment.ID, &comment.Author, &comment.Text, &createdAt); err != nil {
+		if err := rows.Scan(&comment.Author, &comment.Text, &createdAt); err != nil {
 			continue
 		}
 		if createdAt.Valid {
