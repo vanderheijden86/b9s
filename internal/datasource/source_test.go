@@ -728,15 +728,10 @@ func TestDiscoverSources_Dolt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Write metadata.json indicating dolt backend
+	// Write metadata.json indicating dolt server mode (matches bd init --server output)
 	metadataPath := filepath.Join(beadsDir, "metadata.json")
-	if err := os.WriteFile(metadataPath, []byte(`{"database": "dolt"}`), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create the dolt directory (used for modtime)
-	doltDir := filepath.Join(beadsDir, "dolt")
-	if err := os.MkdirAll(doltDir, 0755); err != nil {
+	metadata := `{"dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":3306,"dolt_server_user":"root","dolt_database":"testdb"}`
+	if err := os.WriteFile(metadataPath, []byte(metadata), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -756,7 +751,10 @@ func TestDiscoverSources_Dolt(t *testing.T) {
 				t.Errorf("Expected priority %d, got %d", PriorityDolt, s.Priority)
 			}
 			if s.Path != "127.0.0.1:3306" {
-				t.Errorf("Expected path 127.0.0.1:3306, got %s", s.Path)
+				t.Errorf("expected path 127.0.0.1:3306, got %s", s.Path)
+			}
+			if s.Database != "testdb" {
+				t.Errorf("expected database testdb, got %s", s.Database)
 			}
 		}
 	}
@@ -809,6 +807,35 @@ func TestDiscoverSources_DoltNotDetectedWithoutMetadata(t *testing.T) {
 	for _, s := range sources {
 		if s.Type == SourceTypeDolt {
 			t.Error("Dolt source should not be detected without metadata.json")
+		}
+	}
+}
+
+// TestDiscoverSources_DoltEmbeddedNotDetected tests that embedded mode is NOT
+// detected as a Dolt source (only server mode has a TCP connection to make).
+func TestDiscoverSources_DoltEmbeddedNotDetected(t *testing.T) {
+	tmpDir := t.TempDir()
+	beadsDir := filepath.Join(tmpDir, ".beads")
+	if err := os.MkdirAll(beadsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	metadataPath := filepath.Join(beadsDir, "metadata.json")
+	if err := os.WriteFile(metadataPath, []byte(`{"dolt_mode":"embedded","database":"dolt"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	sources, err := DiscoverSources(DiscoveryOptions{
+		BeadsDir:               beadsDir,
+		ValidateAfterDiscovery: false,
+	})
+	if err != nil {
+		t.Fatalf("DiscoverSources failed: %v", err)
+	}
+
+	for _, s := range sources {
+		if s.Type == SourceTypeDolt {
+			t.Error("Dolt source should not be detected in embedded mode")
 		}
 	}
 }
