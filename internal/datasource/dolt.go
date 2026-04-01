@@ -124,25 +124,34 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 			debug.Log("dolt: scan error on row: %v", err)
 			continue
 		}
-
-		issue.Labels = r.loadLabels(issue.ID)
-		issue.Dependencies = r.loadDependencies(issue.ID)
-		issue.Comments = r.loadComments(issue.ID)
-
-		if filter != nil && !filter(&issue) {
-			continue
-		}
-
-		debug.Log("dolt: row: id=%s status=%s title=%q", issue.ID, issue.Status, issue.Title)
 		issues = append(issues, issue)
 	}
 	if err := rows.Err(); err != nil {
 		debug.Log("dolt: rows iteration error: %v", err)
 		return nil, fmt.Errorf("error iterating issues: %w", err)
 	}
+	debug.Log("dolt: scanned %d issues (%d scan errors), batch-loading relations", len(issues), scanErrors)
 
-	debug.Log("dolt: RESULT: %d issues loaded, %d scan errors", len(issues), scanErrors)
-	return issues, nil
+	// Batch-load labels, deps, comments in 3 queries instead of 3*N
+	allLabels := r.loadAllLabels()
+	allDeps := r.loadAllDependencies()
+	allComments := r.loadAllComments()
+
+	var result []model.Issue
+	for i := range issues {
+		issues[i].Labels = allLabels[issues[i].ID]
+		issues[i].Dependencies = allDeps[issues[i].ID]
+		issues[i].Comments = allComments[issues[i].ID]
+
+		if filter != nil && !filter(&issues[i]) {
+			continue
+		}
+		result = append(result, issues[i])
+	}
+
+	debug.Log("dolt: RESULT: %d issues loaded (labels=%d deps=%d comments=%d batches)",
+		len(result), len(allLabels), len(allDeps), len(allComments))
+	return result, nil
 }
 
 // loadIssuesSimple is a fallback for Dolt databases with fewer columns.
@@ -350,6 +359,75 @@ func (r *DoltReader) loadComments(issueID string) []*model.Comment {
 		comments = append(comments, &comment)
 	}
 	return comments
+}
+
+// loadAllLabels loads labels for all issues in a single query.
+// Returns a map from issue ID to label slice.
+func (r *DoltReader) loadAllLabels() map[string][]string {
+	rows, err := r.db.Query(`SELECT issue_id, label FROM labels`)
+	if err != nil {
+		debug.Log("dolt: batch labels query failed: %v", err)
+		return nil
+	}
+	defer rows.Close()
+
+	result := make(map[string][]string)
+	for rows.Next() {
+		var issueID, label string
+		if err := rows.Scan(&issueID, &label); err != nil {
+			continue
+		}
+		result[issueID] = append(result[issueID], label)
+	}
+	return result
+}
+
+// loadAllDependencies loads dependencies for all issues in a single query.
+// Returns a map from issue ID to dependency slice.
+func (r *DoltReader) loadAllDependencies() map[string][]*model.Dependency {
+	rows, err := r.db.Query(`SELECT issue_id, depends_on_id, type FROM dependencies`)
+	if err != nil {
+		debug.Log("dolt: batch dependencies query failed: %v", err)
+		return nil
+	}
+	defer rows.Close()
+
+	result := make(map[string][]*model.Dependency)
+	for rows.Next() {
+		var dep model.Dependency
+		var depType string
+		if err := rows.Scan(&dep.IssueID, &dep.DependsOnID, &depType); err != nil {
+			continue
+		}
+		dep.Type = model.DependencyType(depType)
+		result[dep.IssueID] = append(result[dep.IssueID], &dep)
+	}
+	return result
+}
+
+// loadAllComments loads comments for all issues in a single query.
+// Returns a map from issue ID to comment slice.
+func (r *DoltReader) loadAllComments() map[string][]*model.Comment {
+	rows, err := r.db.Query(`SELECT issue_id, author, text, created_at FROM comments ORDER BY created_at`)
+	if err != nil {
+		debug.Log("dolt: batch comments query failed: %v", err)
+		return nil
+	}
+	defer rows.Close()
+
+	result := make(map[string][]*model.Comment)
+	for rows.Next() {
+		var comment model.Comment
+		var createdAt sql.NullTime
+		if err := rows.Scan(&comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
+			continue
+		}
+		if createdAt.Valid {
+			comment.CreatedAt = createdAt.Time
+		}
+		result[comment.IssueID] = append(result[comment.IssueID], &comment)
+	}
+	return result
 }
 
 // GetHeadHash returns the Dolt commit hash for HEAD.
