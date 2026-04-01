@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/vanderheijden86/beadwork/pkg/debug"
 )
 
 // BdOperation represents the type of bd operation performed
@@ -124,14 +127,19 @@ func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) te
 	bdPath := w.bdPath
 	workDir := w.workDir
 	return func() tea.Msg {
+		debug.Log("bd-cmd: exec %s %s (workDir=%s)", bdPath, strings.Join(args, " "), workDir)
+		start := time.Now()
+
 		cmd := exec.Command(bdPath, args...)
 		if workDir != "" {
 			cmd.Dir = workDir
 		}
 		output, err := cmd.CombinedOutput()
 		outStr := strings.TrimSpace(string(output))
+		elapsed := time.Since(start)
 
 		if err != nil {
+			debug.Log("bd-cmd: FAILED in %v: %v | output: %s", elapsed, err, outStr)
 			return BdResultMsg{
 				Operation: op,
 				IssueID:   issueID,
@@ -141,9 +149,12 @@ func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) te
 			}
 		}
 
+		debug.Log("bd-cmd: OK in %v | output: %s", elapsed, outStr)
+
 		// For create operations, try to extract the new issue ID from output
 		if op == BdOpCreate && issueID == "" {
 			issueID = extractCreatedID(outStr)
+			debug.Log("bd-cmd: extracted created ID: %q", issueID)
 		}
 
 		return BdResultMsg{

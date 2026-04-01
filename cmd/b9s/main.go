@@ -17,6 +17,7 @@ import (
 
 	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 	"github.com/vanderheijden86/beadwork/pkg/ui"
@@ -37,7 +38,20 @@ func main() {
 	repoFilter := flag.String("repo", "", "Filter issues by repository prefix (e.g., 'api-' or 'api')")
 	backgroundMode := flag.Bool("background-mode", false, "Enable experimental background snapshot loading (TUI only)")
 	noBackgroundMode := flag.Bool("no-background-mode", false, "Disable experimental background snapshot loading (TUI only)")
+	debugFlag := flag.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
 	flag.Parse()
+
+	// Debug logging to .b9s/debug.log
+	if *debugFlag {
+		cwd, _ := os.Getwd()
+		cleanup, err := debug.EnableFileLogging(cwd)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot enable debug logging: %v\n", err)
+		} else {
+			defer cleanup()
+			fmt.Fprintf(os.Stderr, "Debug logging to .b9s/debug.log\n")
+		}
+	}
 
 	// CPU profiling support
 	if *cpuProfile != "" {
@@ -149,6 +163,7 @@ func main() {
 	// Detect source type and create Dolt watcher if applicable.
 	// If Dolt is detected but connection fails, fall back to JSONL/SQLite
 	// and record the failure so the health popup can show what went wrong.
+	debug.Log("datasource: beadsDir=%s beadsPath=%s", beadsDir, beadsPath)
 	detectedSourceType := datasource.SourceTypeJSONLLocal
 	var doltWatcher *datasource.DoltWatcher
 	var doltSource datasource.DataSource
@@ -158,7 +173,9 @@ func main() {
 		BeadsDir:               beadsDir,
 		ValidateAfterDiscovery: false,
 	}); discErr == nil {
+		debug.Log("datasource: discovered %d sources", len(sources))
 		for i, s := range sources {
+			debug.Log("datasource: source[%d] type=%s path=%s db=%s user=%s", i, s.Type, s.Path, s.Database, s.User)
 			if s.Type == datasource.SourceTypeDolt {
 				db := s.Database
 				if db == "" {
@@ -169,8 +186,10 @@ func main() {
 					user = "root"
 				}
 				doltLabel := fmt.Sprintf("dolt://%s/%s", s.Path, db)
+				debug.Log("datasource: attempting Dolt connection to %s", doltLabel)
 				dw, dwErr := datasource.NewDoltWatcher(sources[i], 500*time.Millisecond)
 				if dwErr != nil {
+					debug.Log("datasource: Dolt watcher creation failed: %v", dwErr)
 					doltFailure = &ui.DoltFailure{
 						Server:   s.Path,
 						Database: db,
@@ -179,6 +198,7 @@ func main() {
 					}
 				} else {
 					if err := dw.Start(); err != nil {
+						debug.Log("datasource: Dolt watcher start failed: %v", err)
 						dw.Stop()
 						doltFailure = &ui.DoltFailure{
 							Server:   s.Path,
@@ -191,6 +211,7 @@ func main() {
 						doltSource = sources[i]
 						detectedSourceType = datasource.SourceTypeDolt
 						sourceInfo = doltLabel + " ✓"
+						debug.Log("datasource: Dolt connected successfully to %s", doltLabel)
 					}
 				}
 				break
@@ -206,6 +227,7 @@ func main() {
 			sourceInfo = "no source"
 		}
 	}
+	debug.Log("datasource: selected source=%s type=%s", sourceInfo, detectedSourceType)
 
 	// Automatically ensure .bv/ is in .gitignore
 	projectDir := filepath.Dir(beadsDir)

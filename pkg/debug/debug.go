@@ -22,21 +22,47 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 )
 
 var (
-	// enabled is true when B9S_DEBUG env var is set
+	// enabled is true when B9S_DEBUG env var is set or --debug flag is used
 	enabled bool
-	// logger writes to stderr with [B9S_DEBUG] prefix
-	logger *log.Logger
+	// logger writes to file or stderr with [B9S] prefix
+	logger  *log.Logger
+	logFile *os.File
 )
 
 func init() {
 	if os.Getenv("B9S_DEBUG") != "" {
 		enabled = true
-		logger = log.New(os.Stderr, "[B9S_DEBUG] ", log.Ltime|log.Lmicroseconds)
+		logger = log.New(os.Stderr, "[B9S] ", log.Ltime|log.Lmicroseconds)
 	}
+}
+
+// EnableFileLogging sets up debug logging to .b9s/debug.log in the given directory.
+// Creates the .b9s directory if needed. Returns a cleanup function to close the file.
+func EnableFileLogging(dir string) (func(), error) {
+	logDir := filepath.Join(dir, ".b9s")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("cannot create .b9s directory: %w", err)
+	}
+	logPath := filepath.Join(logDir, "debug.log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open debug log: %w", err)
+	}
+	logFile = f
+	enabled = true
+	logger = log.New(f, "[B9S] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	logger.Printf("=== debug session started (pid=%d) ===", os.Getpid())
+	return func() {
+		if logFile != nil {
+			logger.Print("=== debug session ended ===")
+			logFile.Close()
+		}
+	}, nil
 }
 
 // Enabled returns whether debug logging is enabled.

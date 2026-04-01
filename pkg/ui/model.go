@@ -1000,13 +1000,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showEditModal = false
 			if m.editModal.isCreateMode {
 				args := m.editModal.BuildCreateArgs()
+				debug.Log("edit-modal: CREATE save requested, args=%v", args)
 				if len(args) > 0 {
 					cmds = append(cmds, m.issueWriter.CreateIssue(args))
+				} else {
+					debug.Log("edit-modal: CREATE skipped (no args)")
 				}
 			} else {
 				args := m.editModal.BuildUpdateArgs()
+				debug.Log("edit-modal: UPDATE save for %s, changed=%v", m.editModal.issueID, args)
 				if len(args) > 0 {
 					cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
+				} else {
+					debug.Log("edit-modal: UPDATE skipped (no changes)")
 				}
 			}
 			return m, tea.Batch(cmds...)
@@ -1036,6 +1042,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case BdResultMsg:
 		// Handle bd CLI operation results (bd-a83)
+		debug.Log("BdResultMsg: op=%d id=%q success=%v output=%q err=%v", msg.Operation, msg.IssueID, msg.Success, msg.Output, msg.Error)
 		if msg.Success {
 			m.statusMsg = fmt.Sprintf("Updated %s", msg.IssueID)
 			if msg.Operation == BdOpCreate {
@@ -1045,6 +1052,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.statusIsError = false
 			// Trigger reload to pick up changes
+			debug.Log("BdResultMsg: triggering FileChangedMsg for reload (sourceType=%s)", m.sourceType)
 			cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
 		} else {
 			errMsg := "bd command failed"
@@ -1379,6 +1387,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case FileChangedMsg:
 		// File changed on disk - reload issues
+		debug.Log("FileChangedMsg: reload triggered (sourceType=%s beadsPath=%s)", m.sourceType, m.beadsPath)
 		// In background mode the BackgroundWorker owns file watching and snapshot building.
 		if m.backgroundWorker != nil {
 			if m.doltWatcher != nil {
@@ -1422,7 +1431,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var err error
 		if m.sourceType == datasource.SourceTypeDolt {
 			// Dolt: reload through smart datasource path
+			debug.Log("FileChangedMsg: reloading via datasource.LoadIssues (Dolt)")
 			newIssues, err = datasource.LoadIssues("")
+			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
 		} else {
 			// JSONL/SQLite: use existing fast pooled loader
 			loadedIssues, loadErr := loader.LoadIssuesFromFileWithOptionsPooled(m.beadsPath, loader.ParseOptions{
