@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
@@ -50,6 +52,7 @@ func NewDoltReader(source DataSource) (*DoltReader, error) {
 	} else {
 		dsn = fmt.Sprintf("%s@tcp(%s)/%s?parseTime=true&timeout=5s&readTimeout=10s", user, addr, dbName)
 	}
+	debug.Log("dolt: connecting %s@%s/%s", user, addr, dbName)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open Dolt connection: %w", err)
@@ -101,17 +104,23 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 		ORDER BY updated_at DESC
 	`
 
+	debug.Log("dolt: QUERY issues (full schema, 21 cols) addr=%s", r.addr)
+	debug.Log("dolt: SQL: %s", strings.TrimSpace(query))
 	rows, err := r.db.Query(query)
 	if err != nil {
 		// Fall back to minimal schema if some columns are absent.
+		debug.Log("dolt: full query FAILED (%v), falling back to simple query", err)
 		return r.loadIssuesSimple(filter)
 	}
 	defer rows.Close()
 
 	var issues []model.Issue
+	var scanErrors int
 	for rows.Next() {
 		issue, err := scanIssue(rows)
 		if err != nil {
+			scanErrors++
+			debug.Log("dolt: scan error on row: %v", err)
 			continue
 		}
 
@@ -123,12 +132,15 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 			continue
 		}
 
+		debug.Log("dolt: row: id=%s status=%s title=%q", issue.ID, issue.Status, issue.Title)
 		issues = append(issues, issue)
 	}
 	if err := rows.Err(); err != nil {
+		debug.Log("dolt: rows iteration error: %v", err)
 		return nil, fmt.Errorf("error iterating issues: %w", err)
 	}
 
+	debug.Log("dolt: RESULT: %d issues loaded, %d scan errors", len(issues), scanErrors)
 	return issues, nil
 }
 
@@ -141,8 +153,10 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 		ORDER BY updated_at DESC
 	`
 
+	debug.Log("dolt: QUERY issues (simple, 8 cols) addr=%s", r.addr)
 	rows, err := r.db.Query(query)
 	if err != nil {
+		debug.Log("dolt: simple query FAILED: %v", err)
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
 	defer rows.Close()
@@ -341,8 +355,10 @@ func (r *DoltReader) loadComments(issueID string) []*model.Comment {
 func (r *DoltReader) GetHeadHash() (string, error) {
 	var hash string
 	if err := r.db.QueryRow("SELECT HASHOF('HEAD')").Scan(&hash); err != nil {
+		debug.Log("dolt: HASHOF('HEAD') failed: %v", err)
 		return "", fmt.Errorf("failed to get HEAD hash: %w", err)
 	}
+	debug.Log("dolt: HASHOF('HEAD') = %s", hash)
 	return hash, nil
 }
 
@@ -377,7 +393,9 @@ func (r *DoltReader) CountIssues() (int, error) {
 	var count int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM issues WHERE status != 'tombstone'").Scan(&count)
 	if err != nil {
+		debug.Log("dolt: COUNT(*) failed: %v", err)
 		return 0, err
 	}
+	debug.Log("dolt: COUNT(*) = %d", count)
 	return count, nil
 }

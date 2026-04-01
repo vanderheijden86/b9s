@@ -3,6 +3,7 @@ package datasource
 import (
 	"fmt"
 
+	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
@@ -18,16 +19,22 @@ import (
 func LoadIssues(repoPath string) ([]model.Issue, error) {
 	beadsDir, err := loader.GetBeadsDir(repoPath)
 	if err != nil {
+		debug.Log("load: GetBeadsDir(%q) failed: %v", repoPath, err)
 		return nil, err
 	}
+	debug.Log("load: LoadIssues repoPath=%q beadsDir=%q", repoPath, beadsDir)
 
 	issues, smartErr := loadSmart(beadsDir, repoPath)
 	if smartErr == nil {
+		debug.Log("load: loadSmart returned %d issues", len(issues))
 		return issues, nil
 	}
 
 	// Fall back to legacy JSONL-only loading
-	return loader.LoadIssues(repoPath)
+	debug.Log("load: loadSmart failed (%v), falling back to JSONL", smartErr)
+	issues, err = loader.LoadIssues(repoPath)
+	debug.Log("load: JSONL fallback returned %d issues, err=%v", len(issues), err)
+	return issues, err
 }
 
 // LoadIssuesFromDir performs smart source detection within a known beads directory.
@@ -55,7 +62,12 @@ func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
 		IncludeInvalid:         false,
 	})
 	if err != nil {
+		debug.Log("load: DiscoverSources failed: %v", err)
 		return nil, err
+	}
+	debug.Log("load: discovered %d valid sources", len(sources))
+	for i, s := range sources {
+		debug.Log("load:   [%d] type=%s path=%s db=%s priority=%d", i, s.Type, s.Path, s.Database, s.Priority)
 	}
 	if len(sources) == 0 {
 		return nil, fmt.Errorf("no valid sources discovered")
@@ -63,8 +75,10 @@ func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
 
 	best, err := SelectBestSource(sources)
 	if err != nil {
+		debug.Log("load: SelectBestSource failed: %v", err)
 		return nil, err
 	}
+	debug.Log("load: selected best source: type=%s path=%s db=%s", best.Type, best.Path, best.Database)
 
 	return LoadFromSource(best)
 }
@@ -72,25 +86,35 @@ func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
 // LoadFromSource loads issues from a specific DataSource, dispatching to the
 // appropriate reader based on source type.
 func LoadFromSource(source DataSource) ([]model.Issue, error) {
+	debug.Log("load: LoadFromSource type=%s path=%s db=%s", source.Type, source.Path, source.Database)
 	switch source.Type {
 	case SourceTypeSQLite:
+		debug.Log("load: opening SQLite reader: %s", source.Path)
 		reader, err := NewSQLiteReader(source)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open SQLite source %s: %w", source.Path, err)
 		}
 		defer reader.Close()
-		return reader.LoadIssues()
+		issues, err := reader.LoadIssues()
+		debug.Log("load: SQLite returned %d issues, err=%v", len(issues), err)
+		return issues, err
 
 	case SourceTypeDolt:
+		debug.Log("load: opening Dolt reader: %s/%s", source.Path, source.Database)
 		reader, err := NewDoltReader(source)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open Dolt source %s: %w", source.Path, err)
 		}
 		defer reader.Close()
-		return reader.LoadIssues()
+		issues, err := reader.LoadIssues()
+		debug.Log("load: Dolt returned %d issues, err=%v", len(issues), err)
+		return issues, err
 
 	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree:
-		return loader.LoadIssuesFromFile(source.Path)
+		debug.Log("load: loading JSONL file: %s", source.Path)
+		issues, err := loader.LoadIssuesFromFile(source.Path)
+		debug.Log("load: JSONL returned %d issues, err=%v", len(issues), err)
+		return issues, err
 
 	default:
 		return nil, fmt.Errorf("unknown source type: %s", source.Type)
