@@ -1319,7 +1319,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusIsError = true
 			return m, nil
 		}
-		// Stop background worker and old watcher (bd-87w)
+		// Stop background worker and old watchers (bd-87w)
 		if m.backgroundWorker != nil {
 			m.backgroundWorker.Stop()
 			m.backgroundWorker = nil
@@ -1328,7 +1328,48 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.watcher.Stop()
 			m.watcher = nil
 		}
+		if m.doltWatcher != nil {
+			m.doltWatcher.Stop()
+			m.doltWatcher = nil
+		}
 		m.beadsPath = newPath
+
+		// Re-discover datasource for the new project
+		m.sourceType = datasource.SourceTypeJSONLLocal
+		m.doltSource = datasource.DataSource{}
+		m.doltFailure = nil
+		m.sourceInfo = fmt.Sprintf("jsonl %s", filepath.Base(newPath))
+		if sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
+			BeadsDir:               beadsDir,
+			ValidateAfterDiscovery: false,
+		}); discErr == nil {
+			for _, s := range sources {
+				if s.Type == datasource.SourceTypeDolt {
+					db := s.Database
+					if db == "" {
+						db = "beads"
+					}
+					doltLabel := fmt.Sprintf("dolt://%s/%s", s.Path, db)
+					dw, dwErr := datasource.NewDoltWatcher(s, 500*time.Millisecond)
+					if dwErr != nil {
+						m.doltFailure = &DoltFailure{Server: s.Path, Database: db, User: s.User, Error: dwErr.Error()}
+					} else if err := dw.Start(); err != nil {
+						dw.Stop()
+						m.doltFailure = &DoltFailure{Server: s.Path, Database: db, User: s.User, Error: err.Error()}
+					} else {
+						m.doltWatcher = dw
+						m.doltSource = s
+						m.sourceType = datasource.SourceTypeDolt
+						m.sourceInfo = doltLabel + " ✓"
+					}
+					break
+				} else if s.Type == datasource.SourceTypeSQLite {
+					m.sourceInfo = fmt.Sprintf("sqlite %s", filepath.Base(s.Path))
+				}
+			}
+		}
+		debug.Log("project-switch: %s sourceType=%s sourceInfo=%s", msg.Project.Name, m.sourceType, m.sourceInfo)
+
 		// Clear old project data to prevent stale rendering (bd-lll)
 		m.issues = nil
 		m.issueMap = nil
@@ -1338,21 +1379,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tree.ApplyFilter("all")
 		m.tree.ClearSearch()
 		m.tree.Build(nil)
-		// Start new background worker for the new path (bd-87w, bd-828)
-		// BackgroundWorker creates its own internal file watcher.
+		// Start new background worker or watcher for the new project
 		bw, bwErr := NewBackgroundWorker(WorkerConfig{BeadsPath: newPath})
-		if bwErr == nil {
+		if bwErr == nil && m.sourceType != datasource.SourceTypeDolt {
 			m.backgroundWorker = bw
-			// Use StartBackgroundWorkerCmd which calls Start() + TriggerRefresh()
 			cmds = append(cmds, StartBackgroundWorkerCmd(bw))
 			cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(bw))
+		} else if m.doltWatcher != nil {
+			// Dolt project: use DoltWatcher for live reload
+			cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
+			cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
 		} else {
-			// Fallback: no background worker, use watcher + FileChangedMsg
-			// TODO(dolt): detect target project's backend type and create DoltWatcher if needed
-			if m.doltWatcher != nil {
-				m.doltWatcher.Stop()
-				m.doltWatcher = nil
-			}
+			// Fallback: file watcher
 			w, watchErr := watcher.NewWatcher(newPath)
 			if watchErr == nil {
 				m.watcher = w
