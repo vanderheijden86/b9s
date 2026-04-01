@@ -403,7 +403,7 @@ func computeDataHash(issues []model.Issue) string {
 					continue
 				}
 				comments = append(comments, commentKey{
-					id:   strconv.FormatInt(comment.ID, 10),
+					id:   comment.ID,
 					text: comment.Text,
 				})
 			}
