@@ -1,7 +1,9 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -226,13 +228,53 @@ func (d DependencyType) IsBlocking() bool {
 	return d == "" || d == DepBlocks
 }
 
-// Comment represents a comment on an issue
+// Comment represents a comment on an issue.
+// ID is a string to support both legacy integer IDs and bd v0.63 UUID IDs.
 type Comment struct {
-	ID        int64     `json:"id"`
+	ID        string    `json:"id"`
 	IssueID   string    `json:"issue_id"`
 	Author    string    `json:"author"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// commentAlias is used by UnmarshalJSON to avoid infinite recursion.
+type commentAlias struct {
+	ID        json.RawMessage `json:"id"`
+	IssueID   string          `json:"issue_id"`
+	Author    string          `json:"author"`
+	Text      string          `json:"text"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler so that Comment.ID accepts both
+// legacy integer values (e.g. "id": 1) and current string values (e.g. "id": "uuid").
+func (c *Comment) UnmarshalJSON(data []byte) error {
+	var alias commentAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	c.IssueID = alias.IssueID
+	c.Author = alias.Author
+	c.Text = alias.Text
+	c.CreatedAt = alias.CreatedAt
+
+	if len(alias.ID) == 0 {
+		return nil
+	}
+	// Try string first ("uuid" or "1").
+	var s string
+	if err := json.Unmarshal(alias.ID, &s); err == nil {
+		c.ID = s
+		return nil
+	}
+	// Fall back to integer (legacy format: 1, 42, ...).
+	var n int64
+	if err := json.Unmarshal(alias.ID, &n); err == nil {
+		c.ID = strconv.FormatInt(n, 10)
+		return nil
+	}
+	return fmt.Errorf("comment: cannot unmarshal id field: %s", alias.ID)
 }
 
 // Sprint represents a time-boxed period of work
