@@ -881,6 +881,11 @@ func (t *TreeModel) GetFilter() string {
 	return t.currentFilter
 }
 
+// GetLabelFilter returns the current label filter (bd-ic9p).
+func (t *TreeModel) GetLabelFilter() string {
+	return t.labelFilter
+}
+
 // SetLabelFilter sets a label filter that composes with the status filter (bd-dlqi).
 func (t *TreeModel) SetLabelFilter(label string) {
 	t.labelFilter = label

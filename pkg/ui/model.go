@@ -1410,6 +1410,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		debug.Log("project-switch: %s sourceType=%s sourceInfo=%s", msg.Project.Name, m.sourceType, m.sourceInfo)
+		debug.Log("project-switch: clearing filters: currentFilter=%q labelFilter=%q pickerMode=%d", m.currentFilter, m.labelFilter, m.pickerMode)
 
 		// Clear old project data to prevent stale rendering (bd-lll)
 		m.issues = nil
@@ -1417,7 +1418,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.snapshot = nil
 		m.isLoading = true
 		m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
-		// Clear tree filter/search state so new project data isn't hidden (bd-qjc)
+		// Clear all filters so new project data isn't hidden (bd-qjc, bd-ic9p)
+		m.labelFilter = ""
+		m.currentFilter = "all"
+		m.pickerMode = pickerModeProjects
+		m.labelEntries = nil
+		m.tree.SetLabelFilter("")
 		m.tree.ApplyFilter("all")
 		m.tree.ClearSearch()
 		m.tree.Build(nil)
@@ -1695,6 +1701,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			addTiming("total", "total")
 			m.statusMsg += "]"
 		}
+		// Log UI filter state for debugging (bd-ic9p)
+		if profileRefresh {
+			treeFilter := m.tree.GetFilter()
+			treeLabel := m.tree.GetLabelFilter()
+			debug.Log("ui-state: project=%s issues=%d listItems=%d currentFilter=%q labelFilter=%q pickerMode=%d treeFilter=%q treeLabelFilter=%q",
+				m.activeProjectName, len(m.issues), len(m.list.Items()),
+				m.currentFilter, m.labelFilter, m.pickerMode,
+				treeFilter, treeLabel)
+		}
+
 		// Auto-enable background mode after slow sync reloads (opt-out via B9S_BACKGROUND_MODE=0).
 		autoEnabled := false
 		slowReload := reloadDuration >= time.Second
