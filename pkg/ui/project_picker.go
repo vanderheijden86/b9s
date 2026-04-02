@@ -496,10 +496,12 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		isCursor := m.filtering && i == m.cursor
 
 		// Display number: use FavoriteNum if set, otherwise 1-based position.
-		displayPos := i + 1
-		numStr := fmt.Sprintf("%d", displayPos)
-		if entry.FavoriteNum > 0 {
+		// Cap at 9 since 0 is reserved for all-projects view (bd-g68w).
+		numStr := " "
+		if entry.FavoriteNum > 0 && entry.FavoriteNum <= 9 {
 			numStr = fmt.Sprintf("%d", entry.FavoriteNum)
+		} else if i+1 <= 9 {
+			numStr = fmt.Sprintf("%d", i+1)
 		}
 
 		// Name (truncated if needed)
@@ -731,9 +733,15 @@ func (m *ProjectPickerModel) ScrollOffset() int {
 // This is used by the main model to ensure pressing a number key always selects the project
 // whose on-screen label shows that number (bd-i8t3, bd-8zc).
 func (m *ProjectPickerModel) ProjectByFavoriteNum(n int) *config.Project {
+	if n < 1 || n > 9 {
+		return nil
+	}
 	for i, entry := range m.entries {
 		displayNum := i + 1
-		if entry.FavoriteNum > 0 {
+		if displayNum > 9 {
+			displayNum = 0 // no key for 10+
+		}
+		if entry.FavoriteNum > 0 && entry.FavoriteNum <= 9 {
 			displayNum = entry.FavoriteNum
 		}
 		if displayNum == n {
