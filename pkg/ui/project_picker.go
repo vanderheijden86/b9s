@@ -45,8 +45,9 @@ type ProjectPickerModel struct {
 	height       int
 	filterInput  textinput.Model
 	filtering    bool
-	theme        Theme
-	sourceInfo   string // e.g. "dolt://osen.co:3306/b9s ✓" or "jsonl .beads/issues.jsonl"
+	theme            Theme
+	sourceInfo       string // e.g. "dolt://osen.co:3306/b9s ✓" or "jsonl .beads/issues.jsonl"
+	allProjectsMode  bool   // True when showing all-projects view (bd-g68w)
 }
 
 // maxVisibleProjects is the max number of projects shown in the table.
@@ -97,6 +98,11 @@ func NewProjectPicker(entries []ProjectEntry, theme Theme) ProjectPickerModel {
 		filtering:    false,
 		theme:        theme,
 	}
+}
+
+// SetAllProjectsMode sets whether the all-projects view is active (bd-g68w).
+func (m *ProjectPickerModel) SetAllProjectsMode(active bool) {
+	m.allProjectsMode = active
 }
 
 // SetSourceInfo sets the datasource description shown in the title bar.
@@ -642,7 +648,10 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 
 	label := "b9s"
 	countStr := ""
-	if m.filtering && m.filterInput.Value() != "" {
+	if m.allProjectsMode {
+		label = "All Projects"
+		countStr = " <0>"
+	} else if m.filtering && m.filterInput.Value() != "" {
 		label = m.filterInput.Value()
 	} else {
 		for _, entry := range m.entries {

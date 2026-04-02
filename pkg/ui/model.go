@@ -460,6 +460,11 @@ type Model struct {
 	appConfig         config.Config     // Loaded app configuration
 	allProjects       []config.Project  // All known projects
 	projectPicker     ProjectPickerModel
+
+	// All-projects mode (bd-g68w): read-only cross-project view
+	allProjectsMode    bool
+	multiDoltReader    *datasource.MultiDoltReader
+	multiDoltWatcher   *datasource.MultiDoltWatcher
 }
 
 // labelCount is a simple label->count pair for display
@@ -1089,6 +1094,58 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMsg = errMsg
 			m.statusIsError = true
 		}
+
+	case AllProjectsLoadMsg:
+		// Load issues from all Dolt databases (bd-g68w)
+		if m.multiDoltReader == nil {
+			return m, nil
+		}
+		debug.Log("AllProjectsLoadMsg: loading from multi-reader")
+		allIssues, err := m.multiDoltReader.LoadAllIssues()
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("All-projects load error: %v", err)
+			m.statusIsError = true
+		} else {
+			m.issues = allIssues
+			m.isLoading = false
+			m.issueMap = make(map[string]*model.Issue, len(allIssues))
+			for i := range m.issues {
+				m.issueMap[m.issues[i].ID] = &m.issues[i]
+			}
+			// Recompute stats
+			m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
+			for i := range m.issues {
+				issue := &m.issues[i]
+				if isClosedLikeStatus(issue.Status) {
+					m.countClosed++
+				} else {
+					m.countOpen++
+					if issue.Status != model.StatusBlocked {
+						m.countReady++
+					}
+				}
+			}
+			// Rebuild views
+			items := make([]list.Item, len(m.issues))
+			for i := range m.issues {
+				items[i] = IssueItem{
+					Issue:      m.issues[i],
+					RepoPrefix: ExtractRepoPrefix(m.issues[i].ID),
+				}
+			}
+			m.list.SetItems(items)
+			m.tree.Build(m.issues)
+			m.tree.SetSize(m.width, m.bodyHeight())
+			m.tree.SetGlobalIssueMap(m.issueMap)
+			m.statusMsg = fmt.Sprintf("All projects: %d issues", len(allIssues))
+			m.statusIsError = false
+			debug.Log("AllProjectsLoadMsg: %d issues loaded, rebuilding views", len(allIssues))
+		}
+		// Re-queue watcher
+		if m.multiDoltWatcher != nil {
+			cmds = append(cmds, MultiDoltWatchCmd(m.multiDoltWatcher))
+		}
+		return m, tea.Batch(cmds...)
 
 	case ReadyTimeoutMsg:
 		// bv-7wl7: Legacy fallback handler (no longer used).
@@ -2061,6 +2118,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// 0 key: toggle all-projects mode (bd-g68w)
+		if msg.String() == "0" && m.list.FilterState() != list.Filtering && m.pickerMode != pickerModeLabels {
+			if m.allProjectsMode {
+				// Exit all-projects mode: return to previous project
+				m.exitAllProjectsMode()
+				return m, func() tea.Msg { return FileChangedMsg{} }
+			}
+			return m, m.enterAllProjectsMode()
+		}
+
 		// Handle keys when not filtering
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
@@ -2224,6 +2291,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "e":
+				if m.allProjectsMode {
+					m.statusMsg = "Editing disabled in all-projects view (press 1-9 to select a project)"
+					m.statusIsError = false
+					return m, nil
+				}
 				if m.focused == focusTree && !m.tree.IsSearchMode() {
 					// Edit in tree view (skip during search, bd-9k90)
 					if issue := m.getSelectedIssue(); issue != nil {
@@ -2237,6 +2309,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// For other views, pass through to their handlers
 
 			case "ctrl+n":
+				if m.allProjectsMode {
+					m.statusMsg = "Creating disabled in all-projects view"
+					m.statusIsError = false
+					return m, nil
+				}
 				// Create new issue (bd-a83)
 				m.editModal = NewCreateModal(m.theme)
 				m.editModal.SetSize(m.width, m.height)
@@ -2244,6 +2321,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.editModal.Init()
 
 			case "K":
+				if m.allProjectsMode {
+					m.statusMsg = "Deleting disabled in all-projects view"
+					m.statusIsError = false
+					return m, nil
+				}
 				// Delete/discard issue (bd-578q)
 				if issue := m.getSelectedIssue(); issue != nil {
 					m.deleteTargetID = issue.ID
@@ -4050,7 +4132,7 @@ func (m *Model) renderFooter() string {
 	switch viewName {
 	case "tree":
 		hints = []hint{
-			{"1-9", "project"},
+			{"0-9", "project"},
 			{"tab", "fold"},
 			{"⇧tab", "fold all"},
 			{"enter", "detail"},
@@ -4063,7 +4145,7 @@ func (m *Model) renderFooter() string {
 		}
 	case "board":
 		hints = []hint{
-			{"1-9", "project"},
+			{"0-9", "project"},
 			{"tab", "fold"},
 			{"⇧tab", "fold all"},
 			{"enter", "detail"},
@@ -4075,7 +4157,7 @@ func (m *Model) renderFooter() string {
 		}
 	case "split":
 		hints = []hint{
-			{"1-9", "project"},
+			{"0-9", "project"},
 			{"tab", "fold"},
 			{"</>", "resize"},
 			{"t", "tree"},
@@ -4086,7 +4168,7 @@ func (m *Model) renderFooter() string {
 		}
 	case "detail":
 		hints = []hint{
-			{"1-9", "project"},
+			{"0-9", "project"},
 			{"esc", "back"},
 			{"e", "edit"},
 			{"C", "copy"},
@@ -4096,7 +4178,7 @@ func (m *Model) renderFooter() string {
 		}
 	default: // list view
 		hints = []hint{
-			{"1-9", "project"},
+			{"0-9", "project"},
 			{"t", "tree"},
 			{"b", "board"},
 			{"s", "split"},
@@ -5291,6 +5373,146 @@ func (m *Model) RenderDebugView(viewName string, width, height int) string {
 		return m.board.View(width, height-1)
 	default:
 		return "Unknown view: " + viewName
+	}
+}
+
+// enterAllProjectsMode discovers all Dolt databases from project configs,
+// creates a MultiDoltReader, loads all issues, and sets allProjectsMode (bd-g68w).
+func (m *Model) enterAllProjectsMode() tea.Cmd {
+	// Collect project paths keyed by name
+	projectPaths := make(map[string]string, len(m.allProjects))
+	for _, p := range m.allProjects {
+		projectPaths[p.Name] = p.ResolvedPath()
+	}
+
+	dbs := datasource.DiscoverDoltDBs(projectPaths)
+	if len(dbs) == 0 {
+		m.statusMsg = "No Dolt-backed projects found"
+		m.statusIsError = true
+		return nil
+	}
+
+	debug.Log("all-projects: discovered %d Dolt databases", len(dbs))
+
+	reader, err := datasource.NewMultiDoltReader(dbs)
+	if err != nil {
+		m.statusMsg = fmt.Sprintf("All-projects: %v", err)
+		m.statusIsError = true
+		return nil
+	}
+
+	// Stop existing watchers
+	if m.doltWatcher != nil {
+		m.doltWatcher.Stop()
+		m.doltWatcher = nil
+	}
+	if m.watcher != nil {
+		m.watcher.Stop()
+		m.watcher = nil
+	}
+	if m.backgroundWorker != nil {
+		m.backgroundWorker.Stop()
+		m.backgroundWorker = nil
+	}
+
+	// Clean up previous multi reader
+	if m.multiDoltReader != nil {
+		m.multiDoltReader.Close()
+	}
+	if m.multiDoltWatcher != nil {
+		m.multiDoltWatcher.Stop()
+	}
+
+	m.multiDoltReader = reader
+	m.allProjectsMode = true
+	m.isLoading = true
+	m.sourceInfo = fmt.Sprintf("all-projects (%d databases)", len(reader.DBNames()))
+	m.projectPicker.SetAllProjectsMode(true)
+
+	// Clear current data
+	m.issues = nil
+	m.issueMap = nil
+	m.snapshot = nil
+	m.labelFilter = ""
+	m.currentFilter = "all"
+	m.pickerMode = pickerModeProjects
+	m.labelEntries = nil
+	m.labelScrollOffset = 0
+	m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
+	m.tree.SetLabelFilter("")
+	m.tree.ApplyFilter("all")
+	m.tree.ClearSearch()
+
+	// Start multi watcher
+	watcher := datasource.NewMultiDoltWatcher(reader, 500*time.Millisecond)
+	if err := watcher.Start(); err != nil {
+		debug.Log("all-projects: watcher start failed: %v", err)
+	}
+	m.multiDoltWatcher = watcher
+
+	// Trigger immediate load
+	return func() tea.Msg { return AllProjectsLoadMsg{} }
+}
+
+// exitAllProjectsMode cleans up multi-reader state and returns to single-project mode.
+func (m *Model) exitAllProjectsMode() {
+	m.allProjectsMode = false
+	m.projectPicker.SetAllProjectsMode(false)
+	if m.multiDoltReader != nil {
+		m.multiDoltReader.Close()
+		m.multiDoltReader = nil
+	}
+	if m.multiDoltWatcher != nil {
+		m.multiDoltWatcher.Stop()
+		m.multiDoltWatcher = nil
+	}
+	m.sourceInfo = ""
+	m.isLoading = true
+	m.issues = nil
+	m.issueMap = nil
+	m.snapshot = nil
+	m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
+	m.tree.ApplyFilter("all")
+	m.tree.ClearSearch()
+	m.statusMsg = fmt.Sprintf("Returned to %s", m.activeProjectName)
+	m.statusIsError = false
+
+	// Re-discover datasource for current project
+	beadsDir := filepath.Join(m.activeProjectPath, ".beads")
+	if sources, err := datasource.DiscoverSources(datasource.DiscoveryOptions{
+		BeadsDir: beadsDir,
+	}); err == nil {
+		for _, s := range sources {
+			if s.Type == datasource.SourceTypeDolt {
+				db := s.Database
+				if db == "" {
+					db = "beads"
+				}
+				dw, dwErr := datasource.NewDoltWatcher(s, 500*time.Millisecond)
+				if dwErr == nil {
+					if err := dw.Start(); err == nil {
+						m.doltWatcher = dw
+						m.doltSource = s
+						m.sourceType = datasource.SourceTypeDolt
+						m.sourceInfo = fmt.Sprintf("dolt://%s/%s ✓", s.Path, db)
+					}
+				}
+				break
+			}
+		}
+	}
+}
+
+// AllProjectsLoadMsg triggers loading all issues from multi-reader.
+type AllProjectsLoadMsg struct{}
+
+// MultiDoltWatchCmd waits for any database change in multi-watcher.
+func MultiDoltWatchCmd(w *datasource.MultiDoltWatcher) tea.Cmd {
+	return func() tea.Msg {
+		if w.WaitForChange() {
+			return AllProjectsLoadMsg{}
+		}
+		return nil
 	}
 }
 
