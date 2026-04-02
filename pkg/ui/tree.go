@@ -1219,7 +1219,7 @@ func (t *TreeModel) RenderHeader() string {
 		modeBadge = fmt.Sprintf("[OCCUR[%s](%d)] ", t.occurPattern, len(t.flatList))
 	}
 	filterBadge := ""
-	if t.currentFilter != "" && t.currentFilter != "all" {
+	if t.currentFilter != "" && t.currentFilter != "all" && !strings.HasPrefix(t.currentFilter, "label:") {
 		filterBadge = fmt.Sprintf("[%s] ", strings.ToUpper(t.currentFilter))
 	}
 
