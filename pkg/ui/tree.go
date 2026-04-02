@@ -946,6 +946,15 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 		}
 		return true
 	default:
+		if strings.HasPrefix(t.currentFilter, "label:") {
+			label := strings.TrimPrefix(t.currentFilter, "label:")
+			for _, l := range issue.Labels {
+				if l == label {
+					return true
+				}
+			}
+			return false
+		}
 		return true
 	}
 }

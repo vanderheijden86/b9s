@@ -1988,6 +1988,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 						m.rebuildLabelEntries()
 						m.applyFilter()
+						m.tree.ApplyFilter(m.currentFilter)
+						m.syncTreeToDetail()
 						m.statusMsg = fmt.Sprintf("Label: %s", m.currentFilter)
 						m.statusIsError = false
 						return m, nil
@@ -2135,6 +2137,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.currentFilter = "all"
 					m.pickerMode = pickerModeProjects
 					m.applyFilter()
+					m.tree.ApplyFilter("all")
+					m.syncTreeToDetail()
 					m.statusMsg = "Filter: All issues"
 					m.statusIsError = false
 					return m, nil
