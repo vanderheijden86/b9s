@@ -51,7 +51,8 @@ type ProjectPickerModel struct {
 }
 
 // maxVisibleProjects is the max number of projects shown in the table.
-const maxVisibleProjects = 10
+// Keys 1-9 map to projects; 0 is reserved for all-projects view (bd-g68w).
+const maxVisibleProjects = 9
 
 // panelRows is the fixed number of content rows in the picker panel.
 // Row 0 = column headers, rows 1-5 = data rows (two columns of 5 when >5 projects).

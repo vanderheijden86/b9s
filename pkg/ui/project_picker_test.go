@@ -1081,12 +1081,13 @@ func TestProjectPicker_ScrollWithJK(t *testing.T) {
 		t.Errorf("expected scroll offset to stay at 0 at top boundary, got %d", picker.ScrollOffset())
 	}
 
-	// Scroll to max limit: 12 entries - 10 visible = max offset 2.
+	// Scroll to max limit: 12 entries - 9 visible = max offset 3.
 	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
 	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
 	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
-	if picker.ScrollOffset() != 2 {
-		t.Errorf("expected scroll offset capped at 2 (max), got %d", picker.ScrollOffset())
+	picker, _ = picker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	if picker.ScrollOffset() != 3 {
+		t.Errorf("expected scroll offset capped at 3 (max), got %d", picker.ScrollOffset())
 	}
 }
 
