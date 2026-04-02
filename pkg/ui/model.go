@@ -2109,10 +2109,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			// Project mode (default): switch projects (bd-8hw.3, bd-8zc)
-			if proj := m.appConfig.FavoriteProject(n); proj != nil {
-				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
-			}
+			// Project mode (default): switch projects via page-relative numbering (bd-g68w)
 			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}

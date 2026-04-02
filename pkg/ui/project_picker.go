@@ -491,17 +491,16 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 	const dataRows = panelRows - 1 // 5
 
 	// renderRow produces the styled string for filtered index i (absolute, not window-relative).
+	// Numbers 1-9 are assigned to the visible page based on scrollOffset.
 	renderRow := func(i int) string {
 		entry := m.entries[m.filtered[i]]
 		isCursor := m.filtering && i == m.cursor
 
-		// Display number: use FavoriteNum if set, otherwise 1-based position.
-		// Cap at 9 since 0 is reserved for all-projects view (bd-g68w).
+		// Assign number based on position within visible page (bd-g68w).
+		pagePos := i - m.scrollOffset // 0-based position in visible window
 		numStr := " "
-		if entry.FavoriteNum > 0 && entry.FavoriteNum <= 9 {
-			numStr = fmt.Sprintf("%d", entry.FavoriteNum)
-		} else if i+1 <= 9 {
-			numStr = fmt.Sprintf("%d", i+1)
+		if pagePos >= 0 && pagePos < 9 {
+			numStr = fmt.Sprintf("%d", pagePos+1)
 		}
 
 		// Name (truncated if needed)
@@ -736,20 +735,13 @@ func (m *ProjectPickerModel) ProjectByFavoriteNum(n int) *config.Project {
 	if n < 1 || n > 9 {
 		return nil
 	}
-	for i, entry := range m.entries {
-		displayNum := i + 1
-		if displayNum > 9 {
-			displayNum = 0 // no key for 10+
-		}
-		if entry.FavoriteNum > 0 && entry.FavoriteNum <= 9 {
-			displayNum = entry.FavoriteNum
-		}
-		if displayNum == n {
-			p := entry.Project
-			return &p
-		}
+	// Map key n to visible page position: scrollOffset + (n-1)
+	idx := m.scrollOffset + (n - 1)
+	if idx < 0 || idx >= len(m.entries) {
+		return nil
 	}
-	return nil
+	p := m.entries[idx].Project
+	return &p
 }
 
 // Cursor returns the current cursor position.

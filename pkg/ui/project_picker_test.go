@@ -901,13 +901,12 @@ func TestProjectPicker_NumberKeysWorkWhenHidden(t *testing.T) {
 	m = newM.(ui.Model)
 
 	// Number keys should still switch projects even when picker is hidden.
-	// createModelWithProjects uses Favorites{1: "api-service", 3: "data-pipeline"},
-	// so pressing "3" switches to data-pipeline via the configured favorite.
-	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("3")})
+	// Page-relative: pressing "1" selects the first entry in the list.
+	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
 	m = newM.(ui.Model)
 
 	if cmd == nil {
-		t.Fatal("expected a command from pressing '3' with picker hidden")
+		t.Fatal("expected a command from pressing '1' with picker hidden")
 	}
 
 	msg := cmd()
@@ -915,8 +914,14 @@ func TestProjectPicker_NumberKeysWorkWhenHidden(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
 	}
-	if switchMsg.Project.Name != "data-pipeline" {
-		t.Errorf("expected 'data-pipeline', got %q", switchMsg.Project.Name)
+
+	// Should match the first entry in the picker
+	entries := m.BuildProjectEntries()
+	if len(entries) == 0 {
+		t.Fatal("no entries")
+	}
+	if switchMsg.Project.Name != entries[0].Project.Name {
+		t.Errorf("expected %q, got %q", entries[0].Project.Name, switchMsg.Project.Name)
 	}
 }
 
@@ -982,52 +987,39 @@ func TestProjectPicker_NarrowTerminalDropsColumns(t *testing.T) {
 	}
 }
 
-// TestProjectPicker_StableNumbering verifies that project numbers are alphabetically
-// stable and do not change when the active project changes (bd-jorl).
-func TestProjectPicker_StableNumbering(t *testing.T) {
+// TestProjectPicker_PageRelativeNumbering verifies that pressing "1" always selects
+// the first entry in the visible page (scroll-relative), regardless of which is active.
+func TestProjectPicker_PageRelativeNumbering(t *testing.T) {
 	_, projects := createSampleProjects(t) // api-service, web-frontend, data-pipeline
 
-	// Make a large project set.
-	allProjects := make([]config.Project, 0, 12)
-	allProjects = append(allProjects, projects...)
-	for i := 3; i < 12; i++ {
-		allProjects = append(allProjects, config.Project{
-			Name: fmt.Sprintf("project-%02d", i),
-			Path: t.TempDir(),
-		})
-	}
-
 	cfg := config.Config{
-		Projects:  allProjects,
+		Projects:  projects,
 		Favorites: nil,
 		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
-	// Build with "web-frontend" active.
-	m1 := ui.NewModel(nil, "").WithConfig(cfg, "web-frontend", projects[1].Path)
-	newM1, _ := m1.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
-	m1 = newM1.(ui.Model)
+	m := ui.NewModel(nil, "").WithConfig(cfg, "api-service", projects[0].Path)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m = newM.(ui.Model)
 
-	// Build with "api-service" active.
-	m2 := ui.NewModel(nil, "").WithConfig(cfg, "api-service", projects[0].Path)
-	newM2, _ := m2.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
-	m2 = newM2.(ui.Model)
-
-	// Pressing "1" should give the same project regardless of which is active
-	// (alphabetically first = "api-service").
-	for _, m := range []ui.Model{m1, m2} {
-		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
-		if cmd == nil {
-			t.Fatal("expected a command from pressing '1'")
-		}
-		msg := cmd()
-		switchMsg, ok := msg.(ui.SwitchProjectMsg)
-		if !ok {
-			t.Fatalf("expected SwitchProjectMsg, got %T", msg)
-		}
-		if switchMsg.Project.Name != "api-service" {
-			t.Errorf("expected 'api-service' at position 1 (stable alphabetical), got %q", switchMsg.Project.Name)
-		}
+	// Pressing "1" should select the first entry in the picker (scroll offset 0).
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
+	if cmd == nil {
+		t.Fatal("expected a command from pressing '1'")
+	}
+	msg := cmd()
+	switchMsg, ok := msg.(ui.SwitchProjectMsg)
+	if !ok {
+		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
+	}
+	// First entry in the picker (page-relative).
+	entries := m.BuildProjectEntries()
+	if len(entries) == 0 {
+		t.Fatal("no entries")
+	}
+	expected := entries[0].Project.Name
+	if switchMsg.Project.Name != expected {
+		t.Errorf("expected %q at position 1, got %q", expected, switchMsg.Project.Name)
 	}
 }
 
