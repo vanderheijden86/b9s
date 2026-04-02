@@ -249,8 +249,9 @@ type TreeModel struct {
 	// Persistence state (bv-19vz)
 	beadsDir string // Directory containing .beads (for tree-state.json)
 
-	// Filter state (bd-e3w)
+	// Filter state (bd-e3w, bd-dlqi)
 	currentFilter    string                  // "all", "open", "closed", "ready"
+	labelFilter      string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
 	filterMatches    map[string]bool         // Issue IDs that match the filter
 	contextAncestors map[string]bool         // Ancestor IDs shown for context (dimmed)
 	globalIssueMap   map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
@@ -880,11 +881,20 @@ func (t *TreeModel) GetFilter() string {
 	return t.currentFilter
 }
 
+// SetLabelFilter sets a label filter that composes with the status filter (bd-dlqi).
+func (t *TreeModel) SetLabelFilter(label string) {
+	t.labelFilter = label
+	t.ApplyFilter(t.currentFilter) // rebuild with both filters
+}
+
 // ApplyFilter sets the current filter and rebuilds the visible flat list (bd-e3w).
 func (t *TreeModel) ApplyFilter(filter string) {
 	t.currentFilter = filter
 	if filter == "" || filter == "all" {
 		t.currentFilter = "all"
+	}
+	// When both status and label are "show all", skip filtering
+	if t.currentFilter == "all" && t.labelFilter == "" {
 		t.filterMatches = nil
 		t.contextAncestors = nil
 		t.rebuildFlatList()
@@ -927,6 +937,21 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 		return false
 	}
 	issue := node.Issue
+
+	// Label filter (AND with status filter) (bd-dlqi)
+	if t.labelFilter != "" {
+		hasLabel := false
+		for _, l := range issue.Labels {
+			if l == t.labelFilter {
+				hasLabel = true
+				break
+			}
+		}
+		if !hasLabel {
+			return false
+		}
+	}
+
 	switch t.currentFilter {
 	case "open":
 		return !isClosedLikeStatus(issue.Status)
@@ -946,15 +971,6 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 		}
 		return true
 	default:
-		if strings.HasPrefix(t.currentFilter, "label:") {
-			label := strings.TrimPrefix(t.currentFilter, "label:")
-			for _, l := range issue.Labels {
-				if l == label {
-					return true
-				}
-			}
-			return false
-		}
 		return true
 	}
 }

@@ -391,7 +391,8 @@ type Model struct {
 	labelEntries  []LabelEntry // labels with counts and number assignments
 
 	// Filter and sort state
-	currentFilter string
+	currentFilter string // status filter: "all", "open", "closed", "ready"
+	labelFilter   string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
 	sortMode      SortMode // bv-3ita: current sort mode
 
 	// Stats (cached)
@@ -1201,6 +1202,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+			// Label filter (AND with status) (bd-dlqi)
+			if m.labelFilter != "" {
+				hasLabel := false
+				for _, l := range issue.Labels {
+					if l == m.labelFilter {
+						hasLabel = true
+						break
+					}
+				}
+				if !hasLabel {
+					continue
+				}
+			}
+
 			include := false
 			switch m.currentFilter {
 			case "all":
@@ -1977,20 +1992,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
 			if m.pickerMode == pickerModeLabels {
-				// Label mode: number keys apply/toggle label filters
+				// Label mode: number keys toggle label filter (composes with status) (bd-dlqi)
 				for _, entry := range m.labelEntries {
 					if entry.Number == n {
 						if entry.IsActive {
-							// Toggle off: clear label filter
-							m.currentFilter = "all"
+							m.labelFilter = ""
 						} else {
-							m.currentFilter = "label:" + entry.Label
+							m.labelFilter = entry.Label
 						}
 						m.rebuildLabelEntries()
 						m.applyFilter()
-						m.tree.ApplyFilter(m.currentFilter)
+						m.tree.SetLabelFilter(m.labelFilter)
 						m.syncTreeToDetail()
-						m.statusMsg = fmt.Sprintf("Label: %s", m.currentFilter)
+						if m.labelFilter != "" {
+							m.statusMsg = fmt.Sprintf("Label: %s", m.labelFilter)
+						} else {
+							m.statusMsg = "Label filter cleared"
+						}
 						m.statusIsError = false
 						return m, nil
 					}
@@ -2133,13 +2151,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "a":
 				if m.pickerMode == pickerModeLabels {
-					// Clear label filter and return to project mode (bd-gj41)
-					m.currentFilter = "all"
+					// Clear label filter and return to project mode (bd-dlqi)
+					m.labelFilter = ""
 					m.pickerMode = pickerModeProjects
 					m.applyFilter()
-					m.tree.ApplyFilter("all")
+					m.tree.SetLabelFilter("")
 					m.syncTreeToDetail()
-					m.statusMsg = "Filter: All issues"
+					m.statusMsg = "Label filter cleared"
 					m.statusIsError = false
 					return m, nil
 				}
@@ -4108,11 +4126,12 @@ func (m Model) getDiffStatus(id string) DiffStatus {
 // hasActiveFilters returns true if any filter is currently applied
 // (status filter, label filter, recipe filter, or fuzzy search)
 func (m *Model) hasActiveFilters() bool {
-	// Check status/label/recipe filter
 	if m.currentFilter != "all" {
 		return true
 	}
-	// Check if fuzzy search filter is active
+	if m.labelFilter != "" {
+		return true
+	}
 	if m.list.FilterState() == list.Filtering || m.list.FilterState() == list.FilterApplied {
 		return true
 	}
@@ -4122,6 +4141,7 @@ func (m *Model) hasActiveFilters() bool {
 // clearAllFilters resets all filters to their default state
 func (m *Model) clearAllFilters() {
 	m.currentFilter = "all"
+	m.labelFilter = ""
 	// Reset the fuzzy search filter by resetting the filter state
 	m.list.ResetFilter()
 	m.applyFilter()
@@ -4132,6 +4152,20 @@ func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
 	if m.workspaceMode && m.activeRepos != nil {
 		repoKey := strings.ToLower(ExtractRepoPrefix(issue.ID))
 		if repoKey != "" && !m.activeRepos[repoKey] {
+			return false
+		}
+	}
+
+	// Label filter (AND with status filter) (bd-dlqi)
+	if m.labelFilter != "" {
+		hasLabel := false
+		for _, l := range issue.Labels {
+			if l == m.labelFilter {
+				hasLabel = true
+				break
+			}
+		}
+		if !hasLabel {
 			return false
 		}
 	}
@@ -4158,6 +4192,7 @@ func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
 		}
 		return true
 	default:
+		// Legacy label: prefix in currentFilter (from old label picker)
 		if strings.HasPrefix(m.currentFilter, "label:") {
 			label := strings.TrimPrefix(m.currentFilter, "label:")
 			for _, l := range issue.Labels {
@@ -4165,6 +4200,7 @@ func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
 					return true
 				}
 			}
+			return false
 		}
 		return false
 	}
@@ -5238,7 +5274,7 @@ func (m *Model) rebuildLabelEntries() {
 
 	entries := make([]LabelEntry, 0, len(counts))
 	for label, count := range counts {
-		isActive := m.currentFilter == "label:"+label
+		isActive := m.labelFilter == label
 		entries = append(entries, LabelEntry{
 			Label:    label,
 			Count:    count,
@@ -5357,8 +5393,8 @@ func (m Model) renderLabelTitleBar(w int) string {
 		Foreground(t.Secondary)
 
 	activeLabel := "Labels"
-	if strings.HasPrefix(m.currentFilter, "label:") {
-		activeLabel = strings.TrimPrefix(m.currentFilter, "label:")
+	if m.labelFilter != "" {
+		activeLabel = m.labelFilter
 	}
 	title := titleStyle.Render(activeLabel)
 	hint := hintStyle.Render(" L:projects  a:clear")
