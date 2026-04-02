@@ -214,6 +214,32 @@ func TestIssueWriter_RunBdCmd_DefaultsToProcessCwd(t *testing.T) {
 	}
 }
 
+func TestIssueWriter_DeleteIssue(t *testing.T) {
+	w := &IssueWriter{bdPath: "/usr/local/bin/bd", available: true}
+
+	cmd := w.DeleteIssue("bd-789")
+	if cmd == nil {
+		t.Fatal("expected non-nil cmd from DeleteIssue")
+	}
+}
+
+func TestIssueWriter_DeleteIssue_NotAvailable(t *testing.T) {
+	w := &IssueWriter{bdPath: "", available: false}
+
+	cmd := w.DeleteIssue("bd-789")
+	msg := cmd()
+	result, ok := msg.(BdResultMsg)
+	if !ok {
+		t.Fatalf("expected BdResultMsg, got %T", msg)
+	}
+	if result.Success {
+		t.Error("expected failure when bd not available")
+	}
+	if result.Operation != BdOpDelete {
+		t.Errorf("expected BdOpDelete, got %d", result.Operation)
+	}
+}
+
 // Test helpers
 func containsArg(args []string, target string) bool {
 	for _, a := range args {

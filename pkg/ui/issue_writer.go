@@ -18,6 +18,7 @@ const (
 	BdOpUpdate BdOperation = iota
 	BdOpCreate
 	BdOpClose
+	BdOpDelete
 	BdOpSetStatus
 	BdOpSetPriority
 )
@@ -83,6 +84,15 @@ func (w *IssueWriter) CloseIssue(id, reason string) tea.Cmd {
 	}
 	args := w.buildCloseArgs(id, reason)
 	return w.runBdCmd(BdOpClose, id, args)
+}
+
+// DeleteIssue runs bd delete <id> --force
+func (w *IssueWriter) DeleteIssue(id string) tea.Cmd {
+	if !w.available {
+		return w.unavailableCmd(BdOpDelete, id)
+	}
+	args := []string{"delete", id, "--force"}
+	return w.runBdCmd(BdOpDelete, id, args)
 }
 
 // SetStatus is a convenience wrapper for updating just the status

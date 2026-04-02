@@ -364,6 +364,9 @@ type Model struct {
 	showHelp             bool
 	helpScroll           int // Scroll offset for help overlay
 	showQuitConfirm      bool
+	showDeleteConfirm    bool   // True when delete confirmation dialog is visible
+	deleteTargetID       string // Issue ID pending deletion
+	deleteTargetTitle    string // Issue title for confirmation display
 	showDBHealth         bool           // True when database health popup is visible
 	dbHealth             DatabaseHealth // Cached result of the last health check
 	ready                bool
@@ -1053,6 +1056,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.statusMsg = fmt.Sprintf("Created %s", msg.IssueID)
 			} else if msg.Operation == BdOpClose {
 				m.statusMsg = fmt.Sprintf("Closed %s", msg.IssueID)
+			} else if msg.Operation == BdOpDelete {
+				m.statusMsg = fmt.Sprintf("Deleted %s", msg.IssueID)
 			}
 			m.statusIsError = false
 			// Trigger reload to pick up changes
@@ -1784,6 +1789,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle delete confirmation (bd-578q)
+		if m.showDeleteConfirm {
+			switch msg.String() {
+			case "y", "Y":
+				m.showDeleteConfirm = false
+				id := m.deleteTargetID
+				m.deleteTargetID = ""
+				m.deleteTargetTitle = ""
+				return m, m.issueWriter.DeleteIssue(id)
+			default:
+				m.showDeleteConfirm = false
+				m.deleteTargetID = ""
+				m.deleteTargetTitle = ""
+				return m, nil
+			}
+		}
+
 		// Handle quit confirmation first
 		if m.showQuitConfirm {
 			switch msg.String() {
@@ -2111,6 +2133,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editModal.SetSize(m.width, m.height)
 				m.showEditModal = true
 				return m, m.editModal.Init()
+
+			case "K":
+				// Delete/discard issue (bd-578q)
+				if issue := m.getSelectedIssue(); issue != nil {
+					m.deleteTargetID = issue.ID
+					m.deleteTargetTitle = issue.Title
+					m.showDeleteConfirm = true
+					return m, nil
+				}
 
 			case "[":
 				if m.focused == focusTree {
@@ -2996,8 +3027,11 @@ func (m Model) View() string {
 	var body string
 	isOverlay := false // Track whether an overlay is active (no global header)
 
-	// Quit confirmation overlay takes highest priority
-	if m.showQuitConfirm {
+	// Confirmation overlays take highest priority
+	if m.showDeleteConfirm {
+		body = m.renderDeleteConfirm()
+		isOverlay = true
+	} else if m.showQuitConfirm {
 		body = m.renderQuitConfirm()
 		isOverlay = true
 	} else if m.showDBHealth {
@@ -3112,6 +3146,53 @@ func (m Model) renderQuitConfirm() string {
 	content := titleStyle.Render("Quit bv?") + "\n\n" +
 		textStyle.Render("Press ") + keyStyle.Render("Esc") + textStyle.Render(" or ") + keyStyle.Render("Y") + textStyle.Render(" to quit\n") +
 		textStyle.Render("Press any other key to cancel")
+
+	box := boxStyle.Render(content)
+
+	return lipgloss.Place(
+		m.width,
+		m.height-1,
+		lipgloss.Center,
+		lipgloss.Center,
+		box,
+	)
+}
+
+// renderDeleteConfirm renders the centered delete confirmation dialog (bd-578q).
+func (m Model) renderDeleteConfirm() string {
+	t := m.theme
+
+	boxStyle := t.Renderer.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(t.Blocked).
+		Padding(1, 3).
+		Align(lipgloss.Center)
+
+	titleStyle := t.Renderer.NewStyle().
+		Foreground(t.Blocked).
+		Bold(true)
+
+	textStyle := t.Renderer.NewStyle().
+		Foreground(t.Base.GetForeground())
+
+	idStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+
+	keyStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+
+	title := m.deleteTargetTitle
+	if len(title) > 50 {
+		title = title[:47] + "..."
+	}
+
+	content := titleStyle.Render("Delete issue?") + "\n\n" +
+		idStyle.Render(m.deleteTargetID) + "\n" +
+		textStyle.Render(title) + "\n\n" +
+		textStyle.Render("This is permanent and cannot be undone.") + "\n\n" +
+		textStyle.Render("Press ") + keyStyle.Render("Y") + textStyle.Render(" to delete, any other key to cancel")
 
 	box := boxStyle.Render(content)
 
@@ -3857,6 +3938,7 @@ func (m *Model) renderFooter() string {
 			{"s", "sort"},
 			{"/", "search"},
 			{"e", "edit"},
+			{"K", "delete"},
 			{"q", "back"},
 		}
 	case "board":
@@ -3900,6 +3982,7 @@ func (m *Model) renderFooter() string {
 			{"s", "split"},
 			{"/", "filter"},
 			{"e", "edit"},
+			{"K", "delete"},
 			{"n", "new"},
 			{"?", "help"},
 			{"q", "quit"},
