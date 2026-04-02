@@ -53,6 +53,20 @@ const (
 )
 
 // SortMode represents the current list sorting mode (bv-3ita)
+// Picker mode: what the top bar shows (bd-gj41)
+const (
+	pickerModeProjects = iota
+	pickerModeLabels
+)
+
+// LabelEntry holds display data for one label in the top bar label mode.
+type LabelEntry struct {
+	Label    string
+	Count    int
+	Number   int  // 1-9 assignment (by count rank)
+	IsActive bool // currently filtered to this label
+}
+
 type SortMode int
 
 const (
@@ -373,6 +387,8 @@ type Model struct {
 	width                int
 	height               int
 	pickerVisible bool // bd-2me: Shift+P toggles picker panel
+	pickerMode    int  // 0 = projects, 1 = labels (bd-gj41)
+	labelEntries  []LabelEntry // labels with counts and number assignments
 
 	// Filter and sort state
 	currentFilter string
@@ -1957,18 +1973,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tutorialCmd
 		}
 
-		// Project switching keys (bd-8hw.3, bd-8zc) - number keys 1-9 ALWAYS switch regardless of focus
-		// Handled at top priority so they work from any view/state.
-		// First checks config favorites, then falls back to the picker's assigned numbering
-		// (which reflects the sorted order: active first, then alphabetical) (bd-i8t3).
+		// Number keys 1-9: route to labels or projects depending on pickerMode (bd-gj41)
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
-			// Check config favorites first
+			if m.pickerMode == pickerModeLabels {
+				// Label mode: number keys apply/toggle label filters
+				for _, entry := range m.labelEntries {
+					if entry.Number == n {
+						if entry.IsActive {
+							// Toggle off: clear label filter
+							m.currentFilter = "all"
+						} else {
+							m.currentFilter = "label:" + entry.Label
+						}
+						m.rebuildLabelEntries()
+						m.applyFilter()
+						m.statusMsg = fmt.Sprintf("Label: %s", m.currentFilter)
+						m.statusIsError = false
+						return m, nil
+					}
+				}
+				return m, nil
+			}
+			// Project mode (default): switch projects (bd-8hw.3, bd-8zc)
 			if proj := m.appConfig.FavoriteProject(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
-			// Auto-number fallback: use the picker's assigned FavoriteNum so the displayed
-			// number always matches what pressing the key does (bd-8zc, bd-i8t3).
 			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
@@ -2073,6 +2103,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.recalculateSplitPaneSizes()
 				}
 
+			case "L":
+				// Toggle top bar between projects and labels (bd-gj41)
+				if m.pickerMode == pickerModeLabels {
+					m.pickerMode = pickerModeProjects
+				} else {
+					m.pickerMode = pickerModeLabels
+					m.rebuildLabelEntries()
+				}
+				return m, nil
+
 			case "b":
 				// Toggle board view from any context (bd-8hw.4: tree is permanent)
 				m.isBoardView = !m.isBoardView
@@ -2090,6 +2130,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "a":
+				if m.pickerMode == pickerModeLabels {
+					// Clear label filter and return to project mode (bd-gj41)
+					m.currentFilter = "all"
+					m.pickerMode = pickerModeProjects
+					m.applyFilter()
+					m.statusMsg = "Filter: All issues"
+					m.statusIsError = false
+					return m, nil
+				}
 				if m.focused == focusTree {
 					break // Let handleTreeKeys handle 'a' for all-filter (bd-mwi)
 				}
@@ -3103,9 +3152,16 @@ func (m Model) View() string {
 		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
 	}
 
-	// Compact project picker header, toggleable via Shift+P (bd-ey3, bd-ylz, bd-2me)
+	// Compact project/label picker header (bd-ey3, bd-ylz, bd-2me, bd-gj41)
 	var pickerHeader string
-	if len(m.allProjects) > 0 && m.pickerVisible {
+	if m.pickerMode == pickerModeLabels {
+		// Label mode: show labels with counts and number assignments
+		if m.pickerVisible {
+			pickerHeader = m.renderLabelBar()
+		} else {
+			pickerHeader = m.renderLabelTitleBar(m.width)
+		}
+	} else if len(m.allProjects) > 0 && m.pickerVisible {
 		m.projectPicker.SetSize(m.width, m.height)
 		pickerHeader = m.projectPicker.View()
 	} else if len(m.allProjects) > 0 && !m.pickerVisible {
@@ -3987,6 +4043,19 @@ func (m *Model) renderFooter() string {
 			{"?", "help"},
 			{"q", "quit"},
 		}
+	}
+
+	// Replace "1-9 project" with "1-9 label" when in label mode (bd-gj41)
+	if m.pickerMode == pickerModeLabels {
+		for i := range hints {
+			if hints[i].key == "1-9" && hints[i].label == "project" {
+				hints[i].label = "label"
+				break
+			}
+		}
+		hints = append(hints, hint{"L", "projects"})
+	} else {
+		hints = append(hints, hint{"L", "labels"})
 	}
 
 	// Add picker toggle hint if multiple projects exist (bd-e4un)
@@ -5151,4 +5220,157 @@ func formatReloadDuration(d time.Duration) string {
 		return fmt.Sprintf("%.1fs", d.Seconds())
 	}
 	return fmt.Sprintf("%dm", int(d.Minutes()))
+}
+
+// rebuildLabelEntries extracts labels from current issues, sorted by count descending,
+// and assigns numbers 1-9 to the top labels (bd-gj41).
+func (m *Model) rebuildLabelEntries() {
+	counts := make(map[string]int)
+	for _, issue := range m.issues {
+		for _, lbl := range issue.Labels {
+			counts[lbl]++
+		}
+	}
+
+	entries := make([]LabelEntry, 0, len(counts))
+	for label, count := range counts {
+		isActive := m.currentFilter == "label:"+label
+		entries = append(entries, LabelEntry{
+			Label:    label,
+			Count:    count,
+			IsActive: isActive,
+		})
+	}
+
+	// Sort by count descending, then alphabetically
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Count != entries[j].Count {
+			return entries[i].Count > entries[j].Count
+		}
+		return entries[i].Label < entries[j].Label
+	})
+
+	// Assign numbers 1-9
+	for i := range entries {
+		if i < 9 {
+			entries[i].Number = i + 1
+		}
+	}
+
+	m.labelEntries = entries
+}
+
+// renderLabelBar renders the top bar in label mode, showing labels with counts
+// and number key assignments (bd-gj41).
+func (m Model) renderLabelBar() string {
+	t := m.theme
+	w := m.width
+	if w <= 0 {
+		w = 80
+	}
+
+	numStyle := t.Renderer.NewStyle().
+		Foreground(lipgloss.Color("#F3F3F3")).
+		Bold(true)
+	activeStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+	normalStyle := t.Renderer.NewStyle().
+		Foreground(t.Base.GetForeground())
+	countStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary)
+	dimStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary).
+		Italic(true)
+
+	if len(m.labelEntries) == 0 {
+		content := dimStyle.Render("  No labels found. Add labels via edit (e) or bd CLI.")
+		return content + "\n" + m.renderLabelTitleBar(w)
+	}
+
+	// Render label entries in rows, two columns of 5 like the project picker
+	const colSep = "  │  "
+	const dataRows = panelRows - 1 // 5
+
+	lines := make([]string, panelRows)
+
+	// Row 0: column header
+	useTwoColumns := len(m.labelEntries) > 5
+	singleHdr := "      Label               Count"
+	if useTwoColumns {
+		lines[0] = countStyle.Render(singleHdr + colSep + singleHdr)
+	} else {
+		lines[0] = countStyle.Render(singleHdr)
+	}
+
+	renderEntry := func(e LabelEntry) string {
+		label := e.Label
+		if len(label) > 18 {
+			label = label[:15] + "..."
+		}
+		numStr := fmt.Sprintf("%d", e.Number)
+		if e.Number == 0 {
+			numStr = " "
+		}
+
+		if e.IsActive {
+			return activeStyle.Render(fmt.Sprintf(" <%s> %-18s  %4d", numStr, label, e.Count))
+		}
+		numPart := numStyle.Render(fmt.Sprintf(" <%s>", numStr))
+		rest := normalStyle.Render(fmt.Sprintf(" %-18s", label)) + countStyle.Render(fmt.Sprintf("  %4d", e.Count))
+		return numPart + rest
+	}
+
+	for row := 0; row < dataRows; row++ {
+		leftIdx := row
+		rightIdx := row + 5
+
+		if leftIdx >= len(m.labelEntries) {
+			lines[row+1] = ""
+			continue
+		}
+
+		leftStr := renderEntry(m.labelEntries[leftIdx])
+		if useTwoColumns && rightIdx < len(m.labelEntries) {
+			lines[row+1] = leftStr + colSep + renderEntry(m.labelEntries[rightIdx])
+		} else {
+			lines[row+1] = leftStr
+		}
+	}
+
+	lines = append(lines, m.renderLabelTitleBar(w))
+	return strings.Join(lines, "\n")
+}
+
+// renderLabelTitleBar renders the title bar when in label mode (bd-gj41).
+func (m Model) renderLabelTitleBar(w int) string {
+	t := m.theme
+
+	titleStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+	hintStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary)
+
+	activeLabel := "Labels"
+	if strings.HasPrefix(m.currentFilter, "label:") {
+		activeLabel = strings.TrimPrefix(m.currentFilter, "label:")
+	}
+	title := titleStyle.Render(activeLabel)
+	hint := hintStyle.Render(" L:projects  a:clear")
+
+	sepChar := "\u2500"
+	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
+
+	titleLen := lipgloss.Width(title) + lipgloss.Width(hint)
+	leftPad := (w - titleLen - 4) / 2
+	rightPad := w - titleLen - 4 - leftPad
+	if leftPad < 1 {
+		leftPad = 1
+	}
+	if rightPad < 1 {
+		rightPad = 1
+	}
+
+	return sepStyle.Render(strings.Repeat(sepChar, leftPad)) + " " + title + hint + " " + sepStyle.Render(strings.Repeat(sepChar, rightPad))
 }
