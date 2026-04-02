@@ -63,7 +63,7 @@ const (
 type LabelEntry struct {
 	Label    string
 	Count    int
-	Number   int  // 1-9 assignment (by count rank)
+	Number   int  // 0-9 assignment (by count rank), -1 = no key assigned
 	IsActive bool // currently filtered to this label
 }
 
@@ -386,9 +386,10 @@ type Model struct {
 	ready                bool
 	width                int
 	height               int
-	pickerVisible bool // bd-2me: Shift+P toggles picker panel
-	pickerMode    int  // 0 = projects, 1 = labels (bd-gj41)
-	labelEntries  []LabelEntry // labels with counts and number assignments
+	pickerVisible    bool // bd-2me: Shift+P toggles picker panel
+	pickerMode       int  // 0 = projects, 1 = labels (bd-gj41)
+	labelEntries     []LabelEntry // labels with counts and number assignments
+	labelScrollOffset int // scroll offset for label bar when >9 labels (bd-np1d)
 
 	// Filter and sort state
 	currentFilter string // status filter: "all", "open", "closed", "ready"
@@ -1423,6 +1424,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentFilter = "all"
 		m.pickerMode = pickerModeProjects
 		m.labelEntries = nil
+		m.labelScrollOffset = 0
 		m.tree.SetLabelFilter("")
 		m.tree.ApplyFilter("all")
 		m.tree.ClearSearch()
@@ -1966,6 +1968,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// [ / ] scroll the label bar when in label mode with >9 labels (bd-np1d)
+		if m.pickerMode == pickerModeLabels && len(m.labelEntries) > 9 {
+			switch msg.String() {
+			case "]":
+				maxScroll := len(m.labelEntries) - 9
+				if m.labelScrollOffset < maxScroll {
+					m.labelScrollOffset++
+					m.rebuildLabelEntries()
+				}
+				return m, nil
+			case "[":
+				if m.labelScrollOffset > 0 {
+					m.labelScrollOffset--
+					m.rebuildLabelEntries()
+				}
+				return m, nil
+			}
+		}
+
 		// [ / ] scroll the project picker list when more than 10 projects
 		// exist and the overflow is not reachable via number keys alone (bd-y41x).
 		if m.pickerVisible && len(m.allProjects) > maxVisibleProjects {
@@ -2145,6 +2166,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.pickerMode = pickerModeProjects
 				} else {
 					m.pickerMode = pickerModeLabels
+					m.labelScrollOffset = 0
 					m.rebuildLabelEntries()
 				}
 				return m, nil
@@ -2899,8 +2921,12 @@ func (m Model) handleLabelPickerKeys(msg tea.KeyMsg) Model {
 		m.labelPicker.MoveUp()
 	case "enter":
 		if selected := m.labelPicker.SelectedLabel(); selected != "" {
-			m.currentFilter = "label:" + selected
+			m.labelFilter = selected
+			m.pickerMode = pickerModeLabels
+			m.rebuildLabelEntries()
 			m.applyFilter()
+			m.tree.SetLabelFilter(m.labelFilter)
+			m.syncTreeToDetail()
 			m.statusMsg = fmt.Sprintf("Filtered by label: %s", selected)
 			m.statusIsError = false
 		}
@@ -5306,10 +5332,22 @@ func (m *Model) rebuildLabelEntries() {
 		return entries[i].Label < entries[j].Label
 	})
 
-	// Assign numbers 1-9
+	// Clamp scroll offset
+	maxScroll := len(entries) - 9
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.labelScrollOffset > maxScroll {
+		m.labelScrollOffset = maxScroll
+	}
+
+	// Assign numbers 1-9 to visible page (bd-np1d)
 	for i := range entries {
-		if i < 9 {
-			entries[i].Number = i + 1
+		pageIdx := i - m.labelScrollOffset
+		if pageIdx >= 0 && pageIdx < 9 {
+			entries[i].Number = pageIdx + 1
+		} else {
+			entries[i].Number = 0 // no key assigned
 		}
 	}
 
@@ -5344,19 +5382,41 @@ func (m Model) renderLabelBar() string {
 		return content + "\n" + m.renderLabelTitleBar(w)
 	}
 
-	// Render label entries in rows, two columns of 5 like the project picker
+	// Render visible page of labels (max 9, two columns of 5+4) (bd-np1d)
 	const colSep = "  │  "
 	const dataRows = panelRows - 1 // 5
 
+	// Visible window: 9 entries starting at labelScrollOffset
+	visibleStart := m.labelScrollOffset
+	visibleEnd := visibleStart + 9
+	if visibleEnd > len(m.labelEntries) {
+		visibleEnd = len(m.labelEntries)
+	}
+	visible := m.labelEntries[visibleStart:visibleEnd]
+
 	lines := make([]string, panelRows)
 
-	// Row 0: column header
-	useTwoColumns := len(m.labelEntries) > 5
+	// Row 0: column header with scroll indicators
+	useTwoColumns := len(visible) > 5
 	singleHdr := "      Label               Count"
 	if useTwoColumns {
 		lines[0] = countStyle.Render(singleHdr + colSep + singleHdr)
 	} else {
 		lines[0] = countStyle.Render(singleHdr)
+	}
+	// Scroll indicators
+	if len(m.labelEntries) > 9 {
+		var scrollParts []string
+		if m.labelScrollOffset > 0 {
+			scrollParts = append(scrollParts, fmt.Sprintf("↑%d", m.labelScrollOffset))
+		}
+		remaining := len(m.labelEntries) - visibleEnd
+		if remaining > 0 {
+			scrollParts = append(scrollParts, fmt.Sprintf("↓%d", remaining))
+		}
+		if len(scrollParts) > 0 {
+			lines[0] += dimStyle.Render("  "+strings.Join(scrollParts, " "))
+		}
 	}
 
 	renderEntry := func(e LabelEntry) string {
@@ -5381,14 +5441,14 @@ func (m Model) renderLabelBar() string {
 		leftIdx := row
 		rightIdx := row + 5
 
-		if leftIdx >= len(m.labelEntries) {
+		if leftIdx >= len(visible) {
 			lines[row+1] = ""
 			continue
 		}
 
-		leftStr := renderEntry(m.labelEntries[leftIdx])
-		if useTwoColumns && rightIdx < len(m.labelEntries) {
-			lines[row+1] = leftStr + colSep + renderEntry(m.labelEntries[rightIdx])
+		leftStr := renderEntry(visible[leftIdx])
+		if useTwoColumns && rightIdx < len(visible) {
+			lines[row+1] = leftStr + colSep + renderEntry(visible[rightIdx])
 		} else {
 			lines[row+1] = leftStr
 		}
@@ -5413,7 +5473,11 @@ func (m Model) renderLabelTitleBar(w int) string {
 		activeLabel = m.labelFilter
 	}
 	title := titleStyle.Render(activeLabel)
-	hint := hintStyle.Render(" L:projects  a:clear")
+	hintText := " L:projects  a:clear"
+	if len(m.labelEntries) > 9 {
+		hintText = " L:projects  a:clear  []:scroll"
+	}
+	hint := hintStyle.Render(hintText)
 
 	sepChar := "\u2500"
 	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
