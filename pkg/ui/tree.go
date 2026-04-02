@@ -2129,7 +2129,7 @@ func (t *TreeModel) rebuildFlatList() {
 		t.rebuildFlatModeList()
 		return
 	}
-	if t.currentFilter != "" && t.currentFilter != "all" && t.filterMatches != nil {
+	if t.filterMatches != nil && (t.labelFilter != "" || (t.currentFilter != "" && t.currentFilter != "all")) {
 		t.rebuildFilteredFlatList()
 		return
 	}
