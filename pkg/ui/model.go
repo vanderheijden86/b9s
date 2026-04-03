@@ -2115,10 +2115,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// 0 key: toggle all-projects mode (bd-g68w)
-		if msg.String() == "0" && m.list.FilterState() != list.Filtering && m.pickerMode != pickerModeLabels {
+		// 0 key: clear label filter (label mode) or toggle all-projects (project mode)
+		if msg.String() == "0" && m.list.FilterState() != list.Filtering {
+			if m.pickerMode == pickerModeLabels {
+				// Clear label filter
+				m.labelFilter = ""
+				m.rebuildLabelEntries()
+				m.applyFilter()
+				m.tree.SetLabelFilter("")
+				m.syncTreeToDetail()
+				m.statusMsg = "Label filter cleared"
+				m.statusIsError = false
+				return m, nil
+			}
 			if m.allProjectsMode {
-				// Exit all-projects mode: return to previous project
 				m.exitAllProjectsMode()
 				return m, func() tea.Msg { return FileChangedMsg{} }
 			}
@@ -5642,18 +5652,39 @@ func (m Model) renderLabelBar() string {
 		return numPart + rest
 	}
 
+	// Render <0> All (clear filter) entry
+	var allEntry string
+	if m.labelFilter == "" {
+		allEntry = activeStyle.Render(" <0> All")
+	} else {
+		allEntry = numStyle.Render(" <0>") + normalStyle.Render(" All")
+	}
+
+	allPlaced := false
 	for row := 0; row < dataRows; row++ {
 		leftIdx := row
 		rightIdx := row + 5
 
 		if leftIdx >= len(visible) {
-			lines[row+1] = ""
+			if !allPlaced {
+				lines[row+1] = allEntry
+				allPlaced = true
+			} else {
+				lines[row+1] = ""
+			}
 			continue
 		}
 
 		leftStr := renderEntry(visible[leftIdx])
-		if useTwoColumns && rightIdx < len(visible) {
-			lines[row+1] = leftStr + colSep + renderEntry(visible[rightIdx])
+		if useTwoColumns {
+			if rightIdx < len(visible) {
+				lines[row+1] = leftStr + colSep + renderEntry(visible[rightIdx])
+			} else if !allPlaced {
+				lines[row+1] = leftStr + colSep + allEntry
+				allPlaced = true
+			} else {
+				lines[row+1] = leftStr
+			}
 		} else {
 			lines[row+1] = leftStr
 		}
