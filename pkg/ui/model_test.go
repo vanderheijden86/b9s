@@ -306,29 +306,6 @@ func TestEscClosesViews(t *testing.T) {
 	}
 }
 
-// TestQuitClosesViews verifies 'q' returns to tree from board view (bd-8hw.4)
-func TestQuitClosesViews(t *testing.T) {
-	issues := []model.Issue{
-		{ID: "1", Title: "Test Issue", Status: model.StatusOpen, Priority: 1},
-	}
-
-	m := ui.NewModel(issues, "")
-
-	newM, _ := m.Update(keyMsg("b"))
-	m = newM.(ui.Model)
-
-	if m.FocusState() != "board" {
-		t.Fatalf("After 'b', focus = %q, want 'board'", m.FocusState())
-	}
-
-	newM, _ = m.Update(keyMsg("q"))
-	m = newM.(ui.Model)
-
-	if m.FocusState() != "tree" {
-		t.Errorf("After 'q' from board, focus = %q, want 'tree'", m.FocusState())
-	}
-}
-
 // TestEmptyIssuesDoesNotPanic verifies state machine handles empty issues
 func TestEmptyIssuesDoesNotPanic(t *testing.T) {
 	m := ui.NewModel([]model.Issue{}, "")

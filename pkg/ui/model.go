@@ -1840,7 +1840,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, m.issueWriter.SetStatus(issue.ID, selected))
 				}
 				m.showStatusPicker = false
-			case "esc", "q":
+			case "esc":
 				m.showStatusPicker = false
 			}
 			return m, tea.Batch(cmds...)
@@ -1855,7 +1855,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle modal state changes
 			switch msg.String() {
-			case "esc", "q":
+			case "esc":
 				// Always allow escape to close
 				if !m.updateModal.IsInProgress() {
 					m.showUpdateModal = false
@@ -2129,20 +2129,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
 			case "ctrl+c":
-				return m, tea.Quit
-
-			case "q":
-				// q closes current view or quits if at top level
-				if m.showDetails && !m.isSplitView {
-					m.showDetails = false
-					m.focused = focusTree
-					return m, nil
-				}
-				if m.isBoardView {
-					m.isBoardView = false
-					m.focused = focusTree
-					return m, nil
-				}
 				return m, tea.Quit
 
 			case "esc":
@@ -2963,7 +2949,7 @@ func (m Model) handleRepoPickerKeys(msg tea.KeyMsg) Model {
 		m.repoPicker.ToggleSelected()
 	case "a":
 		m.repoPicker.SelectAll()
-	case "esc", "q":
+	case "esc":
 		m.showRepoPicker = false
 		m.focused = focusTree
 	case "enter":
@@ -3171,7 +3157,7 @@ func (m Model) handleHelpKeys(msg tea.KeyMsg) Model {
 	case "G", "end":
 		// Will be clamped in render
 		m.helpScroll = 999
-	case "q", "esc", "?", "f1":
+	case "esc", "?", "f1":
 		// Close help overlay and restore previous focus
 		m.showHelp = false
 		m.helpScroll = 0
@@ -3342,8 +3328,8 @@ func (m Model) renderQuitConfirm() string {
 		Foreground(t.Primary).
 		Bold(true)
 
-	content := titleStyle.Render("Quit bv?") + "\n\n" +
-		textStyle.Render("Press ") + keyStyle.Render("Esc") + textStyle.Render(" or ") + keyStyle.Render("Y") + textStyle.Render(" to quit\n") +
+	content := titleStyle.Render("Quit b9s?") + "\n\n" +
+		textStyle.Render("Press ") + keyStyle.Render("Esc") + textStyle.Render(" again to quit\n") +
 		textStyle.Render("Press any other key to cancel")
 
 	box := boxStyle.Render(content)
@@ -3894,7 +3880,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"!", "Alerts panel"},
 		{"'", "Recipes"},
 		{"w", "Repo picker"},
-		{"q", "Back / Quit"},
+		{"Esc", "Back (2x quit)"},
 		{"Ctrl+c", "Force quit"},
 	}
 
@@ -4138,7 +4124,7 @@ func (m *Model) renderFooter() string {
 			{"/", "search"},
 			{"e", "edit"},
 			{"K", "delete"},
-			{"q", "back"},
+			{"esc", "back"},
 		}
 	case "board":
 		hints = []hint{
@@ -4150,7 +4136,7 @@ func (m *Model) renderFooter() string {
 			{"m", "move"},
 			{"s", "swim"},
 			{"/", "search"},
-			{"q", "back"},
+			{"esc", "back"},
 		}
 	case "split":
 		hints = []hint{
@@ -4161,7 +4147,7 @@ func (m *Model) renderFooter() string {
 			{"b", "board"},
 			{"e", "edit"},
 			{"?", "help"},
-			{"q", "quit"},
+			{"esc", "back"},
 		}
 	case "detail":
 		hints = []hint{
@@ -4171,7 +4157,7 @@ func (m *Model) renderFooter() string {
 			{"C", "copy"},
 			{"O", "open"},
 			{"?", "help"},
-			{"q", "quit"},
+			{"esc", "back"},
 		}
 	default: // list view
 		hints = []hint{
@@ -4184,7 +4170,7 @@ func (m *Model) renderFooter() string {
 			{"K", "delete"},
 			{"n", "new"},
 			{"?", "help"},
-			{"q", "quit"},
+			{"esc", "back"},
 		}
 	}
 
