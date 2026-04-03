@@ -5655,9 +5655,9 @@ func (m Model) renderLabelBar() string {
 	// Render <0> All (clear filter) entry
 	var allEntry string
 	if m.labelFilter == "" {
-		allEntry = activeStyle.Render(" <0> All")
+		allEntry = activeStyle.Render("<0> All")
 	} else {
-		allEntry = numStyle.Render(" <0>") + normalStyle.Render(" All")
+		allEntry = numStyle.Render("<0>") + normalStyle.Render(" All")
 	}
 
 	allPlaced := false
@@ -5667,7 +5667,7 @@ func (m Model) renderLabelBar() string {
 
 		if leftIdx >= len(visible) {
 			if !allPlaced {
-				lines[row+1] = allEntry
+				lines[row+1] = " " + allEntry
 				allPlaced = true
 			} else {
 				lines[row+1] = ""
@@ -5678,9 +5678,9 @@ func (m Model) renderLabelBar() string {
 		leftStr := renderEntry(visible[leftIdx])
 		if useTwoColumns {
 			if rightIdx < len(visible) {
-				lines[row+1] = leftStr + colSep + renderEntry(visible[rightIdx])
+				lines[row+1] = leftStr + colSep + " " + renderEntry(visible[rightIdx])
 			} else if !allPlaced {
-				lines[row+1] = leftStr + colSep + allEntry
+				lines[row+1] = leftStr + colSep + " " + allEntry
 				allPlaced = true
 			} else {
 				lines[row+1] = leftStr
