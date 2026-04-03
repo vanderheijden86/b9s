@@ -287,7 +287,7 @@ func pickerShortcuts() [panelRows][2]struct{ key, desc string } {
 	defs := [][2]struct{ key, desc string }{
 		{{"o", "Open"}, {"b", "Board"}},
 		{{"c", "Closed"}, {"L", "Labels"}},
-		{{"r", "Ready"}, {"[]", "Siblings"}},
+		{{"r", "Ready"}, {"[]", "Scroll"}},
 		{{"a", "All"}, {"←→", "Pages"}},
 		{{"/", "Search"}, {"esc", "Back"}},
 	}
@@ -313,10 +313,10 @@ func (m *ProjectPickerModel) View() string {
 	tableLines := m.renderProjectTable()
 
 	// Column 2: Shortcuts
-	shortcutLines := m.renderShortcutsColumn()
+	shortcutLines := m.RenderShortcutsColumn()
 
 	// Column 3: Type legend (bd-5im0)
-	legendLines := m.renderTypeLegendColumn()
+	legendLines := m.RenderTypeLegendColumn()
 
 	// Column 4: B9s logo
 	logoLines := m.renderLogoColumn()
@@ -592,8 +592,8 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 	return lines
 }
 
-// renderShortcutsColumn renders two columns of real keybindings (bd-2me).
-func (m *ProjectPickerModel) renderShortcutsColumn() []string {
+// RenderShortcutsColumn renders two columns of real keybindings (bd-2me).
+func (m *ProjectPickerModel) RenderShortcutsColumn() []string {
 	t := m.theme
 
 	keyStyle := t.Renderer.NewStyle().
@@ -614,8 +614,8 @@ func (m *ProjectPickerModel) renderShortcutsColumn() []string {
 	return lines
 }
 
-// renderTypeLegendColumn renders a legend of issue type icons and labels (bd-5im0).
-func (m *ProjectPickerModel) renderTypeLegendColumn() []string {
+// RenderTypeLegendColumn renders a legend of issue type icons and labels (bd-5im0).
+func (m *ProjectPickerModel) RenderTypeLegendColumn() []string {
 	t := m.theme
 	headerStyle := t.Renderer.NewStyle().
 		Foreground(t.Base.GetForeground()).

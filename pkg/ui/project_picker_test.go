@@ -340,7 +340,7 @@ func TestProjectPicker_ShortcutsColumn(t *testing.T) {
 	view := picker.View()
 
 	// Should contain real shortcut descriptions (bd-2me, bd-6qkg: P moved to bottom bar)
-	for _, desc := range []string{"Open", "Closed", "Ready", "Board", "Labels", "Siblings", "Pages", "Back"} {
+	for _, desc := range []string{"Open", "Closed", "Ready", "Board", "Labels", "Scroll", "Pages", "Back"} {
 		if !strings.Contains(view, desc) {
 			t.Errorf("view should contain shortcut %q", desc)
 		}

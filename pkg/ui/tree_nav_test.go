@@ -136,94 +136,6 @@ func TestTreeNavJumpToParentAtRoot(t *testing.T) {
 }
 
 // TestTreeNavNextSibling verifies that ']' jumps to the next sibling.
-func TestTreeNavNextSibling(t *testing.T) {
-	cleanTreeState(t)
-	issues := createNavTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// Move to task-1 (first child of epic-1)
-	m = sendKey(t, m, "j")
-	if m.TreeSelectedID() != "task-1" {
-		t.Fatalf("expected task-1, got %q", m.TreeSelectedID())
-	}
-
-	// Press ']' to go to next sibling (task-2)
-	m = sendKey(t, m, "]")
-	if m.TreeSelectedID() != "task-2" {
-		t.Errorf("expected task-2 after ']', got %q", m.TreeSelectedID())
-	}
-
-	// Press ']' again to go to task-3
-	m = sendKey(t, m, "]")
-	if m.TreeSelectedID() != "task-3" {
-		t.Errorf("expected task-3 after second ']', got %q", m.TreeSelectedID())
-	}
-}
-
-// TestTreeNavNextSiblingAtLast verifies that ']' does nothing at the last sibling.
-func TestTreeNavNextSiblingAtLast(t *testing.T) {
-	cleanTreeState(t)
-	issues := createNavTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// Move to task-3 (last child of epic-1)
-	m = sendKey(t, m, "j") // task-1
-	m = sendKey(t, m, "j") // task-2
-	m = sendKey(t, m, "j") // task-3
-	if m.TreeSelectedID() != "task-3" {
-		t.Fatalf("expected task-3, got %q", m.TreeSelectedID())
-	}
-
-	// Press ']' - should stay at task-3
-	m = sendKey(t, m, "]")
-	if m.TreeSelectedID() != "task-3" {
-		t.Errorf("expected task-3 to remain selected at last sibling, got %q", m.TreeSelectedID())
-	}
-}
-
-// TestTreeNavPrevSibling verifies that '[' jumps to the previous sibling.
-func TestTreeNavPrevSibling(t *testing.T) {
-	cleanTreeState(t)
-	issues := createNavTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// Move to task-2
-	m = sendKey(t, m, "j") // task-1
-	m = sendKey(t, m, "j") // task-2
-	if m.TreeSelectedID() != "task-2" {
-		t.Fatalf("expected task-2, got %q", m.TreeSelectedID())
-	}
-
-	// Press '[' to go to previous sibling (task-1)
-	m = sendKey(t, m, "[")
-	if m.TreeSelectedID() != "task-1" {
-		t.Errorf("expected task-1 after '[', got %q", m.TreeSelectedID())
-	}
-}
-
-// TestTreeNavPrevSiblingAtFirst verifies that '[' does nothing at the first sibling.
-func TestTreeNavPrevSiblingAtFirst(t *testing.T) {
-	cleanTreeState(t)
-	issues := createNavTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// Move to task-1 (first child)
-	m = sendKey(t, m, "j")
-	if m.TreeSelectedID() != "task-1" {
-		t.Fatalf("expected task-1, got %q", m.TreeSelectedID())
-	}
-
-	// Press '[' - should stay at task-1
-	m = sendKey(t, m, "[")
-	if m.TreeSelectedID() != "task-1" {
-		t.Errorf("expected task-1 to remain selected at first sibling, got %q", m.TreeSelectedID())
-	}
-}
-
 // TestTreeNavFirstSibling verifies that '{' jumps to the first sibling.
 func TestTreeNavFirstSibling(t *testing.T) {
 	cleanTreeState(t)
@@ -263,37 +175,6 @@ func TestTreeNavLastSibling(t *testing.T) {
 	m = sendKey(t, m, "}")
 	if m.TreeSelectedID() != "task-3" {
 		t.Errorf("expected task-3 after '}', got %q", m.TreeSelectedID())
-	}
-}
-
-// TestTreeNavSiblingAtRootLevel verifies sibling navigation works for root nodes.
-func TestTreeNavSiblingAtRootLevel(t *testing.T) {
-	cleanTreeState(t)
-	issues := createNavTestIssues()
-	m := ui.NewModel(issues, "")
-	m = enterTreeView(t, m)
-
-	// We're at epic-1 (root)
-	if m.TreeSelectedID() != "epic-1" {
-		t.Fatalf("expected epic-1, got %q", m.TreeSelectedID())
-	}
-
-	// ']' should go to next root sibling (standalone-1)
-	m = sendKey(t, m, "]")
-	if m.TreeSelectedID() != "standalone-1" {
-		t.Errorf("expected standalone-1 after ']' at root, got %q", m.TreeSelectedID())
-	}
-
-	// ']' again should go to standalone-2
-	m = sendKey(t, m, "]")
-	if m.TreeSelectedID() != "standalone-2" {
-		t.Errorf("expected standalone-2 after second ']', got %q", m.TreeSelectedID())
-	}
-
-	// '[' should go back to standalone-1
-	m = sendKey(t, m, "[")
-	if m.TreeSelectedID() != "standalone-1" {
-		t.Errorf("expected standalone-1 after '[', got %q", m.TreeSelectedID())
 	}
 }
 

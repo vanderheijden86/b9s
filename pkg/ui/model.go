@@ -2327,16 +2327,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 
-			case "[":
-				if m.focused == focusTree {
-					break // Let handleTreeKeys handle '[' for prev-sibling (bd-ryu)
-				}
-
-			case "]":
-				if m.focused == focusTree {
-					break // Let handleTreeKeys handle ']' for next-sibling (bd-ryu)
-				}
-
 			case "w":
 				// Toggle repo picker overlay (workspace mode)
 				if !m.workspaceMode || len(m.availableRepos) == 0 {
@@ -2867,14 +2857,6 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "p":
 		// Jump to parent node (bd-ryu) — 'P' is now picker toggle (bd-ey3)
 		m.tree.JumpToParent()
-		m.syncTreeToDetail()
-	case "]":
-		// Next sibling (bd-ryu)
-		m.tree.NextSibling()
-		m.syncTreeToDetail()
-	case "[":
-		// Previous sibling (bd-ryu)
-		m.tree.PrevSibling()
 		m.syncTreeToDetail()
 	case "{":
 		// First sibling (bd-ryu)
@@ -5690,8 +5672,41 @@ func (m Model) renderLabelBar() string {
 		}
 	}
 
-	lines = append(lines, m.renderLabelTitleBar(w))
-	return strings.Join(lines, "\n")
+	// Compose label table with shortcuts + type legend columns (same as project picker)
+	m.projectPicker.SetSize(w, m.height)
+	shortcutLines := m.projectPicker.RenderShortcutsColumn()
+	legendLines := m.projectPicker.RenderTypeLegendColumn()
+
+	shortcutsWidth := lipgloss.Width(shortcutLines[0])
+	if shortcutsWidth < 16 {
+		shortcutsWidth = 16
+	}
+	legendWidth := lipgloss.Width(legendLines[0])
+	if legendWidth < 10 {
+		legendWidth = 10
+	}
+	gap := 2
+	gapStr := strings.Repeat(" ", gap)
+
+	// Table gets remaining space
+	tableWidth := lipgloss.Width(lines[0])
+	showShortcuts := tableWidth+gap+shortcutsWidth <= w
+	showLegend := showShortcuts && tableWidth+gap+shortcutsWidth+gap+legendWidth <= w
+
+	clipStyle := t.Renderer.NewStyle().MaxWidth(w)
+	var rows []string
+	for i := 0; i < panelRows; i++ {
+		row := padRight(safeIndex(lines[:], i), tableWidth)
+		if showShortcuts {
+			row += gapStr + padRight(safeIndex(shortcutLines[:], i), shortcutsWidth)
+		}
+		if showLegend {
+			row += gapStr + safeIndex(legendLines[:], i)
+		}
+		rows = append(rows, clipStyle.Render(row))
+	}
+	rows = append(rows, m.renderLabelTitleBar(w))
+	return strings.Join(rows, "\n")
 }
 
 // renderLabelTitleBar renders the title bar when in label mode (bd-gj41).
