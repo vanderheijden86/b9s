@@ -7,7 +7,7 @@
 
 ## What is this?
 
-B9s is a terminal-based interface for browsing, editing, and managing issues stored in `.beads/issues.jsonl`. It renders your issue data as an interactive TUI with list, tree, and kanban board views, a detail panel with Markdown rendering, and inline editing.
+B9s is a terminal-based interface for browsing, editing, and managing Beads issues. It supports multiple data backends natively (Dolt, SQLite, JSONL) and renders your issue data as an interactive TUI with list, tree, and kanban board views, a detail panel with Markdown rendering, and inline editing.
 
 The UI takes heavy inspiration from [k9s](https://k9scli.io/) (the Kubernetes CLI), borrowing its project picker header, keyboard-driven navigation, and information-dense terminal layout.
 
@@ -73,39 +73,38 @@ b9s
 
 Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutorial.
 
-## Dolt Backend
+## Data Backends
 
-B9s supports two data backends for reading issues: **JSONL** (flat file) and **Dolt** (versioned SQL database). The Dolt backend is powered by `bd` (the Beads CLI), which can run Dolt in two modes.
+B9s discovers and reads from multiple data backends automatically. On startup, it scans the `.beads/` directory for all available sources and selects the most authoritative one based on a fixed priority order.
 
-### Embedded Mode (Default)
+### Source Priority
 
-When you run `bd init`, Beads creates a local embedded Dolt engine inside `.beads/embeddeddolt/`. No external server is needed. This is the default for new projects.
+When multiple backends are present, B9s picks the highest-priority source:
+
+| Priority | Backend | Source | Description |
+|----------|---------|--------|-------------|
+| **110** | Dolt (server mode) | `metadata.json` with `dolt_mode: "server"` | MySQL-compatible Dolt database via TCP. Supports concurrent writers, push/pull replication, and live change detection via `HASHOF('HEAD')` polling. |
+| **100** | SQLite | `.beads/beads.db` | Legacy SQLite database from older `bd` versions. Read-only in B9s. |
+| **80** | JSONL (worktree) | `.beads/issues.jsonl` in git worktrees | JSONL files discovered in linked git worktrees. |
+| **50** | JSONL (local) | `.beads/issues.jsonl` | Flat-file JSONL. The original Beads storage format. |
+
+Selection is **priority-first**, not freshness-first. When Dolt is configured, it always wins over JSONL, even if the JSONL file was modified more recently. This is correct because the Dolt database is the authoritative source when configured.
+
+### Dolt Server Mode
+
+The primary backend. Connects to a Dolt SQL server (self-hosted or [DoltHub](https://www.dolthub.com/)) via the MySQL wire protocol. Supports concurrent multi-agent access, push/pull replication, and live reload.
 
 ```bash
-bd init
-```
-
-Data lives entirely on disk. The embedded engine runs in-process, supports single-writer access, and requires no network configuration. B9s reads from this local database automatically.
-
-**Limitations:** No `bd dolt push/pull`, no concurrent writers, no remote sync.
-
-### Remote Server Mode
-
-Remote mode connects to an external Dolt SQL server (self-hosted or [DoltHub](https://www.dolthub.com/)). This enables multi-user access, `push`/`pull` replication, and concurrent writes.
-
-```bash
+# Initialize a new project with a remote Dolt server
 bd init --server \
-  --server-host=osen.co \
+  --server-host=your-server.example.com \
   --server-port=3306 \
   --server-user=root \
   --database=myproject
-```
 
-To import existing JSONL issues into a new remote database:
-
-```bash
+# Import existing JSONL issues into a new Dolt database
 bd init --from-jsonl --server \
-  --server-host=osen.co \
+  --server-host=your-server.example.com \
   --server-port=3306 \
   --server-user=root \
   --database=myproject
@@ -117,83 +116,52 @@ Set the password via environment variable (never stored in config files):
 export BEADS_DOLT_PASSWORD="your-password"
 ```
 
-### How Mode Detection Works
+**Configuration** lives in `.beads/metadata.json` (written by `bd init`):
 
-Beads determines the mode from these sources (highest priority first):
-
-1. **Environment variables**: `BEADS_DOLT_SERVER_MODE=1` forces remote mode
-2. **`.beads/metadata.json`**: `"dolt_mode": "server"` indicates remote mode
-3. **`.beads/config.yaml`**: presence of `dolt.host` indicates remote mode
-4. **Default**: embedded mode
-
-### Configuration Reference
-
-**`.beads/config.yaml`** (team defaults, checked into git):
-
-```yaml
-dolt.host: "osen.co"
-dolt.port: 3306
-dolt.user: "root"
-dolt.database: "myproject"
+```json
+{
+  "dolt_mode": "server",
+  "dolt_server_host": "your-server.example.com",
+  "dolt_server_user": "root",
+  "dolt_database": "myproject"
+}
 ```
 
-**Environment variables** (override config, useful for CI or per-user settings):
+**Environment variables** override config values:
 
 | Variable | Purpose |
 |----------|---------|
-| `BEADS_DOLT_SERVER_MODE` | Set to `1` to force remote server mode |
+| `BEADS_DOLT_PASSWORD` | Server password (never in config files) |
 | `BEADS_DOLT_SERVER_HOST` | Dolt server hostname |
 | `BEADS_DOLT_SERVER_PORT` | Dolt server port |
 | `BEADS_DOLT_SERVER_USER` | MySQL user for Dolt server |
-| `BEADS_DOLT_PASSWORD` | Server password (never in config files) |
 
-### Remote Sync (Push/Pull)
-
-In remote mode, Beads supports Dolt-native version control:
+**Remote sync** (push/pull replication):
 
 ```bash
-bd dolt remote list          # List configured remotes
 bd dolt remote add origin https://dolthub.com/user/database
 bd dolt push                 # Push local commits to remote
 bd dolt pull                 # Pull remote commits
-bd dolt commit               # Create a Dolt commit from pending changes
 bd dolt show                 # Show connection status and details
 ```
 
-These commands are only available in remote server mode. In embedded mode, data is local-only.
+### Embedded Dolt Mode
 
-### Switching Between Modes
-
-Use `bd backup` to safely migrate data between modes:
+When you run `bd init` without `--server`, Beads creates a local embedded Dolt engine inside `.beads/dolt/`. No external server is needed.
 
 ```bash
-# Embedded -> Remote
-bd backup init /tmp/beads-backup
-bd backup sync
-bd init --force --server --server-host=osen.co --server-port=3306 --database=myproject
-bd backup restore --force /tmp/beads-backup
-
-# Remote -> Embedded
-bd backup init /tmp/beads-backup
-bd backup sync
-bd init --force
-bd backup restore --force /tmp/beads-backup
+bd init
 ```
 
-### Embedded vs Remote at a Glance
+B9s cannot read from embedded Dolt directly (there is no TCP socket to connect to). Use server mode for B9s integration.
 
-| | Embedded | Remote Server |
-|--|----------|---------------|
-| **Setup** | `bd init` | `bd init --server` |
-| **Data location** | `.beads/embeddeddolt/` | Remote Dolt server |
-| **Concurrent writers** | No (file-locked) | Yes |
-| **Push/pull sync** | No | Yes |
-| **Network required** | No | Yes |
-| **Use case** | Personal, single machine | Teams, shared infra |
+### JSONL and SQLite (Legacy)
 
-### Fallback Behavior in B9s
+B9s reads `.beads/issues.jsonl` and `.beads/beads.db` for backward compatibility with older `bd` versions. These are read-only fallbacks; all writes go through `bd` CLI regardless of backend.
 
-If b9s cannot connect to the configured Dolt server, it falls back to reading from `.beads/issues.jsonl`. Press `Shift+D` in the TUI to open the health popup, which shows the active datasource and any connection failure details.
+### Fallback Behavior
+
+If B9s cannot connect to the configured Dolt server, it falls back to the next available source (SQLite, then JSONL). Press `Shift+D` in the TUI to open the health popup, which shows the active datasource and any connection failure details.
 
 ## Keyboard Quick Reference
 
