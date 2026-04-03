@@ -453,18 +453,11 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		filterStyle := t.Renderer.NewStyle().Foreground(t.Primary)
 		lines[0] = headerStyle.Render(" > ") + filterStyle.Render(m.filterInput.View())
 	} else {
-		// <0> All projects indicator + column headers
-		allLabel := "<0> All"
-		if m.allProjectsMode {
-			allLabel = activeStyle.Render("<0> All")
-		} else {
-			allLabel = numStyle.Render("<0>") + headerStyle.Render(" All")
-		}
 		singleHdr := fmt.Sprintf("    %-*s  %3s %3s %3s", nameW, "", "O", "P", "R")
 		if len(m.filtered) > 5 {
-			lines[0] = allLabel + headerStyle.Render("  "+singleHdr+colSep+fmt.Sprintf("    %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+			lines[0] = headerStyle.Render(singleHdr + colSep + fmt.Sprintf("    %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
 		} else {
-			lines[0] = allLabel + headerStyle.Render("  "+singleHdr)
+			lines[0] = headerStyle.Render(singleHdr)
 		}
 	}
 
@@ -537,12 +530,27 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 	// startIdx is the index of the first entry shown in the left column (bd-i8t3).
 	startIdx := m.scrollOffset
 
+	// Render <0> All projects entry
+	var allEntry string
+	if m.allProjectsMode {
+		allEntry = activeStyle.Render("<0> All")
+	} else {
+		allEntry = numStyle.Render("<0>") + normalStyle.Render(" All")
+	}
+
+	allPlaced := false
 	for row := 0; row < dataRows; row++ {
 		leftIdx := startIdx + row
 		rightIdx := startIdx + row + 5
 
 		if leftIdx >= total {
-			lines[row+1] = ""
+			// Place <0> All in the first empty left slot
+			if !allPlaced {
+				lines[row+1] = allEntry
+				allPlaced = true
+			} else {
+				lines[row+1] = ""
+			}
 			continue
 		}
 
@@ -551,12 +559,20 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		if useTwoColumns {
 			if rightIdx < total {
 				lines[row+1] = leftStr + colSep + renderRow(rightIdx)
+			} else if !allPlaced {
+				// Place <0> All in the empty right column slot
+				lines[row+1] = leftStr + colSep + allEntry
+				allPlaced = true
 			} else {
 				lines[row+1] = leftStr
 			}
 		} else {
 			lines[row+1] = leftStr
 		}
+	}
+	// If all rows were full (9 projects filling 5+4), place in scroll indicator area
+	if !allPlaced && !useTwoColumns && total < dataRows {
+		lines[total+1] = allEntry
 	}
 
 	// Scroll indicators in the header row (don't steal data rows).
