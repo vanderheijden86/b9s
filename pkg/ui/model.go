@@ -5688,10 +5688,18 @@ func (m Model) renderLabelBar() string {
 	gap := 2
 	gapStr := strings.Repeat(" ", gap)
 
-	// Table gets remaining space
-	tableWidth := lipgloss.Width(lines[0])
-	showShortcuts := tableWidth+gap+shortcutsWidth <= w
-	showLegend := showShortcuts && tableWidth+gap+shortcutsWidth+gap+legendWidth <= w
+	// Table stretches to fill remaining space, pushing shortcuts/legend right
+	actualTableWidth := lipgloss.Width(lines[0])
+	showShortcuts := actualTableWidth+gap+shortcutsWidth <= w
+	showLegend := showShortcuts && actualTableWidth+gap+shortcutsWidth+gap+legendWidth <= w
+
+	tableWidth := w
+	if showShortcuts {
+		tableWidth -= shortcutsWidth + gap
+	}
+	if showLegend {
+		tableWidth -= legendWidth + gap
+	}
 
 	clipStyle := t.Renderer.NewStyle().MaxWidth(w)
 	var rows []string
