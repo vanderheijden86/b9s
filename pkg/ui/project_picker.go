@@ -453,11 +453,18 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		filterStyle := t.Renderer.NewStyle().Foreground(t.Primary)
 		lines[0] = headerStyle.Render(" > ") + filterStyle.Render(m.filterInput.View())
 	} else {
-		singleHdr := fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R")
-		if len(m.filtered) > 5 {
-			lines[0] = headerStyle.Render(singleHdr + colSep + fmt.Sprintf("     %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+		// <0> All projects indicator + column headers
+		allLabel := "<0> All"
+		if m.allProjectsMode {
+			allLabel = activeStyle.Render("<0> All")
 		} else {
-			lines[0] = headerStyle.Render(singleHdr)
+			allLabel = numStyle.Render("<0>") + headerStyle.Render(" All")
+		}
+		singleHdr := fmt.Sprintf("    %-*s  %3s %3s %3s", nameW, "", "O", "P", "R")
+		if len(m.filtered) > 5 {
+			lines[0] = allLabel + headerStyle.Render("  "+singleHdr+colSep+fmt.Sprintf("    %-*s  %3s %3s %3s", nameW, "", "O", "P", "R"))
+		} else {
+			lines[0] = allLabel + headerStyle.Render("  "+singleHdr)
 		}
 	}
 
@@ -509,7 +516,7 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 			name = name[:nameW-3] + "..."
 		}
 
-		rowText := fmt.Sprintf("<%2s> %-*s  %3d %3d %3d",
+		rowText := fmt.Sprintf("<%s> %-*s  %3d %3d %3d",
 			numStr, nameW, name,
 			entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
 
@@ -519,7 +526,7 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		case entry.IsActive:
 			return activeStyle.Render(rowText)
 		default:
-			numPart := numStyle.Render(fmt.Sprintf("<%2s>", numStr))
+			numPart := numStyle.Render(fmt.Sprintf("<%s>", numStr))
 			restText := fmt.Sprintf(" %-*s  %3d %3d %3d",
 				nameW, name,
 				entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
