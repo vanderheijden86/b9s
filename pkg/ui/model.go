@@ -5771,8 +5771,53 @@ func (m Model) renderLabelBar() string {
 		Italic(true)
 
 	if len(m.labelEntries) == 0 {
-		content := dimStyle.Render("  No labels found. Add labels via edit (e) or bd CLI.")
-		return content + "\n" + m.renderUnifiedTitleBar(w)
+		// Empty state: show <0> all with shortcuts+legend (bd-74pr)
+		lines := make([]string, panelRows)
+		lines[0] = " " + activeStyle.Render("<0> all")
+		lines[1] = dimStyle.Render("  No labels found")
+		for i := 2; i < panelRows; i++ {
+			lines[i] = ""
+		}
+
+		m.projectPicker.SetSize(w, m.height)
+		shortcutLines := m.projectPicker.RenderShortcutsColumn()
+		legendLines := m.projectPicker.RenderTypeLegendColumn()
+
+		shortcutsWidth := lipgloss.Width(shortcutLines[0])
+		if shortcutsWidth < 16 {
+			shortcutsWidth = 16
+		}
+		legendWidth := lipgloss.Width(legendLines[0])
+		if legendWidth < 10 {
+			legendWidth = 10
+		}
+		gap := 2
+		gapStr := strings.Repeat(" ", gap)
+
+		tableWidth := w
+		showShortcuts := gap+shortcutsWidth <= w/2
+		showLegend := showShortcuts && gap+shortcutsWidth+gap+legendWidth <= w/2
+		if showShortcuts {
+			tableWidth -= shortcutsWidth + gap
+		}
+		if showLegend {
+			tableWidth -= legendWidth + gap
+		}
+
+		clipStyle := t.Renderer.NewStyle().MaxWidth(w)
+		var rows []string
+		for i := 0; i < panelRows; i++ {
+			row := padRight(safeIndex(lines[:], i), tableWidth)
+			if showShortcuts {
+				row += gapStr + padRight(safeIndex(shortcutLines[:], i), shortcutsWidth)
+			}
+			if showLegend {
+				row += gapStr + safeIndex(legendLines[:], i)
+			}
+			rows = append(rows, clipStyle.Render(row))
+		}
+		rows = append(rows, m.renderUnifiedTitleBar(w))
+		return strings.Join(rows, "\n")
 	}
 
 	// Render visible page of labels (max 9, two columns of 5+4) (bd-np1d)
@@ -6023,8 +6068,53 @@ func (m Model) renderAssigneeBar() string {
 		Italic(true)
 
 	if len(m.assigneeEntries) == 0 {
-		content := dimStyle.Render("  No assignees found. Assign issues via edit (e) or bd CLI.")
-		return content + "\n" + m.renderUnifiedTitleBar(w)
+		// Empty state: show <0> all with shortcuts+legend (bd-74pr)
+		lines := make([]string, panelRows)
+		lines[0] = " " + activeStyle.Render("<0> all")
+		lines[1] = dimStyle.Render("  No assignees found")
+		for i := 2; i < panelRows; i++ {
+			lines[i] = ""
+		}
+
+		m.projectPicker.SetSize(w, m.height)
+		shortcutLines := m.projectPicker.RenderShortcutsColumn()
+		legendLines := m.projectPicker.RenderTypeLegendColumn()
+
+		shortcutsWidth := lipgloss.Width(shortcutLines[0])
+		if shortcutsWidth < 16 {
+			shortcutsWidth = 16
+		}
+		legendWidth := lipgloss.Width(legendLines[0])
+		if legendWidth < 10 {
+			legendWidth = 10
+		}
+		gap := 2
+		gapStr := strings.Repeat(" ", gap)
+
+		tableWidth := w
+		showShortcuts := gap+shortcutsWidth <= w/2
+		showLegend := showShortcuts && gap+shortcutsWidth+gap+legendWidth <= w/2
+		if showShortcuts {
+			tableWidth -= shortcutsWidth + gap
+		}
+		if showLegend {
+			tableWidth -= legendWidth + gap
+		}
+
+		clipStyle := t.Renderer.NewStyle().MaxWidth(w)
+		var rows []string
+		for i := 0; i < panelRows; i++ {
+			row := padRight(safeIndex(lines[:], i), tableWidth)
+			if showShortcuts {
+				row += gapStr + padRight(safeIndex(shortcutLines[:], i), shortcutsWidth)
+			}
+			if showLegend {
+				row += gapStr + safeIndex(legendLines[:], i)
+			}
+			rows = append(rows, clipStyle.Render(row))
+		}
+		rows = append(rows, m.renderUnifiedTitleBar(w))
+		return strings.Join(rows, "\n")
 	}
 
 	const colSep = "  │  "
