@@ -7,10 +7,20 @@ import (
 
 	"github.com/vanderheijden86/beadwork/pkg/model"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// editFormKeyMap returns a keymap where tab accepts suggestions instead of
+// moving to the next field. Enter moves to the next field (bd-wa5p).
+func editFormKeyMap() *huh.KeyMap {
+	km := huh.NewDefaultKeyMap()
+	km.Input.AcceptSuggestion = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "complete"))
+	km.Input.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "next"))
+	return km
+}
 
 // EditModal provides field-by-field issue editing using huh forms
 type EditModal struct {
@@ -155,6 +165,7 @@ func buildEditForm(m *EditModal) *huh.Form {
 			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).
+		WithKeyMap(editFormKeyMap()).
 		WithShowHelp(true).
 		WithShowErrors(true)
 }
@@ -183,6 +194,7 @@ func buildCreateForm(m *EditModal) *huh.Form {
 			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).
+		WithKeyMap(editFormKeyMap()).
 		WithShowHelp(true).
 		WithShowErrors(true)
 }
