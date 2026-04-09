@@ -1286,6 +1286,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+			// Assignee filter (AND with status/label) (bd-u90z)
+			if m.assigneeFilter != "" {
+				if issue.Assignee != m.assigneeFilter {
+					continue
+				}
+			}
+
 			include := false
 			switch m.currentFilter {
 			case "all":
@@ -1328,7 +1335,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.sortFilteredItems(filteredItems, filteredIssues)
 		m.list.SetItems(filteredItems)
-		if m.snapshot != nil && m.snapshot.BoardState != nil && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues) {
+		if m.snapshot != nil && m.snapshot.BoardState != nil && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues) {
 			m.board.SetSnapshot(m.snapshot)
 		} else {
 			m.board.SetIssues(filteredIssues)
@@ -1993,7 +2000,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle H to toggle picker panel visibility (bd-j764)
-		if msg.String() == "H" && m.list.FilterState() != list.Filtering && m.focused != focusBoard {
+		if msg.String() == "H" && m.list.FilterState() != list.Filtering {
 			m.pickerVisible = !m.pickerVisible
 			// Resize tree/board after toggling to reclaim/yield space
 			m.tree.SetSize(m.width, m.bodyHeight())
@@ -2677,10 +2684,7 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.board.JumpToColumn(ColBlocked)
 	case "4":
 		m.board.JumpToColumn(ColClosed)
-	case "H":
-		m.board.JumpToFirstColumn()
-	case "L":
-		m.board.JumpToLastColumn()
+	// H/L now used for picker mode (bd-u90z), use home/end for column jumping
 
 	// Vim-style navigation (bv-yg39)
 	case "g":
@@ -4416,7 +4420,8 @@ func (m *Model) refreshBoardAndGraphForCurrentFilter() {
 	filteredIssues := m.filteredIssuesForActiveView()
 	useSnapshot := m.snapshot != nil && m.snapshot.BoardState != nil && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues)
 	if useSnapshot {
-		useSnapshot = m.currentFilter == "all"
+		// Only use snapshot when no filters are active (bd-u90z)
+		useSnapshot = m.currentFilter == "all" && m.labelFilter == "" && m.assigneeFilter == ""
 	}
 	if useSnapshot {
 		m.board.SetSnapshot(m.snapshot)
@@ -4445,7 +4450,7 @@ func (m *Model) applyFilter() {
 	m.sortFilteredItems(filteredItems, filteredIssues)
 
 	m.list.SetItems(filteredItems)
-	if m.snapshot != nil && m.snapshot.BoardState != nil && m.currentFilter == "all" && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues) {
+	if m.snapshot != nil && m.snapshot.BoardState != nil && m.currentFilter == "all" && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues) {
 		m.board.SetSnapshot(m.snapshot)
 	} else {
 		m.board.SetIssues(filteredIssues)
