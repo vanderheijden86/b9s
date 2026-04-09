@@ -285,12 +285,12 @@ func b9sLogo() []string {
 func pickerShortcuts() [panelRows][2]struct{ key, desc string } {
 	var shortcuts [panelRows][2]struct{ key, desc string }
 	defs := [][2]struct{ key, desc string }{
-		{{"o", "Open"}, {"b", "Board"}},
+		{{"o", "Open"}, {"P", "Projects"}},
 		{{"c", "Closed"}, {"L", "Labels"}},
 		{{"r", "Ready"}, {"A", "Assignees"}},
-		{{"a", "All"}, {"←→", "Pages"}},
-		{{"/", "Search"}, {"[]", "Scroll"}},
-		{{"", ""}, {"esc", "Back"}},
+		{{"a", "All"}, {"H", "Hide/Show"}},
+		{{"b", "Board"}, {"[]", "Scroll"}},
+		{{"/", "Search"}, {"esc", "Back"}},
 	}
 	for i, d := range defs {
 		shortcuts[i] = d
@@ -393,6 +393,84 @@ func (m *ProjectPickerModel) View() string {
 	// --- Title bar at bottom ---
 	rows = append(rows, m.renderTitleBar(w))
 
+	return strings.Join(rows, "\n")
+}
+
+// ViewWithTitleBar renders the project picker with an externally provided title bar (bd-j764).
+func (m *ProjectPickerModel) ViewWithTitleBar(titleBar string) string {
+	if m.width == 0 {
+		m.width = 80
+	}
+
+	w := m.width
+
+	tableLines := m.renderProjectTable()
+	shortcutLines := m.RenderShortcutsColumn()
+	legendLines := m.RenderTypeLegendColumn()
+	logoLines := m.renderLogoColumn()
+
+	actualTableWidth := m.maxLineWidth(tableLines)
+	shortcutsWidth := m.maxLineWidth(shortcutLines)
+	if shortcutsWidth < 16 {
+		shortcutsWidth = 16
+	}
+	legendWidth := m.maxLineWidth(legendLines)
+	if legendWidth < 10 {
+		legendWidth = 10
+	}
+	logoWidth := m.maxLineWidth(logoLines)
+	gap := 2
+
+	tableWidth := actualTableWidth
+	showLogo := true
+	showLegend := true
+	showShortcuts := true
+
+	needed := tableWidth + gap + shortcutsWidth + gap + legendWidth + gap + logoWidth
+	if needed > w {
+		showLogo = false
+		needed = tableWidth + gap + shortcutsWidth + gap + legendWidth
+	}
+	if needed > w {
+		showLegend = false
+		needed = tableWidth + gap + shortcutsWidth
+	}
+	if needed > w {
+		showShortcuts = false
+	}
+
+	if showShortcuts || showLegend || showLogo {
+		tableWidth = w
+		if showShortcuts {
+			tableWidth -= shortcutsWidth + gap
+		}
+		if showLegend {
+			tableWidth -= legendWidth + gap
+		}
+		if showLogo {
+			tableWidth -= logoWidth + gap
+		}
+	}
+
+	gapStr := strings.Repeat(" ", gap)
+	clipStyle := m.theme.Renderer.NewStyle().MaxWidth(w)
+	var rows []string
+	for i := 0; i < panelRows; i++ {
+		row := padRight(safeIndex(tableLines, i), tableWidth)
+		if showShortcuts {
+			row += gapStr + padRight(safeIndex(shortcutLines, i), shortcutsWidth)
+		}
+		if showLegend {
+			row += gapStr + padRight(safeIndex(legendLines, i), legendWidth)
+		}
+		if showLogo {
+			row += gapStr + safeIndex(logoLines, i)
+		}
+		row = clipStyle.Render(row)
+		rows = append(rows, row)
+	}
+
+	rows = append(rows, titleBar)
 	return strings.Join(rows, "\n")
 }
 

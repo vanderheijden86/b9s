@@ -340,7 +340,7 @@ func TestProjectPicker_ShortcutsColumn(t *testing.T) {
 	view := picker.View()
 
 	// Should contain real shortcut descriptions (bd-2me, bd-6qkg: P moved to bottom bar)
-	for _, desc := range []string{"Open", "Closed", "Ready", "Board", "Labels", "Scroll", "Pages", "Back"} {
+	for _, desc := range []string{"Open", "Closed", "Ready", "Projects", "Labels", "Assignees", "Hide/Show", "Scroll", "Back"} {
 		if !strings.Contains(view, desc) {
 			t.Errorf("view should contain shortcut %q", desc)
 		}
@@ -864,12 +864,12 @@ func TestProjectPicker_ShiftPToggle(t *testing.T) {
 		t.Fatal("picker should be visible by default")
 	}
 
-	// Press Shift+P to hide
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	// Press H to hide
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("H")})
 	m = newM.(ui.Model)
 
 	if m.PickerVisible() {
-		t.Error("picker should be hidden after Shift+P")
+		t.Error("picker should be hidden after H")
 	}
 
 	// Minimized view should still show title bar with active project
@@ -878,12 +878,12 @@ func TestProjectPicker_ShiftPToggle(t *testing.T) {
 		t.Error("minimized title bar should appear when picker is hidden")
 	}
 
-	// Press Shift+P again to show
-	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	// Press H again to show
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("H")})
 	m = newM.(ui.Model)
 
 	if !m.PickerVisible() {
-		t.Error("picker should be visible after second Shift+P")
+		t.Error("picker should be visible after second H")
 	}
 
 	// Project names should appear again
@@ -897,7 +897,7 @@ func TestProjectPicker_NumberKeysWorkWhenHidden(t *testing.T) {
 	m, _ := createModelWithProjects(t)
 
 	// Hide picker
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("H")})
 	m = newM.(ui.Model)
 
 	// Number keys should still switch projects even when picker is hidden.
@@ -928,8 +928,8 @@ func TestProjectPicker_NumberKeysWorkWhenHidden(t *testing.T) {
 func TestProjectPicker_MinimizedShowsOnlyTitleBar(t *testing.T) {
 	m, _ := createModelWithProjects(t)
 
-	// Hide picker to get minimized view
-	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("P")})
+	// Hide picker to get minimized view (H toggles visibility, bd-j764)
+	newM, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("H")})
 	m = newM.(ui.Model)
 
 	output := m.View()
