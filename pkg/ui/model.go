@@ -2330,25 +2330,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "a":
-				if m.pickerMode == pickerModeLabels && m.labelFilter != "" {
-					// Clear label filter (stay in label mode for cross-filter) (bd-j764)
+				// Clear all label+assignee filters (not project) (bd-5pv8)
+				if m.labelFilter != "" || m.assigneeFilter != "" {
 					m.labelFilter = ""
-					m.rebuildPickerEntries()
-					m.applyFilter()
-					m.tree.SetLabelFilter("")
-					m.syncTreeToDetail()
-					m.statusMsg = "Label filter cleared"
-					m.statusIsError = false
-					return m, nil
-				}
-				if m.pickerMode == pickerModeAssignees && m.assigneeFilter != "" {
-					// Clear assignee filter (stay in assignee mode) (bd-j764)
 					m.assigneeFilter = ""
 					m.rebuildPickerEntries()
 					m.applyFilter()
+					m.tree.SetLabelFilter("")
 					m.tree.SetAssigneeFilter("")
 					m.syncTreeToDetail()
-					m.statusMsg = "Assignee filter cleared"
+					m.statusMsg = "Filters cleared"
 					m.statusIsError = false
 					return m, nil
 				}
