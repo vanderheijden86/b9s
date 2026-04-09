@@ -2337,14 +2337,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			case "a":
-				// Clear all label+assignee filters (not project) (bd-5pv8)
-				if m.labelFilter != "" || m.assigneeFilter != "" {
+				// Clear all label+assignee filters and reset status to "all" (bd-5pv8, bd-7chs)
+				if m.labelFilter != "" || m.assigneeFilter != "" || m.currentFilter != "all" {
 					m.labelFilter = ""
 					m.assigneeFilter = ""
+					m.currentFilter = "all"
 					m.rebuildPickerEntries()
 					m.applyFilter()
 					m.tree.SetLabelFilter("")
 					m.tree.SetAssigneeFilter("")
+					m.tree.ApplyFilter("all")
 					m.syncTreeToDetail()
 					m.statusMsg = "Filters cleared"
 					m.statusIsError = false
