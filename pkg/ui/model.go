@@ -57,6 +57,7 @@ const (
 const (
 	pickerModeProjects = iota
 	pickerModeLabels
+	pickerModeAssignees // bd-gs45.1
 )
 
 // LabelEntry holds display data for one label in the top bar label mode.
@@ -65,6 +66,14 @@ type LabelEntry struct {
 	Count    int
 	Number   int  // 0-9 assignment (by count rank), -1 = no key assigned
 	IsActive bool // currently filtered to this label
+}
+
+// AssigneeEntry holds display data for one assignee in the top bar assignee mode (bd-gs45.1).
+type AssigneeEntry struct {
+	Assignee string
+	Count    int
+	Number   int  // 0-9 assignment (by count rank), 0 = no key assigned
+	IsActive bool // currently filtered to this assignee
 }
 
 type SortMode int
@@ -387,13 +396,16 @@ type Model struct {
 	width                int
 	height               int
 	pickerVisible    bool // bd-2me: Shift+P toggles picker panel
-	pickerMode       int  // 0 = projects, 1 = labels (bd-gj41)
+	pickerMode       int  // 0 = projects, 1 = labels, 2 = assignees (bd-gj41, bd-gs45.1)
 	labelEntries     []LabelEntry // labels with counts and number assignments
 	labelScrollOffset int // scroll offset for label bar when >9 labels (bd-np1d)
+	assigneeEntries     []AssigneeEntry // assignees with counts and number assignments (bd-gs45.1)
+	assigneeScrollOffset int // scroll offset for assignee bar when >9 assignees (bd-gs45.1)
 
 	// Filter and sort state
-	currentFilter string // status filter: "all", "open", "closed", "ready"
-	labelFilter   string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
+	currentFilter  string // status filter: "all", "open", "closed", "ready"
+	labelFilter    string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
+	assigneeFilter string // assignee filter: "" = none (bd-gs45.1)
 	sortMode      SortMode // bv-3ita: current sort mode
 
 	// Stats (cached)
@@ -1720,6 +1732,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Refresh label/assignee entries so the picker bars reflect any changes (bd-gswl, bd-gs45.1).
+		m.rebuildLabelEntries()
+		m.rebuildAssigneeEntries()
+
 		// Rebuild tree view if focused (bd-byp).
 		if m.focused == focusTree {
 			var treeStart time.Time
@@ -2044,6 +2060,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// [ / ] scroll the assignee bar when in assignee mode with >9 assignees (bd-gs45.1)
+		if m.pickerMode == pickerModeAssignees && len(m.assigneeEntries) > 9 {
+			switch msg.String() {
+			case "]":
+				maxScroll := len(m.assigneeEntries) - 9
+				if m.assigneeScrollOffset < maxScroll {
+					m.assigneeScrollOffset++
+					m.rebuildAssigneeEntries()
+				}
+				return m, nil
+			case "[":
+				if m.assigneeScrollOffset > 0 {
+					m.assigneeScrollOffset--
+					m.rebuildAssigneeEntries()
+				}
+				return m, nil
+			}
+		}
+
 		// [ / ] scroll the project picker list when more than 10 projects
 		// exist and the overflow is not reachable via number keys alone (bd-y41x).
 		if m.pickerVisible && len(m.allProjects) > maxVisibleProjects {
@@ -2082,7 +2117,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tutorialCmd
 		}
 
-		// Number keys 1-9: route to labels or projects depending on pickerMode (bd-gj41)
+		// Number keys 1-9: route to labels, assignees, or projects depending on pickerMode (bd-gj41, bd-gs45.1)
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
 			if m.pickerMode == pickerModeLabels {
@@ -2109,13 +2144,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
+			if m.pickerMode == pickerModeAssignees {
+				// Assignee mode: number keys toggle assignee filter (bd-gs45.1)
+				for _, entry := range m.assigneeEntries {
+					if entry.Number == n {
+						if entry.IsActive {
+							m.assigneeFilter = ""
+						} else {
+							m.assigneeFilter = entry.Assignee
+						}
+						m.rebuildAssigneeEntries()
+						m.applyFilter()
+						m.tree.SetAssigneeFilter(m.assigneeFilter)
+						m.syncTreeToDetail()
+						if m.assigneeFilter != "" {
+							m.statusMsg = fmt.Sprintf("Assignee: %s", m.assigneeFilter)
+						} else {
+							m.statusMsg = "Assignee filter cleared"
+						}
+						m.statusIsError = false
+						return m, nil
+					}
+				}
+				return m, nil
+			}
 			// Project mode (default): switch projects via page-relative numbering (bd-g68w)
 			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
 			}
 		}
 
-		// 0 key: clear label filter (label mode) or toggle all-projects (project mode)
+		// 0 key: clear filter (label/assignee mode) or toggle all-projects (project mode)
 		if msg.String() == "0" && m.list.FilterState() != list.Filtering {
 			if m.pickerMode == pickerModeLabels {
 				// Clear label filter
@@ -2125,6 +2184,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tree.SetLabelFilter("")
 				m.syncTreeToDetail()
 				m.statusMsg = "Label filter cleared"
+				m.statusIsError = false
+				return m, nil
+			}
+			if m.pickerMode == pickerModeAssignees {
+				// Clear assignee filter (bd-gs45.1)
+				m.assigneeFilter = ""
+				m.rebuildAssigneeEntries()
+				m.applyFilter()
+				m.tree.SetAssigneeFilter("")
+				m.syncTreeToDetail()
+				m.statusMsg = "Assignee filter cleared"
 				m.statusIsError = false
 				return m, nil
 			}
@@ -2231,6 +2301,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 
+			case "A":
+				// Toggle top bar between projects and assignees (bd-gs45.1)
+				if m.pickerMode == pickerModeAssignees {
+					m.pickerMode = pickerModeProjects
+				} else {
+					m.pickerMode = pickerModeAssignees
+					m.assigneeScrollOffset = 0
+					m.rebuildAssigneeEntries()
+				}
+				return m, nil
+
 			case "b":
 				// Toggle board view from any context (bd-8hw.4: tree is permanent)
 				m.isBoardView = !m.isBoardView
@@ -2256,6 +2337,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.tree.SetLabelFilter("")
 					m.syncTreeToDetail()
 					m.statusMsg = "Label filter cleared"
+					m.statusIsError = false
+					return m, nil
+				}
+				if m.pickerMode == pickerModeAssignees {
+					// Clear assignee filter and return to project mode (bd-gs45.1)
+					m.assigneeFilter = ""
+					m.pickerMode = pickerModeProjects
+					m.applyFilter()
+					m.tree.SetAssigneeFilter("")
+					m.syncTreeToDetail()
+					m.statusMsg = "Assignee filter cleared"
 					m.statusIsError = false
 					return m, nil
 				}
@@ -2292,7 +2384,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focused == focusTree && !m.tree.IsSearchMode() {
 					// Edit in tree view (skip during search, bd-9k90)
 					if issue := m.getSelectedIssue(); issue != nil {
-						m.editModal = NewEditModal(issue, m.theme)
+						m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())
 						m.editModal.SetSize(m.width, m.height)
 						m.showEditModal = true
 						return m, m.editModal.Init()
@@ -2308,7 +2400,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				// Create new issue (bd-a83)
-				m.editModal = NewCreateModal(m.theme)
+				m.editModal = NewCreateModal(m.theme, m.collectEditSuggestions())
 				m.editModal.SetSize(m.width, m.height)
 				m.showEditModal = true
 				return m, m.editModal.Init()
@@ -3096,7 +3188,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 			return m, false
 		}
 		if issue := m.getSelectedIssue(); issue != nil {
-			m.editModal = NewEditModal(issue, m.theme)
+			m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())
 			m.editModal.SetSize(m.width, m.height)
 			m.showEditModal = true
 			m.focused = focusEditModal
@@ -3273,7 +3365,7 @@ func (m Model) View() string {
 		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
 	}
 
-	// Compact project/label picker header (bd-ey3, bd-ylz, bd-2me, bd-gj41)
+	// Compact project/label/assignee picker header (bd-ey3, bd-ylz, bd-2me, bd-gj41, bd-gs45.1)
 	var pickerHeader string
 	if m.pickerMode == pickerModeLabels {
 		// Label mode: show labels with counts and number assignments
@@ -3281,6 +3373,13 @@ func (m Model) View() string {
 			pickerHeader = m.renderLabelBar()
 		} else {
 			pickerHeader = m.renderLabelTitleBar(m.width)
+		}
+	} else if m.pickerMode == pickerModeAssignees {
+		// Assignee mode: show assignees with counts and number assignments (bd-gs45.1)
+		if m.pickerVisible {
+			pickerHeader = m.renderAssigneeBar()
+		} else {
+			pickerHeader = m.renderAssigneeTitleBar(m.width)
 		}
 	} else if len(m.allProjects) > 0 && m.pickerVisible {
 		m.projectPicker.SetSize(m.width, m.height)
@@ -4269,6 +4368,13 @@ func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
 		}
 	}
 
+	// Assignee filter (AND with status/label filter) (bd-gs45.1)
+	if m.assigneeFilter != "" {
+		if issue.Assignee != m.assigneeFilter {
+			return false
+		}
+	}
+
 	switch m.currentFilter {
 	case "all":
 		return true
@@ -4711,6 +4817,34 @@ func (m *Model) getSelectedIssue() *model.Issue {
 		return issue
 	}
 	return nil
+}
+
+// collectEditSuggestions extracts unique labels and assignees from all issues
+// for autocompletion in the edit modal (bd-gs45.2).
+func (m *Model) collectEditSuggestions() EditSuggestions {
+	labelSet := make(map[string]bool)
+	assigneeSet := make(map[string]bool)
+	for _, issue := range m.issues {
+		for _, l := range issue.Labels {
+			if l != "" {
+				labelSet[l] = true
+			}
+		}
+		if issue.Assignee != "" {
+			assigneeSet[issue.Assignee] = true
+		}
+	}
+	labels := make([]string, 0, len(labelSet))
+	for l := range labelSet {
+		labels = append(labels, l)
+	}
+	sort.Strings(labels)
+	assignees := make([]string, 0, len(assigneeSet))
+	for a := range assigneeSet {
+		assignees = append(assignees, a)
+	}
+	sort.Strings(assignees)
+	return EditSuggestions{Labels: labels, Assignees: assignees}
 }
 
 // IsBoardView returns true if the board view is active (bv-5e5q).
@@ -5551,6 +5685,56 @@ func (m *Model) rebuildLabelEntries() {
 	m.labelEntries = entries
 }
 
+// rebuildAssigneeEntries extracts assignees from current issues, sorted by count descending,
+// and assigns numbers 1-9 to the top assignees (bd-gs45.1).
+func (m *Model) rebuildAssigneeEntries() {
+	counts := make(map[string]int)
+	for _, issue := range m.issues {
+		if issue.Assignee != "" {
+			counts[issue.Assignee]++
+		}
+	}
+
+	entries := make([]AssigneeEntry, 0, len(counts))
+	for assignee, count := range counts {
+		isActive := m.assigneeFilter == assignee
+		entries = append(entries, AssigneeEntry{
+			Assignee: assignee,
+			Count:    count,
+			IsActive: isActive,
+		})
+	}
+
+	// Sort by count descending, then alphabetically
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Count != entries[j].Count {
+			return entries[i].Count > entries[j].Count
+		}
+		return entries[i].Assignee < entries[j].Assignee
+	})
+
+	// Clamp scroll offset
+	maxScroll := len(entries) - 9
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.assigneeScrollOffset > maxScroll {
+		m.assigneeScrollOffset = maxScroll
+	}
+
+	// Assign numbers 1-9 to visible page
+	for i := range entries {
+		pageIdx := i - m.assigneeScrollOffset
+		if pageIdx >= 0 && pageIdx < 9 {
+			entries[i].Number = pageIdx + 1
+		} else {
+			entries[i].Number = 0
+		}
+	}
+
+	m.assigneeEntries = entries
+}
+
 // renderLabelBar renders the top bar in label mode, showing labels with counts
 // and number key assignments (bd-gj41).
 func (m Model) renderLabelBar() string {
@@ -5735,6 +5919,202 @@ func (m Model) renderLabelTitleBar(w int) string {
 	hintText := " L:projects  a:clear"
 	if len(m.labelEntries) > 9 {
 		hintText = " L:projects  a:clear  []:scroll"
+	}
+	hint := hintStyle.Render(hintText)
+
+	sepChar := "\u2500"
+	sepStyle := t.Renderer.NewStyle().Foreground(t.Border)
+
+	titleLen := lipgloss.Width(title) + lipgloss.Width(hint)
+	leftPad := (w - titleLen - 4) / 2
+	rightPad := w - titleLen - 4 - leftPad
+	if leftPad < 1 {
+		leftPad = 1
+	}
+	if rightPad < 1 {
+		rightPad = 1
+	}
+
+	return sepStyle.Render(strings.Repeat(sepChar, leftPad)) + " " + title + hint + " " + sepStyle.Render(strings.Repeat(sepChar, rightPad))
+}
+
+// renderAssigneeBar renders the top bar in assignee mode, showing assignees with counts
+// and number key assignments (bd-gs45.1).
+func (m Model) renderAssigneeBar() string {
+	t := m.theme
+	w := m.width
+	if w <= 0 {
+		w = 80
+	}
+
+	numStyle := t.Renderer.NewStyle().
+		Foreground(lipgloss.Color("#F3F3F3")).
+		Bold(true)
+	activeStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+	normalStyle := t.Renderer.NewStyle().
+		Foreground(t.Base.GetForeground())
+	countStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary)
+	dimStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary).
+		Italic(true)
+
+	if len(m.assigneeEntries) == 0 {
+		content := dimStyle.Render("  No assignees found. Assign issues via edit (e) or bd CLI.")
+		return content + "\n" + m.renderAssigneeTitleBar(w)
+	}
+
+	const colSep = "  │  "
+	const dataRows = panelRows - 1 // 5
+
+	visibleStart := m.assigneeScrollOffset
+	visibleEnd := visibleStart + 9
+	if visibleEnd > len(m.assigneeEntries) {
+		visibleEnd = len(m.assigneeEntries)
+	}
+	visible := m.assigneeEntries[visibleStart:visibleEnd]
+
+	lines := make([]string, panelRows)
+
+	useTwoColumns := len(visible) > 5
+	singleHdr := "      Assignee            Count"
+	if useTwoColumns {
+		lines[0] = countStyle.Render(singleHdr + colSep + singleHdr)
+	} else {
+		lines[0] = countStyle.Render(singleHdr)
+	}
+	if len(m.assigneeEntries) > 9 {
+		var scrollParts []string
+		if m.assigneeScrollOffset > 0 {
+			scrollParts = append(scrollParts, fmt.Sprintf("↑%d", m.assigneeScrollOffset))
+		}
+		remaining := len(m.assigneeEntries) - visibleEnd
+		if remaining > 0 {
+			scrollParts = append(scrollParts, fmt.Sprintf("↓%d", remaining))
+		}
+		if len(scrollParts) > 0 {
+			lines[0] += dimStyle.Render("  " + strings.Join(scrollParts, " "))
+		}
+	}
+
+	renderEntry := func(e AssigneeEntry) string {
+		name := e.Assignee
+		if len(name) > 18 {
+			name = name[:15] + "..."
+		}
+		numStr := fmt.Sprintf("%d", e.Number)
+		if e.Number == 0 {
+			numStr = " "
+		}
+
+		if e.IsActive {
+			return activeStyle.Render(fmt.Sprintf(" <%s> %-18s  %4d", numStr, name, e.Count))
+		}
+		numPart := numStyle.Render(fmt.Sprintf(" <%s>", numStr))
+		rest := normalStyle.Render(fmt.Sprintf(" %-18s", name)) + countStyle.Render(fmt.Sprintf("  %4d", e.Count))
+		return numPart + rest
+	}
+
+	var allEntry string
+	if m.assigneeFilter == "" {
+		allEntry = activeStyle.Render("<0> All")
+	} else {
+		allEntry = numStyle.Render("<0>") + normalStyle.Render(" All")
+	}
+
+	allPlaced := false
+	for row := 0; row < dataRows; row++ {
+		leftIdx := row
+		rightIdx := row + 5
+
+		if leftIdx >= len(visible) {
+			if !allPlaced {
+				lines[row+1] = " " + allEntry
+				allPlaced = true
+			} else {
+				lines[row+1] = ""
+			}
+			continue
+		}
+
+		leftStr := renderEntry(visible[leftIdx])
+		if useTwoColumns {
+			if rightIdx < len(visible) {
+				lines[row+1] = leftStr + colSep + " " + renderEntry(visible[rightIdx])
+			} else if !allPlaced {
+				lines[row+1] = leftStr + colSep + " " + allEntry
+				allPlaced = true
+			} else {
+				lines[row+1] = leftStr
+			}
+		} else {
+			lines[row+1] = leftStr
+		}
+	}
+
+	m.projectPicker.SetSize(w, m.height)
+	shortcutLines := m.projectPicker.RenderShortcutsColumn()
+	legendLines := m.projectPicker.RenderTypeLegendColumn()
+
+	shortcutsWidth := lipgloss.Width(shortcutLines[0])
+	if shortcutsWidth < 16 {
+		shortcutsWidth = 16
+	}
+	legendWidth := lipgloss.Width(legendLines[0])
+	if legendWidth < 10 {
+		legendWidth = 10
+	}
+	gap := 2
+	gapStr := strings.Repeat(" ", gap)
+
+	actualTableWidth := lipgloss.Width(lines[0])
+	showShortcuts := actualTableWidth+gap+shortcutsWidth <= w
+	showLegend := showShortcuts && actualTableWidth+gap+shortcutsWidth+gap+legendWidth <= w
+
+	tableWidth := w
+	if showShortcuts {
+		tableWidth -= shortcutsWidth + gap
+	}
+	if showLegend {
+		tableWidth -= legendWidth + gap
+	}
+
+	clipStyle := t.Renderer.NewStyle().MaxWidth(w)
+	var rows []string
+	for i := 0; i < panelRows; i++ {
+		row := padRight(safeIndex(lines[:], i), tableWidth)
+		if showShortcuts {
+			row += gapStr + padRight(safeIndex(shortcutLines[:], i), shortcutsWidth)
+		}
+		if showLegend {
+			row += gapStr + safeIndex(legendLines[:], i)
+		}
+		rows = append(rows, clipStyle.Render(row))
+	}
+	rows = append(rows, m.renderAssigneeTitleBar(w))
+	return strings.Join(rows, "\n")
+}
+
+// renderAssigneeTitleBar renders the title bar when in assignee mode (bd-gs45.1).
+func (m Model) renderAssigneeTitleBar(w int) string {
+	t := m.theme
+
+	titleStyle := t.Renderer.NewStyle().
+		Foreground(t.Primary).
+		Bold(true)
+	hintStyle := t.Renderer.NewStyle().
+		Foreground(t.Secondary)
+
+	activeAssignee := "Assignees"
+	if m.assigneeFilter != "" {
+		activeAssignee = m.assigneeFilter
+	}
+	title := titleStyle.Render(activeAssignee)
+	hintText := " A:projects  a:clear"
+	if len(m.assigneeEntries) > 9 {
+		hintText = " A:projects  a:clear  []:scroll"
 	}
 	hint := hintStyle.Render(hintText)
 

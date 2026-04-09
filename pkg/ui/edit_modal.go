@@ -44,10 +44,19 @@ type EditModal struct {
 
 	saveRequested   bool
 	cancelRequested bool
+
+	// Autocompletion suggestions (bd-gs45.2)
+	suggestions EditSuggestions
+}
+
+// EditSuggestions holds known values for autocompletion in the edit modal (bd-gs45.2).
+type EditSuggestions struct {
+	Labels    []string
+	Assignees []string
 }
 
 // NewEditModal creates an edit modal pre-populated from an existing issue
-func NewEditModal(issue *model.Issue, theme Theme) EditModal {
+func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestions) EditModal {
 	title := issue.Title
 	status := string(issue.Status)
 	priority := formatPriority(issue.Priority)
@@ -69,6 +78,9 @@ func NewEditModal(issue *model.Issue, theme Theme) EditModal {
 		description: &description,
 		notes:       &notes,
 	}
+	if len(suggestions) > 0 {
+		m.suggestions = suggestions[0]
+	}
 
 	m.originals = map[string]string{
 		"title":       *m.title,
@@ -87,7 +99,7 @@ func NewEditModal(issue *model.Issue, theme Theme) EditModal {
 }
 
 // NewCreateModal creates an edit modal with defaults for creating a new issue
-func NewCreateModal(theme Theme) EditModal {
+func NewCreateModal(theme Theme, suggestions ...EditSuggestions) EditModal {
 	title := ""
 	description := ""
 	priority := "P0"
@@ -107,6 +119,9 @@ func NewCreateModal(theme Theme) EditModal {
 		labels:       &labels,
 		notes:        &notes,
 	}
+	if len(suggestions) > 0 {
+		m.suggestions = suggestions[0]
+	}
 
 	m.form = buildCreateForm(&m)
 	m.initCmd = m.form.Init()
@@ -114,6 +129,14 @@ func NewCreateModal(theme Theme) EditModal {
 }
 
 func buildEditForm(m *EditModal) *huh.Form {
+	assigneeInput := huh.NewInput().Title("Assignee").Value(m.assignee)
+	if len(m.suggestions.Assignees) > 0 {
+		assigneeInput = assigneeInput.Suggestions(m.suggestions.Assignees)
+	}
+	labelsInput := huh.NewInput().Title("Labels").Value(m.labels)
+	if len(m.suggestions.Labels) > 0 {
+		labelsInput = labelsInput.Suggestions(m.suggestions.Labels)
+	}
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title("Title").Value(m.title),
@@ -127,8 +150,8 @@ func buildEditForm(m *EditModal) *huh.Form {
 			huh.NewSelect[string]().Title("Type").
 				Options(makeOptions(getTypeOptions())...).
 				Value(m.issueType),
-			huh.NewInput().Title("Assignee").Value(m.assignee),
-			huh.NewInput().Title("Labels").Value(m.labels),
+			assigneeInput,
+			labelsInput,
 			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).
@@ -137,6 +160,14 @@ func buildEditForm(m *EditModal) *huh.Form {
 }
 
 func buildCreateForm(m *EditModal) *huh.Form {
+	assigneeInput := huh.NewInput().Title("Assignee").Value(m.assignee)
+	if len(m.suggestions.Assignees) > 0 {
+		assigneeInput = assigneeInput.Suggestions(m.suggestions.Assignees)
+	}
+	labelsInput := huh.NewInput().Title("Labels").Value(m.labels)
+	if len(m.suggestions.Labels) > 0 {
+		labelsInput = labelsInput.Suggestions(m.suggestions.Labels)
+	}
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title("Title").Value(m.title),
@@ -147,8 +178,8 @@ func buildCreateForm(m *EditModal) *huh.Form {
 			huh.NewSelect[string]().Title("Type").
 				Options(makeOptions(getTypeOptions())...).
 				Value(m.issueType),
-			huh.NewInput().Title("Assignee").Value(m.assignee),
-			huh.NewInput().Title("Labels").Value(m.labels),
+			assigneeInput,
+			labelsInput,
 			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
 	).WithTheme(huh.ThemeDracula()).

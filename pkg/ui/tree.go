@@ -249,9 +249,10 @@ type TreeModel struct {
 	// Persistence state (bv-19vz)
 	beadsDir string // Directory containing .beads (for tree-state.json)
 
-	// Filter state (bd-e3w, bd-dlqi)
+	// Filter state (bd-e3w, bd-dlqi, bd-gs45.1)
 	currentFilter    string                  // "all", "open", "closed", "ready"
 	labelFilter      string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
+	assigneeFilter   string                  // "" = no assignee filter (bd-gs45.1)
 	filterMatches    map[string]bool         // Issue IDs that match the filter
 	contextAncestors map[string]bool         // Ancestor IDs shown for context (dimmed)
 	globalIssueMap   map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
@@ -892,14 +893,25 @@ func (t *TreeModel) SetLabelFilter(label string) {
 	t.ApplyFilter(t.currentFilter) // rebuild with both filters
 }
 
+// GetAssigneeFilter returns the current assignee filter (bd-gs45.1).
+func (t *TreeModel) GetAssigneeFilter() string {
+	return t.assigneeFilter
+}
+
+// SetAssigneeFilter sets an assignee filter that composes with the status/label filter (bd-gs45.1).
+func (t *TreeModel) SetAssigneeFilter(assignee string) {
+	t.assigneeFilter = assignee
+	t.ApplyFilter(t.currentFilter) // rebuild with all filters
+}
+
 // ApplyFilter sets the current filter and rebuilds the visible flat list (bd-e3w).
 func (t *TreeModel) ApplyFilter(filter string) {
 	t.currentFilter = filter
 	if filter == "" || filter == "all" {
 		t.currentFilter = "all"
 	}
-	// When both status and label are "show all", skip filtering
-	if t.currentFilter == "all" && t.labelFilter == "" {
+	// When status, label, and assignee are all "show all", skip filtering
+	if t.currentFilter == "all" && t.labelFilter == "" && t.assigneeFilter == "" {
 		t.filterMatches = nil
 		t.contextAncestors = nil
 		t.rebuildFlatList()
@@ -953,6 +965,13 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 			}
 		}
 		if !hasLabel {
+			return false
+		}
+	}
+
+	// Assignee filter (AND with status/label filter) (bd-gs45.1)
+	if t.assigneeFilter != "" {
+		if issue.Assignee != t.assigneeFilter {
 			return false
 		}
 	}
@@ -2134,7 +2153,7 @@ func (t *TreeModel) rebuildFlatList() {
 		t.rebuildFlatModeList()
 		return
 	}
-	if t.filterMatches != nil && (t.labelFilter != "" || (t.currentFilter != "" && t.currentFilter != "all")) {
+	if t.filterMatches != nil && (t.labelFilter != "" || t.assigneeFilter != "" || (t.currentFilter != "" && t.currentFilter != "all")) {
 		t.rebuildFilteredFlatList()
 		return
 	}
