@@ -5818,12 +5818,12 @@ func (m Model) renderLabelBar() string {
 		return numPart + rest
 	}
 
-	// Render <0> All (clear filter) entry
+	// Render <0> all (clear filter) entry
 	var allEntry string
 	if m.labelFilter == "" {
-		allEntry = activeStyle.Render("<0> All")
+		allEntry = activeStyle.Render("<0> all")
 	} else {
-		allEntry = numStyle.Render("<0>") + normalStyle.Render(" All")
+		allEntry = numStyle.Render("<0>") + normalStyle.Render(" all")
 	}
 
 	allPlaced := false
@@ -6019,9 +6019,9 @@ func (m Model) renderAssigneeBar() string {
 
 	var allEntry string
 	if m.assigneeFilter == "" {
-		allEntry = activeStyle.Render("<0> All")
+		allEntry = activeStyle.Render("<0> all")
 	} else {
-		allEntry = numStyle.Render("<0>") + normalStyle.Render(" All")
+		allEntry = numStyle.Render("<0>") + normalStyle.Render(" all")
 	}
 
 	allPlaced := false
