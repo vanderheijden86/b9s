@@ -1334,12 +1334,23 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 		}
 	}
 
-	// Truncate ID for narrow cards - reserve space for age indicator
-	maxIDLen := width - 14 // Icon(1) + space + P#(2) + space + age(6) + spacing
-	if maxIDLen < 6 {
-		maxIDLen = 6
+	// Extract project prefix as a separate badge so it's always visible (bd-whkz)
+	repoPrefix := ExtractRepoPrefix(issue.ID)
+	idSuffix := issue.ID
+	if repoPrefix != "" && strings.HasPrefix(issue.ID, repoPrefix+"-") {
+		idSuffix = strings.TrimPrefix(issue.ID, repoPrefix+"-")
 	}
-	displayID := truncateRunesHelper(issue.ID, maxIDLen, "…")
+
+	// Truncate ID suffix for narrow cards - reserve space for prefix, priority, and age
+	prefixLen := 0
+	if repoPrefix != "" {
+		prefixLen = len(repoPrefix) + 1 // prefix + space
+	}
+	maxIDLen := width - 14 - prefixLen // Icon(1) + space + P#(2) + space + age(6) + spacing
+	if maxIDLen < 4 {
+		maxIDLen = 4
+	}
+	displayID := truncateRunesHelper(idSuffix, maxIDLen, "…")
 
 	// Age indicator with color coding: green(<7d), yellow(7-30d), red(>30d)
 	ageText := FormatTimeRel(issue.UpdatedAt)
@@ -1352,13 +1363,21 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	}
 	ageStyled := t.Renderer.NewStyle().Foreground(ageColor).Render(ageText)
 	idColor := t.Secondary
+	prefixColor := t.Primary
 	if selected {
 		idColor = selectedCardTextColor
 		iconColor = selectedCardTextColor
+		prefixColor = selectedCardTextColor
 	}
 
-	line1 := fmt.Sprintf("%s %s %s %s",
+	prefixPart := ""
+	if repoPrefix != "" {
+		prefixPart = t.Renderer.NewStyle().Bold(true).Foreground(prefixColor).Render(repoPrefix) + " "
+	}
+
+	line1 := fmt.Sprintf("%s %s%s %s %s",
 		t.Renderer.NewStyle().Foreground(iconColor).Render(icon),
+		prefixPart,
 		prioStyle.Render(prioText),
 		t.Renderer.NewStyle().Bold(true).Foreground(idColor).Render(displayID),
 		ageStyled,
