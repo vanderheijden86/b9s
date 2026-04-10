@@ -705,9 +705,14 @@ type WorkspaceInfo struct {
 }
 
 func (m *Model) updateListDelegate() {
+	projectName := m.activeProjectName
+	if m.allProjectsMode {
+		projectName = "" // Fall back to per-item repo prefix in all-projects mode (bd-dy6r)
+	}
 	m.list.SetDelegate(IssueDelegate{
-		Theme:         m.theme,
-		WorkspaceMode: m.workspaceMode,
+		Theme:             m.theme,
+		WorkspaceMode:     m.workspaceMode,
+		ActiveProjectName: projectName,
 	})
 }
 
@@ -928,6 +933,8 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.activeProjectPath = projectPath
 	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
 	m.issueWriter.SetWorkDir(projectPath)
+	m.board.SetActiveProjectName(projectName)
+	m.updateListDelegate()
 	projects, errs := config.DiscoverProjectsWithErrors(cfg)
 	for _, e := range errs {
 		debug.Log("project discovery: skipping %s", e)
@@ -1429,6 +1436,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activeProjectPath = msg.Project.ResolvedPath()
 		m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(msg.Project.Name)
 		m.issueWriter.SetWorkDir(msg.Project.ResolvedPath())
+		m.board.SetActiveProjectName(msg.Project.Name)
+		m.updateListDelegate()
 		// Determine new beads path
 		beadsDir := filepath.Join(msg.Project.ResolvedPath(), ".beads")
 		newPath, err := loader.FindJSONLPath(beadsDir)
@@ -5531,6 +5540,8 @@ func (m *Model) enterAllProjectsMode() tea.Cmd {
 	m.isLoading = true
 	m.sourceInfo = fmt.Sprintf("all-projects (%d databases)", len(reader.DBNames()))
 	m.projectPicker.SetAllProjectsMode(true)
+	m.board.SetActiveProjectName("") // Empty = use per-issue prefix (bd-dy6r)
+	m.updateListDelegate()
 
 	// Clear current data
 	m.issues = nil
@@ -5561,6 +5572,8 @@ func (m *Model) enterAllProjectsMode() tea.Cmd {
 func (m *Model) exitAllProjectsMode() {
 	m.allProjectsMode = false
 	m.projectPicker.SetAllProjectsMode(false)
+	m.board.SetActiveProjectName(m.activeProjectName) // Restore project badge (bd-dy6r)
+	m.updateListDelegate()
 	if m.multiDoltReader != nil {
 		m.multiDoltReader.Close()
 		m.multiDoltReader = nil

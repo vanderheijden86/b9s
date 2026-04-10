@@ -59,6 +59,15 @@ type BoardModel struct {
 	// expandedCardID tracks which card is currently expanded inline
 	// Empty string means no card is expanded
 	expandedCardID string
+
+	// Active project name for the prefix badge on cards (bd-dy6r)
+	// Empty string means all-projects mode: fall back to ExtractRepoPrefix.
+	activeProjectName string
+}
+
+// SetActiveProjectName sets the project name shown as a badge on each card (bd-dy6r).
+func (b *BoardModel) SetActiveProjectName(name string) {
+	b.activeProjectName = name
 }
 
 // searchMatch holds info about a matching card (bv-yg39)
@@ -1334,11 +1343,15 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 		}
 	}
 
-	// Extract project prefix as a separate badge so it's always visible (bd-whkz)
-	repoPrefix := ExtractRepoPrefix(issue.ID)
+	// Project badge: use active project name in single-project mode, else fall back
+	// to the issue ID prefix (bd-whkz, bd-dy6r).
+	repoPrefix := b.activeProjectName
+	if repoPrefix == "" {
+		repoPrefix = ExtractRepoPrefix(issue.ID)
+	}
 	idSuffix := issue.ID
-	if repoPrefix != "" && strings.HasPrefix(issue.ID, repoPrefix+"-") {
-		idSuffix = strings.TrimPrefix(issue.ID, repoPrefix+"-")
+	if idPrefix := ExtractRepoPrefix(issue.ID); idPrefix != "" && strings.HasPrefix(issue.ID, idPrefix+"-") {
+		idSuffix = strings.TrimPrefix(issue.ID, idPrefix+"-")
 	}
 
 	// Truncate ID suffix for narrow cards - reserve space for prefix, priority, and age

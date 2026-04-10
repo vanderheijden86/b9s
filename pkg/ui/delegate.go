@@ -12,8 +12,9 @@ import (
 
 // IssueDelegate renders issue items in the list
 type IssueDelegate struct {
-	Theme         Theme
-	WorkspaceMode bool // When true, shows repo prefix badges
+	Theme             Theme
+	WorkspaceMode     bool   // When true, shows repo prefix badges
+	ActiveProjectName string // Current single-project name shown as a column (bd-dy6r)
 }
 
 func (d IssueDelegate) Height() int {
@@ -102,11 +103,17 @@ func (d IssueDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	// [selector 2] [repo-badge 0-6] [icon 1-2] [prio-badge 3] [status-badge 6] [id dynamic] [space]
 	leftFixedWidth := 2 + iconDisplayWidth + 1 // selector(2) + icon(measured) + space(1)
 
-	// Repo badge width (workspace mode)
+	// Project/repo badge width: workspace mode uses per-item RepoPrefix;
+	// single-project mode falls back to the active project name (bd-dy6r).
 	var repoBadge string
+	badgeLabel := ""
 	if d.WorkspaceMode && i.RepoPrefix != "" {
-		// Create a compact repo badge like [API] or [WEB]
-		repoBadge = RenderRepoBadge(i.RepoPrefix)
+		badgeLabel = i.RepoPrefix
+	} else if d.ActiveProjectName != "" {
+		badgeLabel = d.ActiveProjectName
+	}
+	if badgeLabel != "" {
+		repoBadge = RenderRepoBadge(badgeLabel)
 		leftFixedWidth += lipgloss.Width(repoBadge) + 1
 	}
 
