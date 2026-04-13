@@ -1498,19 +1498,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		debug.Log("project-switch: %s sourceType=%s sourceInfo=%s", msg.Project.Name, m.sourceType, m.sourceInfo)
 		debug.Log("project-switch: clearing filters: currentFilter=%q labelFilter=%q pickerMode=%d", m.currentFilter, m.labelFilter, m.pickerMode)
 
-		// Clear old project data to prevent stale rendering (bd-lll)
+		// Clear old project data to prevent stale rendering (bd-lll, bd-134a)
 		m.issues = nil
 		m.issueMap = nil
 		m.snapshot = nil
 		m.isLoading = true
 		m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
+		// Clear the list immediately so stale items are gone (bd-134a)
+		m.list.SetItems(nil)
+		m.board.SetIssues(nil)
 		// Clear all filters so new project data isn't hidden (bd-qjc, bd-ic9p)
 		m.labelFilter = ""
+		m.assigneeFilter = ""
 		m.currentFilter = "all"
 		m.pickerMode = pickerModeProjects
 		m.labelEntries = nil
 		m.labelScrollOffset = 0
+		m.assigneeEntries = nil
+		m.assigneeScrollOffset = 0
 		m.tree.SetLabelFilter("")
+		m.tree.SetAssigneeFilter("")
 		m.tree.ApplyFilter("all")
 		m.tree.ClearSearch()
 		m.tree.Build(nil)
@@ -5543,15 +5550,20 @@ func (m *Model) enterAllProjectsMode() tea.Cmd {
 	m.board.SetActiveProjectName("") // Empty = use per-issue prefix (bd-dy6r)
 	m.updateListDelegate()
 
-	// Clear current data
+	// Clear current data (bd-134a)
 	m.issues = nil
 	m.issueMap = nil
 	m.snapshot = nil
+	m.list.SetItems(nil)
+	m.board.SetIssues(nil)
 	m.labelFilter = ""
+	m.assigneeFilter = ""
 	m.currentFilter = "all"
 	m.pickerMode = pickerModeProjects
 	m.labelEntries = nil
 	m.labelScrollOffset = 0
+	m.assigneeEntries = nil
+	m.assigneeScrollOffset = 0
 	m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
 	m.tree.SetLabelFilter("")
 	m.tree.ApplyFilter("all")
@@ -5587,7 +5599,16 @@ func (m *Model) exitAllProjectsMode() {
 	m.issues = nil
 	m.issueMap = nil
 	m.snapshot = nil
+	m.list.SetItems(nil)
+	m.board.SetIssues(nil)
+	m.labelFilter = ""
+	m.assigneeFilter = ""
+	m.currentFilter = "all"
+	m.labelEntries = nil
+	m.assigneeEntries = nil
 	m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
+	m.tree.SetLabelFilter("")
+	m.tree.SetAssigneeFilter("")
 	m.tree.ApplyFilter("all")
 	m.tree.ClearSearch()
 	m.statusMsg = fmt.Sprintf("Returned to %s", m.activeProjectName)
