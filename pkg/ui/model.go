@@ -1056,11 +1056,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					debug.Log("edit-modal: CREATE skipped (no args)")
 				}
 			} else {
+				// If status changed to "deferred", use bd defer (bd-j7mx)
+				if m.editModal.IsDeferring() {
+					deferUntil := m.editModal.DeferUntil()
+					debug.Log("edit-modal: DEFER %s until=%q", m.editModal.issueID, deferUntil)
+					cmds = append(cmds, m.issueWriter.DeferIssue(m.editModal.issueID, deferUntil))
+				}
+				// Apply any other changed fields (title, priority, etc.) via update
 				args := m.editModal.BuildUpdateArgs()
 				debug.Log("edit-modal: UPDATE save for %s, changed=%v", m.editModal.issueID, args)
 				if len(args) > 0 {
 					cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
-				} else {
+				} else if !m.editModal.IsDeferring() {
 					debug.Log("edit-modal: UPDATE skipped (no changes)")
 				}
 			}
@@ -1100,6 +1107,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.statusMsg = fmt.Sprintf("Closed %s", msg.IssueID)
 			} else if msg.Operation == BdOpDelete {
 				m.statusMsg = fmt.Sprintf("Deleted %s", msg.IssueID)
+			} else if msg.Operation == BdOpDefer {
+				m.statusMsg = fmt.Sprintf("Deferred %s", msg.IssueID)
 			}
 			m.statusIsError = false
 			// Trigger reload to pick up changes

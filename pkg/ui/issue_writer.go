@@ -21,6 +21,7 @@ const (
 	BdOpDelete
 	BdOpSetStatus
 	BdOpSetPriority
+	BdOpDefer // bd-j7mx
 )
 
 // BdResultMsg is returned after a bd CLI operation completes
@@ -93,6 +94,18 @@ func (w *IssueWriter) DeleteIssue(id string) tea.Cmd {
 	}
 	args := []string{"delete", id, "--force"}
 	return w.runBdCmd(BdOpDelete, id, args)
+}
+
+// DeferIssue runs bd defer <id> with optional --until flag (bd-j7mx).
+func (w *IssueWriter) DeferIssue(id, until string) tea.Cmd {
+	if !w.available {
+		return w.unavailableCmd(BdOpDefer, id)
+	}
+	args := []string{"defer", id}
+	if until != "" {
+		args = append(args, fmt.Sprintf("--until=%s", until))
+	}
+	return w.runBdCmd(BdOpDefer, id, args)
 }
 
 // SetStatus is a convenience wrapper for updating just the status

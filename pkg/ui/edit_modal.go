@@ -44,6 +44,7 @@ type EditModal struct {
 	labels      *string
 	description *string
 	notes       *string
+	deferUntil  *string // "defer until" date when status is deferred (bd-j7mx)
 
 	// Original values for dirty detection (update mode only)
 	originals map[string]string
@@ -76,6 +77,7 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 	description := issue.Description
 	notes := issue.Notes
 
+	deferUntil := ""
 	m := EditModal{
 		theme:       theme,
 		issueID:     issue.ID,
@@ -87,6 +89,7 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 		labels:      &labels,
 		description: &description,
 		notes:       &notes,
+		deferUntil:  &deferUntil,
 	}
 	if len(suggestions) > 0 {
 		m.suggestions = suggestions[0]
@@ -117,6 +120,7 @@ func NewCreateModal(theme Theme, suggestions ...EditSuggestions) EditModal {
 	assignee := ""
 	labels := ""
 	notes := ""
+	deferUntil := ""
 
 	m := EditModal{
 		theme:        theme,
@@ -128,6 +132,7 @@ func NewCreateModal(theme Theme, suggestions ...EditSuggestions) EditModal {
 		assignee:     &assignee,
 		labels:       &labels,
 		notes:        &notes,
+		deferUntil:   &deferUntil,
 	}
 	if len(suggestions) > 0 {
 		m.suggestions = suggestions[0]
@@ -147,12 +152,17 @@ func buildEditForm(m *EditModal) *huh.Form {
 	if len(m.suggestions.Labels) > 0 {
 		labelsInput = labelsInput.Suggestions(m.suggestions.Labels)
 	}
+	deferInput := huh.NewInput().
+		Title("Defer until (e.g. tomorrow, next monday, +3d)").
+		Value(m.deferUntil).
+		Placeholder("leave empty for indefinite defer")
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title("Title").Value(m.title),
 			huh.NewSelect[string]().Title("Status").
 				Options(makeOptions(getStatusOptions())...).
 				Value(m.status),
+			deferInput,
 			huh.NewText().Title("Description").Value(m.description).Lines(5),
 			huh.NewSelect[string]().Title("Priority").
 				Options(makeOptions(getPriorityOptions())...).
@@ -333,6 +343,22 @@ func (m EditModal) IsCancelRequested() bool {
 	return m.cancelRequested
 }
 
+// IsDeferring returns true if the status was changed to "deferred" (bd-j7mx).
+func (m EditModal) IsDeferring() bool {
+	if m.status == nil || m.originals == nil {
+		return false
+	}
+	return *m.status == "deferred" && m.originals["status"] != "deferred"
+}
+
+// DeferUntil returns the defer-until value (bd-j7mx).
+func (m EditModal) DeferUntil() string {
+	if m.deferUntil == nil {
+		return ""
+	}
+	return strings.TrimSpace(*m.deferUntil)
+}
+
 // BuildUpdateArgs returns only changed fields for bd update
 func (m EditModal) BuildUpdateArgs() map[string]string {
 	args := make(map[string]string)
@@ -350,6 +376,10 @@ func (m EditModal) BuildUpdateArgs() map[string]string {
 
 	for key, val := range fields {
 		if orig, ok := m.originals[key]; ok && val != orig {
+			// Skip status when deferring - bd defer handles it (bd-j7mx)
+			if key == "status" && m.IsDeferring() {
+				continue
+			}
 			if key == "priority" {
 				val = fmt.Sprintf("%d", parsePriority(val))
 			}
