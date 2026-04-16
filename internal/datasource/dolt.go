@@ -5,13 +5,31 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 
 	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
+
+// debugMySQLLogger redirects the MySQL driver's error output to our debug logger
+// instead of stderr, preventing TUI corruption from connection errors (bd-gc9o).
+type debugMySQLLogger struct{}
+
+func (l debugMySQLLogger) Print(v ...any) {
+	debug.Log("mysql: %v", fmt.Sprint(v...))
+}
+
+var initMySQLLogger sync.Once
+
+func init() {
+	// Suppress MySQL driver stderr logging on first import (bd-gc9o).
+	initMySQLLogger.Do(func() {
+		_ = mysql.SetLogger(debugMySQLLogger{})
+	})
+}
 
 // DoltReader provides read access to a Dolt database via the MySQL protocol.
 type DoltReader struct {
@@ -62,6 +80,7 @@ func NewDoltReader(source DataSource) (*DoltReader, error) {
 	db.SetMaxOpenConns(2)
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(2 * time.Minute) // Close idle conns before server drops them (bd-gc9o)
 
 	if err := db.Ping(); err != nil {
 		db.Close()
