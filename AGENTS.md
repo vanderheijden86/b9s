@@ -1,4 +1,4 @@
-> **PREREQUISITE**: Read and follow `~/.cursor/AGENTS.md` first. It contains baseline instructions (beads workflow, commit strategy, progress reporting) that apply to ALL projects. The instructions below are project-specific and supplement those global rules.
+> **PREREQUISITE**: Read and follow `~/.config/agents/AGENTS.md` first. It contains baseline instructions (beads workflow, commit strategy, progress reporting) that apply to ALL projects. The instructions below are project-specific and supplement those global rules.
 
 # AGENTS.md — beadwork
 
