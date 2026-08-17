@@ -1975,6 +1975,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// An open free-text search bar owns every key (bd-oe1y).
+		// The tree/board search handlers live in handleTreeKeys/handleBoardKeys,
+		// which run *after* the global shortcut block below. Global shortcuts are
+		// guarded only against the list's built-in fuzzy filter, so without this
+		// guard typing a query fires them instead: "a" clears all label/assignee
+		// filters, digits switch label/project, "?"/"H"/"P"/"D" open overlays.
+		// That is why filtering vanished the moment you searched.
+		if m.isBoardSearchActive() || m.isTreeSearchActive() {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			if m.isBoardSearchActive() {
+				m = m.handleBoardKeys(msg)
+			} else {
+				m = m.handleTreeKeys(msg)
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 		// Handle help overlay toggle (? or F1)
 		if (msg.String() == "?" || msg.String() == "f1") && m.list.FilterState() != list.Filtering {
 			m.showHelp = !m.showHelp
@@ -4935,6 +4954,21 @@ func (m Model) TreeDetailHidden() bool {
 // TreeIsSearchMode returns whether the tree search bar is active (bd-c55q).
 func (m Model) TreeIsSearchMode() bool {
 	return m.tree.IsSearchMode()
+}
+
+// isTreeSearchActive reports whether the tree's free-text search bar is open and
+// should receive raw key input instead of the global shortcuts (bd-oe1y).
+func (m Model) isTreeSearchActive() bool {
+	if m.isBoardView {
+		return false
+	}
+	return (m.treeViewActive || m.focused == focusTree) && m.tree.IsSearchMode()
+}
+
+// isBoardSearchActive reports whether the board's search bar is open and should
+// receive raw key input instead of the global shortcuts (bd-oe1y).
+func (m Model) isBoardSearchActive() bool {
+	return m.isBoardView && m.focused == focusBoard && m.board.IsSearchMode()
 }
 
 // ActiveProjectName returns the name of the currently loaded project (bd-q5z.8).

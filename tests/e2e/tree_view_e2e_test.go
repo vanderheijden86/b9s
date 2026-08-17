@@ -27,6 +27,7 @@ type treeFixtureIssue struct {
 	Priority     int               `json:"priority"`
 	IssueType    string            `json:"issue_type"`
 	CreatedAt    string            `json:"created_at"`
+	Labels       []string          `json:"labels,omitempty"`
 	Dependencies []*treeFixtureDep `json:"dependencies,omitempty"`
 }
 
