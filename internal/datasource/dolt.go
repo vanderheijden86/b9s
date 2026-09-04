@@ -153,7 +153,10 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 
 	// Batch-load labels, deps, comments in 3 queries instead of 3*N
 	allLabels := r.loadAllLabels()
-	allDeps := r.loadAllDependencies()
+	allDeps, err := r.loadAllDependencies()
+	if err != nil {
+		return nil, err
+	}
 	allComments := r.loadAllComments()
 
 	var result []model.Issue
@@ -331,7 +334,11 @@ func (r *DoltReader) loadLabels(issueID string) []string {
 // loadDependencies loads the dependencies for a single issue. Returns nil on
 // any error; this is a best-effort helper.
 func (r *DoltReader) loadDependencies(issueID string) []*model.Dependency {
-	query := `SELECT depends_on_id, type FROM dependencies WHERE issue_id = ?`
+	query := `
+		SELECT COALESCE(depends_on_issue_id, depends_on_wisp_id, depends_on_external), type
+		FROM dependencies
+		WHERE issue_id = ?
+	`
 	rows, err := r.db.Query(query, issueID)
 	if err != nil {
 		return nil
@@ -402,12 +409,17 @@ func (r *DoltReader) loadAllLabels() map[string][]string {
 }
 
 // loadAllDependencies loads dependencies for all issues in a single query.
-// Returns a map from issue ID to dependency slice.
-func (r *DoltReader) loadAllDependencies() map[string][]*model.Dependency {
-	rows, err := r.db.Query(`SELECT issue_id, depends_on_id, type FROM dependencies`)
+// Beads stores issue, wisp, and external targets in separate nullable columns.
+func (r *DoltReader) loadAllDependencies() (map[string][]*model.Dependency, error) {
+	rows, err := r.db.Query(`
+		SELECT issue_id,
+			COALESCE(depends_on_issue_id, depends_on_wisp_id, depends_on_external),
+			type
+		FROM dependencies
+	`)
 	if err != nil {
 		debug.Log("dolt: batch dependencies query failed: %v", err)
-		return nil
+		return nil, fmt.Errorf("query dependencies: %w", err)
 	}
 	defer rows.Close()
 
@@ -416,12 +428,15 @@ func (r *DoltReader) loadAllDependencies() map[string][]*model.Dependency {
 		var dep model.Dependency
 		var depType string
 		if err := rows.Scan(&dep.IssueID, &dep.DependsOnID, &depType); err != nil {
-			continue
+			return nil, fmt.Errorf("scan dependency: %w", err)
 		}
 		dep.Type = model.DependencyType(depType)
 		result[dep.IssueID] = append(result[dep.IssueID], &dep)
 	}
-	return result
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate dependencies: %w", err)
+	}
+	return result, nil
 }
 
 // loadAllComments loads comments for all issues in a single query.

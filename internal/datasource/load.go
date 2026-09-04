@@ -53,14 +53,23 @@ func LoadIssuesFromDir(beadsDir string) ([]model.Issue, error) {
 	return loader.LoadIssuesFromFile(jsonlPath)
 }
 
-// loadSmart discovers sources, validates, selects the best, and loads from it.
-func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
-	sources, err := DiscoverSources(DiscoveryOptions{
+// loadDiscoveryOptions avoids a separate validation pass because LoadFromSource
+// opens and queries the selected source immediately afterward. This matters for
+// remote Dolt servers, where validation otherwise adds another connection and
+// COUNT query to every load.
+func loadDiscoveryOptions(beadsDir, repoPath string) DiscoveryOptions {
+	return DiscoveryOptions{
 		BeadsDir:               beadsDir,
 		RepoPath:               repoPath,
-		ValidateAfterDiscovery: true,
+		ValidateAfterDiscovery: false,
 		IncludeInvalid:         false,
-	})
+	}
+}
+
+// loadSmart discovers sources, selects the best candidate, and loads from it.
+// Opening and querying the source is the authoritative validation step.
+func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
+	sources, err := DiscoverSources(loadDiscoveryOptions(beadsDir, repoPath))
 	if err != nil {
 		debug.Log("load: DiscoverSources failed: %v", err)
 		return nil, err
@@ -78,6 +87,7 @@ func loadSmart(beadsDir, repoPath string) ([]model.Issue, error) {
 	// which is wrong since Dolt is the authoritative source when configured.
 	opts := DefaultSelectionOptions()
 	opts.PreferFreshest = false
+	opts.AllowUnvalidated = true
 	best, err := SelectBestSourceWithOptions(sources, opts)
 	if err != nil {
 		debug.Log("load: SelectBestSource failed: %v", err)

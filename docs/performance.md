@@ -2,6 +2,21 @@
 
 This guide explains `bv`'s performance characteristics, how to diagnose slow startup, and available tuning options.
 
+## Contents
+
+- [Graph analysis performance](#graph-analysis-performance)
+- [Two-phase startup architecture](#two-phase-startup-architecture)
+- [Factors affecting performance](#factors-affecting-performance)
+- [Size-based algorithm selection](#size-based-algorithm-selection)
+- [Sampling-based betweenness approximation](#sampling-based-betweenness-approximation)
+- [CLI flags for performance](#cli-flags-for-performance)
+- [Troubleshooting slow startup](#troubleshooting-slow-startup)
+- [Performance targets](#performance-targets)
+- [Best practices](#best-practices)
+- [Timeout configuration](#timeout-configuration)
+- [Advanced memory considerations](#advanced-memory-considerations)
+- [Benchmarking](#benchmarking)
+
 ## Graph Analysis Performance
 
 `bv` computes 9 graph-theoretic metrics on startup. Their computational complexity varies significantly:
@@ -178,6 +193,31 @@ bv --force-full-analysis
 ```
 
 ## Troubleshooting Slow Startup
+
+### Remote Dolt latency
+
+B9s treats opening and querying the selected source as its validation step. A
+separate `COUNT(*)` preflight would add a connection and two or more network
+round trips without proving anything that the real load does not immediately
+prove.
+
+The Dolt reader loads issues with one query, then loads labels, dependencies,
+and comments with three batch queries. On a remote server, connection setup and
+those query boundaries set the latency floor. Use `B9S_DEBUG=1 b9s` to see the
+connection, issue scan, relation batches, and final result timestamps.
+
+Project discovery is a separate filesystem cost. Keep `max_depth` inside the
+`discovery` mapping so the configured limit takes effect:
+
+```yaml
+discovery:
+  scan_paths:
+    - ~/Documents
+  max_depth: 2
+```
+
+A root-level `max_depth` key is ignored, which causes B9s to use the default
+depth of 3.
 
 ### Step 1: Profile Startup
 ```bash

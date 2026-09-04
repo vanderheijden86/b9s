@@ -21,6 +21,9 @@ type SelectionOptions struct {
 	// MaxAgeDelta ignores sources older than this duration compared to the newest
 	// Default: 0 (no limit)
 	MaxAgeDelta time.Duration
+	// AllowUnvalidated includes discovered candidates that have no recorded
+	// validation error. The selected source must be validated by its caller.
+	AllowUnvalidated bool
 	// Verbose enables detailed logging during selection
 	Verbose bool
 	// Logger receives log messages when Verbose is true
@@ -70,10 +73,11 @@ func SelectBestSourceDetailed(sources []DataSource, opts SelectionOptions) (*Sel
 		opts.Logger = func(string) {}
 	}
 
-	// Filter to valid sources only
+	// Filter to valid sources and, when requested, candidates whose validation
+	// is intentionally deferred to the caller's open/query operation.
 	var valid []DataSource
 	for _, s := range sources {
-		if s.Valid {
+		if s.Valid || (opts.AllowUnvalidated && s.ValidationError == "") {
 			valid = append(valid, s)
 		}
 	}
