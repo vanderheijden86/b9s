@@ -11,6 +11,18 @@ rendered="$PREVIEW_EVIDENCE_DIR/rendered.yaml"
 preview_render_manifests "$rendered"
 check_pass manifest-render "$rendered"
 
+# kubectl continues through later documents after a Namespace admission denial.
+# Exercise metadata permissions before allowing any workload changes.
+namespace_manifest="$PREVIEW_EVIDENCE_DIR/namespace.yaml"
+awk '/^---$/{exit} {print}' "$rendered" >"$namespace_manifest"
+if kc apply --dry-run=server --filename "$namespace_manifest" >"$PREVIEW_EVIDENCE_DIR/namespace-policy.log" 2>&1; then
+  check_pass namespace-policy "$PREVIEW_NAMESPACE metadata apply is permitted"
+else
+  check_fail namespace-policy "osenco-infra must permit namespace metadata apply inside labelled b9s-* previews; see $PREVIEW_EVIDENCE_DIR/namespace-policy.log"
+  tail -n 40 "$PREVIEW_EVIDENCE_DIR/namespace-policy.log" >&2
+  preview_finish
+fi
+
 if kc apply --filename "$rendered" >"$PREVIEW_EVIDENCE_DIR/apply.log" 2>&1; then
   check_pass manifest-apply "$PREVIEW_NAMESPACE"
 else
