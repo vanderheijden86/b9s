@@ -1,6 +1,7 @@
 .git
 .worktrees
 .beads
+.beads.gate.lock
 .bv
 .idea
 benchmarks

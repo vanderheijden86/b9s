@@ -33,8 +33,13 @@ scripts/preview/preview-verify  TASK_ID COMMIT_SHA
 scripts/preview/preview-destroy TASK_ID COMMIT_SHA
 ```
 
-Every command requires a full lowercase commit SHA and refuses a different or
-dirty worktree. The default kubeconfig is
+Every command requires a full lowercase commit SHA matching HEAD and refuses
+source changes, including staged and untracked files. The boundary permits
+untracked `.codex-tmp/` session files, unstaged changes to
+`.beads/.local_version`, and the untracked `.beads.gate.lock` created by lane
+progress writes. Staged Beads metadata and other Beads paths still fail the
+check. The two permitted Beads runtime files are excluded from the image build
+context and are left untouched by preview commands. The default kubeconfig is
 `/mnt/secrets/preview/preview.kubeconfig`, the project-scoped b9s credential
 issued by osenco-infra. The default context is `preview`.
 

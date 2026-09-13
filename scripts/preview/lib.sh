@@ -108,7 +108,12 @@ preview_require_boundary() {
   head="$(git -C "$PREVIEW_ROOT" rev-parse HEAD)"
   [[ $head == "$PREVIEW_COMMIT_SHA" ]] \
     || preview_die boundary "HEAD is $head, not $PREVIEW_COMMIT_SHA"
-  dirty="$(git -C "$PREVIEW_ROOT" status --porcelain --untracked-files=all | sed '/^?? \.codex-tmp\//d')"
+  # Beads progress writes these runtime files; neither belongs to the image.
+  # Only unstaged runtime writes are exempt from the artifact boundary.
+  dirty="$(git -C "$PREVIEW_ROOT" status --porcelain --untracked-files=all | sed \
+    -e '/^?? \.codex-tmp\//d' \
+    -e '/^ M \.beads\/\.local_version$/d' \
+    -e '/^?? \.beads\.gate\.lock$/d')"
   [[ -z $dirty ]] || preview_die boundary "worktree is dirty"
   check_pass artifact-boundary "$PREVIEW_COMMIT_SHA"
 }

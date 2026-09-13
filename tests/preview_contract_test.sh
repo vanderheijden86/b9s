@@ -14,6 +14,66 @@ contains() {
   if grep -Fq -- "$needle" <<<"$haystack"; then ok "$desc"; else bad "$desc" "missing $needle"; fi
 }
 
+test_artifact_boundary() {
+  local fixtures seed fixture sha expected output rc scenario
+  fixtures="$(mktemp -d)" || return 1
+  seed="$fixtures/seed"
+  mkdir -p "$seed/.beads"
+  printf 'version\n' >"$seed/.beads/.local_version"
+  printf 'config\n' >"$seed/.beads/config.yaml"
+  printf 'source\n' >"$seed/source.go"
+  git -C "$seed" init -q || return 1
+  git -C "$seed" add . || return 1
+  git -C "$seed" -c user.name=PreviewTest -c user.email=preview@example.invalid \
+    -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm fixture || return 1
+  sha="$(git -C "$seed" rev-parse HEAD)" || return 1
+
+  for scenario in clean version lock combined codex source staged-source untracked-source \
+    unrelated-metadata version-lookalike lock-lookalike staged-version staged-lock absent-commit; do
+    fixture="$fixtures/$scenario"
+    git clone -q --no-hardlinks "$seed" "$fixture" || return 1
+    expected=2
+    case "$scenario" in
+      clean) expected=0 ;;
+      version) printf 'runtime\n' >>"$fixture/.beads/.local_version"; expected=0 ;;
+      lock) printf 'runtime\n' >"$fixture/.beads.gate.lock"; expected=0 ;;
+      combined)
+        printf 'runtime\n' >>"$fixture/.beads/.local_version"
+        printf 'runtime\n' >"$fixture/.beads.gate.lock"
+        expected=0 ;;
+      codex) mkdir "$fixture/.codex-tmp"; touch "$fixture/.codex-tmp/session"; expected=0 ;;
+      source) printf 'edit\n' >>"$fixture/source.go" ;;
+      staged-source) printf 'edit\n' >>"$fixture/source.go"; git -C "$fixture" add source.go || return 1 ;;
+      untracked-source) touch "$fixture/new.go" ;;
+      unrelated-metadata) printf 'edit\n' >>"$fixture/.beads/config.yaml" ;;
+      version-lookalike) touch "$fixture/.beads/.local_version.bak" ;;
+      lock-lookalike) touch "$fixture/.beads.gate.lock.bak" ;;
+      staged-version)
+        printf 'runtime\n' >>"$fixture/.beads/.local_version"
+        git -C "$fixture" add .beads/.local_version || return 1 ;;
+      staged-lock) touch "$fixture/.beads.gate.lock"; git -C "$fixture" add .beads.gate.lock || return 1 ;;
+      absent-commit) sha="$(git -C "$fixture" hash-object source.go)" ;;
+    esac
+    if output="$(PREVIEW_CMD=contract-test timeout 5s bash -c \
+      'source "$1"; PREVIEW_ROOT="$2"; PREVIEW_COMMIT_SHA="$3"; preview_require_boundary' \
+      bash "$PREVIEW/lib.sh" "$fixture" "$sha" 2>&1)"; then rc=0; else rc=$?; fi
+    if [[ $rc -eq $expected ]]; then
+      ok "artifact boundary: $scenario"
+    else
+      bad "artifact boundary: $scenario" "exit $rc, expected $expected: $output"
+    fi
+  done
+  printf 'Boundary fixtures retained at %s\n' "$fixtures"
+}
+
+test_artifact_boundary || bad "artifact boundary fixture setup"
+
+if grep -Fxq '.beads.gate.lock' "$PREVIEW/Dockerfile.dockerignore"; then
+  ok "Beads gate lock is excluded from the build context"
+else
+  bad "Beads gate lock is excluded from the build context"
+fi
+
 for command in build deploy status verify destroy; do
   file="$PREVIEW/preview-$command"
   if [[ -x $file ]]; then ok "preview-$command is executable"; else bad "preview-$command is executable" "$file"; fi
