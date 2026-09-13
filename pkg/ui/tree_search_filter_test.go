@@ -5,6 +5,7 @@ package ui
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -70,6 +71,69 @@ func treeMatchIDs(t *TreeModel) []string {
 		}
 	}
 	return ids
+}
+
+func TestTreeFilteredXRay(t *testing.T) {
+	filters := []struct {
+		name  string
+		apply func(*TreeModel)
+	}{
+		{"label", func(tree *TreeModel) { tree.SetLabelFilter("bug") }},
+		{"assignee", func(tree *TreeModel) { tree.SetAssigneeFilter("ann") }},
+		{"status", func(tree *TreeModel) { tree.ApplyFilter("open") }},
+		{"query", func(tree *TreeModel) { tree.SetIssueQuery(ParseIssueQuery("needle")) }},
+	}
+	for _, filter := range filters {
+		t.Run(filter.name, func(t *testing.T) {
+			issues := []model.Issue{
+				{ID: "root", Title: "Root", Status: model.StatusClosed, IssueType: model.TypeEpic},
+				{ID: "root.1", Title: "Branch", Status: model.StatusClosed, IssueType: model.TypeEpic},
+				{ID: "root.1.1", Title: "Needle inside", Status: model.StatusOpen, Labels: []string{"bug"}, Assignee: "ann"},
+				{ID: "root.1.2", Title: "Hidden child", Status: model.StatusClosed},
+				{ID: "root.2", Title: "Needle sibling", Status: model.StatusOpen, Labels: []string{"bug"}, Assignee: "ann"},
+				{ID: "other", Title: "Needle other root", Status: model.StatusOpen, Labels: []string{"bug"}, Assignee: "ann"},
+			}
+			for i, parent := range map[int]string{1: "root", 2: "root.1", 3: "root.1", 4: "root"} {
+				issues[i].Dependencies = []*model.Dependency{{IssueID: issues[i].ID, DependsOnID: parent, Type: model.DepParentChild}}
+			}
+			m := NewModel(issues, "")
+			updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+			m = updated.(Model)
+			m.tree.SetBeadsDir(t.TempDir())
+			m.focused = focusTree
+			filter.apply(&m.tree)
+
+			assertIDs := func(want ...string) {
+				t.Helper()
+				got := treeVisibleIDs(&m.tree)
+				slices.Sort(got)
+				slices.Sort(want)
+				if !slices.Equal(got, want) {
+					t.Errorf("visible IDs = %v, want %v", got, want)
+				}
+			}
+			assertIDs("root", "root.1", "root.1.1", "root.2", "other")
+			for _, exit := range []string{"toggle", "explicit"} {
+				if !m.tree.SelectByID("root.1") {
+					t.Fatal("filtered context ancestor is not selectable")
+				}
+				m = typeKeys(m, "x")
+				if !m.tree.IsXRayMode() {
+					t.Fatal("x did not enter XRay")
+				}
+				assertIDs("root.1", "root.1.1")
+				if exit == "toggle" {
+					m = typeKeys(m, "x")
+				} else {
+					m.tree.ExitXRay()
+				}
+				if m.tree.IsXRayMode() {
+					t.Fatalf("%s did not exit XRay", exit)
+				}
+				assertIDs("root", "root.1", "root.1.1", "root.2", "other")
+			}
+		})
+	}
 }
 
 // TestTreeSearchTypingKeepsLabelFilter is the regression test for the reported

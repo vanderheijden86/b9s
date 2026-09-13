@@ -2331,11 +2331,15 @@ func (t *TreeModel) appendVisible(node *IssueTreeNode) {
 }
 
 // rebuildFilteredFlatList builds the flat list showing only matching nodes and
-// their context ancestors (bd-e3w).
+// their context ancestors within the active XRay subtree, or the full tree.
 func (t *TreeModel) rebuildFilteredFlatList() {
 	t.flatList = t.flatList[:0]
-	for _, root := range t.roots {
-		t.appendFilteredVisible(root)
+	if t.xrayRoot != nil {
+		t.appendFilteredVisible(t.xrayRoot)
+	} else {
+		for _, root := range t.roots {
+			t.appendFilteredVisible(root)
+		}
 	}
 	if t.cursor >= len(t.flatList) {
 		t.cursor = len(t.flatList) - 1
