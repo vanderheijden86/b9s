@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Grant the existing B9s read identity access to every Beads database and
+# publish that credential into one preview namespace.
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  printf 'usage: %s TASK_ID\n' "$0" >&2
+  exit 2
+fi
+
+task_id=$1
+[[ $task_id =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$ ]] || { printf 'TASK_ID is not a plain identifier\n' >&2; exit 2; }
+task_slug=$(printf '%s' "$task_id" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed -e 's/--*/-/g' -e 's/^-//' -e 's/-$//')
+namespace="b9s-${task_slug#b9s-}"
+
+: "${BEADS_DOLT_READ_USER:?required}"
+: "${BEADS_DOLT_READ_PASSWORD:?required}"
+[[ $BEADS_DOLT_READ_USER =~ ^[A-Za-z0-9_]{1,32}$ ]] || { printf 'BEADS_DOLT_READ_USER is not valid\n' >&2; exit 2; }
+
+admin_host=${BEADS_DOLT_ADMIN_HOST:-127.0.0.1}
+admin_port=${BEADS_DOLT_ADMIN_PORT:-3306}
+app_host=${B9S_DOLT_HOST:-host.docker.internal}
+app_port=${B9S_DOLT_PORT:-3306}
+kubeconfig=${B9S_PREVIEW_ADMIN_KUBECONFIG:-$HOME/.kube/config-local-mac-k3s}
+context=${B9S_PREVIEW_ADMIN_CONTEXT:-k3d-local-mac-k3s}
+root_password=${BEADS_DOLT_ROOT_PASSWORD:-$(launchctl getenv BEADS_DOLT_PASSWORD 2>/dev/null || true)}
+
+[[ -n $root_password ]] || { printf 'BEADS_DOLT_ROOT_PASSWORD is required\n' >&2; exit 1; }
+[[ -f $kubeconfig ]] || { printf 'admin kubeconfig is not a file: %s\n' "$kubeconfig" >&2; exit 1; }
+command -v dolt >/dev/null 2>&1 || { printf 'dolt is not installed\n' >&2; exit 1; }
+command -v kubectl >/dev/null 2>&1 || { printf 'kubectl is not installed\n' >&2; exit 1; }
+
+root_rows() {
+  DOLT_CLI_PASSWORD="$root_password" timeout 30 dolt \
+    --host "$admin_host" --port "$admin_port" --no-tls --user root \
+    sql -r csv -q "$1"
+}
+
+root_sql() {
+  DOLT_CLI_PASSWORD="$root_password" timeout 30 dolt \
+    --host "$admin_host" --port "$admin_port" --no-tls --user root \
+    sql -q "$1"
+}
+
+reader_sql() {
+  local database=$1 query=$2
+  DOLT_CLI_PASSWORD="$BEADS_DOLT_READ_PASSWORD" timeout 30 dolt \
+    --host "$admin_host" --port "$admin_port" --no-tls \
+    --user "$BEADS_DOLT_READ_USER" --use-db "$database" sql -q "$query" 2>&1
+}
+
+databases=$(root_rows "SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_name = 'issues' ORDER BY table_schema" | tail -n +2)
+[[ -n $databases ]] || { printf 'no Beads databases found\n' >&2; exit 1; }
+
+database_count=0
+while IFS= read -r database; do
+  [[ $database =~ ^[A-Za-z0-9_-]+$ ]] || { printf 'unsafe database name: %s\n' "$database" >&2; exit 1; }
+  root_sql "GRANT SELECT ON \`$database\`.* TO '$BEADS_DOLT_READ_USER'@'%'" >/dev/null
+
+  read_result=$(reader_sql "$database" 'SELECT COUNT(*) FROM issues')
+  grep -qiE 'error|denied' <<<"$read_result" && { printf 'reader cannot read %s\n' "$database" >&2; exit 1; }
+
+  set +e
+  write_result=$(reader_sql "$database" 'UPDATE issues SET title = title WHERE 1 = 0')
+  write_status=$?
+  set -e
+  if [[ $write_status -eq 0 ]] && ! grep -qi 'denied' <<<"$write_result"; then
+    printf 'reader unexpectedly has write access to %s\n' "$database" >&2
+    exit 1
+  fi
+  grep -qi 'denied' <<<"$write_result" || { printf 'write refusal for %s was not a permission denial\n' "$database" >&2; exit 1; }
+  database_count=$((database_count + 1))
+done <<<"$databases"
+
+global_writes=$(root_rows "SELECT User FROM mysql.user WHERE User='$BEADS_DOLT_READ_USER' AND (Insert_priv='Y' OR Update_priv='Y' OR Delete_priv='Y' OR Create_priv='Y' OR Drop_priv='Y' OR Alter_priv='Y' OR Grant_priv='Y' OR Super_priv='Y')" | tail -n +2)
+database_writes=$(root_rows "SELECT Db FROM mysql.db WHERE User='$BEADS_DOLT_READ_USER' AND (Insert_priv='Y' OR Update_priv='Y' OR Delete_priv='Y' OR Create_priv='Y' OR Drop_priv='Y' OR Alter_priv='Y' OR Grant_priv='Y')" | tail -n +2)
+[[ -z $global_writes && -z $database_writes ]] || { printf 'reader holds a write privilege; refusing to publish it\n' >&2; exit 1; }
+
+kc=(kubectl --kubeconfig "$kubeconfig" --context "$context")
+printf '%s\n' \
+  'apiVersion: v1' \
+  'kind: Namespace' \
+  'metadata:' \
+  "  name: $namespace" \
+  '  labels:' \
+  '    app.kubernetes.io/name: b9s' \
+  '    app.kubernetes.io/managed-by: b9s-preview' \
+  '    omnigent.osenco.dev/preview: "true"' \
+  '    omnigent.osenco.dev/project: b9s' \
+  "    omnigent.osenco.dev/task-id: $task_id" \
+  | "${kc[@]}" apply --server-side --field-manager=b9s-preview-reader --filename=- >/dev/null
+
+encode() { printf '%s' "$1" | base64 | tr -d '\n'; }
+printf '%s\n' \
+  'apiVersion: v1' \
+  'kind: Secret' \
+  'metadata:' \
+  '  name: b9s-shared-dolt-reader' \
+  "  namespace: $namespace" \
+  'type: Opaque' \
+  'data:' \
+  "  B9S_DOLT_HOST: $(encode "$app_host")" \
+  "  B9S_DOLT_PORT: $(encode "$app_port")" \
+  "  B9S_DOLT_READ_USER: $(encode "$BEADS_DOLT_READ_USER")" \
+  "  B9S_DOLT_READ_PASSWORD: $(encode "$BEADS_DOLT_READ_PASSWORD")" \
+  | "${kc[@]}" apply --server-side --field-manager=b9s-preview-reader --filename=- >/dev/null
+
+printf 'Provisioned %s with SELECT-only access to %d Beads databases in namespace %s\n' \
+  "$BEADS_DOLT_READ_USER" "$database_count" "$namespace"

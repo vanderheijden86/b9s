@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Delete only the preview namespace derived from the supplied task id.
+PREVIEW_CMD=preview-destroy
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+preview_parse_args "$@"
+preview_require_boundary
+preview_require_cluster
+
+if ! kc get namespace "$PREVIEW_NAMESPACE" >/dev/null 2>&1; then
+  check_pass namespace "$PREVIEW_NAMESPACE is already absent"
+  preview_finish
+fi
+
+owner="$(kc get namespace "$PREVIEW_NAMESPACE" -o jsonpath='{.metadata.labels.omnigent\.osenco\.dev/task-id}' 2>/dev/null || true)"
+project="$(kc get namespace "$PREVIEW_NAMESPACE" -o jsonpath='{.metadata.labels.omnigent\.osenco\.dev/project}' 2>/dev/null || true)"
+if [[ $owner != "$PREVIEW_TASK_ID" || $project != b9s ]]; then
+  check_fail boundary "namespace labels are task=${owner:-missing} project=${project:-missing}"
+  preview_finish
+fi
+check_pass boundary "$PREVIEW_NAMESPACE belongs to $PREVIEW_TASK_ID"
+
+timeout="${B9S_PREVIEW_DELETE_TIMEOUT:-180}"
+if kc delete namespace "$PREVIEW_NAMESPACE" --wait=true --timeout="${timeout}s"; then
+  check_pass namespace "$PREVIEW_NAMESPACE deleted"
+else
+  check_fail namespace "deletion exceeded ${timeout}s"
+fi
+preview_finish

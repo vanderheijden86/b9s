@@ -1,0 +1,240 @@
+# Browser-accessible Kubernetes previews
+
+The b9s preview runs the real terminal UI through ttyd. A reviewer can use the
+desktop terminal with a keyboard or open the mobile shell at `/b9s/` for touch
+navigation. The preview reads every accessible Beads database through a
+database-enforced SELECT-only account. It does not seed fixture tickets or hold
+a write-capable Beads credential.
+
+Status: active
+
+## Contents
+
+- [Interface](#interface)
+- [Runtime shape](#runtime-shape)
+- [Namespace and access boundary](#namespace-and-access-boundary)
+- [Read-only shared database catalog](#read-only-shared-database-catalog)
+- [Image delivery](#image-delivery)
+- [Clickable URL](#clickable-url)
+- [Configuration](#configuration)
+- [Local verification](#local-verification)
+- [Recovering a stale browser session](#recovering-a-stale-browser-session)
+- [Cleanup](#cleanup)
+
+## Interface
+
+The deployment verifier uses five repository-owned commands:
+
+```text
+scripts/preview/preview-build   TASK_ID COMMIT_SHA
+scripts/preview/preview-deploy  TASK_ID COMMIT_SHA
+scripts/preview/preview-status  TASK_ID COMMIT_SHA
+scripts/preview/preview-verify  TASK_ID COMMIT_SHA
+scripts/preview/preview-destroy TASK_ID COMMIT_SHA
+```
+
+Every command requires a full lowercase commit SHA and refuses a different or
+dirty worktree. The default kubeconfig is
+`/mnt/secrets/preview/preview.kubeconfig`, the project-scoped b9s credential
+issued by osenco-infra. The default context is `preview`.
+
+## Runtime shape
+
+```mermaid
+graph TB
+    USER["👤 **Reviewer**<br/>desktop or mobile browser"]
+    TRAEFIK["**Traefik**<br/>b9s-TASK.previews.osenco.test"]
+
+    subgraph NS["🖥️ b9s task namespace"]
+        DESKTOP["**Desktop ttyd**<br/>keyboard terminal on 7681"]
+        MOBILE["**Mobile shell**<br/>touch controls on 7682"]
+        TTYD["**Mobile ttyd**<br/>terminal on 7683"]
+        TMUX["**tmux**<br/>shared terminal session"]
+        B9S["**b9s**<br/>real TUI"]
+        ID["**Identity endpoint**<br/>commit, task, namespace on 7682"]
+        CATALOG[("Generated project catalog")]
+        DESKTOP --> TMUX
+        MOBILE -->|"allowlisted keys"| TMUX
+        MOBILE --> TTYD
+        TTYD --> TMUX
+        TMUX --> B9S
+        B9S --> CATALOG
+    end
+
+    TUNNEL["**Laptop SSH tunnel**<br/>host.docker.internal:3306"]
+    DOLT[("Shared Dolt<br/>SELECT only")]
+
+    USER --> TRAEFIK
+    TRAEFIK --> DESKTOP
+    TRAEFIK --> MOBILE
+    TRAEFIK --> ID
+    CATALOG --> TUNNEL
+    TUNNEL --> DOLT
+```
+
+The image bakes `/app/.commit-sha`. Deployment supplies only the task and
+namespace, so an edited environment variable cannot make one image claim to be
+another commit. `preview-verify` reads `/__preview` through the Service and
+compares all three identity fields with the requested preview.
+
+## Mobile navigation
+
+The mobile shell keeps the terminal visible above two touch-control rows. The
+project row pins previous and next project-page buttons around a horizontally
+scrollable strip containing `All` plus project keys `1` through `9`. The
+navigation row provides up, down, previous page, next page, open and back
+actions. Each button sends one allowlisted key through the CGI endpoint to the
+shared tmux session, so it does not depend on a mobile browser synthesizing
+keyboard events.
+
+The desktop URL remains unchanged. Append `/b9s/` to open the mobile shell.
+
+## Namespace and access boundary
+
+`TASK_ID` becomes `b9s-TASK-SLUG`. The namespace carries these labels:
+
+```text
+omnigent.osenco.dev/preview=true
+omnigent.osenco.dev/project=b9s
+omnigent.osenco.dev/task-id=TASK_ID
+omnigent.osenco.dev/commit-sha=COMMIT_SHA
+```
+
+The b9s deployer initially has only namespace lifecycle and constrained bind
+permissions. The first namespaced object is a RoleBinding to
+`omnigent-preview-workloads`. osenco-infra admission allows that binding only
+inside a labelled `b9s-*` namespace. LimitRange, ResourceQuota and NetworkPolicy
+ship with every preview.
+
+The credential is project-scoped, not lane-scoped. One b9s lane can still reach
+another b9s lane's preview. It cannot bind or deploy in a sibling project's
+namespace or in `default`.
+
+Before the first deployment, an operator runs
+`scripts/preview/preview-provision-reader TASK_ID`. The command finds databases
+that contain an `issues` table, grants the existing `bd_b9s_ro` identity
+`SELECT` on each database individually, proves a no-op `UPDATE` is denied, and
+only then writes `b9s-shared-dolt-reader` into the task namespace. Database
+names are enumerated because Dolt does not reliably enforce wildcard database
+grants. Re-run the command after adding a Beads database.
+
+The Secret exposes only `B9S_DOLT_HOST`, `B9S_DOLT_PORT`,
+`B9S_DOLT_READ_USER`, and `B9S_DOLT_READ_PASSWORD`. The NetworkPolicy permits
+database traffic only on TCP 3306. In the local cluster,
+`host.docker.internal` reaches the existing laptop SSH tunnel; the remote Dolt
+port remains unreachable directly.
+
+## Image delivery
+
+Inside an Omnigent Runner Pod, `preview-build` uses the BuildKit service and
+pushes the immutable SHA tag to the in-cluster registry:
+
+```text
+registry.registry.svc.cluster.local:5000/b9s-preview:COMMIT_SHA
+```
+
+On a workstation it uses Docker. Set `B9S_PREVIEW_PUSH_REGISTRY` when the
+registry is reached through a local port-forward but the cluster must pull the
+service-name image reference.
+
+## Clickable URL
+
+The local URL is:
+
+```text
+http://b9s-TASK-SLUG.previews.osenco.test:8081
+```
+
+The reserved `.test` suffix is answered locally by dnsmasq. Do not replace it
+with nip.io or sslip.io. Labels ending in digits can be interpreted as part of
+the embedded address and route to an unrelated public IP.
+
+For phone access, set `B9S_PREVIEW_TAILSCALE_HOST` to the laptop's MagicDNS
+name before deploying. The manifest adds only `/b9s`, `/b9s/terminal` and the
+allowlisted key endpoint to that host, so an existing application at the host
+root remains unchanged. Tailscale Serve forwards tailnet HTTPS to the shared
+local Traefik listener:
+
+```sh
+tailnet_host="$(tailscale status --json | jq -r '.Self.DNSName | rtrimstr(".")')"
+export B9S_PREVIEW_TAILSCALE_HOST="$tailnet_host"
+tailscale serve --bg --yes http://127.0.0.1:8081
+scripts/preview/preview-deploy bd-b6jw "$sha"
+```
+
+The mobile URL is `https://TAILNET_HOST/b9s/`. Tailscale Serve is private to
+the tailnet. Do not use Funnel for this preview.
+
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `B9S_PREVIEW_KUBECONFIG` | `/mnt/secrets/preview/preview.kubeconfig` | Project-scoped credential |
+| `B9S_PREVIEW_CONTEXT` | `preview` | Explicit kubectl context |
+| `B9S_PREVIEW_REGISTRY` | `registry.registry.svc.cluster.local:5000` | Image reference used by Kubernetes |
+| `B9S_PREVIEW_PUSH_REGISTRY` | same as registry | Docker push endpoint |
+| `B9S_PREVIEW_BUILDKIT_ADDR` | `tcp://buildkitd.buildkit.svc.cluster.local:1234` | Unprivileged in-cluster builder |
+| `B9S_PREVIEW_HOST_SUFFIX` | `previews.osenco.test` | Browser hostname suffix |
+| `B9S_PREVIEW_INGRESS_PORT` | `8081` | Local Traefik host port |
+| `B9S_PREVIEW_TAILSCALE_HOST` | empty | Optional MagicDNS hostname for the private `/b9s/` route |
+| `B9S_PREVIEW_ROLLOUT_TIMEOUT` | `180` | Bounded rollout wait in seconds |
+| `B9S_PREVIEW_DELETE_TIMEOUT` | `180` | Bounded namespace deletion wait in seconds |
+
+## Local verification
+
+Use the admin kubeconfig only for operator testing. A lane uses the mounted b9s
+kubeconfig instead.
+
+```sh
+sha="$(git rev-parse HEAD)"
+export B9S_PREVIEW_KUBECONFIG="$HOME/.kube/config-local-mac-k3s"
+export B9S_PREVIEW_CONTEXT=k3d-local-mac-k3s
+
+scripts/preview/preview-provision-reader bd-b6jw
+scripts/preview/preview-build bd-b6jw "$sha"
+scripts/preview/preview-deploy bd-b6jw "$sha"
+scripts/preview/preview-verify bd-b6jw "$sha"
+scripts/preview/preview-status bd-b6jw "$sha"
+```
+
+The contract guard is safe and does not call the cluster:
+
+```sh
+tests/preview_contract_test.sh
+```
+
+After deployment, exercise the exact phone controls against two populated
+databases and compare the rendered totals with read-only Dolt queries:
+
+```sh
+tests/mobile_project_switch_e2e.sh \
+  "https://$tailnet_host" bd-b6jw "$sha" b9s-bd-b6jw \
+  "$HOME/.kube/config-local-mac-k3s"
+```
+
+## Recovering a stale browser session
+
+After a preview Pod is replaced, an already-open ttyd frame can remain on
+`Press Enter to Reconnect` even though the deployment and Tailnet route are
+healthy. Confirm the two server boundaries before changing the deployment:
+
+```sh
+curl -fsS https://macbook-pro-2.tailb7c04d.ts.net/b9s/__preview
+kubectl --kubeconfig "$HOME/.kube/config-local-mac-k3s" \
+  --context k3d-local-mac-k3s -n b9s-TASK-SLUG get deploy,pod
+```
+
+If the identity responds and the deployment is ready, use the mobile shell's
+`Reconnect` control. The shell also reconnects when the browser returns online
+or the tab becomes visible again. This preserves the shared tmux session and
+does not redeploy or delete anything.
+
+## Cleanup
+
+`preview-destroy` derives exactly one namespace from the task ID, then checks
+the project and task labels before deletion. It never uses a wildcard, label
+selector, or `--all`.
+
+```sh
+scripts/preview/preview-destroy bd-b6jw "$sha"
+```

@@ -11,6 +11,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 	"github.com/vanderheijden86/beadwork/pkg/ui"
@@ -622,6 +623,86 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 
 	if switchCmd == nil {
 		t.Fatal("expected commands from SwitchProjectMsg")
+	}
+}
+
+func TestProjectSwitch_DoltOnlyProjectDoesNotRequireJSONL(t *testing.T) {
+	root := t.TempDir()
+	activeDir := filepath.Join(root, "active")
+	activeBeadsDir := filepath.Join(activeDir, ".beads")
+	if err := os.MkdirAll(activeBeadsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	activePath := filepath.Join(activeBeadsDir, "issues.jsonl")
+	if err := os.WriteFile(activePath, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	doltDir := filepath.Join(root, "shared-dolt")
+	doltBeadsDir := filepath.Join(doltDir, ".beads")
+	if err := os.MkdirAll(doltBeadsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	metadata := `{"database":"dolt","dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":1,"dolt_server_user":"reader","dolt_database":"shared"}`
+	if err := os.WriteFile(filepath.Join(doltBeadsDir, "metadata.json"), []byte(metadata), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	projects := []config.Project{
+		{Name: "active", Path: activeDir},
+		{Name: "shared-dolt", Path: doltDir},
+	}
+	m := ui.NewModel(nil, activePath).WithConfig(config.Config{Projects: projects}, "active", activeDir)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	m = newM.(ui.Model)
+
+	newM, cmd := m.Update(ui.SwitchProjectMsg{Project: projects[1]})
+	m = newM.(ui.Model)
+
+	if strings.Contains(m.View(), "No beads found") {
+		t.Fatal("Dolt metadata should be sufficient to switch projects without a JSONL file")
+	}
+	if cmd == nil {
+		t.Fatal("Dolt project switch should start datasource loading")
+	}
+}
+
+func TestProjectReload_DoltIgnoresStartupBeadsDir(t *testing.T) {
+	root := t.TempDir()
+	startupDir := filepath.Join(root, "startup", ".beads")
+	targetDir := filepath.Join(root, "target", ".beads")
+	for _, dir := range []string{startupDir, targetDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	startupIssue := "{\"id\":\"startup-1\",\"title\":\"Wrong startup database\",\"status\":\"open\",\"issue_type\":\"task\",\"priority\":2,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\"}\n"
+	targetIssue := "{\"id\":\"target-1\",\"title\":\"Selected project database\",\"status\":\"open\",\"issue_type\":\"task\",\"priority\":2,\"created_at\":\"2026-01-01T00:00:00Z\",\"updated_at\":\"2026-01-01T00:00:00Z\"}\n"
+	if err := os.WriteFile(filepath.Join(startupDir, "issues.jsonl"), []byte(startupIssue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(targetDir, "issues.jsonl"), []byte(targetIssue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BEADS_DIR", startupDir)
+
+	targetProjectDir := filepath.Dir(targetDir)
+	targetProject := config.Project{Name: "target", Path: targetProjectDir}
+	m := ui.NewModel(nil, filepath.Join(targetDir, "issues.jsonl")).
+		WithConfig(config.Config{Projects: []config.Project{targetProject}}, "target", targetProjectDir).
+		WithSourceType(datasource.SourceTypeDolt)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	m = newM.(ui.Model)
+
+	newM, _ = m.Update(ui.FileChangedMsg{})
+	m = newM.(ui.Model)
+	view := m.View()
+
+	if !strings.Contains(view, "Selected project database") {
+		t.Fatal("Dolt reload should load the explicitly selected project directory")
+	}
+	if strings.Contains(view, "Wrong startup database") {
+		t.Fatal("Dolt reload should not be redirected by the startup BEADS_DIR")
 	}
 }
 
