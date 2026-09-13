@@ -43,6 +43,7 @@ const (
 	focusDetail
 	focusBoard
 	focusTree
+	focusGraph
 	focusRepoPicker
 	focusHelp
 	focusQuitConfirm
@@ -425,6 +426,7 @@ type Model struct {
 	renderer *MarkdownRenderer
 	board    BoardModel
 	tree     TreeModel // Hierarchical tree view (bv-gllx)
+	graph    GraphModel
 	theme    Theme
 
 	// Update State
@@ -441,6 +443,7 @@ type Model struct {
 	isSplitView          bool
 	splitPaneRatio       float64 // Ratio of list pane width (0.2-0.8), default 0.4
 	isBoardView          bool
+	isGraphView          bool
 	showDetails          bool
 	showHelp             bool
 	helpScroll           int // Scroll offset for help overlay
@@ -565,6 +568,9 @@ func (m Model) bodyHeight() int {
 
 // currentViewName returns a human-readable name for the current view mode.
 func (m Model) currentViewName() string {
+	if m.isGraphView {
+		return "graph"
+	}
 	if m.isBoardView {
 		return "board"
 	}
@@ -892,6 +898,7 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 
 	// Initialize sub-components
 	board := NewBoardModel(issues, theme)
+	graph := NewGraphModel(issues, theme)
 
 	// Initialize label picker (bv-126)
 	labelSet := make(map[string]int)
@@ -984,6 +991,7 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		renderer:            renderer,
 		board:               board,
 		tree:                treeModel,
+		graph:               graph,
 		theme:               theme,
 		currentFilter:       "all",
 		focused:             focusTree, // Tree view is the default on launch (bd-dxc)
@@ -1222,6 +1230,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusIsError = true
 		} else {
 			m.issues = allIssues
+			m.graph.SetIssues(allIssues)
 			m.isLoading = false
 			m.issueMap = make(map[string]*model.Issue, len(allIssues))
 			for i := range m.issues {
@@ -1357,6 +1366,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Eventually these will be removed when all code reads from snapshot
 		m.isLoading = false
 		m.issues = msg.Snapshot.Issues
+		m.graph.SetIssues(msg.Snapshot.Issues)
 		m.issueMap = msg.Snapshot.IssueMap
 		m.countOpen = msg.Snapshot.CountOpen
 		m.countReady = msg.Snapshot.CountReady
@@ -1771,6 +1781,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.issues = newIssues
+		m.graph.SetIssues(newIssues)
 		m.isLoading = false
 
 		// Rebuild lookup map
@@ -2130,7 +2141,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tutorialModel.SetSize(m.width, m.height)
 				m.focused = focusTutorial
 			} else {
-				m.focused = focusTree
+				m.focused = m.restoreFocusFromHelp()
 			}
 			return m, nil
 		}
@@ -2290,7 +2301,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Check if tutorial wants to close
 			if m.tutorialModel.ShouldClose() {
 				m.showTutorial = false
-				m.focused = focusTree
+				m.focused = m.restoreFocusFromHelp()
 				m.tutorialModel = NewTutorialModel(m.theme) // Reset for next time
 			}
 			return m, tutorialCmd
@@ -2391,6 +2402,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 
 			case "esc":
+				if m.isGraphView && m.focused == focusGraph {
+					m.isGraphView = false
+					m.focused = focusTree
+					return m, nil
+				}
 				// Tree search/sort escape takes highest priority (bd-c55q, bd-wf8, bd-u81)
 				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSearchMode() {
 					m.tree.ClearSearch()
@@ -2421,6 +2437,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focused == focusDetail {
 					if m.isBoardView {
 						m.focused = focusBoard
+					} else if m.isGraphView {
+						m.focused = focusGraph
 					} else {
 						m.focused = focusTree
 					}
@@ -2485,6 +2503,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "b":
 				// Toggle board view from any context (bd-8hw.4: tree is permanent)
+				m.isGraphView = false
 				m.isBoardView = !m.isBoardView
 				if m.isBoardView {
 					m.focused = focusBoard
@@ -2495,9 +2514,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "g":
-				if m.focused == focusTree {
-					break // Let handleTreeKeys handle 'g' for jump-to-top (bd-mwi)
+				if m.isGraphView {
+					m.isGraphView = false
+					m.focused = focusTree
+					return m, nil
 				}
+				selectedID := ""
+				if selected := m.getSelectedIssue(); selected != nil {
+					selectedID = selected.ID
+				}
+				m.graph.SetIssues(m.issues)
+				m.graph.SelectIssue(selectedID)
+				m.isBoardView = false
+				m.isGraphView = true
+				m.focused = focusGraph
+				return m, nil
 
 			case "a":
 				// Clear all label+assignee filters and reset status to "all" (bd-5pv8, bd-7chs)
@@ -2526,6 +2557,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// If somehow not in tree, switch to it
 				m.isBoardView = false
+				m.isGraphView = false
 				m.focused = focusTree
 				return m, nil
 
@@ -2662,6 +2694,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case focusTree:
 				m = m.handleTreeKeys(msg)
 
+			case focusGraph:
+				m = m.handleGraphKeys(msg)
+
 			case focusList:
 				// Handle priority quick-keys (bd-a83) before other list keys
 				// These need access to cmds, so can't be in handleListKeys
@@ -2686,6 +2721,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Enter returns to previous view from detail (bd-y0m, bd-yo4)
 					if m.isBoardView {
 						m.focused = focusBoard
+					} else if m.isGraphView {
+						m.focused = focusGraph
 					} else {
 						m.focused = focusTree
 					}
@@ -2806,6 +2843,8 @@ func (m Model) handleMouseWheel(msg tea.MouseMsg) Model {
 		case focusTree:
 			m.tree.MoveUp()
 			m.syncTreeToDetail()
+		case focusGraph:
+			m.graph.MoveUp()
 		case focusBoard:
 			m.board.MoveUp()
 			m.syncBoardToDetail()
@@ -2822,6 +2861,8 @@ func (m Model) handleMouseWheel(msg tea.MouseMsg) Model {
 		case focusTree:
 			m.tree.MoveDown()
 			m.syncTreeToDetail()
+		case focusGraph:
+			m.graph.MoveDown()
 		case focusBoard:
 			m.board.MoveDown()
 			m.syncBoardToDetail()
@@ -3116,8 +3157,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "right":
 		m.tree.PageForwardFull()
 		m.syncTreeToDetail()
-	case "g":
-		// Jump to top (vim-style)
+	case "home":
 		m.tree.JumpToTop()
 		m.syncTreeToDetail()
 	case "G":
@@ -3245,6 +3285,27 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 			m.syncTreeToDetail()
 		}
 		// No else: tree view is permanent
+	}
+	return m
+}
+
+func (m Model) handleGraphKeys(msg tea.KeyMsg) Model {
+	switch msg.String() {
+	case "j", "down":
+		m.graph.MoveDown()
+	case "k", "up":
+		m.graph.MoveUp()
+	case "home":
+		m.graph.JumpToTop()
+	case "G", "end":
+		m.graph.JumpToBottom()
+	case "ctrl+d", "pgdown":
+		m.graph.PageDown()
+	case "ctrl+u", "pgup":
+		m.graph.PageUp()
+	case "enter":
+		m.updateViewportContent()
+		m.focused = focusDetail
 	}
 	return m
 }
@@ -3437,6 +3498,9 @@ func (m Model) restoreFocusFromHelp() focus {
 		return focusDetail
 	}
 	// Specialized views take precedence
+	if m.isGraphView {
+		return focusGraph
+	}
 	if m.isBoardView {
 		return focusBoard
 	}
@@ -3558,6 +3622,10 @@ func (m Model) View() string {
 	} else if (m.snapshotInitPending && m.snapshot == nil) || (m.isLoading && len(m.issues) == 0) {
 		body = m.renderLoadingScreen()
 		isOverlay = true
+	} else if m.focused == focusDetail && m.isGraphView {
+		body = m.viewport.View()
+	} else if m.isGraphView {
+		body = m.graph.View(m.width, m.bodyHeight())
 	} else if m.focused == focusDetail && m.isBoardView {
 		// Board detail-only mode: full-screen viewport (bd-yo4)
 		body = m.viewport.View()
@@ -4193,6 +4261,7 @@ func (m *Model) renderHelpOverlay() string {
 	viewsSection := []struct{ key, desc string }{
 		{"E", "Tree view"},
 		{"b", "Kanban board"},
+		{"g", "Dependency graph"},
 		{"i", "Insights"},
 		{"h", "History view"},
 		{"a", "Actionable"},
@@ -4260,7 +4329,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"l", "Expand / child"},
 		{"←/→", "Page back/forward"},
 		{"Enter/Spc", "Toggle expand"},
-		{"g/G", "Top / bottom"},
+		{"Home/G", "Top / bottom"},
 		{"p", "Jump to parent"},
 		{"X/Z", "Expand / collapse all"},
 		{"Tab", "Cycle node visibility"},
@@ -4431,6 +4500,15 @@ func (m *Model) renderFooter() string {
 
 	viewName := m.currentViewName()
 	switch viewName {
+	case "graph":
+		hints = []hint{
+			{"j/k", "navigate"},
+			{"enter", "detail"},
+			{"home/G", "top/bottom"},
+			{"^d/^u", "page"},
+			{"g/esc", "tree"},
+			{"?", "help"},
+		}
 	case "tree":
 		hints = []hint{
 			{"0-9", "project"},
@@ -4438,6 +4516,7 @@ func (m *Model) renderFooter() string {
 			{"tab", "fold"},
 			{"⇧tab", "fold all"},
 			{"enter", "detail"},
+			{"g", "deps"},
 			{"j/k", "nav"},
 			{"s", "sort"},
 			{"/", "search"},
@@ -5155,6 +5234,8 @@ func (m Model) FocusState() string {
 		return "board"
 	case focusTree:
 		return "tree"
+	case focusGraph:
+		return "graph"
 	case focusRepoPicker:
 		return "repo_picker"
 	case focusHelp:
@@ -5179,6 +5260,9 @@ func (m Model) FocusState() string {
 // getSelectedIssue returns the currently selected issue from the active view.
 // Returns nil if no issue is selected.
 func (m *Model) getSelectedIssue() *model.Issue {
+	if m.isGraphView {
+		return m.graph.SelectedIssue()
+	}
 	if m.isBoardView {
 		return m.board.SelectedIssue()
 	}

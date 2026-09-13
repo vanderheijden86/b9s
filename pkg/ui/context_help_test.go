@@ -13,6 +13,7 @@ func TestContextHelpContentMap(t *testing.T) {
 	expectedContexts := []Context{
 		ContextList,
 		ContextTree,
+		ContextGraph,
 		ContextBoard,
 		ContextDetail,
 		ContextSplit,
@@ -54,6 +55,11 @@ func TestGetContextHelp(t *testing.T) {
 			name:     "board context",
 			ctx:      ContextBoard,
 			contains: "Board View",
+		},
+		{
+			name:     "graph context",
+			ctx:      ContextGraph,
+			contains: "Dependency Graph",
 		},
 		{
 			name:     "detail context",
@@ -187,6 +193,7 @@ func TestContextHelpKeyboardShortcuts(t *testing.T) {
 		{ContextFilter, "/"},
 		{ContextTree, "K  Close"},
 		{ContextTree, "Del  Delete"},
+		{ContextGraph, "j/k"},
 		{ContextBoard, "K / Del   Close / delete"},
 	}
 

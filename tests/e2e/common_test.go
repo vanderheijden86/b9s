@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -227,6 +228,20 @@ func runCmdToFile(t *testing.T, cmd *exec.Cmd) ([]byte, error) {
 	if cmd == nil {
 		return nil, fmt.Errorf("nil cmd")
 	}
+	if cmd.WaitDelay == 0 {
+		// PTY descendants can retain inherited descriptors after the command's
+		// context expires. Bound pipe cleanup so Wait always returns promptly.
+		cmd.WaitDelay = 250 * time.Millisecond
+	}
+	if cmd.Cancel != nil {
+		cancel := cmd.Cancel
+		cmd.Cancel = func() error {
+			if closer, ok := cmd.Stdin.(io.Closer); ok {
+				_ = closer.Close()
+			}
+			return cancel()
+		}
+	}
 
 	outPath := filepath.Join(t.TempDir(), "cmd.out")
 	f, err := os.Create(outPath)
@@ -238,10 +253,51 @@ func runCmdToFile(t *testing.T, cmd *exec.Cmd) ([]byte, error) {
 
 	runErr := cmd.Run()
 	_ = f.Close()
+	if errors.Is(runErr, exec.ErrWaitDelay) {
+		// Stdout and stderr target a regular file, so ErrWaitDelay can only
+		// describe a lingering stdin copier after the process exited cleanly.
+		runErr = nil
+	}
 
 	out, readErr := os.ReadFile(outPath)
 	if readErr != nil {
 		return nil, fmt.Errorf("read output file: %w (run err: %v)", readErr, runErr)
 	}
 	return out, runErr
+}
+
+func TestRunCmdToFileBoundsContextShutdown(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires a POSIX shell")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "sh", "-c", "sleep 10")
+	stdinR, stdinW := io.Pipe()
+	cmd.Stdin = stdinR
+	t.Cleanup(func() {
+		_ = stdinW.Close()
+		_ = stdinR.Close()
+	})
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := runCmdToFile(t, cmd)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			t.Fatalf("command returned before its context deadline: %v", err)
+		}
+		if err == nil {
+			t.Fatal("expected context cancellation to stop the command")
+		}
+	case <-time.After(time.Second):
+		_ = stdinW.Close()
+		<-done
+		t.Fatal("command wait exceeded its context deadline while stdin remained open")
+	}
 }

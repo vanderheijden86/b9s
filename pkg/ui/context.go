@@ -18,6 +18,7 @@ const (
 	// Views
 	ContextBoard Context = "board"
 	ContextTree  Context = "tree"
+	ContextGraph Context = "graph"
 
 	// Detail states
 	ContextSplit      Context = "split"
@@ -63,6 +64,9 @@ func (m Model) CurrentContext() Context {
 	}
 
 	// === Views (based on focus or view flags) ===
+	if m.isGraphView {
+		return ContextGraph
+	}
 
 	// Board view
 	if m.isBoardView {
@@ -113,6 +117,7 @@ func (c Context) Description() string {
 		ContextRepoPicker:      "Repo picker",
 		ContextBoard:           "Kanban board",
 		ContextTree:            "Tree view",
+		ContextGraph:           "Dependency graph",
 		ContextSplit:           "Split view",
 		ContextDetail:          "Issue detail",
 		ContextTimeTravel:      "Time-travel mode",
@@ -138,7 +143,7 @@ func (c Context) IsOverlay() bool {
 // IsView returns true if the context is a full view (not overlay or default list)
 func (c Context) IsView() bool {
 	switch c {
-	case ContextBoard, ContextTree, ContextSplit, ContextDetail,
+	case ContextBoard, ContextTree, ContextGraph, ContextSplit, ContextDetail,
 		ContextTimeTravel:
 		return true
 	}
@@ -155,6 +160,7 @@ func (c Context) TutorialPages() []int {
 		ContextSplit:           {4, 2},
 		ContextBoard:           {5},
 		ContextTree:            {2, 3},
+		ContextGraph:           {14},
 		ContextTimeTravel:      {10},
 		ContextHelp:            {13},
 		ContextLabelPicker:     {11, 3},

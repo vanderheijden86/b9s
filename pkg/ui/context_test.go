@@ -80,6 +80,11 @@ func TestCurrentContext_Views(t *testing.T) {
 			expected: ContextBoard,
 		},
 		{
+			name:     "graph view",
+			setup:    func(m *Model) { m.isGraphView = true },
+			expected: ContextGraph,
+		},
+		{
 			name:     "tree view via focus",
 			setup:    func(m *Model) { m.focused = focusTree },
 			expected: ContextTree,
@@ -179,6 +184,7 @@ func TestContext_Description(t *testing.T) {
 	}{
 		{ContextList, "Issue list", true},
 		{ContextBoard, "Kanban board", true},
+		{ContextGraph, "Dependency graph", true},
 		{ContextHelp, "Help overlay", true},
 		{Context("unknown"), "unknown", true}, // Fallback to string value
 	}
@@ -206,7 +212,7 @@ func TestContext_IsOverlay(t *testing.T) {
 	}
 
 	nonOverlays := []Context{
-		ContextList, ContextBoard, ContextTree,
+		ContextList, ContextBoard, ContextTree, ContextGraph,
 	}
 
 	for _, c := range nonOverlays {
@@ -218,7 +224,7 @@ func TestContext_IsOverlay(t *testing.T) {
 
 func TestContext_IsView(t *testing.T) {
 	views := []Context{
-		ContextBoard, ContextTree, ContextSplit, ContextDetail,
+		ContextBoard, ContextTree, ContextGraph, ContextSplit, ContextDetail,
 		ContextTimeTravel,
 	}
 
@@ -246,6 +252,7 @@ func TestContext_TutorialPages(t *testing.T) {
 	}{
 		{ContextList, 1},
 		{ContextBoard, 1},
+		{ContextGraph, 1},
 		{ContextFilter, 1},
 		{ContextHelp, 1},
 		{Context("unknown"), 1}, // Should return default

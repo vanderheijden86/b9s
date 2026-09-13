@@ -12,6 +12,7 @@ import (
 var ContextHelpContent = map[Context]string{
 	ContextList:        contextHelpList,
 	ContextTree:        contextHelpTree,
+	ContextGraph:       contextHelpGraph,
 	ContextBoard:       contextHelpBoard,
 	ContextDetail:      contextHelpDetail,
 	ContextSplit:       contextHelpSplit,
@@ -114,7 +115,7 @@ const contextHelpTree = `## Tree View
   l         Expand or go to child
   ←/→       Page backward/forward
   Enter/Spc Toggle expand/collapse
-  g/G       Jump to top/bottom
+  Home/G    Jump to top/bottom
   p         Jump to parent node
 
 **Structure**
@@ -122,7 +123,7 @@ const contextHelpTree = `## Tree View
   Tab       Cycle node visibility
   S-Tab     Cycle global visibility
   1-9       Expand to level N
-  d         Toggle detail panel
+  d  Detail panel   ◈N  Open blockers (g inspects)
 
 **Filtering**
   o/c/r/a   Open/closed/ready/all
@@ -135,7 +136,22 @@ const contextHelpTree = `## Tree View
   b/B  Bookmark/cycle   m/M  Mark
 
 **Actions**
-  K  Close (confirm)   Del  Delete (confirm)`
+	K  Close   Del  Delete   g  Dependency graph`
+
+const contextHelpGraph = `## Dependency Graph
+
+**Navigation**
+  j/k       Select issue
+  Home/G    Jump to top/bottom
+  ^d/^u     Page down/up
+  Enter     Open issue details
+
+**Relationships**
+  BLOCKED BY  Prerequisites for selected issue
+  BLOCKS      Issues waiting on selected issue
+
+**Exit**
+  Esc/g     Return to tree`
 
 const contextHelpBoard = `## Board View
 
@@ -282,4 +298,5 @@ const contextHelpGeneric = `## Quick Reference
 
 **Views**
   b         Board view
-  E         Tree view`
+  E         Tree view
+  g         Dependency graph`

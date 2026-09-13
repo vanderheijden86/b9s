@@ -886,7 +886,7 @@ func defaultTutorialPages() []TutorialPage {
 		},
 		{
 			ID:      "views-graph",
-			Title:   "Dependency Graph Export",
+			Title:   "Dependency Graph",
 			Section: "Views",
 			Content: viewsGraphExportContent,
 		},
@@ -1007,7 +1007,7 @@ func defaultTutorialPages() []TutorialPage {
 |-----|--------|
 | **j/k** | Move down/up |
 | **h/l** | Move left/right |
-| **g/G** | Top/bottom |
+| **Home/G** | Top/bottom |
 | **Enter** | Select |
 
 ### Filtering
@@ -1134,6 +1134,7 @@ You're already running ` + "`bv`" + ` — you're ahead of the game!
 |-----|------|
 | **Esc** | Return to List |
 | **b** | Board (Kanban) |
+| **g** | Dependency graph |
 | **i** | Insights panel |
 | **h** | History |
 
@@ -1460,7 +1461,7 @@ at home. If not, you'll pick it up in minutes.
 
 | Key | Action |
 |-----|--------|
-| **g** | Jump to top |
+| **Home** | Jump to top |
 | **G** | Jump to bottom |
 | **Ctrl+d** | Half-page down |
 | **Ctrl+u** | Half-page up |
@@ -1646,14 +1647,17 @@ Press **b** to switch to the Kanban-style board.
 
 > Press **→** to continue.`
 
-const viewsGraphExportContent = `## Dependency Graph Export
+const viewsGraphExportContent = `## Dependency Graph
 
-The interactive graph view is not currently available. Use the robot output when
-you need the complete dependency structure:
+Press **g** to inspect the selected issue's blocking neighborhood.
 
-` + "```bash\nbv --robot-graph\nbv --robot-graph --graph-format=dot\nbv --export-graph dependency-graph.html\n```" + `
+| Key | Action |
+|-----|--------|
+| **j / k** | Select an issue |
+| **Enter** | Open issue details |
+| **Esc / g** | Return to tree |
 
-Use ` + "`br dep list ID`" + ` when you only need the dependencies of one issue.
+Only blocking dependencies appear in the **BLOCKED BY** and **BLOCKS** sections.
 
 > Press **→** to continue.`
 

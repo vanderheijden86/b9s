@@ -114,6 +114,37 @@ func makeFilterFixture(t *testing.T) []treeFixtureIssue {
 	}
 }
 
+func TestDependencyGraphView(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeFilterFixture(t))
+
+	out, err := runTreeTUI(t, tempDir, 1800, []keyStep{
+		k("g"),
+		k("\x1b[H"),
+		k("j"), k("j"), k("j"), k("j"),
+	})
+	if err != nil {
+		t.Fatalf("run dependency graph TUI: %v", err)
+	}
+	containsAll(t, out, []string{
+		"Dependency Graph",
+		"task-f3",
+		"BLOCKED BY (1)",
+		"task-f1",
+	})
+}
+
+func TestTreeViewShowsComputedBlockerBadge(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeFilterFixture(t))
+
+	out, err := runTreeTUI(t, tempDir, 900, nil)
+	if err != nil {
+		t.Fatalf("run tree TUI: %v", err)
+	}
+	containsAll(t, out, []string{"Blocked Task C", "◈1"})
+}
+
 // runTreeTUI launches bv in a PTY, sends the given key sequence, and returns the captured output.
 // Keys are sent with configurable delays. The TUI auto-closes after autoCloseMs.
 func runTreeTUI(t *testing.T, dir string, autoCloseMs int, keys []keyStep) ([]byte, error) {

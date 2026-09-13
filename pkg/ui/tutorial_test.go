@@ -707,13 +707,15 @@ func TestTutorialMarkdownWithTables(t *testing.T) {
 	}
 }
 
-func TestTutorialOmitsUnavailableGraphShortcut(t *testing.T) {
+func TestTutorialAdvertisesGraphShortcut(t *testing.T) {
+	found := false
 	for _, page := range defaultTutorialPages() {
-		if strings.Contains(page.Content, "Press **g** to visualize") ||
-			strings.Contains(page.Content, "Press g for graph view") ||
-			strings.Contains(page.Content, "| **g** | Graph (dependencies) |") {
-			t.Fatalf("tutorial page %q advertises the unavailable graph shortcut", page.ID)
+		if page.ID == "views-graph" && strings.Contains(page.Content, "Press **g**") {
+			found = true
 		}
+	}
+	if !found {
+		t.Fatal("tutorial omits the graph shortcut")
 	}
 }
 

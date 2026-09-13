@@ -27,7 +27,7 @@
 
 ## What is this?
 
-B9s is a terminal-based interface for browsing, editing, and managing Beads issues. It supports multiple data backends natively (Dolt, SQLite, JSONL) and renders your issue data as an interactive TUI with list, tree, and kanban board views, a detail panel with Markdown rendering, and inline editing.
+B9s is a terminal-based interface for browsing, editing, and managing Beads issues. It supports multiple data backends natively (Dolt, SQLite, JSONL) and renders your issue data as an interactive TUI with list, tree, kanban board, and dependency graph views, a detail panel with Markdown rendering, and inline editing.
 
 The UI takes heavy inspiration from [k9s](https://k9scli.io/) (the Kubernetes CLI), borrowing its project picker header, keyboard-driven navigation, and information-dense terminal layout.
 
@@ -41,10 +41,11 @@ B9s takes the opposite approach: **do fewer things well**. By stripping the code
 
 ## Features
 
-- **Tree view** with parent/child hierarchy, split-pane detail, search with occurrence filtering, bookmarking, and XRay drill-down. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics.
+- **Tree view** with parent/child hierarchy, computed `◈N` open-blocker indicators, split-pane detail, search with occurrence filtering, bookmarking, and XRay drill-down. Press `g` on a row to inspect the blocker identities. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics.
 - **Global fuzzy search** across issue IDs, titles, and labels, shared by tree, list, and board
 - **List view** with sorting (created, priority, updated) and status/label filtering
 - **Kanban board** with three swimlane modes: by status, by priority, and by type
+- **Dependency graph** with a focused view of what blocks the selected issue and what waits on it
 - **Detail panel** with full Markdown rendering (via Glamour), scrollable and toggleable
 - **Project picker** (k9s-style header) with multi-project switching, favorites (1-9 keys), and issue count columns (Open, In Progress, Ready)
 - **Inline editing** of title, status, priority, type, assignee, labels, description, and notes (via huh forms)
@@ -200,7 +201,7 @@ If B9s cannot connect to the configured Dolt server, it falls back to the next a
 | Key | Action | Key | Action |
 |-----|--------|-----|--------|
 | `j` / `k` | Next / Previous | `q` / `Esc` | Quit / Back |
-| `g` / `G` | Top / Bottom | `Tab` | Switch pane focus |
+| `Home` / `G` | Top / Bottom | `Tab` | Switch pane focus |
 | `/` | Fuzzy search | `s` | Cycle sort mode |
 | `n` / `N` | Next / Prev match | `l` | Label picker |
 | `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All | `d` | Toggle detail panel |
@@ -211,6 +212,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. To select termi
 | Key | Action |
 |-----|--------|
 | `b` | Kanban board |
+| `g` | Dependency graph |
 | `E` | Tree view |
 | `e` | Edit issue |
 | `Ctrl+n` | Create new issue |

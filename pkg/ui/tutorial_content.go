@@ -112,6 +112,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Section{Title: "Switching Views"},
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "b", Desc: "Board (Kanban)"},
+					{Key: "g", Desc: "Dependency graph"},
 					{Key: "i", Desc: "Insights panel"},
 					{Key: "h", Desc: "History"},
 				}},
@@ -313,7 +314,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "Jump Commands"},
 				KeyTable{Bindings: []KeyBinding{
-					{Key: "g", Desc: "Jump to top"},
+					{Key: "Home", Desc: "Jump to top"},
 					{Key: "G", Desc: "Jump to bottom"},
 					{Key: "Ctrl+d", Desc: "Half-page down"},
 					{Key: "Ctrl+u", Desc: "Half-page up"},
@@ -451,15 +452,19 @@ func structuredTutorialPages() []StructuredTutorialPage {
 		},
 		{
 			ID:      "views-graph",
-			Title:   "Dependency Graph Export",
+			Title:   "Dependency Graph",
 			Section: "Views",
 			Elements: []TutorialElement{
 				Section{Title: "Inspect dependency structure"},
-				Paragraph{Text: "The interactive graph view is not currently available."},
+				Paragraph{Text: "Press g to inspect the selected issue's blocking neighborhood."},
 				Spacer{Lines: 1},
-				Code{Text: "bv --robot-graph\nbv --export-graph dependency-graph.html"},
+				KeyTable{Bindings: []KeyBinding{
+					{Key: "j / k", Desc: "Select an issue"},
+					{Key: "Enter", Desc: "Open issue details"},
+					{Key: "Esc / g", Desc: "Return to tree"},
+				}},
 				Spacer{Lines: 1},
-				Tip{Text: "Use br dep list ID for one issue's dependencies"},
+				Tip{Text: "Only blocking dependencies appear in the BLOCKED BY and BLOCKS sections"},
 			},
 		},
 		{

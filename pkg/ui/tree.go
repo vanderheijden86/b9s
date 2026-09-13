@@ -217,6 +217,8 @@ const (
 // a left border gutter (bd-hdgh).
 const selectionGutterWidth = 0
 
+const computedBlockerBadgeWidth = 4
+
 // IssueTreeNode represents a node in the hierarchical issue tree
 type IssueTreeNode struct {
 	Issue    *model.Issue     // Reference to the actual issue
@@ -400,6 +402,10 @@ func (t *TreeModel) Build(issues []model.Issue) {
 	t.roots = nil
 	t.flatList = nil
 	t.issueMap = make(map[string]*IssueTreeNode)
+	t.globalIssueMap = make(map[string]*model.Issue, len(issues))
+	for i := range issues {
+		t.globalIssueMap[issues[i].ID] = &issues[i]
+	}
 	t.cursor = 0
 
 	if len(issues) == 0 {
@@ -439,6 +445,7 @@ func (t *TreeModel) BuildFromSnapshot(snapshot *DataSnapshot) {
 	if snapshot == nil {
 		return
 	}
+	t.globalIssueMap = snapshot.IssueMap
 
 	// Skip work if we're already built for this snapshot.
 	if t.built && snapshot.DataHash != "" && t.lastHash == snapshot.DataHash {
@@ -926,6 +933,38 @@ func (t *TreeModel) SetGlobalIssueMap(m map[string]*model.Issue) {
 	t.globalIssueMap = m
 }
 
+func (t *TreeModel) openBlockerIDs(issue *model.Issue) []string {
+	if issue == nil || isClosedLikeStatus(issue.Status) {
+		return nil
+	}
+
+	ids := make([]string, 0, len(issue.Dependencies))
+	seen := make(map[string]struct{}, len(issue.Dependencies))
+	for _, dep := range issue.Dependencies {
+		if dep == nil || !dep.Type.IsBlocking() {
+			continue
+		}
+
+		blocker, exists := t.globalIssueMap[dep.DependsOnID]
+		if !exists {
+			if node, ok := t.issueMap[dep.DependsOnID]; ok && node != nil {
+				blocker = node.Issue
+				exists = blocker != nil
+			}
+		}
+		if !exists || isClosedLikeStatus(blocker.Status) {
+			continue
+		}
+		if _, duplicate := seen[dep.DependsOnID]; duplicate {
+			continue
+		}
+		seen[dep.DependsOnID] = struct{}{}
+		ids = append(ids, dep.DependsOnID)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
 // GetFilter returns the current filter string (bd-e3w).
 func (t *TreeModel) GetFilter() string {
 	return t.currentFilter
@@ -1055,15 +1094,7 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 		if isClosedLikeStatus(issue.Status) || issue.Status == model.StatusBlocked {
 			return false
 		}
-		for _, dep := range issue.Dependencies {
-			if dep == nil || !dep.Type.IsBlocking() {
-				continue
-			}
-			if blocker, exists := t.globalIssueMap[dep.DependsOnID]; exists && !isClosedLikeStatus(blocker.Status) {
-				return false
-			}
-		}
-		return true
+		return len(t.openBlockerIDs(issue)) == 0
 	default:
 		return true
 	}
@@ -1335,10 +1366,10 @@ func (t *TreeModel) RenderHeader() string {
 	}
 
 	// Left: badges + "Issue" label aligned to where title text starts in rows
-	// Row left side at depth 0: expand(1) + space(1) + icon(1) + space(1) + status(4) + space(1) = 9
+	// Row left side at depth 0 includes expand, type, status, and blocker badge slots.
 	leftPrefix := modeBadge + filterBadge
 	leftPrefixWidth := lipgloss.Width(leftPrefix)
-	issueCol := 9 // where the title column starts in rows
+	issueCol := 9 + computedBlockerBadgeWidth // where the title column starts in rows
 	if leftPrefixWidth < issueCol {
 		leftPrefix += strings.Repeat(" ", issueCol-leftPrefixWidth)
 	}
@@ -1459,6 +1490,18 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	// ── Status badge (polished, matching delegate) ──
 	statusBadge := RenderStatusBadge(string(issue.Status))
 	leftSide.WriteString(statusBadge)
+	leftSide.WriteString(" ")
+
+	blockerBadge := ""
+	if blockerCount := len(t.openBlockerIDs(issue)); blockerCount > 0 {
+		blockerBadge = fmt.Sprintf("◈%d", blockerCount)
+		blockerBadge = truncateRunesHelper(blockerBadge, computedBlockerBadgeWidth-1, "…")
+	}
+	blockerStyle := r.NewStyle().Foreground(t.theme.Highlight)
+	if isSelected {
+		blockerStyle = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"})
+	}
+	leftSide.WriteString(blockerStyle.Render(fmt.Sprintf("%-3s", blockerBadge)))
 	leftSide.WriteString(" ")
 
 	// ── Calculate fixed widths (ID moved to right side, bd-03l) ──

@@ -237,6 +237,72 @@ func TestTreeBuildBlockingDepsIgnored(t *testing.T) {
 	}
 }
 
+func TestTreeRendersComputedOpenBlockerCount(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "open-blocker", Title: "Open prerequisite", Status: model.StatusOpen, IssueType: model.TypeTask},
+		{ID: "closed-blocker", Title: "Finished prerequisite", Status: model.StatusClosed, IssueType: model.TypeTask},
+		{
+			ID:        "dependent",
+			Title:     "Dependent work",
+			Status:    model.StatusOpen,
+			IssueType: model.TypeFeature,
+			Dependencies: []*model.Dependency{
+				{IssueID: "dependent", DependsOnID: "open-blocker", Type: model.DepBlocks},
+				{IssueID: "dependent", DependsOnID: "closed-blocker", Type: model.DepBlocks},
+			},
+		},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	view := stripANSI(tree.View())
+	line := ""
+	for _, candidate := range strings.Split(view, "\n") {
+		if strings.Contains(candidate, "Dependent work") {
+			line = candidate
+			break
+		}
+	}
+	if line == "" {
+		t.Fatalf("dependent row missing from tree:\n%s", view)
+	}
+	if !strings.Contains(line, "◈1") {
+		t.Fatalf("dependent row missing computed blocker count: %q", line)
+	}
+	if strings.Contains(line, "BLOCK") {
+		t.Fatalf("computed dependency changed the stored OPEN status: %q", line)
+	}
+}
+
+func TestTreeOpenBlockerIDsExposeBlockerIdentity(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "bd-a", Title: "A", Status: model.StatusOpen, IssueType: model.TypeTask},
+		{ID: "bd-b", Title: "B", Status: model.StatusDeferred, IssueType: model.TypeTask},
+		{ID: "bd-c", Title: "C", Status: model.StatusClosed, IssueType: model.TypeTask},
+		{
+			ID:        "bd-work",
+			Title:     "Work",
+			Status:    model.StatusOpen,
+			IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{
+				{IssueID: "bd-work", DependsOnID: "bd-b", Type: model.DepBlocks},
+				{IssueID: "bd-work", DependsOnID: "bd-c", Type: model.DepBlocks},
+				{IssueID: "bd-work", DependsOnID: "bd-a", Type: model.DepBlocks},
+				{IssueID: "bd-work", DependsOnID: "bd-related", Type: model.DepRelated},
+			},
+		},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+
+	got := tree.openBlockerIDs(tree.issueMap["bd-work"].Issue)
+	want := []string{"bd-a", "bd-b"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("open blocker IDs = %v, want %v", got, want)
+	}
+}
+
 // TestTreeBuildRelatedDepsIgnored verifies related deps don't create hierarchy
 func TestTreeBuildRelatedDepsIgnored(t *testing.T) {
 	issues := []model.Issue{
@@ -4300,12 +4366,12 @@ func TestTreeViewRendersLaneStageAtMinimumColumnWidth(t *testing.T) {
 	}
 }
 
-func TestHelpOverlayOmitsUnavailableGraphView(t *testing.T) {
+func TestHelpOverlayAdvertisesGraphView(t *testing.T) {
 	m := NewModel(nil, "")
 	help := stripANSI(m.renderHelpOverlay())
 
-	if strings.Contains(help, "Graph view") || strings.Contains(help, "Graph View") {
-		t.Fatalf("help advertises unavailable graph view: %q", help)
+	if !strings.Contains(help, "Dependency graph") {
+		t.Fatalf("help omits graph view: %q", help)
 	}
 }
 
