@@ -1731,9 +1731,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newIssues []model.Issue
 		var err error
 		if m.sourceType == datasource.SourceTypeDolt {
-			// Dolt: reload through smart datasource path using active project dir
-			debug.Log("FileChangedMsg: reloading via datasource.LoadIssues (Dolt, project=%s)", m.activeProjectPath)
-			newIssues, err = datasource.LoadIssues(m.activeProjectPath)
+			// Project switching must bypass BEADS_DIR, which identifies the startup
+			// project and otherwise redirects every reload back to that database.
+			debug.Log("FileChangedMsg: reloading via datasource.LoadIssuesFromDir (Dolt, project=%s)", m.activeProjectPath)
+			newIssues, err = datasource.LoadIssuesFromDir(filepath.Join(m.activeProjectPath, ".beads"))
 			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
 		} else {
 			// JSONL/SQLite: use existing fast pooled loader

@@ -69,6 +69,25 @@ if ! grep -Fq "All projects:" <<<"$all_pane"; then
 fi
 contains "shared terminal starts in All projects" "All projects:" "$all_pane"
 
+reset_pager_code="async (page) => {
+  const button = page.getByRole('button', { name: 'Previous projects', exact: true });
+  for (let i = 0; i < 50; i += 1) {
+    const responsePromise = page.waitForResponse(
+      response => new URL(response.url()).searchParams.get('key') === '[',
+      { timeout: 10000 }
+    );
+    await button.click();
+    const response = await responsePromise;
+    if (!response.ok()) throw new Error('navigation returned HTTP ' + response.status());
+  }
+}"
+if pager_output="$(playwright-cli -s="$session" run-code "$reset_pager_code" 2>&1)"; then
+  ok "project picker is reset to its first page through the phone UI"
+else
+  bad "project picker is reset to its first page through the phone UI" "$pager_output"
+fi
+all_pane="$(capture_pane)"
+
 targets="$(
   awk '$1 ~ /^<[1-9]>$/ && $2 !~ /\.\.\.$/ && (($3 + 0) + ($4 + 0) + ($5 + 0)) > 0 { print $1 "\t" $2 }' <<<"$all_pane" |
     head -2
