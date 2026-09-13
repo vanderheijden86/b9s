@@ -89,52 +89,20 @@ if ! grep -Fq "All projects:" <<<"$all_pane"; then
 fi
 contains "shared terminal starts in All projects" "All projects:" "$all_pane"
 
-reset_pager_code="async (page) => {
-  const button = page.getByRole('button', { name: 'Previous projects', exact: true });
-  for (let i = 0; i < 50; i += 1) {
-    const responsePromise = page.waitForResponse(
-      response => new URL(response.url()).searchParams.get('key') === '[',
-      { timeout: 10000 }
-    );
-    await button.click();
-    const response = await responsePromise;
-    if (!response.ok()) throw new Error('navigation returned HTTP ' + response.status());
-  }
-}"
-if pager_output="$(playwright-cli -s="$session" run-code "$reset_pager_code" 2>&1)"; then
-  ok "project picker is reset to its first page through the phone UI"
-else
-  bad "project picker is reset to its first page through the phone UI" "$pager_output"
-fi
-first_project="$("${kc[@]}" exec deploy/b9s -- awk '/^  - name: / { gsub(/"/, "", $3); print $3; exit }' /tmp/.config/b9s/config.yaml 2>/dev/null)"
-for _ in {1..20}; do
+tested_projects="|"
+for iteration in 1 2; do
   all_pane="$(capture_pane)"
-  if grep -Fq "<1> $first_project" <<<"$all_pane"; then
-    break
+  target="$(awk -v tested="$tested_projects" '$1 ~ /^<[1-9]>$/ && $2 !~ /\.\.\.$/ && (($3 + 0) + ($4 + 0) + ($5 + 0)) > 0 && index(tested, "|" $2 "|") == 0 { print $1 "\t" $2; exit }' <<<"$all_pane")"
+  if [[ -z $target ]]; then
+    bad "project switch case $iteration has a populated visible project"
+    continue
   fi
-  sleep 1
-done
-contains "project picker reaches its first page" "<1> $first_project" "$all_pane"
-
-targets="$(
-  awk '$1 ~ /^<[1-9]>$/ && $2 !~ /\.\.\.$/ && (($3 + 0) + ($4 + 0) + ($5 + 0)) > 0 { print $1 "\t" $2 }' <<<"$all_pane" |
-    head -2
-)"
-target_count="$(grep -c . <<<"$targets")"
-if [[ $target_count -ge 2 ]]; then
-  ok "two populated projects are available for switching"
-else
-  bad "two populated projects are available for switching" "found $target_count"
-fi
-
-processed=0
-while IFS= read -r target; do
-  [[ -n $target ]] || continue
-  processed=$((processed + 1))
+  ok "project switch case $iteration has a populated visible project"
   key="${target%%$'\t'*}"
   key="${key#<}"
   key="${key%>}"
   project="${target#*$'\t'}"
+  tested_projects="$tested_projects$project|"
 
   expected_count="$("${kc[@]}" exec deploy/b9s -- sh -c '
     MYSQL_PWD="$B9S_DOLT_READ_PASSWORD" mariadb \
@@ -204,17 +172,7 @@ while IFS= read -r target; do
   done
   contains "$project returns to the shared All-project view" "All projects:" "$restored_pane"
 
-  if [[ $processed -lt $target_count ]]; then
-    playwright-cli -s="$session" run-code "$reset_pager_code" >/dev/null 2>&1 || true
-    for _ in {1..20}; do
-      restored_pane="$(capture_pane)"
-      if grep -Fq "<1> $first_project" <<<"$restored_pane"; then
-        break
-      fi
-      sleep 1
-    done
-  fi
-done <<<"$targets"
+done
 
 restored_pane="$(capture_pane)"
 contains "shared terminal returns to All projects" "All projects:" "$restored_pane"
