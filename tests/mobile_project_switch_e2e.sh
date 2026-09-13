@@ -47,19 +47,39 @@ else
   bad "phone viewport is applied" "$resize_output"
 fi
 
+all_code="async (page) => {
+  const responsePromise = page.waitForResponse(
+    response => response.url().includes('/cgi-bin/b9s-key?key=0'),
+    { timeout: 10000 }
+  );
+  await page.getByRole('button', { name: 'Show all projects', exact: true }).click();
+  const response = await responsePromise;
+  if (!response.ok()) throw new Error('navigation returned HTTP ' + response.status());
+}"
+
 all_pane="$(capture_pane)"
 if ! grep -Fq "All projects:" <<<"$all_pane"; then
-  reset_code="async (page) => {
-    const responsePromise = page.waitForResponse(
-      response => response.url().includes('/cgi-bin/b9s-key?key=0'),
-      { timeout: 10000 }
-    );
-    await page.getByRole('button', { name: 'Show all projects', exact: true }).click();
-    const response = await responsePromise;
-    if (!response.ok()) throw new Error('navigation returned HTTP ' + response.status());
-  }"
-  playwright-cli -s="$session" run-code "$reset_code" >/dev/null 2>&1 || true
   for _ in {1..20}; do
+    all_pane="$(capture_pane)"
+    if grep -Fq "All projects:" <<<"$all_pane"; then
+      break
+    fi
+    sleep 1
+  done
+fi
+if ! grep -Fq "All projects:" <<<"$all_pane"; then
+  playwright-cli -s="$session" run-code "$all_code" >/dev/null 2>&1 || true
+  for _ in {1..45}; do
+    all_pane="$(capture_pane)"
+    if grep -Fq "All projects:" <<<"$all_pane"; then
+      break
+    fi
+    sleep 1
+  done
+fi
+if ! grep -Fq "All projects:" <<<"$all_pane"; then
+  playwright-cli -s="$session" run-code "$all_code" >/dev/null 2>&1 || true
+  for _ in {1..45}; do
     all_pane="$(capture_pane)"
     if grep -Fq "All projects:" <<<"$all_pane"; then
       break
@@ -86,7 +106,15 @@ if pager_output="$(playwright-cli -s="$session" run-code "$reset_pager_code" 2>&
 else
   bad "project picker is reset to its first page through the phone UI" "$pager_output"
 fi
-all_pane="$(capture_pane)"
+first_project="$("${kc[@]}" exec deploy/b9s -- awk '/^  - name: / { gsub(/"/, "", $3); print $3; exit }' /tmp/.config/b9s/config.yaml 2>/dev/null)"
+for _ in {1..20}; do
+  all_pane="$(capture_pane)"
+  if grep -Fq "<1> $first_project" <<<"$all_pane"; then
+    break
+  fi
+  sleep 1
+done
+contains "project picker reaches its first page" "<1> $first_project" "$all_pane"
 
 targets="$(
   awk '$1 ~ /^<[1-9]>$/ && $2 !~ /\.\.\.$/ && (($3 + 0) + ($4 + 0) + ($5 + 0)) > 0 { print $1 "\t" $2 }' <<<"$all_pane" |
@@ -99,8 +127,10 @@ else
   bad "two populated projects are available for switching" "found $target_count"
 fi
 
+processed=0
 while IFS= read -r target; do
   [[ -n $target ]] || continue
+  processed=$((processed + 1))
   key="${target%%$'\t'*}"
   key="${key#<}"
   key="${key%>}"
@@ -158,31 +188,35 @@ while IFS= read -r target; do
     problem="$(grep -E 'No beads found|Reload error|Switched to|Reloaded [0-9]+ issues' <<<"$switched_pane" | tail -1)"
     bad "$project renders all $expected_count shared Dolt issues" "${problem:-no terminal result}"
   fi
+
+  if all_output="$(playwright-cli -s="$session" run-code "$all_code" 2>&1)"; then
+    ok "$project returns to All through the phone UI"
+  else
+    bad "$project returns to All through the phone UI" "$all_output"
+  fi
+  restored_pane=""
+  for _ in {1..45}; do
+    restored_pane="$(capture_pane)"
+    if grep -Fq "All projects:" <<<"$restored_pane"; then
+      break
+    fi
+    sleep 1
+  done
+  contains "$project returns to the shared All-project view" "All projects:" "$restored_pane"
+
+  if [[ $processed -lt $target_count ]]; then
+    playwright-cli -s="$session" run-code "$reset_pager_code" >/dev/null 2>&1 || true
+    for _ in {1..20}; do
+      restored_pane="$(capture_pane)"
+      if grep -Fq "<1> $first_project" <<<"$restored_pane"; then
+        break
+      fi
+      sleep 1
+    done
+  fi
 done <<<"$targets"
 
-all_code="async (page) => {
-  const responsePromise = page.waitForResponse(
-    response => response.url().includes('/cgi-bin/b9s-key?key=0'),
-    { timeout: 10000 }
-  );
-  await page.getByRole('button', { name: 'Show all projects', exact: true }).click();
-  const response = await responsePromise;
-  if (!response.ok()) throw new Error('navigation returned HTTP ' + response.status());
-}"
-if all_output="$(playwright-cli -s="$session" run-code "$all_code" 2>&1)"; then
-  ok "All projects is restored through the phone UI"
-else
-  bad "All projects is restored through the phone UI" "$all_output"
-fi
-
-restored_pane=""
-for _ in {1..20}; do
-  restored_pane="$(capture_pane)"
-  if grep -Fq "All projects:" <<<"$restored_pane"; then
-    break
-  fi
-  sleep 1
-done
+restored_pane="$(capture_pane)"
 contains "shared terminal returns to All projects" "All projects:" "$restored_pane"
 
 printf '=== mobile-project-switch-e2e DONE pass=%d fail=%d ===\n' "$pass" "$fail"
