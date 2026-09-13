@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Report the namespace, image, readiness, and clickable URL for one preview.
+PREVIEW_CMD=preview-status
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+preview_parse_args "$@"
+preview_require_boundary
+preview_require_cluster
+
+if kc get namespace "$PREVIEW_NAMESPACE" >/dev/null 2>&1; then
+  check_pass namespace "$PREVIEW_NAMESPACE exists"
+else
+  check_fail namespace "$PREVIEW_NAMESPACE is absent"
+  preview_finish
+fi
+
+image="$(kcn get deployment b9s -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+ready="$(kcn get deployment b9s -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
+if [[ $image == "$PREVIEW_IMAGE" ]]; then check_pass image "$image"; else check_fail image "found ${image:-nothing}"; fi
+if [[ $ready == 1 ]]; then check_pass ready "1/1"; else check_fail ready "${ready:-0}/1"; fi
+
+kcn get deployment,pod,service,ingress -o wide >&2 || true
+preview_finish

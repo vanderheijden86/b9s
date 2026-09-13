@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Verify the live browser terminal and its immutable preview identity.
+PREVIEW_CMD=preview-verify
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+preview_parse_args "$@"
+preview_require_boundary
+preview_require_cluster
+
+if preview_wait_for_rollout >/dev/null 2>&1; then check_pass rollout "deployment/b9s is ready"; else check_fail rollout "deployment is not ready"; preview_finish; fi
+
+identity_file="$PREVIEW_EVIDENCE_DIR/identity.json"
+terminal_file="$PREVIEW_EVIDENCE_DIR/terminal.html"
+if curl -fsS --connect-timeout 3 --max-time 10 "$(preview_identity_url)" -o "$identity_file"; then
+  check_pass identity-http "service returned 200"
+else
+  check_fail identity-http "identity endpoint is unreachable"
+  preview_finish
+fi
+
+identity_line="$(python3 - "$identity_file" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    value = json.load(source)
+print("\t".join(value.get(key, "") for key in ("commit", "taskId", "namespace")))
+PY
+)"
+IFS=$'\t' read -r served_commit served_task served_namespace <<<"$identity_line"
+if [[ ${served_commit:-} == "$PREVIEW_COMMIT_SHA" ]]; then check_pass served-commit "$PREVIEW_COMMIT_SHA"; else check_fail served-commit "${served_commit:-missing}"; fi
+if [[ ${served_task:-} == "$PREVIEW_TASK_ID" ]]; then check_pass served-task "$PREVIEW_TASK_ID"; else check_fail served-task "${served_task:-missing}"; fi
+if [[ ${served_namespace:-} == "$PREVIEW_NAMESPACE" ]]; then check_pass served-namespace "$PREVIEW_NAMESPACE"; else check_fail served-namespace "${served_namespace:-missing}"; fi
+
+if curl -fsS --connect-timeout 3 --max-time 10 "$(preview_terminal_url)" -o "$terminal_file" \
+  && grep -qi '<title>ttyd' "$terminal_file"; then
+  check_pass browser-terminal "ttyd page is reachable"
+else
+  check_fail browser-terminal "ttyd page is unreachable or malformed"
+fi
+
+preview_log "open $PREVIEW_URL"
+preview_finish

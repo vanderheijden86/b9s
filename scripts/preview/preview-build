@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Build and publish the immutable browser-terminal image for one commit.
+PREVIEW_CMD=preview-build
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+preview_parse_args "$@"
+preview_require_boundary
+preview_log "building $PREVIEW_IMAGE"
+
+if command -v docker >/dev/null 2>&1; then
+  if docker image inspect "$PREVIEW_PUSH_IMAGE" >/dev/null 2>&1; then
+    check_pass image-present "$PREVIEW_PUSH_IMAGE"
+  else
+    if DOCKER_BUILDKIT=1 docker build \
+      --file "$PREVIEW_DIR/Dockerfile" \
+      --target runtime \
+      --build-arg "COMMIT_SHA=$PREVIEW_COMMIT_SHA" \
+      --tag "$PREVIEW_PUSH_IMAGE" \
+      "$PREVIEW_ROOT" >"$PREVIEW_EVIDENCE_DIR/build.log" 2>&1; then
+      check_pass image-build "$PREVIEW_PUSH_IMAGE"
+    else
+      check_fail image-build "see $PREVIEW_EVIDENCE_DIR/build.log"
+      tail -n 40 "$PREVIEW_EVIDENCE_DIR/build.log" >&2
+      preview_finish
+    fi
+  fi
+
+  baked="$(docker run --rm --entrypoint sed "$PREVIEW_PUSH_IMAGE" -n '1p' /app/.commit-sha 2>/dev/null || true)"
+  if [[ $baked == "$PREVIEW_COMMIT_SHA" ]]; then
+    check_pass image-identity "$baked"
+  else
+    check_fail image-identity "image reports ${baked:-nothing}"
+    preview_finish
+  fi
+
+  if docker push "$PREVIEW_PUSH_IMAGE" >>"$PREVIEW_EVIDENCE_DIR/build.log" 2>&1; then
+    check_pass image-push "$PREVIEW_PUSH_IMAGE"
+  else
+    check_fail image-push "see $PREVIEW_EVIDENCE_DIR/build.log"
+  fi
+else
+  command -v buildctl >/dev/null 2>&1 || preview_die infrastructure "neither docker nor buildctl is installed"
+  buildkit_addr="${B9S_PREVIEW_BUILDKIT_ADDR:-tcp://buildkitd.buildkit.svc.cluster.local:1234}"
+  identity_dir="$(mktemp -d "$PREVIEW_EVIDENCE_DIR/identity.XXXXXX")"
+  if buildctl --addr "$buildkit_addr" build \
+    --frontend dockerfile.v0 \
+    --local "context=$PREVIEW_ROOT" \
+    --local "dockerfile=$PREVIEW_ROOT/scripts/preview" \
+    --opt filename=Dockerfile \
+    --opt target=runtime \
+    --opt "build-arg:COMMIT_SHA=$PREVIEW_COMMIT_SHA" \
+    --output "type=image,name=$PREVIEW_IMAGE,push=true,registry.insecure=true" \
+    --output "type=local,dest=$identity_dir" \
+    >"$PREVIEW_EVIDENCE_DIR/build.log" 2>&1; then
+    check_pass image-build "$PREVIEW_IMAGE"
+    check_pass image-push "$PREVIEW_IMAGE"
+  else
+    check_fail image-build "see $PREVIEW_EVIDENCE_DIR/build.log"
+    tail -n 40 "$PREVIEW_EVIDENCE_DIR/build.log" >&2
+    preview_finish
+  fi
+
+  baked="$(sed -n '1p' "$identity_dir/app/.commit-sha" 2>/dev/null || true)"
+  if [[ $baked == "$PREVIEW_COMMIT_SHA" ]]; then
+    check_pass image-identity "$baked"
+  else
+    check_fail image-identity "image reports ${baked:-nothing}"
+  fi
+fi
+
+preview_finish

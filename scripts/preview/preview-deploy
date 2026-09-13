@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Apply one namespace-scoped preview and wait for it to become ready.
+PREVIEW_CMD=preview-deploy
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+preview_parse_args "$@"
+preview_require_boundary
+preview_require_cluster
+
+rendered="$PREVIEW_EVIDENCE_DIR/rendered.yaml"
+preview_render_manifests "$rendered"
+check_pass manifest-render "$rendered"
+
+if kc apply --filename "$rendered" >"$PREVIEW_EVIDENCE_DIR/apply.log" 2>&1; then
+  check_pass manifest-apply "$PREVIEW_NAMESPACE"
+else
+  check_fail manifest-apply "see $PREVIEW_EVIDENCE_DIR/apply.log"
+  tail -n 40 "$PREVIEW_EVIDENCE_DIR/apply.log" >&2
+  preview_finish
+fi
+
+if preview_wait_for_rollout >"$PREVIEW_EVIDENCE_DIR/rollout.log" 2>&1; then
+  check_pass rollout "deployment/b9s is ready"
+else
+  check_fail rollout "see $PREVIEW_EVIDENCE_DIR/rollout.log"
+  kcn get pods -o wide >&2 || true
+fi
+
+preview_log "clickable preview: $PREVIEW_URL"
+preview_finish

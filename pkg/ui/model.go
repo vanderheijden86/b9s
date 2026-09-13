@@ -1535,8 +1535,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SwitchProjectMsg:
 		// Skip if already on this project (bd-3eh)
-		if msg.Project.Name == m.activeProjectName {
+		if msg.Project.Name == m.activeProjectName && !m.allProjectsMode {
 			return m, nil
+		}
+		if m.allProjectsMode {
+			m.leaveAllProjectsMode()
 		}
 		// Switch to a different project (bd-q5z, bd-ey3, bd-87w)
 		m.activeProjectName = msg.Project.Name
@@ -1545,13 +1548,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueWriter.SetWorkDir(msg.Project.ResolvedPath())
 		m.board.SetActiveProjectName(msg.Project.Name)
 		m.updateListDelegate()
-		// Determine new beads path
 		beadsDir := filepath.Join(msg.Project.ResolvedPath(), ".beads")
+		sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
+			BeadsDir:               beadsDir,
+			ValidateAfterDiscovery: false,
+		})
+		hasDoltSource := false
+		for _, source := range sources {
+			if source.Type == datasource.SourceTypeDolt {
+				hasDoltSource = true
+				break
+			}
+		}
+
+		// Dolt server projects are fully described by metadata.json and need no
+		// local JSONL file. Keep the conventional path as an inert fallback value;
+		// Dolt reloads use activeProjectPath instead.
 		newPath, err := loader.FindJSONLPath(beadsDir)
-		if err != nil {
+		if err != nil && !hasDoltSource {
 			m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
 			m.statusIsError = true
 			return m, nil
+		}
+		if err != nil {
+			newPath = filepath.Join(beadsDir, "issues.jsonl")
 		}
 		// Stop background worker and old watchers (bd-87w)
 		if m.backgroundWorker != nil {
@@ -1573,10 +1593,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.doltSource = datasource.DataSource{}
 		m.doltFailure = nil
 		m.sourceInfo = fmt.Sprintf("jsonl %s", filepath.Base(newPath))
-		if sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
-			BeadsDir:               beadsDir,
-			ValidateAfterDiscovery: false,
-		}); discErr == nil {
+		if discErr == nil {
 			for _, s := range sources {
 				if s.Type == datasource.SourceTypeDolt {
 					db := s.Database
@@ -1714,9 +1731,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newIssues []model.Issue
 		var err error
 		if m.sourceType == datasource.SourceTypeDolt {
-			// Dolt: reload through smart datasource path using active project dir
-			debug.Log("FileChangedMsg: reloading via datasource.LoadIssues (Dolt, project=%s)", m.activeProjectPath)
-			newIssues, err = datasource.LoadIssues(m.activeProjectPath)
+			// Project switching must bypass BEADS_DIR, which identifies the startup
+			// project and otherwise redirects every reload back to that database.
+			debug.Log("FileChangedMsg: reloading via datasource.LoadIssuesFromDir (Dolt, project=%s)", m.activeProjectPath)
+			newIssues, err = datasource.LoadIssuesFromDir(filepath.Join(m.activeProjectPath, ".beads"))
 			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
 		} else {
 			// JSONL/SQLite: use existing fast pooled loader
@@ -5937,18 +5955,9 @@ func (m *Model) enterAllProjectsMode() tea.Cmd {
 
 // exitAllProjectsMode cleans up multi-reader state and returns to single-project mode.
 func (m *Model) exitAllProjectsMode() {
-	m.allProjectsMode = false
-	m.projectPicker.SetAllProjectsMode(false)
+	m.leaveAllProjectsMode()
 	m.board.SetActiveProjectName(m.activeProjectName) // Restore project badge (bd-dy6r)
 	m.updateListDelegate()
-	if m.multiDoltReader != nil {
-		m.multiDoltReader.Close()
-		m.multiDoltReader = nil
-	}
-	if m.multiDoltWatcher != nil {
-		m.multiDoltWatcher.Stop()
-		m.multiDoltWatcher = nil
-	}
 	m.sourceInfo = ""
 	m.isLoading = true
 	m.issues = nil
@@ -5989,6 +5998,19 @@ func (m *Model) exitAllProjectsMode() {
 				break
 			}
 		}
+	}
+}
+
+func (m *Model) leaveAllProjectsMode() {
+	m.allProjectsMode = false
+	m.projectPicker.SetAllProjectsMode(false)
+	if m.multiDoltWatcher != nil {
+		m.multiDoltWatcher.Stop()
+		m.multiDoltWatcher = nil
+	}
+	if m.multiDoltReader != nil {
+		m.multiDoltReader.Close()
+		m.multiDoltReader = nil
 	}
 }
 
