@@ -8,6 +8,19 @@ a write-capable Beads credential.
 
 Status: active
 
+## Contents
+
+- [Interface](#interface)
+- [Runtime shape](#runtime-shape)
+- [Namespace and access boundary](#namespace-and-access-boundary)
+- [Read-only shared database catalog](#read-only-shared-database-catalog)
+- [Image delivery](#image-delivery)
+- [Clickable URL](#clickable-url)
+- [Configuration](#configuration)
+- [Local verification](#local-verification)
+- [Recovering a stale browser session](#recovering-a-stale-browser-session)
+- [Cleanup](#cleanup)
+
 ## Interface
 
 The deployment verifier uses five repository-owned commands:
@@ -198,6 +211,23 @@ tests/mobile_project_switch_e2e.sh \
   "https://$tailnet_host" bd-b6jw "$sha" b9s-bd-b6jw \
   "$HOME/.kube/config-local-mac-k3s"
 ```
+
+## Recovering a stale browser session
+
+After a preview Pod is replaced, an already-open ttyd frame can remain on
+`Press Enter to Reconnect` even though the deployment and Tailnet route are
+healthy. Confirm the two server boundaries before changing the deployment:
+
+```sh
+curl -fsS https://macbook-pro-2.tailb7c04d.ts.net/b9s/__preview
+kubectl --kubeconfig "$HOME/.kube/config-local-mac-k3s" \
+  --context k3d-local-mac-k3s -n b9s-TASK-SLUG get deploy,pod
+```
+
+If the identity responds and the deployment is ready, use the mobile shell's
+`Reconnect` control. The shell also reconnects when the browser returns online
+or the tab becomes visible again. This preserves the shared tmux session and
+does not redeploy or delete anything.
 
 ## Cleanup
 

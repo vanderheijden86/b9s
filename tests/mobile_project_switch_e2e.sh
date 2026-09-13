@@ -28,6 +28,13 @@ contains() {
   local description="$1" needle="$2" value="$3"
   if grep -Fq -- "$needle" <<<"$value"; then ok "$description"; else bad "$description" "missing $needle"; fi
 }
+playwright_checked() {
+  local output status
+  output="$(playwright-cli "$@" 2>&1)"
+  status=$?
+  printf '%s\n' "$output"
+  [[ $status -eq 0 ]] && ! grep -Fq '### Error' <<<"$output"
+}
 capture_pane() { "${kc[@]}" exec deploy/b9s -- tmux capture-pane -p -t b9s 2>/dev/null; }
 close_browser() { playwright-cli -s="$session" close >/dev/null 2>&1 || true; }
 trap close_browser EXIT
@@ -36,15 +43,41 @@ identity="$(curl -fsS --connect-timeout 3 --max-time 10 "$base_url/b9s/__preview
 contains "preview serves the requested commit" "\"commit\":\"$commit_sha\"" "$identity"
 contains "preview serves the requested task" "\"taskId\":\"$task_id\"" "$identity"
 
-if browser_output="$(playwright-cli -s="$session" open "$base_url/b9s/" 2>&1)"; then
+if browser_output="$(playwright_checked -s="$session" open "$base_url/b9s/")"; then
   ok "phone UI opens in a headless browser"
 else
   bad "phone UI opens in a headless browser" "$browser_output"
 fi
-if resize_output="$(playwright-cli -s="$session" resize 390 844 2>&1)"; then
+if resize_output="$(playwright_checked -s="$session" resize 390 844)"; then
   ok "phone viewport is applied"
 else
   bad "phone viewport is applied" "$resize_output"
+fi
+
+reconnect_code="async (page) => {
+  let terminal = page.frames().find(frame => frame.url().includes('/b9s/terminal/'));
+  if (!terminal) throw new Error('terminal frame is missing');
+  await terminal.evaluate(() => {
+    document.documentElement.dataset.reconnectProbe = 'stale';
+  });
+  await page.waitForTimeout(500);
+  const markerBefore = await terminal.evaluate(
+    () => document.documentElement.dataset.reconnectProbe || ''
+  );
+  if (markerBefore !== 'stale') throw new Error('terminal frame was not stable before reconnect');
+  await page.getByRole('button', { name: 'Reconnect terminal', exact: true }).click();
+  await page.waitForTimeout(2000);
+  terminal = page.frames().find(frame => frame.url().includes('/b9s/terminal/'));
+  if (!terminal) throw new Error('terminal frame did not reload');
+  const marker = await terminal.evaluate(
+    () => document.documentElement.dataset.reconnectProbe || ''
+  );
+  if (marker === 'stale') throw new Error('touch reconnect left the stale terminal frame intact');
+}"
+if reconnect_output="$(playwright_checked -s="$session" run-code "$reconnect_code")"; then
+  ok "phone UI reloads the terminal through touch reconnect"
+else
+  bad "phone UI reloads the terminal through touch reconnect" "$reconnect_output"
 fi
 
 all_code="async (page) => {
@@ -68,7 +101,7 @@ if ! grep -Fq "All projects:" <<<"$all_pane"; then
   done
 fi
 if ! grep -Fq "All projects:" <<<"$all_pane"; then
-  playwright-cli -s="$session" run-code "$all_code" >/dev/null 2>&1 || true
+  playwright_checked -s="$session" run-code "$all_code" >/dev/null 2>&1 || true
   for _ in {1..45}; do
     all_pane="$(capture_pane)"
     if grep -Fq "All projects:" <<<"$all_pane"; then
@@ -78,7 +111,7 @@ if ! grep -Fq "All projects:" <<<"$all_pane"; then
   done
 fi
 if ! grep -Fq "All projects:" <<<"$all_pane"; then
-  playwright-cli -s="$session" run-code "$all_code" >/dev/null 2>&1 || true
+  playwright_checked -s="$session" run-code "$all_code" >/dev/null 2>&1 || true
   for _ in {1..45}; do
     all_pane="$(capture_pane)"
     if grep -Fq "All projects:" <<<"$all_pane"; then
@@ -131,7 +164,7 @@ for iteration in 1 2; do
     if (!response.ok()) throw new Error('navigation returned HTTP ' + response.status());
     return { status: response.status() };
   }"
-  if click_output="$(playwright-cli -s="$session" run-code "$click_code" 2>&1)"; then
+  if click_output="$(playwright_checked -s="$session" run-code "$click_code")"; then
     ok "project $project is selected through its real phone button"
   else
     bad "project $project is selected through its real phone button" "$click_output"
@@ -157,7 +190,7 @@ for iteration in 1 2; do
     bad "$project renders all $expected_count shared Dolt issues" "${problem:-no terminal result}"
   fi
 
-  if all_output="$(playwright-cli -s="$session" run-code "$all_code" 2>&1)"; then
+  if all_output="$(playwright_checked -s="$session" run-code "$all_code")"; then
     ok "$project returns to All through the phone UI"
   else
     bad "$project returns to All through the phone UI" "$all_output"

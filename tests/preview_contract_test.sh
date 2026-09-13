@@ -77,6 +77,8 @@ if [[ -f $PREVIEW/mobile.html ]]; then
   contains "mobile pages can move right" 'data-key="Right"' "$mobile"
   contains "mobile selection can open" 'data-key="Enter"' "$mobile"
   contains "mobile selection can go back" 'data-key="Escape"' "$mobile"
+  contains "mobile terminal has a reconnect control" 'aria-label="Reconnect terminal"' "$mobile"
+  contains "mobile terminal reconnects when the network returns" "window.addEventListener('online', reconnectTerminal)" "$mobile"
   contains "mobile controls call the executable CGI path" '/cgi-bin/b9s-key?key=' "$mobile"
 fi
 
