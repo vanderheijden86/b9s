@@ -1525,7 +1525,7 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	}
 
 	if width > 60 {
-		ageStr := FormatTimeRel(issue.CreatedAt)
+		ageStr := FormatTimeRel(issue.UpdatedAt)
 		ageStyle := t.theme.MutedText
 		if isSelected {
 			ageStyle = r.NewStyle().Foreground(darkFg)

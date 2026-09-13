@@ -1189,10 +1189,10 @@ func TestTreeViewIDColumnAlignment(t *testing.T) {
 	now := time.Now()
 	// Issues with variable-length suffixes: "z66" (3), "z66.4" (5), "u2z" (3), "3bb" (3)
 	issues := []model.Issue{
-		{ID: "beads-z66", Title: "Short ID issue", Status: model.StatusOpen, Priority: 1, IssueType: model.TypeTask, CreatedAt: now},
-		{ID: "beads-z66.4", Title: "Long ID issue", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeBug, CreatedAt: now.Add(-time.Hour)},
-		{ID: "beads-u2z", Title: "Another short ID", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeFeature, CreatedAt: now.Add(-2 * time.Hour)},
-		{ID: "beads-3bb", Title: "Third short ID", Status: model.StatusOpen, Priority: 3, IssueType: model.TypeChore, CreatedAt: now.Add(-3 * time.Hour)},
+		{ID: "beads-z66", Title: "Short ID issue", Status: model.StatusOpen, Priority: 1, IssueType: model.TypeTask, CreatedAt: now, UpdatedAt: now},
+		{ID: "beads-z66.4", Title: "Long ID issue", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeBug, CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour)},
+		{ID: "beads-u2z", Title: "Another short ID", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeFeature, CreatedAt: now.Add(-2 * time.Hour), UpdatedAt: now.Add(-2 * time.Hour)},
+		{ID: "beads-3bb", Title: "Third short ID", Status: model.StatusOpen, Priority: 3, IssueType: model.TypeChore, CreatedAt: now.Add(-3 * time.Hour), UpdatedAt: now.Add(-3 * time.Hour)},
 	}
 
 	m := ui.NewModel(issues, "")

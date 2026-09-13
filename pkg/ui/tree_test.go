@@ -4341,6 +4341,44 @@ func TestTreeViewRendersLaneStageColumn(t *testing.T) {
 	}
 }
 
+// A dispatcher lane transition bumps updated_at but never created_at, so the
+// row's age must follow updated_at or a freshly moved lane task reads as weeks
+// stale beside its new lane state.
+func TestTreeViewAgeColumnShowsUpdatedAt(t *testing.T) {
+	now := time.Now()
+	issues := []model.Issue{
+		{
+			ID:        "bd-4epf",
+			Title:     "Lane task created long ago",
+			Status:    model.StatusOpen,
+			IssueType: model.TypeBug,
+			CreatedAt: now.Add(-21 * 24 * time.Hour),
+			UpdatedAt: now.Add(-5*time.Minute - 10*time.Second),
+			Labels:    []string{"lane-stage=ABANDONED"},
+		},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(140, 20)
+
+	row := ""
+	for _, line := range strings.Split(stripANSI(tree.View()), "\n") {
+		if strings.Contains(line, "ABANDONED") {
+			row = line
+			break
+		}
+	}
+	if row == "" {
+		t.Fatalf("tree view has no row for the lane task:\n%s", stripANSI(tree.View()))
+	}
+	if !strings.Contains(row, "5m ago") {
+		t.Fatalf("age column must show time since updated_at (5m ago), got row: %q", row)
+	}
+	if strings.Contains(row, "3w ago") {
+		t.Fatalf("age column must not show time since created_at (3w ago), got row: %q", row)
+	}
+}
+
 func TestTreeViewRendersLaneStageAtMinimumColumnWidth(t *testing.T) {
 	issues := []model.Issue{
 		{

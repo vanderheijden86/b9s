@@ -827,6 +827,7 @@ The Tree View renders only parent-child relationships, creating a work breakdown
 | **Priority** | P0 (critical red), P1 (high), P2 (medium gray), P3+ (muted) |
 | **Status Dot** | ● Open (green), ◐ In Progress (yellow), ⚠ Blocked (red), ○ Closed (gray) |
 | **Lane State** | Dispatcher-owned `lane-stage` value, shown on terminals at least 100 columns wide; blank for issues outside a lane |
+| **Age** | Time since the issue was last updated (`updated_at`), so a lane transition shows as recent activity |
 
 ### Tree Building Algorithm
 
