@@ -2385,6 +2385,92 @@ func TestTreeXRayViewIndicator(t *testing.T) {
 	}
 }
 
+func TestTreeXRayViewRetainsFittingSubtree(t *testing.T) {
+	for _, filter := range []string{"all", "label", "assignee", "closed"} {
+		for _, height := range []int{4, 30} {
+			t.Run(fmt.Sprintf("%s/height_%d", filter, height), func(t *testing.T) {
+				issues := []model.Issue{
+					{ID: "bd-b6jw", Title: "Context root", Status: model.StatusOpen, IssueType: model.TypeEpic},
+					{
+						ID: "bd-b6jw.1", Title: "Matching child", Status: model.StatusClosed, IssueType: model.TypeTask,
+						Labels: []string{"lane-attempt=1"}, Assignee: "unknown",
+						Dependencies: []*model.Dependency{{IssueID: "bd-b6jw.1", DependsOnID: "bd-b6jw", Type: model.DepParentChild}},
+					},
+				}
+				tree := NewTreeModel(newTreeTestTheme())
+				tree.SetBeadsDir(t.TempDir())
+				tree.Build(issues)
+				tree.SetSize(120, height)
+				switch filter {
+				case "label":
+					tree.SetLabelFilter("lane-attempt=1")
+				case "assignee":
+					tree.SetAssigneeFilter("unknown")
+				case "closed":
+					tree.ApplyFilter("closed")
+				}
+				if !tree.SelectByID("bd-b6jw") {
+					t.Fatal("context root is missing")
+				}
+				if filter != "all" && !tree.IsFilterDimmed(tree.SelectedNode()) {
+					t.Fatal("expected a nonmatching context root")
+				}
+				tree.ToggleXRay()
+				view := stripANSI(tree.View())
+				for _, want := range []string{"[XRAY: Context root]", "b6jw", "Matching child"} {
+					if !strings.Contains(view, want) {
+						t.Errorf("fitting XRay subtree must render %q, got:\n%s", want, view)
+					}
+				}
+				if got := lipgloss.Height(strings.TrimRight(view, "\n")); got != 4 {
+					t.Errorf("rendered %d lines, want header, XRay heading, root and child (4)\n%s", got, view)
+				}
+			})
+		}
+	}
+}
+
+func TestTreeXRayViewConstrainedBudget(t *testing.T) {
+	for _, tc := range []struct {
+		height   int
+		children int
+		wantRows int
+	}{
+		{height: 2, children: 1, wantRows: 0},
+		{height: 3, children: 1, wantRows: 1},
+		{height: 6, children: 8, wantRows: 3},
+	} {
+		t.Run(fmt.Sprintf("height_%d", tc.height), func(t *testing.T) {
+			issues := []model.Issue{{ID: "epic-1", Title: "Budget root", IssueType: model.TypeEpic}}
+			for i := 1; i <= tc.children; i++ {
+				id := fmt.Sprintf("task-%02d", i)
+				issues = append(issues, model.Issue{
+					ID: id, Title: fmt.Sprintf("Budget child %02d", i), IssueType: model.TypeTask,
+					Dependencies: []*model.Dependency{{IssueID: id, DependsOnID: "epic-1", Type: model.DepParentChild}},
+				})
+			}
+			tree := NewTreeModel(newTreeTestTheme())
+			tree.SetBeadsDir(t.TempDir())
+			tree.Build(issues)
+			tree.SetSize(120, tc.height)
+			tree.ToggleXRay()
+			view := stripANSI(tree.View())
+			rows := 0
+			for _, line := range strings.Split(strings.TrimRight(view, "\n"), "\n") {
+				if strings.Contains(line, "Budget") && !strings.Contains(line, "[XRAY:") {
+					rows++
+				}
+			}
+			if rows != tc.wantRows {
+				t.Errorf("rendered %d subtree rows, want %d\n%s", rows, tc.wantRows, view)
+			}
+			if got := lipgloss.Height(strings.TrimRight(view, "\n")); got > tc.height {
+				t.Errorf("rendered %d lines, exceeds viewport height %d\n%s", got, tc.height, view)
+			}
+		})
+	}
+}
+
 // =============================================================================
 // Advanced filter tests (bd-08h)
 // =============================================================================

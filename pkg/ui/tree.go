@@ -1130,10 +1130,9 @@ func (t *TreeModel) View() string {
 	// Get visible range - O(1) calculation based on viewportOffset and height
 	start, end := t.visibleRange()
 
-	// Reduce visible nodes to compensate for sticky/xray lines (bd-tf1v)
-	if extraLines > 0 && end-start > extraLines {
-		end -= extraLines
-	}
+	// Extra headings consume viewport capacity, not rows in a shorter list.
+	bodyCapacity := max(0, t.effectiveVisibleCount()-extraLines)
+	end = min(end, start+bodyCapacity)
 
 	// Compute max short ID width across visible nodes for column alignment (bd-uyzc)
 	maxIDWidth := 0
