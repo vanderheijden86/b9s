@@ -115,6 +115,22 @@ The reserved `.test` suffix is answered locally by dnsmasq. Do not replace it
 with nip.io or sslip.io. Labels ending in digits can be interpreted as part of
 the embedded address and route to an unrelated public IP.
 
+For phone access, set `B9S_PREVIEW_TAILSCALE_HOST` to the laptop's MagicDNS
+name before deploying. The manifest adds only `/b9s`, `/b9s/terminal` and the
+allowlisted key endpoint to that host, so an existing application at the host
+root remains unchanged. Tailscale Serve forwards tailnet HTTPS to the shared
+local Traefik listener:
+
+```sh
+tailnet_host="$(tailscale status --json | jq -r '.Self.DNSName | rtrimstr(".")')"
+export B9S_PREVIEW_TAILSCALE_HOST="$tailnet_host"
+tailscale serve --bg --yes http://127.0.0.1:8081
+scripts/preview/preview-deploy bd-b6jw "$sha"
+```
+
+The mobile URL is `https://TAILNET_HOST/b9s/`. Tailscale Serve is private to
+the tailnet. Do not use Funnel for this preview.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -126,6 +142,7 @@ the embedded address and route to an unrelated public IP.
 | `B9S_PREVIEW_BUILDKIT_ADDR` | `tcp://buildkitd.buildkit.svc.cluster.local:1234` | Unprivileged in-cluster builder |
 | `B9S_PREVIEW_HOST_SUFFIX` | `previews.osenco.test` | Browser hostname suffix |
 | `B9S_PREVIEW_INGRESS_PORT` | `8081` | Local Traefik host port |
+| `B9S_PREVIEW_TAILSCALE_HOST` | empty | Optional MagicDNS hostname for the private `/b9s/` route |
 | `B9S_PREVIEW_ROLLOUT_TIMEOUT` | `180` | Bounded rollout wait in seconds |
 | `B9S_PREVIEW_DELETE_TIMEOUT` | `180` | Bounded namespace deletion wait in seconds |
 

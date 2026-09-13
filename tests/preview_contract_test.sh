@@ -60,6 +60,7 @@ if [[ $fail -eq 0 ]]; then
     B9S_PREVIEW_KUBECONFIG="$kubeconfig" \
     B9S_PREVIEW_CONTEXT=preview \
     B9S_PREVIEW_HOST_SUFFIX=previews.osenco.test \
+    B9S_PREVIEW_TAILSCALE_HOST=macbook-pro-2.tailb7c04d.ts.net \
     bash -c 'source "$1"; preview_parse_args bd-b6jw "$2"; preview_render_manifests /dev/stdout' \
       bash "$PREVIEW/lib.sh" "$sha"
   )"
@@ -75,6 +76,7 @@ if [[ $fail -eq 0 ]]; then
   contains "browser terminal is exposed" "name: terminal" "$rendered"
   contains "identity endpoint is exposed" "name: identity" "$rendered"
   contains "preview has a clickable hostname" "host: b9s-bd-b6jw.previews.osenco.test" "$rendered"
+  contains "mobile preview has a tailnet-only hostname" "host: macbook-pro-2.tailb7c04d.ts.net" "$rendered"
 
   set +e
   invalid="$(B9S_PREVIEW_KUBECONFIG="$kubeconfig" B9S_PREVIEW_CONTEXT=preview \
@@ -83,6 +85,15 @@ if [[ $fail -eq 0 ]]; then
   set -e
   if [[ $invalid_rc -eq 2 ]]; then ok "unsafe task identifiers stop before cluster access"; else bad "unsafe task identifiers stop before cluster access" "exit $invalid_rc"; fi
   contains "unsafe task identifier reports the boundary" "TASK_ID is not a plain identifier" "$invalid"
+
+  set +e
+  invalid_tailnet="$(B9S_PREVIEW_KUBECONFIG="$kubeconfig" B9S_PREVIEW_CONTEXT=preview \
+    B9S_PREVIEW_TAILSCALE_HOST='bad host' \
+    "$PREVIEW/preview-status" bd-b6jw "$sha" 2>&1)"
+  invalid_tailnet_rc=$?
+  set -e
+  if [[ $invalid_tailnet_rc -eq 2 ]]; then ok "unsafe tailnet host stops before cluster access"; else bad "unsafe tailnet host stops before cluster access" "exit $invalid_tailnet_rc"; fi
+  contains "unsafe tailnet host reports the boundary" "tailnet host is not valid" "$invalid_tailnet"
 fi
 
 printf '=== preview-contract DONE pass=%d fail=%d ===\n' "$pass" "$fail"

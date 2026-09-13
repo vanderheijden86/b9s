@@ -15,6 +15,9 @@ preview_finish() {
   local verdict=pass
   [[ $PREVIEW_FAIL -eq 0 ]] || verdict=fail
   printf 'PREVIEW_URL=%s\n' "$PREVIEW_URL"
+  if [[ -n ${PREVIEW_TAILSCALE_URL:-} ]]; then
+    printf 'PREVIEW_TAILSCALE_URL=%s\n' "$PREVIEW_TAILSCALE_URL"
+  fi
   printf 'PREVIEW_IDENTITY task=%s commit=%s namespace=%s image=%s\n' \
     "$PREVIEW_TASK_ID" "$PREVIEW_COMMIT_SHA" "$PREVIEW_NAMESPACE" "$PREVIEW_IMAGE"
   printf '=== %s DONE pass=%d fail=%d verdict=%s ===\n' \
@@ -75,6 +78,15 @@ preview_parse_args() {
   [[ $PREVIEW_INGRESS_PORT =~ ^[0-9]{1,5}$ ]] || preview_die usage "ingress port is not valid"
   PREVIEW_URL="http://${PREVIEW_HOST}:${PREVIEW_INGRESS_PORT}"
 
+  PREVIEW_TAILSCALE_HOST="${B9S_PREVIEW_TAILSCALE_HOST:-}"
+  PREVIEW_TAILSCALE_HOST="${PREVIEW_TAILSCALE_HOST%.}"
+  PREVIEW_TAILSCALE_URL=""
+  if [[ -n $PREVIEW_TAILSCALE_HOST ]]; then
+    [[ $PREVIEW_TAILSCALE_HOST =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] \
+      || preview_die usage "tailnet host is not valid"
+    PREVIEW_TAILSCALE_URL="https://${PREVIEW_TAILSCALE_HOST}/b9s/"
+  fi
+
   PREVIEW_REGISTRY="${B9S_PREVIEW_REGISTRY:-registry.registry.svc.cluster.local:5000}"
   [[ $PREVIEW_REGISTRY =~ ^[a-z0-9]([-a-z0-9.:/]*[a-z0-9])?$ ]] \
     || preview_die usage "registry is not valid"
@@ -85,6 +97,7 @@ preview_parse_args() {
   mkdir -p "$PREVIEW_EVIDENCE_DIR"
 
   export PREVIEW_TASK_ID PREVIEW_COMMIT_SHA PREVIEW_NAMESPACE PREVIEW_HOST PREVIEW_URL
+  export PREVIEW_TAILSCALE_HOST PREVIEW_TAILSCALE_URL
   export PREVIEW_KUBECONFIG PREVIEW_CONTEXT PREVIEW_IMAGE PREVIEW_PUSH_IMAGE PREVIEW_EVIDENCE_DIR
 }
 
@@ -110,6 +123,31 @@ preview_require_cluster() {
 
 preview_render_manifests() {
   local output="$1"
+  local tailscale_rule=""
+  if [[ -n $PREVIEW_TAILSCALE_HOST ]]; then
+    tailscale_rule="$(printf '%s\n' \
+      "    - host: ${PREVIEW_TAILSCALE_HOST}" \
+      "      http:" \
+      "        paths:" \
+      "          - path: /b9s/terminal" \
+      "            pathType: Prefix" \
+      "            backend:" \
+      "              service:" \
+      "                name: b9s" \
+      "                port: {name: mobile-terminal}" \
+      "          - path: /cgi-bin/b9s-key" \
+      "            pathType: Exact" \
+      "            backend:" \
+      "              service:" \
+      "                name: b9s" \
+      "                port: {name: identity}" \
+      "          - path: /b9s" \
+      "            pathType: Prefix" \
+      "            backend:" \
+      "              service:" \
+      "                name: b9s" \
+      "                port: {name: identity}")"
+  fi
   cat >"$output" <<YAML
 apiVersion: v1
 kind: Namespace
@@ -324,6 +362,7 @@ spec:
               service:
                 name: b9s
                 port: {name: terminal}
+${tailscale_rule}
 YAML
 }
 
