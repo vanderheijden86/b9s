@@ -58,3 +58,10 @@
 # - github.org
 # - github.repo
 # - sync.branch - Git branch for beads commits (use BEADS_SYNC_BRANCH env var or bd config set)
+
+# Disabled because this project connects as its own scoped SQL user
+# (issue-project-credentials.sh). Registering a Dolt backup remote is a
+# server-admin operation, so bd's auto-backup fails with "command denied" on
+# every command otherwise.
+backup:
+  enabled: false
