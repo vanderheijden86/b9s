@@ -625,6 +625,47 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 	}
 }
 
+func TestProjectSwitch_DoltOnlyProjectDoesNotRequireJSONL(t *testing.T) {
+	root := t.TempDir()
+	activeDir := filepath.Join(root, "active")
+	activeBeadsDir := filepath.Join(activeDir, ".beads")
+	if err := os.MkdirAll(activeBeadsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	activePath := filepath.Join(activeBeadsDir, "issues.jsonl")
+	if err := os.WriteFile(activePath, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	doltDir := filepath.Join(root, "shared-dolt")
+	doltBeadsDir := filepath.Join(doltDir, ".beads")
+	if err := os.MkdirAll(doltBeadsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	metadata := `{"database":"dolt","dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":1,"dolt_server_user":"reader","dolt_database":"shared"}`
+	if err := os.WriteFile(filepath.Join(doltBeadsDir, "metadata.json"), []byte(metadata), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	projects := []config.Project{
+		{Name: "active", Path: activeDir},
+		{Name: "shared-dolt", Path: doltDir},
+	}
+	m := ui.NewModel(nil, activePath).WithConfig(config.Config{Projects: projects}, "active", activeDir)
+	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	m = newM.(ui.Model)
+
+	newM, cmd := m.Update(ui.SwitchProjectMsg{Project: projects[1]})
+	m = newM.(ui.Model)
+
+	if strings.Contains(m.View(), "No beads found") {
+		t.Fatal("Dolt metadata should be sufficient to switch projects without a JSONL file")
+	}
+	if cmd == nil {
+		t.Fatal("Dolt project switch should start datasource loading")
+	}
+}
+
 func TestProjectSwitch_ShowsLoadingScreen(t *testing.T) {
 	_, projects := createSampleProjects(t)
 

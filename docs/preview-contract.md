@@ -190,6 +190,15 @@ The contract guard is safe and does not call the cluster:
 tests/preview_contract_test.sh
 ```
 
+After deployment, exercise the exact phone controls against two populated
+databases and compare the rendered totals with read-only Dolt queries:
+
+```sh
+tests/mobile_project_switch_e2e.sh \
+  "https://$tailnet_host" bd-b6jw "$sha" b9s-bd-b6jw \
+  "$HOME/.kube/config-local-mac-k3s"
+```
+
 ## Cleanup
 
 `preview-destroy` derives exactly one namespace from the task ID, then checks
