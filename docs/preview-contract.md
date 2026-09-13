@@ -1,8 +1,9 @@
 # Browser-accessible Kubernetes previews
 
-The b9s preview runs the real terminal UI through ttyd. A reviewer opens one
-URL, clicks the terminal, and uses the same keys as a local b9s session. The
-preview uses disposable fixture data and never connects to a project tracker.
+The b9s preview runs the real terminal UI through ttyd. A reviewer can use the
+desktop terminal with a keyboard or open the mobile shell at `/b9s/` for touch
+navigation. The preview uses disposable fixture data and never connects to a
+project tracker.
 
 Status: active
 
@@ -27,20 +28,28 @@ issued by osenco-infra. The default context is `preview`.
 
 ```mermaid
 graph TB
-    USER["👤 **Reviewer**<br/>browser and keyboard"]
+    USER["👤 **Reviewer**<br/>desktop or mobile browser"]
     TRAEFIK["**Traefik**<br/>b9s-TASK.previews.osenco.test"]
 
     subgraph NS["🖥️ b9s task namespace"]
-        TTYD["**ttyd**<br/>web terminal on 7681"]
+        DESKTOP["**Desktop ttyd**<br/>keyboard terminal on 7681"]
+        MOBILE["**Mobile shell**<br/>touch controls on 7682"]
+        TTYD["**Mobile ttyd**<br/>terminal on 7683"]
+        TMUX["**tmux**<br/>shared terminal session"]
         B9S["**b9s**<br/>real TUI"]
         ID["**Identity endpoint**<br/>commit, task, namespace on 7682"]
         FIXTURE[("Disposable Beads fixture")]
-        TTYD --> B9S
+        DESKTOP --> TMUX
+        MOBILE -->|"allowlisted keys"| TMUX
+        MOBILE --> TTYD
+        TTYD --> TMUX
+        TMUX --> B9S
         B9S --> FIXTURE
     end
 
     USER --> TRAEFIK
-    TRAEFIK --> TTYD
+    TRAEFIK --> DESKTOP
+    TRAEFIK --> MOBILE
     TRAEFIK --> ID
 ```
 
@@ -48,6 +57,17 @@ The image bakes `/app/.commit-sha`. Deployment supplies only the task and
 namespace, so an edited environment variable cannot make one image claim to be
 another commit. `preview-verify` reads `/__preview` through the Service and
 compares all three identity fields with the requested preview.
+
+## Mobile navigation
+
+The mobile shell keeps the terminal visible above two touch-control rows. The
+project row scrolls horizontally and exposes `All` plus project keys `1` through
+`9`. The navigation row provides up, down, previous page, next page, open and
+back actions. Each button sends one allowlisted key through the CGI endpoint to
+the shared tmux session, so it does not depend on a mobile browser synthesizing
+keyboard events.
+
+The desktop URL remains unchanged. Append `/b9s/` to open the mobile shell.
 
 ## Namespace and access boundary
 

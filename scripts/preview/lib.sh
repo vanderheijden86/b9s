@@ -183,6 +183,7 @@ spec:
       ports:
         - {protocol: TCP, port: 7681}
         - {protocol: TCP, port: 7682}
+        - {protocol: TCP, port: 7683}
     - from:
         - namespaceSelector:
             matchLabels:
@@ -240,6 +241,7 @@ spec:
           ports:
             - {name: terminal, containerPort: 7681}
             - {name: identity, containerPort: 7682}
+            - {name: mobile-terminal, containerPort: 7683}
           readinessProbe:
             httpGet: {path: /__preview, port: identity}
             initialDelaySeconds: 2
@@ -279,6 +281,7 @@ spec:
   ports:
     - {name: terminal, port: 7681, targetPort: terminal}
     - {name: identity, port: 7682, targetPort: identity}
+    - {name: mobile-terminal, port: 7683, targetPort: mobile-terminal}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -293,6 +296,24 @@ spec:
         paths:
           - path: /__preview
             pathType: Exact
+            backend:
+              service:
+                name: b9s
+                port: {name: identity}
+          - path: /b9s/terminal
+            pathType: Prefix
+            backend:
+              service:
+                name: b9s
+                port: {name: mobile-terminal}
+          - path: /cgi-bin/b9s-key
+            pathType: Exact
+            backend:
+              service:
+                name: b9s
+                port: {name: identity}
+          - path: /b9s
+            pathType: Prefix
             backend:
               service:
                 name: b9s

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#18181b">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2318181b'/%3E%3Ctext x='8' y='23' fill='%23c084fc' font-size='20'%3EB%3C/text%3E%3C/svg%3E">
+    <title>B9s mobile preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: #18181b;
+        color: #f4f4f5;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #18181b;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 42px;
+        padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+        border-bottom: 1px solid #3f3f46;
+        background: #111113;
+      }
+
+      header strong { color: #c084fc; }
+      header span { color: #a1a1aa; font-size: 12px; }
+
+      iframe {
+        width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        border: 0;
+        background: #18181b;
+      }
+
+      .controls {
+        flex: 0 0 auto;
+        padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+        border-top: 1px solid #3f3f46;
+        background: #111113;
+      }
+
+      .projects {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        overscroll-behavior-x: contain;
+      }
+
+      .projects::-webkit-scrollbar { display: none; }
+
+      .navigation {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(48px, 1fr));
+        gap: 6px;
+      }
+
+      button {
+        min-width: 48px;
+        min-height: 44px;
+        padding: 7px 10px;
+        border: 1px solid #52525b;
+        border-radius: 9px;
+        background: #27272a;
+        color: #fafafa;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button:active, button[aria-pressed="true"] {
+        border-color: #c084fc;
+        background: #581c87;
+      }
+
+      .projects button { flex: 0 0 auto; }
+      .projects button:first-child { color: #c084fc; }
+      .navigation button:nth-child(5) { color: #86efac; }
+      .navigation button:nth-child(6) { color: #fca5a5; }
+
+      #status {
+        position: absolute;
+        right: 10px;
+        bottom: calc(112px + env(safe-area-inset-bottom));
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: rgb(17 17 19 / 88%);
+        color: #a1a1aa;
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+      }
+
+      #status.visible { opacity: 1; }
+
+      @media (min-width: 760px) and (pointer: fine) {
+        .controls { max-width: 760px; width: 100%; align-self: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>B9s</strong>
+      <span>touch navigation</span>
+    </header>
+    <iframe title="B9s terminal" src="./terminal/"></iframe>
+    <section class="controls" aria-label="Terminal navigation">
+      <nav class="projects" aria-label="Projects">
+        <button type="button" data-key="0" aria-label="Show all projects">All</button>
+        <button type="button" data-key="1" aria-label="Open project 1">1</button>
+        <button type="button" data-key="2" aria-label="Open project 2">2</button>
+        <button type="button" data-key="3" aria-label="Open project 3">3</button>
+        <button type="button" data-key="4" aria-label="Open project 4">4</button>
+        <button type="button" data-key="5" aria-label="Open project 5">5</button>
+        <button type="button" data-key="6" aria-label="Open project 6">6</button>
+        <button type="button" data-key="7" aria-label="Open project 7">7</button>
+        <button type="button" data-key="8" aria-label="Open project 8">8</button>
+        <button type="button" data-key="9" aria-label="Open project 9">9</button>
+      </nav>
+      <nav class="navigation" aria-label="Issue navigation">
+        <button type="button" data-key="Up" aria-label="Move up">↑</button>
+        <button type="button" data-key="Down" aria-label="Move down">↓</button>
+        <button type="button" data-key="Left" aria-label="Previous page">←</button>
+        <button type="button" data-key="Right" aria-label="Next page">→</button>
+        <button type="button" data-key="Enter" aria-label="Open selection">Open</button>
+        <button type="button" data-key="Escape" aria-label="Go back">Back</button>
+      </nav>
+    </section>
+    <div id="status" role="status" aria-live="polite"></div>
+    <script>
+      const status = document.querySelector('#status');
+      let statusTimer;
+
+      async function sendKey(key, button) {
+        button.setAttribute('aria-pressed', 'true');
+        try {
+          const response = await fetch(`/cgi-bin/b9s-key?key=${encodeURIComponent(key)}`, {
+            method: 'POST',
+            cache: 'no-store',
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          status.textContent = `${button.textContent.trim()} sent`;
+        } catch (error) {
+          status.textContent = `Navigation failed: ${error.message}`;
+        } finally {
+          button.setAttribute('aria-pressed', 'false');
+          status.classList.add('visible');
+          clearTimeout(statusTimer);
+          statusTimer = setTimeout(() => status.classList.remove('visible'), 900);
+        }
+      }
+
+      document.querySelectorAll('button[data-key]').forEach((button) => {
+        button.addEventListener('click', () => sendKey(button.dataset.key, button));
+      });
+    </script>
+  </body>
+</html>

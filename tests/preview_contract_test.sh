@@ -21,9 +21,35 @@ done
 
 if [[ -f $PREVIEW/Dockerfile ]]; then ok "preview image has a Dockerfile"; else bad "preview image has a Dockerfile"; fi
 if [[ -f $PREVIEW/lib.sh ]]; then ok "preview commands share a contract library"; else bad "preview commands share a contract library"; fi
+if [[ -f $PREVIEW/mobile.html ]]; then ok "mobile preview has a touch shell"; else bad "mobile preview has a touch shell"; fi
+if [[ -x $PREVIEW/mobile-key.cgi ]]; then ok "mobile preview has an executable key endpoint"; else bad "mobile preview has an executable key endpoint"; fi
+if [[ -x $ROOT/tests/mobile_preview_e2e.sh ]]; then ok "mobile preview has an executable E2E check"; else bad "mobile preview has an executable E2E check"; fi
 
 entrypoint="$(<"$PREVIEW/entrypoint.sh")"
 contains "browser terminal uses the darker preview background" 'theme={"background":"#18181b"}' "$entrypoint"
+contains "mobile and desktop terminals share one session" "tmux new-session -d -s b9s" "$entrypoint"
+contains "mobile terminal has a stable base path" "--base-path /b9s/terminal" "$entrypoint"
+contains "mobile key endpoint is installed in the CGI root" "/www/cgi-bin/b9s-key" "$entrypoint"
+
+contract_library="$(<"$PREVIEW/lib.sh")"
+contains "mobile terminal is allowed through the network policy" 'port: 7683' "$contract_library"
+contains "mobile terminal is exposed by the service" 'name: mobile-terminal' "$contract_library"
+contains "mobile shell has a dedicated ingress path" 'path: /b9s/terminal' "$contract_library"
+contains "mobile key endpoint has a dedicated ingress path" 'path: /cgi-bin/b9s-key' "$contract_library"
+
+if [[ -f $PREVIEW/mobile.html ]]; then
+  mobile="$(<"$PREVIEW/mobile.html")"
+  contains "mobile viewport is declared" 'name="viewport"' "$mobile"
+  contains "mobile shell avoids a favicon request" 'rel="icon"' "$mobile"
+  contains "mobile projects are directly selectable" 'data-key="0"' "$mobile"
+  contains "mobile list can move upward" 'data-key="Up"' "$mobile"
+  contains "mobile list can move downward" 'data-key="Down"' "$mobile"
+  contains "mobile pages can move left" 'data-key="Left"' "$mobile"
+  contains "mobile pages can move right" 'data-key="Right"' "$mobile"
+  contains "mobile selection can open" 'data-key="Enter"' "$mobile"
+  contains "mobile selection can go back" 'data-key="Escape"' "$mobile"
+  contains "mobile controls call the executable CGI path" '/cgi-bin/b9s-key?key=' "$mobile"
+fi
 
 if [[ $fail -eq 0 ]]; then
   sha="$(git -C "$ROOT" rev-parse HEAD)"
