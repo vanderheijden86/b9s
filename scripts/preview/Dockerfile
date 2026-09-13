@@ -10,7 +10,7 @@ RUN CGO_ENABLED=1 go build -mod=vendor \
 
 FROM tsl0922/ttyd:alpine@sha256:dafdb93a65c9b487f3056933733a06c12f6e447e3bd31ccd4ef6c279cf9a7648 AS runtime
 ARG COMMIT_SHA
-RUN apk add --no-cache busybox-extras tmux \
+RUN apk add --no-cache busybox-extras mariadb-client tmux \
     && test -n "$COMMIT_SHA" \
     && mkdir -p /app /data /www /usr/local/share/b9s-preview \
     && printf '%s\n' "$COMMIT_SHA" > /app/.commit-sha \

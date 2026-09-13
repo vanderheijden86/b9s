@@ -24,24 +24,52 @@ if [[ -f $PREVIEW/lib.sh ]]; then ok "preview commands share a contract library"
 if [[ -f $PREVIEW/mobile.html ]]; then ok "mobile preview has a touch shell"; else bad "mobile preview has a touch shell"; fi
 if [[ -x $PREVIEW/mobile-key.cgi ]]; then ok "mobile preview has an executable key endpoint"; else bad "mobile preview has an executable key endpoint"; fi
 if [[ -x $ROOT/tests/mobile_preview_e2e.sh ]]; then ok "mobile preview has an executable E2E check"; else bad "mobile preview has an executable E2E check"; fi
+if [[ -x $PREVIEW/preview-provision-reader ]]; then ok "preview has an executable read-only credential provisioner"; else bad "preview has an executable read-only credential provisioner"; fi
 
 entrypoint="$(<"$PREVIEW/entrypoint.sh")"
 contains "browser terminal uses the darker preview background" 'theme={"background":"#18181b"}' "$entrypoint"
 contains "mobile and desktop terminals share one session" "tmux new-session -d -s b9s" "$entrypoint"
 contains "mobile terminal has a stable base path" "--base-path /b9s/terminal" "$entrypoint"
 contains "mobile key endpoint is installed in the CGI root" "/www/cgi-bin/b9s-key" "$entrypoint"
+contains "preview requires a read-only Dolt user" 'B9S_DOLT_READ_USER:?required' "$entrypoint"
+contains "preview requires a read-only Dolt password" 'B9S_DOLT_READ_PASSWORD:?required' "$entrypoint"
+contains "preview discovers only accessible databases" 'SHOW DATABASES' "$entrypoint"
+contains "preview verifies the Beads issues table" 'SELECT 1 FROM' "$entrypoint"
+contains "preview starts in the all-projects view" 'send-keys -t b9s 0' "$entrypoint"
+if grep -Fq '"id":"demo"' <<<"$entrypoint"; then
+  bad "preview does not seed demo tickets"
+else
+  ok "preview does not seed demo tickets"
+fi
 
 contract_library="$(<"$PREVIEW/lib.sh")"
 contains "mobile terminal is allowed through the network policy" 'port: 7683' "$contract_library"
 contains "mobile terminal is exposed by the service" 'name: mobile-terminal' "$contract_library"
 contains "mobile shell has a dedicated ingress path" 'path: /b9s/terminal' "$contract_library"
 contains "mobile key endpoint has a dedicated ingress path" 'path: /cgi-bin/b9s-key' "$contract_library"
+contains "database traffic is limited to the MySQL port" 'port: 3306' "$contract_library"
+contains "deployment reads the dedicated Dolt secret" 'secretRef:' "$contract_library"
+contains "deployment names the dedicated Dolt secret" 'name: b9s-shared-dolt-reader' "$contract_library"
+
+if [[ -f $PREVIEW/preview-provision-reader ]]; then
+  provisioner="$(<"$PREVIEW/preview-provision-reader")"
+  contains "provisioner grants only SELECT" 'GRANT SELECT ON' "$provisioner"
+  contains "provisioner enumerates Beads databases" "table_name = 'issues'" "$provisioner"
+  contains "provisioner proves writes are refused" 'UPDATE issues SET title = title WHERE 1 = 0' "$provisioner"
+  if grep -Eq 'GRANT (ALL|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)' <<<"$provisioner"; then
+    bad "provisioner never grants a write privilege"
+  else
+    ok "provisioner never grants a write privilege"
+  fi
+fi
 
 if [[ -f $PREVIEW/mobile.html ]]; then
   mobile="$(<"$PREVIEW/mobile.html")"
   contains "mobile viewport is declared" 'name="viewport"' "$mobile"
   contains "mobile shell avoids a favicon request" 'rel="icon"' "$mobile"
   contains "mobile projects are directly selectable" 'data-key="0"' "$mobile"
+  contains "mobile projects can scroll backward" 'data-key="["' "$mobile"
+  contains "mobile projects can scroll forward" 'data-key="]"' "$mobile"
   contains "mobile list can move upward" 'data-key="Up"' "$mobile"
   contains "mobile list can move downward" 'data-key="Down"' "$mobile"
   contains "mobile pages can move left" 'data-key="Left"' "$mobile"

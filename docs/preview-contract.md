@@ -2,8 +2,9 @@
 
 The b9s preview runs the real terminal UI through ttyd. A reviewer can use the
 desktop terminal with a keyboard or open the mobile shell at `/b9s/` for touch
-navigation. The preview uses disposable fixture data and never connects to a
-project tracker.
+navigation. The preview reads every accessible Beads database through a
+database-enforced SELECT-only account. It does not seed fixture tickets or hold
+a write-capable Beads credential.
 
 Status: active
 
@@ -38,19 +39,24 @@ graph TB
         TMUX["**tmux**<br/>shared terminal session"]
         B9S["**b9s**<br/>real TUI"]
         ID["**Identity endpoint**<br/>commit, task, namespace on 7682"]
-        FIXTURE[("Disposable Beads fixture")]
+        CATALOG[("Generated project catalog")]
         DESKTOP --> TMUX
         MOBILE -->|"allowlisted keys"| TMUX
         MOBILE --> TTYD
         TTYD --> TMUX
         TMUX --> B9S
-        B9S --> FIXTURE
+        B9S --> CATALOG
     end
+
+    TUNNEL["**Laptop SSH tunnel**<br/>host.docker.internal:3306"]
+    DOLT[("Shared Dolt<br/>SELECT only")]
 
     USER --> TRAEFIK
     TRAEFIK --> DESKTOP
     TRAEFIK --> MOBILE
     TRAEFIK --> ID
+    CATALOG --> TUNNEL
+    TUNNEL --> DOLT
 ```
 
 The image bakes `/app/.commit-sha`. Deployment supplies only the task and
@@ -89,6 +95,20 @@ ship with every preview.
 The credential is project-scoped, not lane-scoped. One b9s lane can still reach
 another b9s lane's preview. It cannot bind or deploy in a sibling project's
 namespace or in `default`.
+
+Before the first deployment, an operator runs
+`scripts/preview/preview-provision-reader TASK_ID`. The command finds databases
+that contain an `issues` table, grants the existing `bd_b9s_ro` identity
+`SELECT` on each database individually, proves a no-op `UPDATE` is denied, and
+only then writes `b9s-shared-dolt-reader` into the task namespace. Database
+names are enumerated because Dolt does not reliably enforce wildcard database
+grants. Re-run the command after adding a Beads database.
+
+The Secret exposes only `B9S_DOLT_HOST`, `B9S_DOLT_PORT`,
+`B9S_DOLT_READ_USER`, and `B9S_DOLT_READ_PASSWORD`. The NetworkPolicy permits
+database traffic only on TCP 3306. In the local cluster,
+`host.docker.internal` reaches the existing laptop SSH tunnel; the remote Dolt
+port remains unreachable directly.
 
 ## Image delivery
 
@@ -156,6 +176,7 @@ sha="$(git rev-parse HEAD)"
 export B9S_PREVIEW_KUBECONFIG="$HOME/.kube/config-local-mac-k3s"
 export B9S_PREVIEW_CONTEXT=k3d-local-mac-k3s
 
+scripts/preview/preview-provision-reader bd-b6jw
 scripts/preview/preview-build bd-b6jw "$sha"
 scripts/preview/preview-deploy bd-b6jw "$sha"
 scripts/preview/preview-verify bd-b6jw "$sha"

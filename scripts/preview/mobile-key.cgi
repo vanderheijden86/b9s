@@ -14,6 +14,8 @@ case "${QUERY_STRING:-}" in
   key=Right) key=Right ;;
   key=Enter) key=Enter ;;
   key=Escape) key=Escape ;;
+  key=%5B|key=%5b) key='[' ;;
+  key=%5D|key=%5d) key=']' ;;
   key=[0-9]) key="${QUERY_STRING#key=}" ;;
   *)
     printf 'Status: 400 Bad Request\r\nContent-Type: application/json\r\n\r\n'

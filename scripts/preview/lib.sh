@@ -237,6 +237,8 @@ spec:
       ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
+    - ports:
+        - {protocol: TCP, port: 3306}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -276,6 +278,9 @@ spec:
           env:
             - {name: PREVIEW_TASK_ID, value: "${PREVIEW_TASK_ID}"}
             - {name: PREVIEW_NAMESPACE, value: "${PREVIEW_NAMESPACE}"}
+          envFrom:
+            - secretRef:
+                name: b9s-shared-dolt-reader
           ports:
             - {name: terminal, containerPort: 7681}
             - {name: identity, containerPort: 7682}
