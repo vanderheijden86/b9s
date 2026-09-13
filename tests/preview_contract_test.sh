@@ -6,6 +6,10 @@ ROOT="$(git -C "$(dirname "$0")/.." rev-parse --show-toplevel)"
 PREVIEW="$ROOT/scripts/preview"
 pass=0
 fail=0
+timeout_bin="$(command -v timeout || command -v gtimeout)" || {
+  printf 'preview-contract requires GNU timeout (timeout or gtimeout)\n' >&2
+  exit 1
+}
 
 ok() { pass=$((pass + 1)); printf 'PASS  %s\n' "$1"; }
 bad() { fail=$((fail + 1)); printf 'FAIL  %s%s\n' "$1" "${2:+: $2}"; }
@@ -13,6 +17,75 @@ contains() {
   local desc="$1" needle="$2" haystack="$3"
   if grep -Fq -- "$needle" <<<"$haystack"; then ok "$desc"; else bad "$desc" "missing $needle"; fi
 }
+
+# Exercise the real Git boundary in disposable fixture repositories. These
+# fixtures never invoke an image builder or use Kubernetes credentials.
+boundary_case() {
+  local scenario="$1" expected="$2" fixture sha output rc
+  fixture="$(mktemp -d "${TMPDIR:-/tmp}/b9s-preview-boundary.XXXXXX")" \
+    || { bad "artifact boundary $scenario fixture"; return; }
+  git -C "$fixture" init -q &&
+  mkdir -p "$fixture/.beads" &&
+  printf '0.63.3\n' >"$fixture/.beads/.local_version" &&
+  printf '{}\n' >"$fixture/.beads/issues.jsonl" &&
+  printf 'backend: dolt\n' >"$fixture/.beads/config.yaml" &&
+  printf 'package fixture\n' >"$fixture/source.go" &&
+  git -C "$fixture" add . &&
+  git -C "$fixture" -c user.name=fixture -c user.email=fixture@example.invalid \
+    -c core.hooksPath=/dev/null commit -qm fixture \
+    || { bad "artifact boundary $scenario fixture"; return; }
+  sha="$(git -C "$fixture" rev-parse HEAD)" \
+    || { bad "artifact boundary $scenario fixture HEAD"; return; }
+  case "$scenario" in
+    version|both|staged-version|mixed)
+      printf '1.3.0-rc.1\n' >"$fixture/.beads/.local_version" ;;
+  esac
+  case "$scenario" in
+    lock|both|staged-lock) touch "$fixture/.beads.gate.lock" ;;
+    harness) mkdir -p "$fixture/.codex-tmp"; touch "$fixture/.codex-tmp/run.log" ;;
+    source|mixed) printf '// edited\n' >>"$fixture/source.go" ;;
+    beads-data) printf '{"id":"edited"}\n' >>"$fixture/.beads/issues.jsonl" ;;
+    beads-config) printf 'changed: true\n' >>"$fixture/.beads/config.yaml" ;;
+    lookalike) touch "$fixture/.beads.gate.lock.go" ;;
+    wrong-head) sha=0000000000000000000000000000000000000000 ;;
+    head-mismatch)
+      git -C "$fixture" -c user.name=fixture -c user.email=fixture@example.invalid \
+        -c core.hooksPath=/dev/null commit --allow-empty -qm second \
+        || { bad "artifact boundary $scenario second commit"; return; } ;;
+  esac
+  case "$scenario" in
+    staged-version) git -C "$fixture" add .beads/.local_version ;;
+    staged-lock) git -C "$fixture" add .beads.gate.lock ;;
+  esac
+  output="$("$timeout_bin" 5s bash -c '
+    PREVIEW_CMD=contract-test
+    source "$1"
+    PREVIEW_ROOT="$2"
+    PREVIEW_COMMIT_SHA="$3"
+    preview_require_boundary
+  ' bash "$PREVIEW/lib.sh" "$fixture" "$sha" 2>&1)"
+  rc=$?
+  if [[ $rc -eq $expected ]]; then
+    ok "artifact boundary $scenario exits $expected"
+  else
+    bad "artifact boundary $scenario exits $expected" "exit $rc: $output"
+  fi
+}
+
+for scenario in clean version lock both harness; do
+  boundary_case "$scenario" 0
+done
+for scenario in source beads-data beads-config staged-version staged-lock lookalike mixed wrong-head head-mismatch; do
+  boundary_case "$scenario" 2
+done
+
+for excluded in .beads .beads.gate.lock .codex-tmp; do
+  if grep -qxF "$excluded" "$PREVIEW/Dockerfile.dockerignore"; then
+    ok "preview build context excludes $excluded"
+  else
+    bad "preview build context excludes $excluded"
+  fi
+done
 
 for command in build deploy status verify destroy; do
   file="$PREVIEW/preview-$command"
