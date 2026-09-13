@@ -67,10 +67,11 @@ compares all three identity fields with the requested preview.
 ## Mobile navigation
 
 The mobile shell keeps the terminal visible above two touch-control rows. The
-project row scrolls horizontally and exposes `All` plus project keys `1` through
-`9`. The navigation row provides up, down, previous page, next page, open and
-back actions. Each button sends one allowlisted key through the CGI endpoint to
-the shared tmux session, so it does not depend on a mobile browser synthesizing
+project row pins previous and next project-page buttons around a horizontally
+scrollable strip containing `All` plus project keys `1` through `9`. The
+navigation row provides up, down, previous page, next page, open and back
+actions. Each button sends one allowlisted key through the CGI endpoint to the
+shared tmux session, so it does not depend on a mobile browser synthesizing
 keyboard events.
 
 The desktop URL remains unchanged. Append `/b9s/` to open the mobile shell.

@@ -68,6 +68,7 @@ if [[ -f $PREVIEW/mobile.html ]]; then
   contains "mobile viewport is declared" 'name="viewport"' "$mobile"
   contains "mobile shell avoids a favicon request" 'rel="icon"' "$mobile"
   contains "mobile projects are directly selectable" 'data-key="0"' "$mobile"
+  contains "mobile project slots scroll between pinned paging buttons" 'class="project-slots"' "$mobile"
   contains "mobile projects can scroll backward" 'data-key="["' "$mobile"
   contains "mobile projects can scroll forward" 'data-key="]"' "$mobile"
   contains "mobile list can move upward" 'data-key="Up"' "$mobile"

@@ -59,15 +59,21 @@
       }
 
       .projects {
-        display: flex;
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) 48px;
         gap: 6px;
         margin-bottom: 8px;
+      }
+
+      .project-slots {
+        display: flex;
+        gap: 6px;
         overflow-x: auto;
         scrollbar-width: none;
         overscroll-behavior-x: contain;
       }
 
-      .projects::-webkit-scrollbar { display: none; }
+      .project-slots::-webkit-scrollbar { display: none; }
 
       .navigation {
         display: grid;
@@ -96,8 +102,8 @@
         background: #581c87;
       }
 
-      .projects button { flex: 0 0 auto; }
-      .projects button:first-child { color: #c084fc; }
+      .project-slots button { flex: 0 0 auto; }
+      .project-slots button:first-child { color: #c084fc; }
       .navigation button:nth-child(5) { color: #86efac; }
       .navigation button:nth-child(6) { color: #fca5a5; }
 
@@ -131,7 +137,8 @@
     <section class="controls" aria-label="Terminal navigation">
       <nav class="projects" aria-label="Projects">
         <button type="button" data-key="[" aria-label="Previous projects">‹</button>
-        <button type="button" data-key="0" aria-label="Show all projects">All</button>
+        <div class="project-slots">
+          <button type="button" data-key="0" aria-label="Show all projects">All</button>
         <button type="button" data-key="1" aria-label="Open project 1">1</button>
         <button type="button" data-key="2" aria-label="Open project 2">2</button>
         <button type="button" data-key="3" aria-label="Open project 3">3</button>
@@ -140,7 +147,8 @@
         <button type="button" data-key="6" aria-label="Open project 6">6</button>
         <button type="button" data-key="7" aria-label="Open project 7">7</button>
         <button type="button" data-key="8" aria-label="Open project 8">8</button>
-        <button type="button" data-key="9" aria-label="Open project 9">9</button>
+          <button type="button" data-key="9" aria-label="Open project 9">9</button>
+        </div>
         <button type="button" data-key="]" aria-label="Next projects">›</button>
       </nav>
       <nav class="navigation" aria-label="Issue navigation">
