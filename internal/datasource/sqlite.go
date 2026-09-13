@@ -24,8 +24,9 @@ func NewSQLiteReader(source DataSource) (*SQLiteReader, error) {
 		return nil, fmt.Errorf("source is not SQLite: %s", source.Type)
 	}
 
-	// Open in read-only mode with various pragmas for read performance
-	dsn := fmt.Sprintf("file:%s?mode=ro&_busy_timeout=5000&_journal_mode=WAL", source.Path)
+	// Journal mode changes write database state and cannot be requested by a
+	// read-only connection. The existing database journal mode is sufficient.
+	dsn := fmt.Sprintf("file:%s?mode=ro&_busy_timeout=5000", source.Path)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open database: %w", err)
@@ -33,7 +34,7 @@ func NewSQLiteReader(source DataSource) (*SQLiteReader, error) {
 
 	// Set pragmas for read performance
 	pragmas := []string{
-		"PRAGMA cache_size = -64000",  // 64MB cache
+		"PRAGMA cache_size = -64000",   // 64MB cache
 		"PRAGMA mmap_size = 268435456", // 256MB mmap
 		"PRAGMA temp_store = MEMORY",
 	}
