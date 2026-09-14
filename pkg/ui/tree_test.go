@@ -4254,34 +4254,65 @@ func TestTreeHeaderShowsSortIndicator(t *testing.T) {
 	}
 }
 
-// bd-2qw: sort field and direction should persist to tree-state.json
-func TestTreeSortPersistence(t *testing.T) {
-	tree := NewTreeModel(newTreeTestTheme())
-	beadsDir := filepath.Join(t.TempDir(), ".beads")
-	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	tree.SetBeadsDir(beadsDir)
+// legacyTreeStateWithSort is a tree-state.json as older builds wrote it, carrying
+// Updated ascending in its sort keys.
+const legacyTreeStateWithSort = `{"version":1,"expanded":{},"sort_field":2,"sort_direction":0}`
 
-	issues := []model.Issue{
+func writeLegacyTreeState(t *testing.T) string {
+	t.Helper()
+	beadsDir := t.TempDir()
+	if err := os.WriteFile(TreeStatePath(beadsDir), []byte(legacyTreeStateWithSort), 0o644); err != nil {
+		t.Fatalf("write tree state: %v", err)
+	}
+	return beadsDir
+}
+
+func sortTestIssues() []model.Issue {
+	return []model.Issue{
 		{ID: "a", Title: "Alpha", IssueType: model.TypeTask, Priority: 1, CreatedAt: time.Now()},
+		{ID: "b", Title: "Beta", IssueType: model.TypeTask, Priority: 2, CreatedAt: time.Now().Add(-time.Hour)},
 	}
-	tree.Build(issues)
+}
 
-	// Change sort to Title ascending and trigger save
+// Sort comes from the user config, never from per-project tree state.
+func TestTreeBuildIgnoresPersistedSort(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(writeLegacyTreeState(t))
+	tree.Build(sortTestIssues())
+
+	if tree.GetSortField() != SortFieldCreated || tree.GetSortDirection() != SortDescending {
+		t.Fatalf("sort = %v %v, want Created descending", tree.GetSortField(), tree.GetSortDirection())
+	}
+}
+
+// Every data refresh rebuilds the tree; a sort chosen in the session must survive it.
+func TestTreeSortSurvivesRebuild(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetBeadsDir(writeLegacyTreeState(t))
+	tree.Build(sortTestIssues())
+
+	tree.SetSort(SortFieldTitle, SortAscending)
+	tree.Build(sortTestIssues())
+
+	if tree.GetSortField() != SortFieldTitle || tree.GetSortDirection() != SortAscending {
+		t.Fatalf("sort = %v %v after rebuild, want Title ascending", tree.GetSortField(), tree.GetSortDirection())
+	}
+}
+
+func TestTreeSaveStateOmitsSort(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	beadsDir := t.TempDir()
+	tree.SetBeadsDir(beadsDir)
+	tree.Build(sortTestIssues())
 	tree.SetSort(SortFieldTitle, SortAscending)
 	tree.saveState()
 
-	// Create a new tree and load state
-	tree2 := NewTreeModel(newTreeTestTheme())
-	tree2.SetBeadsDir(beadsDir)
-	tree2.Build(issues) // loadState is called inside Build
-
-	if tree2.GetSortField() != SortFieldTitle {
-		t.Fatalf("expected sort field to persist as Title, got %v", tree2.GetSortField())
+	data, err := os.ReadFile(TreeStatePath(beadsDir))
+	if err != nil {
+		t.Fatalf("read tree state: %v", err)
 	}
-	if tree2.GetSortDirection() != SortAscending {
-		t.Fatalf("expected sort direction to persist as Ascending, got %v", tree2.GetSortDirection())
+	if strings.Contains(string(data), "sort_") {
+		t.Fatalf("tree state must not carry sort keys, got %s", data)
 	}
 }
 

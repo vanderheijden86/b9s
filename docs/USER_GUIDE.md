@@ -2626,6 +2626,19 @@ refresh:
 
 The minimum interval is 100 milliseconds. Restart B9s after changing it. `Ctrl+R` and `F5` always trigger an immediate refresh.
 
+### Default Tree Sort
+
+The tree starts sorted by creation date, newest first. Choose another default in `~/.config/b9s/config.yaml`:
+
+```yaml
+ui:
+  sort:
+    field: updated   # priority, created, updated, title, status, type, deps, pagerank
+    direction: desc  # asc or desc; omit to use the field's natural direction
+```
+
+The `s` sort popup overrides this for the current session only. The override survives live refreshes and is never written to `.beads/tree-state.json`, so restarting b9s always returns to the configured sort. An unknown field or direction makes the config fail to load.
+
 ### Environment Variables
 
 | Variable | Description | Default |

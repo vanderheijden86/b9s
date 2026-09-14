@@ -378,3 +378,71 @@ experimental:
 		t.Error("expected background_mode to be true")
 	}
 }
+
+func TestDefaultConfig_SortsNewestCreatedFirst(t *testing.T) {
+	cfg := DefaultConfig()
+	if cfg.UI.Sort.Field != "created" {
+		t.Errorf("expected default sort field 'created', got %q", cfg.UI.Sort.Field)
+	}
+	if cfg.UI.Sort.Direction != "desc" {
+		t.Errorf("expected default sort direction 'desc', got %q", cfg.UI.Sort.Direction)
+	}
+}
+
+func TestLoadFrom_UISort(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte("ui:\n  sort:\n    field: updated\n    direction: asc\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadFrom(path)
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if cfg.UI.Sort.Field != "updated" || cfg.UI.Sort.Direction != "asc" {
+		t.Errorf("expected sort updated/asc, got %q/%q", cfg.UI.Sort.Field, cfg.UI.Sort.Direction)
+	}
+}
+
+// A field without a direction takes that field's natural direction, not the
+// default's, so `field: title` sorts A-Z rather than inheriting "desc".
+func TestLoadFrom_UISortFieldWithoutDirection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte("ui:\n  sort:\n    field: title\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadFrom(path)
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if cfg.UI.Sort.Direction != "" {
+		t.Errorf("expected empty direction, got %q", cfg.UI.Sort.Direction)
+	}
+}
+
+func TestLoadFrom_UISortRejectsUnknownField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte("ui:\n  sort:\n    field: newest\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadFrom(path); err == nil {
+		t.Fatal("expected unknown sort field to fail config loading")
+	}
+}
+
+func TestLoadFrom_UISortRejectsUnknownDirection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte("ui:\n  sort:\n    field: created\n    direction: down\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadFrom(path); err == nil {
+		t.Fatal("expected unknown sort direction to fail config loading")
+	}
+}

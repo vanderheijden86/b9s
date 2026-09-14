@@ -127,6 +127,19 @@ refresh:
 
 The minimum interval is 100 milliseconds. Restart B9s after changing the setting. Press `Ctrl+R` or `F5` at any time to refresh immediately.
 
+### Tree Sort
+
+The tree starts sorted newest first by creation date. Set a different default in `~/.config/b9s/config.yaml`:
+
+```yaml
+ui:
+  sort:
+    field: updated   # priority, created, updated, title, status, type, deps, pagerank
+    direction: desc  # asc or desc; omit to use the field's natural direction
+```
+
+Press `s` to pick another sort for the current session. That choice survives live refreshes but is never saved, so every start returns to the configured sort. An unknown field or direction makes the config fail to load.
+
 ```bash
 # Initialize a new project with a remote Dolt server
 bd init --server \

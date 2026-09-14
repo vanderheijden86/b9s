@@ -175,6 +175,26 @@ func (f SortField) DefaultDirection() SortDirection {
 	}
 }
 
+// sortFromConfig resolves the configured tree sort. Config names are the
+// lowercased field labels; an empty field means Created, and an empty direction
+// means the field's natural direction.
+func sortFromConfig(c config.SortConfig) (SortField, SortDirection) {
+	field := SortFieldCreated
+	for f := SortField(0); f < NumSortFields; f++ {
+		if strings.ToLower(f.String()) == c.Field {
+			field = f
+			break
+		}
+	}
+	switch c.Direction {
+	case "asc":
+		return field, SortAscending
+	case "desc":
+		return field, SortDescending
+	}
+	return field, field.DefaultDirection()
+}
+
 // SortDirection represents ascending or descending sort order (bd-x3l).
 type SortDirection int
 
@@ -1025,6 +1045,7 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Model {
 	m.appConfig = cfg
 	m.doltPollInterval = cfg.RefreshPollInterval()
+	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
 	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)

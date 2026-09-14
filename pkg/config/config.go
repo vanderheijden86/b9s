@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,9 +25,47 @@ type Project struct {
 
 // UIConfig holds UI preference settings.
 type UIConfig struct {
-	DefaultView string  `yaml:"default_view,omitempty"` // list, tree, board, split
-	SplitRatio  float64 `yaml:"split_ratio,omitempty"`  // Default split pane ratio (0.2-0.8)
-	Headless    bool    `yaml:"headless,omitempty"`     // Compact header mode
+	DefaultView string     `yaml:"default_view,omitempty"` // list, tree, board, split
+	SplitRatio  float64    `yaml:"split_ratio,omitempty"`  // Default split pane ratio (0.2-0.8)
+	Headless    bool       `yaml:"headless,omitempty"`     // Compact header mode
+	Sort        SortConfig `yaml:"sort,omitempty"`         // Tree sort applied at startup
+}
+
+// SortConfig is the tree sort b9s starts with. The sort popup overrides it for
+// the rest of the session and never writes the override back, so every start
+// returns to this sort.
+type SortConfig struct {
+	Field     string `yaml:"field,omitempty"`     // One of SortFieldNames
+	Direction string `yaml:"direction,omitempty"` // asc or desc; empty takes the field's natural direction
+}
+
+// sortFieldNames must stay in step with ui.SortField; the ui package tests that
+// every name maps to a field, because ui imports config and not the reverse.
+var sortFieldNames = []string{"priority", "created", "updated", "title", "status", "type", "deps", "pagerank"}
+
+// SortFieldNames returns the accepted ui.sort.field values.
+func SortFieldNames() []string {
+	return slices.Clone(sortFieldNames)
+}
+
+// UnmarshalYAML replaces the default sort as a whole: a file that names only a
+// field must not inherit the default's direction, or `field: title` would sort Z-A.
+func (s *SortConfig) UnmarshalYAML(node *yaml.Node) error {
+	type plain SortConfig
+	var decoded plain
+	if err := node.Decode(&decoded); err != nil {
+		return err
+	}
+	if decoded.Field != "" && !slices.Contains(sortFieldNames, decoded.Field) {
+		return fmt.Errorf("invalid ui.sort.field %q: want one of %s", decoded.Field, strings.Join(sortFieldNames, ", "))
+	}
+	switch decoded.Direction {
+	case "", "asc", "desc":
+	default:
+		return fmt.Errorf("invalid ui.sort.direction %q: want asc or desc", decoded.Direction)
+	}
+	*s = SortConfig(decoded)
+	return nil
 }
 
 // DiscoveryConfig controls auto-discovery of projects.
@@ -89,6 +128,7 @@ func DefaultConfig() Config {
 		UI: UIConfig{
 			DefaultView: "list",
 			SplitRatio:  0.4,
+			Sort:        SortConfig{Field: "created", Direction: "desc"},
 		},
 		Discovery: DiscoveryConfig{
 			MaxDepth: 3,
