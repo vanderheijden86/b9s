@@ -445,6 +445,14 @@ type Model struct {
 	startupDoltHost  string                  // Server the startup project connects to; :project lists its databases
 	showProjectTable bool
 	projectTable     ProjectTableModel
+
+	openProject         projectOpenFunc
+	projectSwitch       projectSwitch
+	showOpenFailure     bool
+	openFailure         *datasource.OpenFailure
+	openFailureProject  config.Project // the project r retries
+	openFailureFellBack bool           // the failure happened at startup and another project opened instead
+
 	doltPollInterval time.Duration // Configured Dolt live-refresh interval
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
@@ -1033,6 +1041,7 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		tutorialModel: NewTutorialModel(theme),
 		// Issue writer for in-app editing (bd-a83)
 		issueWriter: NewIssueWriter(),
+		openProject: datasource.OpenProject,
 	}
 }
 
@@ -1572,148 +1581,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Project.Name == m.activeProjectName && !m.allProjectsMode {
 			return m, nil
 		}
-		if m.allProjectsMode {
-			m.leaveAllProjectsMode()
-		}
-		// Switch to a different project (bd-q5z, bd-ey3, bd-87w)
-		m.activeProjectName = msg.Project.Name
-		m.activeProjectPath = msg.Project.ResolvedPath()
-		checkout, hasCheckout := NewCheckout(msg.Project.ResolvedPath())
-		m.issueWriter.SetCheckout(checkout)
-		m.board.SetActiveProjectName(msg.Project.Name)
-		m.updateListDelegate()
-		beadsDir, _ := projectBeadsDir(msg.Project.ResolvedPath())
-		sources, discErr := m.projectSources(msg.Project)
-		hasDoltSource := false
-		for _, source := range sources {
-			if source.Type == datasource.SourceTypeDolt {
-				hasDoltSource = true
-				break
-			}
-		}
-
-		newPath := ""
-		if hasCheckout {
-			// Dolt server projects are fully described by metadata.json and need no
-			// local JSONL file. Keep the conventional path as an inert fallback value;
-			// Dolt reloads use activeProjectPath instead.
-			var err error
-			newPath, err = loader.FindJSONLPath(beadsDir)
-			if err != nil && !hasDoltSource {
-				m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
-				m.statusIsError = true
-				return m, nil
-			}
-			if err != nil {
-				newPath = filepath.Join(beadsDir, "issues.jsonl")
-			}
-		} else if !hasDoltSource {
-			m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
-			m.statusIsError = true
-			return m, nil
-		}
-		// Stop background worker and old watchers (bd-87w)
-		if m.backgroundWorker != nil {
-			m.backgroundWorker.Stop()
-			m.backgroundWorker = nil
-		}
-		if m.watcher != nil {
-			m.watcher.Stop()
-			m.watcher = nil
-		}
-		if m.doltWatcher != nil {
-			m.doltWatcher.Stop()
-			m.doltWatcher = nil
-		}
-		m.beadsPath = newPath
-
-		// Re-discover datasource for the new project
-		m.sourceType = datasource.SourceTypeJSONLLocal
-		m.doltSource = datasource.DataSource{}
-		m.doltFailure = nil
-		m.sourceInfo = fmt.Sprintf("jsonl %s", filepath.Base(newPath))
-		if discErr == nil {
-			for _, s := range sources {
-				if s.Type == datasource.SourceTypeDolt {
-					db := s.Database
-					if db == "" {
-						db = "beads"
-					}
-					doltLabel := fmt.Sprintf("dolt://%s/%s", s.Path, db)
-					dw, dwErr := datasource.NewDoltWatcher(s, m.doltPollInterval)
-					if dwErr != nil {
-						m.doltFailure = &DoltFailure{Server: s.Path, Database: db, User: s.User, Error: dwErr.Error()}
-					} else if err := dw.Start(); err != nil {
-						dw.Stop()
-						m.doltFailure = &DoltFailure{Server: s.Path, Database: db, User: s.User, Error: err.Error()}
-					} else {
-						m.doltWatcher = dw
-						m.doltSource = s
-						m.sourceType = datasource.SourceTypeDolt
-						m.sourceInfo = doltLabel + " ✓"
-					}
-					break
-				} else if s.Type == datasource.SourceTypeSQLite {
-					m.sourceInfo = fmt.Sprintf("sqlite %s", filepath.Base(s.Path))
-				}
-			}
-		}
-		debug.Log("project-switch: %s sourceType=%s sourceInfo=%s", msg.Project.Name, m.sourceType, m.sourceInfo)
-		debug.Log("project-switch: preserving filters: currentFilter=%q labelFilter=%q assigneeFilter=%q pickerMode=%d", m.currentFilter, m.labelFilter, m.assigneeFilter, m.pickerMode)
-
-		// Clear old project data to prevent stale rendering (bd-lll, bd-134a)
-		m.issues = nil
-		m.issueMap = nil
-		m.snapshot = nil
-		m.isLoading = true
-		m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
-		// Clear the list immediately so stale items are gone (bd-134a)
-		m.list.SetItems(nil)
-		m.board.SetIssues(nil)
-		// Preserve label/assignee filters across project switches (bd-v2lx)
-		// Only clear picker entries (will be rebuilt from new project's issues)
-		m.currentFilter = "all"
-		m.labelEntries = nil
-		m.labelScrollOffset = 0
-		m.assigneeEntries = nil
-		m.assigneeScrollOffset = 0
-		// Keep tree filters in sync with preserved label/assignee filters
-		m.tree.ApplyFilter("all")
-		m.tree.ClearSearch()
-		m.tree.Build(nil)
-		// Start new background worker or watcher for the new project
-		bw, bwErr := NewBackgroundWorker(WorkerConfig{BeadsPath: newPath})
-		if bwErr == nil && m.sourceType != datasource.SourceTypeDolt {
-			m.backgroundWorker = bw
-			cmds = append(cmds, StartBackgroundWorkerCmd(bw))
-			cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(bw))
-		} else if m.doltWatcher != nil {
-			// Dolt project: use DoltWatcher for live reload
-			cmds = append(cmds, DoltWatchCmd(m.doltWatcher))
-			cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
-		} else {
-			// Fallback: file watcher
-			w, watchErr := watcher.NewWatcher(newPath)
-			if watchErr == nil {
-				m.watcher = w
-				cmds = append(cmds, WatchFileCmd(w))
-			}
-			cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
-		}
-		m.statusMsg = fmt.Sprintf("Switched to %s", msg.Project.Name)
-		m.statusIsError = false
-		// Rebuild picker entries to reflect new active project (bd-ey3)
-		entries := m.buildProjectEntries()
-		m.projectPicker = NewProjectPicker(entries, m.theme)
-		m.projectPicker.SetSourceInfo(m.sourceInfo)
-		m.projectPicker.SetSize(m.width, m.height)
-		return m, tea.Batch(cmds...)
+		return m.beginProjectSwitch(msg.Project)
 
 	case OpenProjectTableMsg:
 		return m.openProjectTable()
 
 	case projectTableLoadedMsg:
 		return m.handleProjectTableLoaded(msg), nil
+
+	case projectOpenedMsg:
+		return m.handleProjectOpened(msg)
+
+	case projectOpenFailedMsg:
+		return m.handleProjectOpenFailed(msg), nil
+
+	case projectOpenDeadlineMsg:
+		return m.handleProjectOpenDeadline(msg), nil
 
 	case FileChangedMsg:
 		// File changed on disk - reload issues
@@ -2119,6 +2002,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var tableCmd tea.Cmd
 			m, tableCmd = m.handleProjectTableKeys(msg)
 			return m, tableCmd
+		}
+
+		if m.showOpenFailure {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			var popupCmd tea.Cmd
+			m, popupCmd = m.handleOpenFailureKeys(msg)
+			return m, popupCmd
+		}
+
+		// Esc while a project opens cancels the switch before it can clear a
+		// query or leave a view.
+		if m.projectSwitch.state == SwitchOpening && msg.String() == "esc" {
+			return m.cancelProjectSwitch(), nil
 		}
 
 		if m.issueConfirm.action != issueConfirmNone {
@@ -3719,6 +3617,9 @@ func (m Model) View() string {
 		isOverlay = true
 	} else if m.showRepoPicker {
 		body = m.repoPicker.View()
+		isOverlay = true
+	} else if m.showOpenFailure {
+		body = m.renderOpenFailurePopup()
 		isOverlay = true
 	} else if m.showProjectTable {
 		body = m.projectTable.View()

@@ -81,16 +81,15 @@ func TestSwitchWithoutCheckoutKeepsStartupDoltUserAcrossSwitches(t *testing.T) {
 		updated, _ := m.Update(SwitchProjectMsg{Project: config.Project{Name: database, Database: database, Host: "127.0.0.1:1"}})
 		m = updated.(Model)
 
-		if m.doltFailure == nil {
-			t.Fatalf("switch to %s recorded no Dolt failure for the closed port", database)
-		}
-		if m.doltFailure.User != "bd_startup" {
-			t.Errorf("switch to %s connected as %q, want the startup user bd_startup", database, m.doltFailure.User)
+		if target := m.projectSwitch.target; target.Dolt == nil || target.Dolt.User != "bd_startup" {
+			t.Errorf("switch to %s opens %+v, want the database as the startup user bd_startup", database, target)
 		}
 	}
 }
 
 func TestSwitchToProjectWithoutCheckoutIsReadOnly(t *testing.T) {
+	// An opened project is saved to the recent list.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	startup := t.TempDir()
 	if err := os.Mkdir(filepath.Join(startup, ".beads"), 0o755); err != nil {
 		t.Fatal(err)
@@ -100,7 +99,9 @@ func TestSwitchToProjectWithoutCheckoutIsReadOnly(t *testing.T) {
 		t.Fatalf("startup checkout = %q, want %q", m.issueWriter.checkout.Dir(), startup)
 	}
 
-	updated, _ := m.Update(SwitchProjectMsg{Project: config.Project{Name: "remote", Database: "remote_db", Host: "127.0.0.1:1"}})
+	remote := config.Project{Name: "remote", Database: "remote_db", Host: "127.0.0.1:1"}
+	updated, _ := m.Update(SwitchProjectMsg{Project: remote})
+	updated, _ = updated.(Model).Update(projectOpenedMsg{generation: updated.(Model).projectSwitch.generation, project: remote})
 	m = updated.(Model)
 
 	if m.activeProjectName != "remote" {

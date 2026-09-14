@@ -312,7 +312,8 @@ func main() {
 		WithDoltFailure(doltFailure).
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath).
-		WithInitialQuery(*initialFilter)
+		WithInitialQuery(*initialFilter).
+		WithStartupFailure(choice.StartupFailure)
 	defer m.Stop()
 
 	if err := runTUIProgram(m); err != nil {

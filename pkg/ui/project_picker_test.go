@@ -720,7 +720,7 @@ func TestProjectSwitch_ShowsLoadingScreen(t *testing.T) {
 
 	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
 	newM, _ = m.Update(switchMsg)
-	m = newM.(ui.Model)
+	m = newM.(ui.Model).CompleteProjectSwitchForTest()
 
 	view := m.View()
 	if !strings.Contains(view, "Loading beads") {
@@ -752,7 +752,7 @@ func TestProjectSwitch_ClearsOldTreeData(t *testing.T) {
 
 	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
 	newM, _ = m.Update(switchMsg)
-	m = newM.(ui.Model)
+	m = newM.(ui.Model).CompleteProjectSwitchForTest()
 
 	view := m.View()
 	if strings.Contains(view, "Fix auth bug") {
@@ -1015,7 +1015,7 @@ func TestProjectSwitch_ClearsTreeFilter(t *testing.T) {
 
 	switchMsg := ui.SwitchProjectMsg{Project: projects[1]}
 	newM, _ = m.Update(switchMsg)
-	m = newM.(ui.Model)
+	m = newM.(ui.Model).CompleteProjectSwitchForTest()
 
 	if m.TreeFilterActive() {
 		t.Error("tree filter should be cleared after project switch")

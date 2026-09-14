@@ -85,7 +85,7 @@ func TestProjectTableShowsWhyLoadingFailed(t *testing.T) {
 	}
 }
 
-func TestProjectTableEnterAddsNewProjectAndSwitchesToIt(t *testing.T) {
+func TestProjectTableEnterSwitchesToSelectedProject(t *testing.T) {
 	m, _ := loadedProjectTable(t, "alpha", "b9s")
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -105,6 +105,24 @@ func TestProjectTableEnterAddsNewProjectAndSwitchesToIt(t *testing.T) {
 	if switchMsg.Project != want {
 		t.Errorf("switch project = %+v, want %+v", switchMsg.Project, want)
 	}
+	if first := m.appConfig.RecentProjects[0]; first.Database == "alpha" {
+		t.Errorf("alpha is already a recent project before it opened: %+v", m.appConfig.RecentProjects)
+	}
+}
+
+// A project enters the recent list only once it has opened, so a database
+// that fails to open never takes a number key.
+func TestProjectTableProjectBecomesRecentOnceItOpens(t *testing.T) {
+	m, _ := loadedProjectTable(t, "alpha", "b9s")
+	// A closed port: applying the switch starts a Dolt watcher, which must not
+	// reach a real server from a unit test.
+	alpha := config.Project{Name: "alpha", Database: "alpha", Host: "127.0.0.1:1"}
+	updated, _ := m.Update(SwitchProjectMsg{Project: alpha})
+	m = updated.(Model)
+
+	updated, _ = m.Update(projectOpenedMsg{generation: m.projectSwitch.generation, project: alpha})
+	m = updated.(Model)
+
 	if first := m.appConfig.RecentProjects[0]; first.Database != "alpha" {
 		t.Errorf("first recent project = %+v, want alpha prepended", first)
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -241,17 +242,18 @@ func (m Model) handleProjectTableKeys(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 		m.showProjectTable = false
 		project := m.projectForDatabase(database)
-		m.rememberRecentProject(project)
 		return m, func() tea.Msg { return SwitchProjectMsg{Project: project} }
 	}
 	return m, nil
 }
 
-// rememberRecentProject adds project to the recent list, saves it and rebuilds
-// the header rows so the new project has a number key.
+// rememberRecentProject records that project opened: it joins the recent list
+// if new, its opened_at is updated, the list is saved, and the header rows are
+// rebuilt so a new project has a number key.
 func (m *Model) rememberRecentProject(project config.Project) {
 	recent := config.RecentProject{Name: project.Name, Database: project.Database, Host: project.Host, Path: project.Path}
-	if !m.appConfig.TouchRecent(recent) {
+	m.appConfig.TouchRecent(recent)
+	if !m.appConfig.MarkOpened(recent, time.Now()) {
 		return
 	}
 	if err := config.SaveRecentTo(config.ConfigPath(), m.appConfig.RecentProjects, m.appConfig.LockRecent); err != nil {

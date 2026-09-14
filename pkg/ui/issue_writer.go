@@ -41,6 +41,7 @@ type IssueWriter struct {
 	bdPath    string
 	available bool
 	checkout  Checkout // Where bd runs; none makes every write refuse
+	opening   string   // Project being switched to; writes wait until it has opened
 }
 
 // NewIssueWriter creates a new IssueWriter, detecting bd availability
@@ -61,6 +62,13 @@ func (w *IssueWriter) IsAvailable() bool {
 // the project read-only.
 func (w *IssueWriter) SetCheckout(checkout Checkout) {
 	w.checkout = checkout
+}
+
+// SetOpening refuses writes while project is being opened, because the
+// checkout still belongs to the project on screen and the user may think the
+// edit lands in the new one. An empty name allows writes again.
+func (w *IssueWriter) SetOpening(project string) {
+	w.opening = project
 }
 
 // UpdateIssue runs bd update <id> with the given field values
@@ -189,6 +197,9 @@ func (w *IssueWriter) buildCloseArgs(id, reason string) []string {
 // refuses writes for a project opened without a checkout: bd resolves the
 // project from its working directory and would otherwise write elsewhere.
 func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) tea.Cmd {
+	if w.opening != "" {
+		return w.openingCmd(op, issueID)
+	}
 	dir := w.checkout.Dir()
 	if dir == "" {
 		return w.readOnlyCmd(op, issueID)
@@ -240,6 +251,19 @@ func (w *IssueWriter) unavailableCmd(op BdOperation, id string) tea.Cmd {
 			IssueID:   id,
 			Success:   false,
 			Error:     fmt.Errorf("bd CLI not found in PATH; install beads to edit issues"),
+		}
+	}
+}
+
+// openingCmd reports that writes wait for the project switch to settle.
+func (w *IssueWriter) openingCmd(op BdOperation, id string) tea.Cmd {
+	project := w.opening
+	return func() tea.Msg {
+		return BdResultMsg{
+			Operation: op,
+			IssueID:   id,
+			Success:   false,
+			Error:     fmt.Errorf("edits wait until %s has opened", project),
 		}
 	}
 }
