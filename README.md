@@ -54,6 +54,7 @@ B9s takes the opposite approach: **do fewer things well**. By stripping the code
 - **Live reload** for JSONL file changes and Dolt working-set changes, with `Ctrl+R` / `F5` manual refresh
 - **Self-updating** (`--update`, `--check-update`, `--rollback`)
 - **Repository prefix filtering** (`--repo`)
+- **Startup filters** (`--filter`) using the same composable query language as the TUI
 - **Large dataset handling** with tiered loading and issue pooling for 1k-20k+ issues
 - **Interactive tutorial** (`` ` `` backtick) for guided feature walkthrough
 
@@ -94,6 +95,22 @@ b9s
 ```
 
 Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutorial.
+
+Start B9s with the same filter syntax accepted by the in-app `/` query field:
+
+```bash
+b9s --filter 'status:open label:backend'
+b9s --filter 'type:bug !assignee:andre'
+b9s --filter 'release blocker'
+```
+
+Predicates can target `id`, `title`, `status`, `priority`, `type`, `label`, `assignee`, or `project`. Separate fields compose with AND, repeated positive values for one field compose with OR, and `!` negates a predicate. Plain text fuzzily matches issue IDs, titles, and labels.
+
+The flag is suitable for shell scripts and tmux bindings. For example:
+
+```tmux
+bind-key B new-window -c '#{pane_current_path}' "b9s --filter 'status:open label:backend'"
+```
 
 ## Data Backends
 
