@@ -4351,6 +4351,7 @@ func (m *Model) renderHelpOverlay() string {
 
 	globalSection := []struct{ key, desc string }{
 		{"?", "This help"},
+		{":", "Command prompt"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},
 		{"'", "Recipes"},

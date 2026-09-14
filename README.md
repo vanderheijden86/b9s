@@ -118,6 +118,19 @@ B9s discovers and reads from multiple data backends automatically. On startup, i
 
 The project picker lists the project b9s was started in and the projects you opened recently (`recent_projects` in `~/.config/b9s/config.yaml`, at most nine). It does not scan folders for other projects. Any supported backend can be a recent project. A server-mode project only needs valid Dolt configuration in `.beads/metadata.json`; it does not need a JSONL export. A recent project whose server or tunnel is unavailable stays in the picker and is marked `✗` in place of its issue counts.
 
+A project b9s has not seen yet is prepended as `<1>`; a project already in the list keeps its number, so switching never renumbers the header. Set `lock_recent: true` to freeze the list. There is no in-app way to remove an entry; edit the file:
+
+```yaml
+recent_projects:
+  - name: b9s
+    database: b9s
+    host: 127.0.0.1:3306
+    path: /Users/me/Documents/b9s   # empty for a database without a local checkout
+lock_recent: false
+```
+
+Type `:project` to list the Beads databases the startup project's Dolt user can read. Enter adds the selected database to the recent list and opens it. A project without a local checkout opens read-only, because writes run `bd` inside a checkout. The older `discovery.scan_paths`, `projects:` and `favorites:` settings are no longer read; favorites are copied into `recent_projects` once.
+
 ### Source Priority
 
 When multiple backends are present, B9s picks the highest-priority source:
@@ -251,6 +264,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. To select termi
 | `Delete` | Permanently delete selected issue after confirmation |
 | `?` | Keyboard shortcuts help |
 | `[` / `]` | Resize split pane |
+| `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table; Tab accepts the suggestion |
 
 ## Acknowledgments
 
