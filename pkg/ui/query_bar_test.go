@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
 func TestSlashStartsSharedQueryEditingInEveryView(t *testing.T) {
@@ -228,5 +230,61 @@ func TestTreeQuickFilterRemainsActiveWithCleanSearchBar(t *testing.T) {
 	bar := stripANSI(m.renderUnifiedTitleBar(120))
 	if strings.Contains(bar, "[status:open]") {
 		t.Fatalf("query bar %q includes status-filter clutter", bar)
+	}
+}
+
+func TestTreeFilterBranchShortcutUsesTopLevelParentID(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "epic-a", Title: "First epic", IssueType: model.TypeEpic, Status: model.StatusOpen},
+		childOf("feature-a", "Nested feature", "epic-a", model.TypeFeature, model.StatusOpen),
+		childOf("task-a", "Nested task", "feature-a", model.TypeTask, model.StatusOpen),
+		{ID: "epic-b", Title: "Second epic", IssueType: model.TypeEpic, Status: model.StatusOpen},
+		childOf("task-b", "Other task", "epic-b", model.TypeTask, model.StatusOpen),
+		{ID: "standalone", Title: "Standalone task", IssueType: model.TypeTask, Status: model.StatusOpen},
+	}
+
+	tests := []struct {
+		name       string
+		selectedID string
+		wantRootID string
+		wantIDs    []string
+	}{
+		{name: "nested task", selectedID: "task-a", wantRootID: "epic-a", wantIDs: []string{"epic-a", "feature-a", "task-a"}},
+		{name: "feature", selectedID: "feature-a", wantRootID: "epic-a", wantIDs: []string{"epic-a", "feature-a", "task-a"}},
+		{name: "top-level epic", selectedID: "epic-a", wantRootID: "epic-a", wantIDs: []string{"epic-a", "feature-a", "task-a"}},
+		{name: "standalone task", selectedID: "standalone", wantRootID: "standalone", wantIDs: []string{"standalone"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewModel(issues, "")
+			m.tree.Build(issues)
+			m.tree.ExpandAll()
+			m.focused = focusTree
+			m.treeViewActive = true
+			if !m.tree.SelectByID(tt.selectedID) {
+				t.Fatalf("could not select %q", tt.selectedID)
+			}
+
+			m = typeKeys(m, "f")
+
+			if got := m.queryState.Text(); got != tt.wantRootID {
+				t.Fatalf("branch query = %q, want %q", got, tt.wantRootID)
+			}
+			if got := m.queryState.Mode(); got != QueryIdle {
+				t.Fatalf("query mode = %v, want accepted query", got)
+			}
+			bar := stripANSI(m.renderUnifiedTitleBar(100))
+			if !strings.Contains(bar, "/ "+tt.wantRootID) {
+				t.Fatalf("accepted query bar = %q, want root ID", bar)
+			}
+			if strings.Contains(bar, "█") {
+				t.Fatalf("accepted query bar = %q, want no editing cursor", bar)
+			}
+			gotIDs := treeVisibleIDs(&m.tree)
+			if strings.Join(gotIDs, ",") != strings.Join(tt.wantIDs, ",") {
+				t.Fatalf("visible branch = %v, want %v", gotIDs, tt.wantIDs)
+			}
+		})
 	}
 }

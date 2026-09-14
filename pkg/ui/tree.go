@@ -2065,6 +2065,22 @@ func (t *TreeModel) SelectedNode() *IssueTreeNode {
 	return nil
 }
 
+// SelectedBranchRootID returns the top-level ancestor of the selected node.
+// A standalone issue and a selected root both resolve to their own ID.
+func (t *TreeModel) SelectedBranchRootID() string {
+	node := t.SelectedNode()
+	if node == nil {
+		return ""
+	}
+	for node.Parent != nil {
+		node = node.Parent
+	}
+	if node.Issue == nil {
+		return ""
+	}
+	return node.Issue.ID
+}
+
 // MoveDown moves the cursor down in the flat list.
 func (t *TreeModel) MoveDown() {
 	if t.cursor < len(t.flatList)-1 {

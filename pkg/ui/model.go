@@ -3252,6 +3252,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		m.tree.OpenColumnPopup()
 	case "/":
 		m.queryState.StartEditing()
+	case "f":
+		m.filterSelectedTreeBranch()
 	case "n":
 		// Next search match (bd-wf8)
 		m.tree.NextSearchMatch()
@@ -4416,6 +4418,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"s", "Sort popup"},
 		{"C", "Choose columns"},
 		{"/", "Search tree"},
+		{"f", "Filter highlighted branch"},
 		{"n/N", "Next/prev match"},
 		{"O", "Occur (search filter)"},
 		{"x", "XRay drill-down"},
@@ -4599,6 +4602,7 @@ func (m *Model) renderFooter() string {
 			{"s", "sort"},
 			{"C", "columns"},
 			{"/", "search"},
+			{"f", "branch"},
 			{"e", "edit"},
 			{"K", "close"},
 			{"del", "delete"},
@@ -4815,6 +4819,16 @@ func (m *Model) setQueryText(text string) {
 	m.applyFilter()
 	m.tree.SetIssueQuery(m.queryState.Query())
 	m.syncTreeToDetail()
+}
+
+func (m *Model) filterSelectedTreeBranch() {
+	rootID := m.tree.SelectedBranchRootID()
+	if rootID == "" {
+		return
+	}
+	m.queryState.StartEditing()
+	m.setQueryText(rootID)
+	m.queryState.Accept()
 }
 
 func (m Model) handleQueryKey(msg tea.KeyMsg) Model {

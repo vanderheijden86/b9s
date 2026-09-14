@@ -724,6 +724,37 @@ func TestTreeViewSearchByID(t *testing.T) {
 	containsAll(t, out, []string{"Epic Two"})
 }
 
+func TestTreeViewFilterHighlightedBranch(t *testing.T) {
+	tempDir := t.TempDir()
+	now := time.Now()
+	issues := []treeFixtureIssue{
+		{ID: "epic-a", Title: "First epic", Status: "open", Priority: 1, IssueType: "epic", CreatedAt: now.Format(time.RFC3339)},
+		{ID: "feature-a", Title: "Nested feature", Status: "open", Priority: 2, IssueType: "feature", CreatedAt: now.Add(-time.Second).Format(time.RFC3339), Dependencies: []*treeFixtureDep{{IssueID: "feature-a", DependsOnID: "epic-a", Type: "parent-child"}}},
+		{ID: "task-a", Title: "Nested task", Status: "open", Priority: 2, IssueType: "task", CreatedAt: now.Add(-2 * time.Second).Format(time.RFC3339), Dependencies: []*treeFixtureDep{{IssueID: "task-a", DependsOnID: "feature-a", Type: "parent-child"}}},
+		{ID: "epic-b", Title: "Second epic", Status: "open", Priority: 1, IssueType: "epic", CreatedAt: now.Add(-3 * time.Second).Format(time.RFC3339)},
+	}
+	writeTreeFixture(t, tempDir, issues)
+
+	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
+		k("X"),
+		k("\x1b[H"),
+		k("j"),
+		k("j"),
+		k("f"),
+	})
+	if err != nil {
+		t.Fatalf("run tree TUI: %v\noutput:\n%s", err, out)
+	}
+
+	finalFrame := string(out)
+	if lastHeader := strings.LastIndex(finalFrame, "TYPE PRI STATUS"); lastHeader >= 0 {
+		finalFrame = finalFrame[lastHeader:]
+	}
+	if !strings.Contains(finalFrame, "/ epic-a") {
+		t.Fatalf("accepted branch query is missing from final frame:\n%s", truncateOutput(finalFrame, 2000))
+	}
+}
+
 // ============================================================================
 // Tests: Sort modes
 // ============================================================================
