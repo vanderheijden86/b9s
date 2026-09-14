@@ -439,7 +439,10 @@ type Model struct {
 	doltSource       datasource.DataSource   // Dolt DataSource used for on-demand health checks
 	doltFailure      *DoltFailure            // Non-nil when Dolt was detected but connection failed
 	startupDoltUser  string                  // User the startup project connects as; projects without a checkout reuse it
-	doltPollInterval time.Duration           // Configured Dolt live-refresh interval
+	startupDoltHost  string                  // Server the startup project connects to; :project lists its databases
+	showProjectTable bool
+	projectTable     ProjectTableModel
+	doltPollInterval time.Duration // Configured Dolt live-refresh interval
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -1076,6 +1079,9 @@ func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	if s.User != "" {
 		m.startupDoltUser = s.User
 	}
+	if s.Path != "" {
+		m.startupDoltHost = s.Path
+	}
 	return m
 }
 
@@ -1085,6 +1091,9 @@ func (m Model) WithDoltFailure(f *DoltFailure) Model {
 	m.doltFailure = f
 	if f != nil && f.User != "" {
 		m.startupDoltUser = f.User
+	}
+	if f != nil && f.Server != "" {
+		m.startupDoltHost = f.Server
 	}
 	return m
 }
@@ -1685,6 +1694,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.projectPicker.SetSize(m.width, m.height)
 		return m, tea.Batch(cmds...)
 
+	case OpenProjectTableMsg:
+		return m.openProjectTable()
+
+	case projectTableLoadedMsg:
+		return m.handleProjectTableLoaded(msg), nil
+
 	case FileChangedMsg:
 		// File changed on disk - reload issues
 		debug.Log("FileChangedMsg: reload triggered (sourceType=%s beadsPath=%s)", m.sourceType, m.beadsPath)
@@ -2066,6 +2081,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m = m.handleRepoPickerKeys(msg)
 			return m, nil
+		}
+
+		// The :project table owns every key while it is open, so its j/k and
+		// Enter never reach the view underneath.
+		if m.showProjectTable {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			var tableCmd tea.Cmd
+			m, tableCmd = m.handleProjectTableKeys(msg)
+			return m, tableCmd
 		}
 
 		if m.issueConfirm.action != issueConfirmNone {
@@ -3635,6 +3661,9 @@ func (m Model) View() string {
 		isOverlay = true
 	} else if m.showRepoPicker {
 		body = m.repoPicker.View()
+		isOverlay = true
+	} else if m.showProjectTable {
+		body = m.projectTable.View()
 		isOverlay = true
 	} else if m.showLabelPicker {
 		body = m.labelPicker.View()
