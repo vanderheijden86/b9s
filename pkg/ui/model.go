@@ -4467,7 +4467,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"s", "Sort popup"},
 		{"C", "Choose columns"},
 		{"/", "Search tree"},
-		{"f", "Filter highlighted branch"},
+		{"f", "Toggle highlighted branch"},
 		{"n/N", "Next/prev match"},
 		{"O", "Occur (search filter)"},
 		{"x", "XRay drill-down"},
@@ -4881,6 +4881,11 @@ func (m *Model) setQueryText(text string) {
 func (m *Model) filterSelectedTreeBranch() {
 	rootID := m.tree.SelectedBranchRootID()
 	if rootID == "" {
+		return
+	}
+	if m.queryState.Text() == rootID {
+		m.queryState.Clear()
+		m.setQueryText("")
 		return
 	}
 	m.queryState.StartEditing()
