@@ -441,6 +441,16 @@ func (t *TreeModel) SetSize(width, height int) {
 // Build constructs the tree from issues using parent-child dependencies.
 // Implementation for bv-j3ck.
 func (t *TreeModel) Build(issues []model.Issue) {
+	// Live reloads rebuild the tree every few seconds, so the position is
+	// captured here and restored below; otherwise every refresh would throw
+	// the cursor back to the first row.
+	prevSelectedID := ""
+	if issue := t.SelectedIssue(); issue != nil {
+		prevSelectedID = issue.ID
+	}
+	prevCursor, prevOffset := t.cursor, t.viewportOffset
+	hadRows := len(t.flatList) > 0
+
 	// Reset state
 	t.invalidateColumnLayout()
 	t.roots = nil
@@ -453,6 +463,8 @@ func (t *TreeModel) Build(issues []model.Issue) {
 	t.cursor = 0
 
 	if len(issues) == 0 {
+		// An emptied tree (project switch) starts the next build at the top.
+		t.viewportOffset = 0
 		t.built = true
 		return
 	}
@@ -479,7 +491,42 @@ func (t *TreeModel) Build(issues []model.Issue) {
 	// This must come after loadState so expand states are applied
 	t.rebuildFlatList()
 
+	if hadRows {
+		t.restorePosition(prevSelectedID, prevCursor, prevOffset)
+	} else {
+		t.viewportOffset = 0
+	}
+
 	t.built = true
+}
+
+// restorePosition puts the cursor back on the issue it was on before a
+// rebuild. When that issue is gone (closed under an open filter, deleted) the
+// cursor keeps its row, so the next issue takes the place of the one that
+// left, as in k9s. The scroll offset is kept wherever the cursor stays in
+// view.
+func (t *TreeModel) restorePosition(selectedID string, cursor, offset int) {
+	if len(t.flatList) == 0 {
+		t.cursor, t.viewportOffset = 0, 0
+		return
+	}
+	t.cursor = cursor
+	if selectedID != "" {
+		for i, node := range t.flatList {
+			if node != nil && node.Issue != nil && node.Issue.ID == selectedID {
+				t.cursor = i
+				break
+			}
+		}
+	}
+	if t.cursor >= len(t.flatList) {
+		t.cursor = len(t.flatList) - 1
+	}
+	if t.cursor < 0 {
+		t.cursor = 0
+	}
+	t.viewportOffset = offset
+	t.ensureCursorVisible()
 }
 
 // BuildFromSnapshot wires the tree view to precomputed tree data from a DataSnapshot.
