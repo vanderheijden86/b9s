@@ -285,6 +285,9 @@ func TestTreeFilterBranchShortcutUsesTopLevelParentID(t *testing.T) {
 			if strings.Join(gotIDs, ",") != strings.Join(tt.wantIDs, ",") {
 				t.Fatalf("visible branch = %v, want %v", gotIDs, tt.wantIDs)
 			}
+			if got := m.tree.GetSelectedID(); got != tt.selectedID {
+				t.Fatalf("first f selected %q, want original row %q", got, tt.selectedID)
+			}
 
 			m = typeKeys(m, "f")
 
@@ -296,6 +299,9 @@ func TestTreeFilterBranchShortcutUsesTopLevelParentID(t *testing.T) {
 			}
 			if got := len(treeVisibleIDs(&m.tree)); got != len(issues) {
 				t.Fatalf("second f left %d visible issues, want all %d", got, len(issues))
+			}
+			if got := m.tree.GetSelectedID(); got != tt.selectedID {
+				t.Fatalf("second f selected %q, want original row %q", got, tt.selectedID)
 			}
 		})
 	}

@@ -742,7 +742,6 @@ func TestTreeViewToggleHighlightedBranchFilter(t *testing.T) {
 		k("j"),
 		k("f"),
 		k("f"),
-		k("G"),
 		k("K"),
 	})
 	if err != nil {
@@ -754,8 +753,8 @@ func TestTreeViewToggleHighlightedBranchFilter(t *testing.T) {
 		t.Fatalf("first f did not show the accepted branch query:\n%s", truncateOutput(output, 2000))
 	}
 	confirmationStart := strings.LastIndex(output, "Close issue?")
-	if confirmationStart < 0 || !strings.Contains(output[confirmationStart:], "epic-b") {
-		t.Fatalf("second f did not restore navigation to the unrelated root:\n%s", truncateOutput(output, 2000))
+	if confirmationStart < 0 || !strings.Contains(output[confirmationStart:], "task-a") {
+		t.Fatalf("branch toggle did not preserve the originally highlighted task:\n%s", truncateOutput(output, 2000))
 	}
 }
 

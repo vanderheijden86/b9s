@@ -4780,6 +4780,7 @@ func (m *Model) setQueryText(text string) {
 }
 
 func (m *Model) filterSelectedTreeBranch() {
+	selectedID := m.tree.GetSelectedID()
 	rootID := m.tree.SelectedBranchRootID()
 	if rootID == "" {
 		return
@@ -4787,11 +4788,17 @@ func (m *Model) filterSelectedTreeBranch() {
 	if m.queryState.Text() == rootID {
 		m.queryState.Clear()
 		m.setQueryText("")
+		if m.tree.SelectByID(selectedID) {
+			m.syncTreeToDetail()
+		}
 		return
 	}
 	m.queryState.StartEditing()
 	m.setQueryText(rootID)
 	m.queryState.Accept()
+	if m.tree.SelectByID(selectedID) {
+		m.syncTreeToDetail()
+	}
 }
 
 func (m Model) handleQueryKey(msg tea.KeyMsg) Model {
