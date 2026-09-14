@@ -3172,6 +3172,65 @@ func (t *TreeModel) TreeMarkedIDs() []string {
 	return ids
 }
 
+// MarkedCount returns how many issues are marked.
+func (t *TreeModel) MarkedCount() int {
+	return len(t.markedIDs)
+}
+
+// Unmark removes the given issue IDs from the mark set. IDs that are not
+// marked are ignored.
+func (t *TreeModel) Unmark(ids ...string) {
+	for _, id := range ids {
+		delete(t.markedIDs, id)
+	}
+}
+
+// SpanMark marks every visible row between the cursor and the nearest marked
+// row, looking upward first and then downward, as k9s does for ctrl+space.
+// With no marked row in view it marks the cursor row, which then anchors the
+// next range.
+func (t *TreeModel) SpanMark() {
+	if t.cursor < 0 || t.cursor >= len(t.flatList) {
+		return
+	}
+	anchor := -1
+	for i := t.cursor - 1; i >= 0; i-- {
+		if t.rowMarked(i) {
+			anchor = i
+			break
+		}
+	}
+	if anchor == -1 {
+		for i := t.cursor + 1; i < len(t.flatList); i++ {
+			if t.rowMarked(i) {
+				anchor = i
+				break
+			}
+		}
+	}
+	if anchor == -1 {
+		anchor = t.cursor
+	}
+	lo, hi := anchor, t.cursor
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+	if t.markedIDs == nil {
+		t.markedIDs = make(map[string]bool)
+	}
+	for i := lo; i <= hi; i++ {
+		if node := t.flatList[i]; node != nil && node.Issue != nil {
+			t.markedIDs[node.Issue.ID] = true
+		}
+	}
+}
+
+// rowMarked reports whether the visible row at index i holds a marked issue.
+func (t *TreeModel) rowMarked(i int) bool {
+	node := t.flatList[i]
+	return node != nil && node.Issue != nil && t.IsMarked(node.Issue.ID)
+}
+
 // ── XRay drill-down methods (bd-0rc) ──
 
 // ToggleXRay enters or exits XRay mode. When entering, it narrows the view to

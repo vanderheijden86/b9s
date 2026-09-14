@@ -855,14 +855,22 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `Ctrl+D` / `Ctrl+U` | Page down / up (half viewport) |
 | Selection override + drag | Select terminal text (`Option` in iTerm2, commonly `Shift` elsewhere) |
 | **Expand/Collapse** | |
-| `Enter` / `Space` | Toggle expand/collapse on current node |
+| `Enter` | Open the detail view for the current node |
 | `l` / `→` | Expand node, or move to first child if already expanded |
 | `h` / `←` | Collapse node, or jump to parent if already collapsed |
 | `o` | Expand all nodes in the tree |
 | `O` | Collapse all nodes in the tree |
+| **Marking & bulk actions** | |
+| `Space` / `m` | Mark or unmark the current node |
+| `Ctrl+Space` | Mark every row between the nearest mark and the cursor |
+| `Ctrl+\` / `M` | Clear all marks |
+| `K` | Close every marked issue, or the current node when none are marked |
+| `Delete` | Delete every marked issue, or the current node when none are marked |
 | **Integration** | |
 | `Tab` | Sync selection to detail panel (in split view) |
 | `E` / `Esc` | Exit tree view, return to list |
+
+Marking follows k9s. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
 
 ### Use Cases
 
@@ -2562,7 +2570,10 @@ bw has a comprehensive built-in help system:
 | | `Ctrl+D` / `Ctrl+U` | Page Down / Up |
 | **Tree View** | `j` / `k` | Move cursor down / up |
 | | `h` / `l` | Collapse/parent or Expand/child |
-| | `Enter` / `Space` | Toggle expand/collapse |
+| | `Enter` | Open detail view |
+| | `Space` / `Ctrl+Space` | Mark row / mark range |
+| | `Ctrl+\` | Clear marks |
+| | `K` / `Delete` | Close / delete marked issues (else current) |
 | | `o` / `O` | Expand all / Collapse all |
 | | `g` / `G` | Jump to top / bottom |
 | **Time-Travel & Analysis** | `t` | Time-Travel Mode (custom revision) |

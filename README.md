@@ -41,7 +41,7 @@ B9s takes the opposite approach: **do fewer things well**. By stripping the code
 
 ## Features
 
-- **Tree view** with parent/child hierarchy, computed `◈N` open-blocker indicators, split-pane detail, search with occurrence filtering, bookmarking, and XRay drill-down. Press `g` on a row to inspect the blocker identities. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics.
+- **Tree view** with parent/child hierarchy, computed `◈N` open-blocker indicators, split-pane detail, search with occurrence filtering, bookmarking, XRay drill-down, and k9s-style marking (`Space`, `ctrl+space` range, `ctrl+\` clear) so `K` and `Delete` act on every marked issue at once. Press `g` on a row to inspect the blocker identities. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics.
 - **Global fuzzy search** across issue IDs, titles, and labels, shared by tree, list, and board
 - **List view** with sorting (created, priority, updated) and status/label filtering
 - **Kanban board** with three swimlane modes: by status, by priority, and by type

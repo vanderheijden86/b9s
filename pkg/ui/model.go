@@ -66,6 +66,9 @@ type issueConfirmation struct {
 	action issueConfirmAction
 	id     string
 	title  string
+	// ids holds the marked issues a bulk action targets; empty means the
+	// single issue named by id.
+	ids []string
 }
 
 // SortMode represents the current list sorting mode (bv-3ita)
@@ -1227,6 +1230,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if msg.Operation == BdOpDefer {
 				m.statusMsg = fmt.Sprintf("Deferred %s", msg.IssueID)
 			}
+			if n := len(msg.IssueIDs); n > 1 {
+				switch msg.Operation {
+				case BdOpClose:
+					m.statusMsg = fmt.Sprintf("Closed %d issues", n)
+				case BdOpDelete:
+					m.statusMsg = fmt.Sprintf("Deleted %d issues", n)
+				}
+			}
 			m.statusIsError = false
 			// Trigger reload to pick up changes
 			debug.Log("BdResultMsg: triggering FileChangedMsg for reload (sourceType=%s)", m.sourceType)
@@ -2101,10 +2112,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "y", "Y":
 				confirmation := m.issueConfirm
 				m.issueConfirm = issueConfirmation{}
+				m.tree.Unmark(confirmation.targetIDs()...)
 				switch confirmation.action {
 				case issueConfirmClose:
+					if len(confirmation.ids) > 0 {
+						return m, m.issueWriter.CloseIssues(confirmation.ids)
+					}
 					return m, m.issueWriter.CloseIssue(confirmation.id, "")
 				case issueConfirmDelete:
+					if len(confirmation.ids) > 0 {
+						return m, m.issueWriter.DeleteIssues(confirmation.ids)
+					}
 					return m, m.issueWriter.DeleteIssue(confirmation.id)
 				}
 			default:
@@ -2662,12 +2680,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.statusIsError = false
 					return m, nil
 				}
-				if issue := m.getSelectedIssue(); issue != nil {
-					m.issueConfirm = issueConfirmation{
-						action: issueConfirmClose,
-						id:     issue.ID,
-						title:  issue.Title,
-					}
+				if confirm, ok := m.issueConfirmationFor(issueConfirmClose); ok {
+					m.issueConfirm = confirm
 					return m, nil
 				}
 
@@ -2677,12 +2691,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.statusIsError = false
 					return m, nil
 				}
-				if issue := m.getSelectedIssue(); issue != nil {
-					m.issueConfirm = issueConfirmation{
-						action: issueConfirmDelete,
-						id:     issue.ID,
-						title:  issue.Title,
-					}
+				if confirm, ok := m.issueConfirmationFor(issueConfirmDelete); ok {
+					m.issueConfirm = confirm
 					return m, nil
 				}
 
@@ -3284,11 +3294,13 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	// NOTE: TAB, shift+tab, and 1-9 removed from tree keys (bd-8zc)
 	// TAB is handled by Model.Update for tree↔detail focus switching
 	// 1-9 are handled by Model.Update for project switching
-	case "m":
-		// Toggle mark on current node (bd-cz0)
+	case " ", "space", "m":
+		// Space marks as in k9s; m remains from the dired-style bindings (bd-cz0)
 		m.tree.ToggleMark()
-	case "M":
-		// Unmark all (bd-cz0)
+	case "ctrl+@":
+		// Terminals send ctrl+space as NUL, which bubbletea names ctrl+@
+		m.tree.SpanMark()
+	case "ctrl+\\", "M":
 		m.tree.UnmarkAll()
 	case "x":
 		// Toggle XRay drill-down mode (bd-0rc)
@@ -3810,11 +3822,6 @@ func (m Model) renderIssueConfirm() string {
 		Foreground(t.Primary).
 		Bold(true)
 
-	title := m.issueConfirm.title
-	if len(title) > 50 {
-		title = title[:47] + "..."
-	}
-
 	heading := "Close issue?"
 	confirmLabel := "Close"
 	warning := "The issue remains available in closed history."
@@ -3824,9 +3831,26 @@ func (m Model) renderIssueConfirm() string {
 		warning = "This is permanent and cannot be undone."
 	}
 
+	var subject string
+	if n := len(m.issueConfirm.ids); n > 0 {
+		heading = fmt.Sprintf("%s %d issues?", confirmLabel, n)
+		confirmLabel = fmt.Sprintf("%s %d", confirmLabel, n)
+		if m.issueConfirm.action == issueConfirmDelete {
+			warning = "Deletion is permanent and cannot be undone."
+		} else {
+			warning = "The issues remain available in closed history."
+		}
+		subject = m.renderConfirmIDList(idStyle, textStyle)
+	} else {
+		title := m.issueConfirm.title
+		if len(title) > 50 {
+			title = title[:47] + "..."
+		}
+		subject = idStyle.Render(m.issueConfirm.id) + "\n" + textStyle.Render(title)
+	}
+
 	content := titleStyle.Render(heading) + "\n\n" +
-		idStyle.Render(m.issueConfirm.id) + "\n" +
-		textStyle.Render(title) + "\n\n" +
+		subject + "\n\n" +
 		textStyle.Render(warning) + "\n\n" +
 		keyStyle.Render("[Y] "+confirmLabel) + "  " + textStyle.Render("[Esc] Cancel")
 
@@ -4367,8 +4391,8 @@ func (m *Model) renderHelpOverlay() string {
 
 	actionsSection := []struct{ key, desc string }{
 		{"p", "Priority hints"},
-		{"K", "Close issue"},
-		{"Delete", "Delete issue"},
+		{"K", "Close marked / selected"},
+		{"Delete", "Delete marked / selected"},
 		{"Ctrl+R", "Force refresh"},
 		{"F5", "Force refresh"},
 		{"t", "Time-travel"},
@@ -4383,7 +4407,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"h", "Collapse / parent"},
 		{"l", "Expand / child"},
 		{"←/→", "Page back/forward"},
-		{"Enter/Spc", "Toggle expand"},
+		{"Enter", "Open detail"},
 		{"Home/G", "Top / bottom"},
 		{"p", "Jump to parent"},
 		{"X/Z", "Expand / collapse all"},
@@ -4397,7 +4421,9 @@ func (m *Model) renderHelpOverlay() string {
 		{"O", "Occur (search filter)"},
 		{"x", "XRay drill-down"},
 		{"b/B", "Bookmark / cycle"},
-		{"m/M", "Mark / unmark all"},
+		{"Space/m", "Mark / unmark"},
+		{"^Space", "Mark range"},
+		{"^\\ / M", "Clear marks"},
 	}
 
 	editingSection := []struct{ key, desc string }{
@@ -4660,6 +4686,11 @@ func (m *Model) renderFooter() string {
 	var hintParts []string
 	for _, h := range hints {
 		hintParts = append(hintParts, keyStyle.Render(h.key)+":"+labelStyle.Render(h.label))
+	}
+	if m.treeSelectionActive() {
+		if n := m.tree.MarkedCount(); n > 0 {
+			hintParts = append([]string{keyStyle.Render(fmt.Sprintf("%d marked", n))}, hintParts...)
+		}
 	}
 	shortcutBar := " " + strings.Join(hintParts, "  ")
 
@@ -6775,4 +6806,79 @@ func (m Model) renderAssigneeBar() string {
 		rows = append(rows, titleBar)
 	}
 	return strings.Join(rows, "\n")
+}
+
+// targetIDs returns every issue the confirmed action applies to.
+func (c issueConfirmation) targetIDs() []string {
+	if len(c.ids) > 0 {
+		return c.ids
+	}
+	if c.id == "" {
+		return nil
+	}
+	return []string{c.id}
+}
+
+// treeSelectionActive reports whether actions target the tree rather than the
+// board, graph or list selection. Marks exist only in the tree.
+func (m *Model) treeSelectionActive() bool {
+	return !m.isGraphView && !m.isBoardView && (m.focused == focusTree || m.treeViewActive)
+}
+
+// issueConfirmationFor builds the confirmation for action over its targets,
+// following k9s: every marked tree issue when any are marked, otherwise the
+// selected issue. Marked issues hidden by a filter still count, which is why a
+// bulk confirmation states the number of issues rather than relying on what
+// is visible.
+func (m *Model) issueConfirmationFor(action issueConfirmAction) (issueConfirmation, bool) {
+	if m.treeSelectionActive() {
+		var marked []*model.Issue
+		for _, id := range m.tree.TreeMarkedIDs() {
+			if issue, ok := m.issueMap[id]; ok {
+				marked = append(marked, issue)
+			}
+		}
+		switch len(marked) {
+		case 0:
+		case 1:
+			return issueConfirmation{action: action, id: marked[0].ID, title: marked[0].Title}, true
+		default:
+			ids := make([]string, len(marked))
+			for i, issue := range marked {
+				ids[i] = issue.ID
+			}
+			return issueConfirmation{action: action, ids: ids}, true
+		}
+	}
+	issue := m.getSelectedIssue()
+	if issue == nil {
+		return issueConfirmation{}, false
+	}
+	return issueConfirmation{action: action, id: issue.ID, title: issue.Title}, true
+}
+
+// maxConfirmListedIDs bounds the bulk confirmation list so a large mark set
+// cannot push the confirm and cancel buttons off screen.
+const maxConfirmListedIDs = 8
+
+// renderConfirmIDList renders the marked issues of a bulk confirmation, one
+// per line with a shortened title.
+func (m Model) renderConfirmIDList(idStyle, textStyle lipgloss.Style) string {
+	ids := m.issueConfirm.ids
+	lines := make([]string, 0, maxConfirmListedIDs+1)
+	for i, id := range ids {
+		if i == maxConfirmListedIDs {
+			lines = append(lines, textStyle.Render(fmt.Sprintf("…and %d more", len(ids)-i)))
+			break
+		}
+		title := ""
+		if issue, ok := m.issueMap[id]; ok {
+			title = issue.Title
+			if r := []rune(title); len(r) > 40 {
+				title = string(r[:37]) + "..."
+			}
+		}
+		lines = append(lines, idStyle.Render(id)+"  "+textStyle.Render(title))
+	}
+	return strings.Join(lines, "\n")
 }

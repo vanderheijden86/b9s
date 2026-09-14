@@ -31,6 +31,9 @@ type BdResultMsg struct {
 	Success   bool
 	Error     error
 	Output    string
+	// IssueIDs lists every issue a batch operation targeted; nil for
+	// single-issue operations.
+	IssueIDs []string
 }
 
 // IssueWriter wraps the bd CLI for mutating issues
@@ -94,6 +97,36 @@ func (w *IssueWriter) DeleteIssue(id string) tea.Cmd {
 	}
 	args := []string{"delete", id, "--force"}
 	return w.runBdCmd(BdOpDelete, id, args)
+}
+
+// CloseIssues closes every id with a single bd close invocation.
+func (w *IssueWriter) CloseIssues(ids []string) tea.Cmd {
+	return w.runBatch(BdOpClose, ids, append([]string{"close"}, ids...))
+}
+
+// DeleteIssues deletes every id with a single bd delete --force invocation.
+func (w *IssueWriter) DeleteIssues(ids []string) tea.Cmd {
+	args := append([]string{"delete"}, ids...)
+	return w.runBatch(BdOpDelete, ids, append(args, "--force"))
+}
+
+// runBatch runs one bd command over several issues and reports all of them in
+// the result's IssueIDs.
+func (w *IssueWriter) runBatch(op BdOperation, ids []string, args []string) tea.Cmd {
+	ids = append([]string(nil), ids...)
+	label := strings.Join(ids, " ")
+	cmd := w.unavailableCmd(op, label)
+	if w.available {
+		cmd = w.runBdCmd(op, label, args)
+	}
+	return func() tea.Msg {
+		msg := cmd()
+		if result, ok := msg.(BdResultMsg); ok {
+			result.IssueIDs = ids
+			return result
+		}
+		return msg
+	}
 }
 
 // DeferIssue runs bd defer <id> with optional --until flag (bd-j7mx).
