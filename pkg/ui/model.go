@@ -525,6 +525,8 @@ type Model struct {
 	// Status picker for quick status changes (bd-a83)
 	showStatusPicker bool
 	statusPicker     StatusPickerModel
+	// statusTargets holds the issues the open status picker applies to.
+	statusTargets []string
 
 	// Repo picker (workspace mode)
 	showRepoPicker bool
@@ -1217,6 +1219,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.statusMsg = fmt.Sprintf("Closed %d issues", n)
 				case BdOpDelete:
 					m.statusMsg = fmt.Sprintf("Deleted %d issues", n)
+				case BdOpSetStatus:
+					m.statusMsg = fmt.Sprintf("Updated %d issues", n)
 				}
 			}
 			m.statusIsError = false
@@ -2033,14 +2037,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "k", "up":
 				m.statusPicker.MoveUp()
 			case "enter":
-				// Apply status change
 				selected := m.statusPicker.SelectedStatus()
-				if issue := m.getSelectedIssue(); issue != nil && selected != "" {
-					cmds = append(cmds, m.issueWriter.SetStatus(issue.ID, selected))
+				targets := m.statusTargets
+				if len(targets) == 0 {
+					if issue := m.getSelectedIssue(); issue != nil {
+						targets = []string{issue.ID}
+					}
+				}
+				if selected != "" && len(targets) > 0 {
+					m.tree.Unmark(targets...)
+					if len(targets) > 1 {
+						cmds = append(cmds, m.issueWriter.SetStatuses(targets, selected))
+					} else {
+						cmds = append(cmds, m.issueWriter.SetStatus(targets[0], selected))
+					}
 				}
 				m.showStatusPicker = false
+				m.statusTargets = nil
 			case "esc":
 				m.showStatusPicker = false
+				m.statusTargets = nil
 			}
 			return m, tea.Batch(cmds...)
 		}
@@ -3315,6 +3331,13 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	// NOTE: TAB, shift+tab, and 1-9 removed from tree keys (bd-8zc)
 	// TAB is handled by Model.Update for tree↔detail focus switching
 	// 1-9 are handled by Model.Update for project switching
+	case "S":
+		if m.allProjectsMode {
+			m.statusMsg = "Editing disabled in all-projects view (press 1-9 to select a project)"
+			m.statusIsError = false
+			break
+		}
+		m.openStatusPicker()
 	case " ", "space", "m":
 		// Space marks as in k9s; m remains from the dired-style bindings (bd-cz0)
 		m.tree.ToggleMark()
@@ -4417,6 +4440,7 @@ func (m *Model) renderHelpOverlay() string {
 	actionsSection := []struct{ key, desc string }{
 		{"p", "Priority hints"},
 		{"K", "Close marked / selected"},
+		{"S", "Status of marked / selected"},
 		{"Delete", "Delete marked / selected"},
 		{"Ctrl+R", "Force refresh"},
 		{"F5", "Force refresh"},
@@ -4451,6 +4475,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Space/m", "Mark / unmark"},
 		{"^Space", "Mark range"},
 		{"^\\ / M", "Clear marks"},
+		{"S", "Change status"},
 	}
 
 	editingSection := []struct{ key, desc string }{
@@ -6867,12 +6892,11 @@ func (m *Model) treeSelectionActive() bool {
 	return !m.isGraphView && !m.isBoardView && (m.focused == focusTree || m.treeViewActive)
 }
 
-// issueConfirmationFor builds the confirmation for action over its targets,
-// following k9s: every marked tree issue when any are marked, otherwise the
-// selected issue. Marked issues hidden by a filter still count, which is why a
-// bulk confirmation states the number of issues rather than relying on what
-// is visible.
-func (m *Model) issueConfirmationFor(action issueConfirmAction) (issueConfirmation, bool) {
+// actionTargets resolves the issues an issue action applies to, following
+// k9s: every marked tree issue when any are marked, otherwise the selected
+// issue. Marked issues hidden by a filter still count, which is why bulk
+// dialogs state the number of issues rather than relying on what is visible.
+func (m *Model) actionTargets() []*model.Issue {
 	if m.treeSelectionActive() {
 		var marked []*model.Issue
 		for _, id := range m.tree.TreeMarkedIDs() {
@@ -6880,23 +6904,50 @@ func (m *Model) issueConfirmationFor(action issueConfirmAction) (issueConfirmati
 				marked = append(marked, issue)
 			}
 		}
-		switch len(marked) {
-		case 0:
-		case 1:
-			return issueConfirmation{action: action, id: marked[0].ID, title: marked[0].Title}, true
-		default:
-			ids := make([]string, len(marked))
-			for i, issue := range marked {
-				ids[i] = issue.ID
-			}
-			return issueConfirmation{action: action, ids: ids}, true
+		if len(marked) > 0 {
+			return marked
 		}
 	}
-	issue := m.getSelectedIssue()
-	if issue == nil {
-		return issueConfirmation{}, false
+	if issue := m.getSelectedIssue(); issue != nil {
+		return []*model.Issue{issue}
 	}
-	return issueConfirmation{action: action, id: issue.ID, title: issue.Title}, true
+	return nil
+}
+
+// issueConfirmationFor builds the confirmation for action over actionTargets.
+func (m *Model) issueConfirmationFor(action issueConfirmAction) (issueConfirmation, bool) {
+	targets := m.actionTargets()
+	switch len(targets) {
+	case 0:
+		return issueConfirmation{}, false
+	case 1:
+		return issueConfirmation{action: action, id: targets[0].ID, title: targets[0].Title}, true
+	}
+	return issueConfirmation{action: action, ids: targetIssueIDs(targets)}, true
+}
+
+// openStatusPicker opens the status picker over actionTargets, starting at the
+// first target's status.
+func (m *Model) openStatusPicker() {
+	targets := m.actionTargets()
+	if len(targets) == 0 {
+		return
+	}
+	m.statusPicker = NewStatusPickerModel(string(targets[0].Status), m.theme)
+	m.statusPicker.SetTargetCount(len(targets))
+	if m.width > 0 && m.height > 1 {
+		m.statusPicker.SetSize(m.width, m.height-1)
+	}
+	m.statusTargets = targetIssueIDs(targets)
+	m.showStatusPicker = true
+}
+
+func targetIssueIDs(issues []*model.Issue) []string {
+	ids := make([]string, len(issues))
+	for i, issue := range issues {
+		ids[i] = issue.ID
+	}
+	return ids
 }
 
 // maxConfirmListedIDs bounds the bulk confirmation list so a large mark set

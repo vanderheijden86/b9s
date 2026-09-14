@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -15,6 +16,8 @@ type StatusPickerModel struct {
 	width         int
 	height        int
 	theme         Theme
+	// targetCount is how many issues the chosen status applies to.
+	targetCount int
 }
 
 // NewStatusPickerModel creates a new status picker
@@ -53,6 +56,12 @@ func NewStatusPickerModel(currentStatus string, theme Theme) StatusPickerModel {
 func (m *StatusPickerModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+}
+
+// SetTargetCount records how many issues the chosen status applies to, so the
+// title can say so when it is more than one.
+func (m *StatusPickerModel) SetTargetCount(n int) {
+	m.targetCount = n
 }
 
 // MoveUp moves selection up
@@ -104,7 +113,11 @@ func (m *StatusPickerModel) View() string {
 		Foreground(t.Primary).
 		Bold(true).
 		MarginBottom(1)
-	lines = append(lines, titleStyle.Render("Change Status"))
+	title := "Change Status"
+	if m.targetCount > 1 {
+		title = fmt.Sprintf("Change Status (%d issues)", m.targetCount)
+	}
+	lines = append(lines, titleStyle.Render(title))
 	lines = append(lines, "")
 
 	// Status list

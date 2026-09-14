@@ -146,6 +146,12 @@ func (w *IssueWriter) SetStatus(id, status string) tea.Cmd {
 	return w.UpdateIssue(id, map[string]string{"status": status})
 }
 
+// SetStatuses sets status on every id with a single bd update invocation.
+func (w *IssueWriter) SetStatuses(ids []string, status string) tea.Cmd {
+	args := append([]string{"update"}, ids...)
+	return w.runBatch(BdOpSetStatus, ids, append(args, "--status="+status))
+}
+
 // SetPriority is a convenience wrapper for updating just the priority
 func (w *IssueWriter) SetPriority(id string, priority int) tea.Cmd {
 	return w.UpdateIssue(id, map[string]string{"priority": fmt.Sprintf("%d", priority)})

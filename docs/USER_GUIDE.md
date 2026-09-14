@@ -866,12 +866,13 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `Ctrl+\` / `M` | Clear all marks |
 | `K` | Close every marked issue, or the current node when none are marked |
 | `Delete` | Delete every marked issue, or the current node when none are marked |
+| `S` | Change the status of every marked issue, or the current node when none are marked |
 | **Integration** | |
 | `Tab` | Sync selection to detail panel (in split view) |
 | `C` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
 | `E` / `Esc` | Exit tree view, return to list |
 
-Marking follows k9s. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
+Marking follows k9s. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. `S` opens the status picker for the same set (its title shows the count, for example "Change Status (3 issues)") and applies the chosen status with one `bd update`. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
 
 ### Use Cases
 
@@ -2572,6 +2573,7 @@ bw has a comprehensive built-in help system:
 | **Tree View** | `j` / `k` | Move cursor down / up |
 | | `h` / `l` | Collapse/parent or Expand/child |
 | | `Enter` | Open detail view |
+| | `S` | Change status of marked issues (else current) |
 | | `Space` / `Ctrl+Space` | Mark row / mark range |
 | | `Ctrl+\` | Clear marks |
 | | `K` / `Delete` | Close / delete marked issues (else current) |

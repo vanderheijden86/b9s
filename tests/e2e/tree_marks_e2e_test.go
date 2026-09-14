@@ -46,3 +46,20 @@ func TestTreeViewShiftKConfirmsCloseOfMarkedIssues(t *testing.T) {
 	}
 	containsAll(t, out, []string{"Close 2 issues?", "[Y] Close 2"})
 }
+
+func TestTreeViewShiftSOpensStatusPickerForMarkedIssues(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping PTY e2e test in -short mode")
+	}
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeMarkFixture())
+
+	// Stops at the picker: pressing Enter would run the real bd in the fixture.
+	out, err := runTreeTUI(t, tempDir, 1800, []keyStep{
+		k(" "), k("j"), k(" "), k("S"),
+	})
+	if err != nil {
+		t.Fatalf("run tree TUI: %v", err)
+	}
+	containsAll(t, out, []string{"Change Status (2 issues)", "In Progress"})
+}
