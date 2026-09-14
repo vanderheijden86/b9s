@@ -230,13 +230,14 @@ type TreeModel struct {
 	beadsDir string // Directory containing .beads (for tree-state.json)
 
 	// Filter state (bd-e3w, bd-dlqi, bd-gs45.1)
-	currentFilter    string                  // "all", "open", "closed", "ready"
-	labelFilter      string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
-	assigneeFilter   string                  // "" = no assignee filter (bd-gs45.1)
-	issueQuery       IssueQuery              // Shared ID/title/facet query owned by Model
-	filterMatches    map[string]bool         // Issue IDs that match the filter
-	contextAncestors map[string]bool         // Ancestor IDs shown for context (dimmed)
-	globalIssueMap   map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
+	currentFilter      string                  // "all", "open", "closed", "ready"
+	labelFilter        string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
+	assigneeFilter     string                  // "" = no assignee filter (bd-gs45.1)
+	issueQuery         IssueQuery              // Shared ID/title/facet query owned by Model
+	filterMatches      map[string]bool         // Issue IDs that match the filter
+	contextAncestors   map[string]bool         // Ancestor IDs shown for context (dimmed)
+	contextDescendants map[string]bool         // Descendant IDs of query hits shown for context (dimmed) (bd-xkxb)
+	globalIssueMap     map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
 
 	// PageRank scores for sort-by-pagerank (bd-x3l)
 	pageRankScores map[string]float64 // Issue ID -> PageRank score (set externally)
@@ -993,6 +994,7 @@ func (t *TreeModel) ApplyFilter(filter string) {
 	if t.currentFilter == "all" && t.labelFilter == "" && t.assigneeFilter == "" && t.issueQuery.Empty() {
 		t.filterMatches = nil
 		t.contextAncestors = nil
+		t.contextDescendants = nil
 		t.refreshSearchMatches() // matches are scoped to the filter (bd-oe1y)
 		t.rebuildFlatList()
 		return
@@ -1000,6 +1002,7 @@ func (t *TreeModel) ApplyFilter(filter string) {
 
 	t.filterMatches = make(map[string]bool)
 	t.contextAncestors = make(map[string]bool)
+	t.contextDescendants = make(map[string]bool)
 
 	// Mark matching nodes
 	for id, node := range t.issueMap {
@@ -1025,6 +1028,15 @@ func (t *TreeModel) ApplyFilter(filter string) {
 		}
 	}
 
+	// A text query keeps each hit's whole branch in view, so the subtree below
+	// a hit is context as well. A status, label or assignee filter without a
+	// query reveals nothing below its matches (bd-xkxb).
+	if !t.issueQuery.Empty() {
+		for id := range t.filterMatches {
+			t.markContextDescendants(t.issueMap[id])
+		}
+	}
+
 	// An active search is scoped to the filter, so its matches go stale as soon
 	// as the filter changes (bd-oe1y).
 	t.refreshSearchMatches()
@@ -1037,11 +1049,12 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 	if node == nil || node.Issue == nil {
 		return false
 	}
-	issue := node.Issue
-	if !t.issueQuery.Matches(*issue) {
-		return false
-	}
+	return t.issueQuery.Matches(*node.Issue) && t.passesScopeFilters(node.Issue)
+}
 
+// passesScopeFilters checks the label, assignee and status filters, which
+// bound both query hits and the branch context revealed around them.
+func (t *TreeModel) passesScopeFilters(issue *model.Issue) bool {
 	// Label filter (AND with status filter) (bd-dlqi)
 	if t.labelFilter != "" {
 		hasLabel := false
@@ -1078,14 +1091,33 @@ func (t *TreeModel) nodeMatchesFilter(node *IssueTreeNode) bool {
 	}
 }
 
-// IsFilterDimmed returns true if the node is a context ancestor (shown dimmed)
-// rather than a direct filter match (bd-05v).
+// markContextDescendants marks the descendants of a query hit that pass the
+// scope filters and expands each parent on the way, so the branch is visible.
+// A descendant failing a scope filter takes its subtree with it: the tree has
+// no way to draw a child without its parent row.
+func (t *TreeModel) markContextDescendants(node *IssueTreeNode) {
+	if node == nil {
+		return
+	}
+	for _, child := range node.Children {
+		if child == nil || child.Issue == nil || !t.passesScopeFilters(child.Issue) {
+			continue
+		}
+		t.contextDescendants[child.Issue.ID] = true
+		node.Expanded = true
+		t.markContextDescendants(child)
+	}
+}
+
+// IsFilterDimmed returns true if the node is branch context (an ancestor or a
+// descendant of a match, shown dimmed) rather than a direct filter match
+// (bd-05v, bd-xkxb).
 func (t *TreeModel) IsFilterDimmed(node *IssueTreeNode) bool {
 	if node == nil || node.Issue == nil || t.filterMatches == nil {
 		return false
 	}
 	id := node.Issue.ID
-	return t.contextAncestors[id] && !t.filterMatches[id]
+	return (t.contextAncestors[id] || t.contextDescendants[id]) && !t.filterMatches[id]
 }
 
 // View renders the tree view with a header row and windowed node rendering.
@@ -1544,24 +1576,11 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 		title = title + strings.Repeat(" ", titleWidth-currentTitleWidth)
 	}
 
-	// ── Search match highlighting (bd-nkt) ──
-	isSearchMatch := t.searchMatchIDs != nil && t.searchMatchIDs[node.Issue.ID]
-	isCurrentMatch := isSearchMatch && len(t.searchMatches) > 0 &&
-		t.searchMatchIndex < len(t.searchMatches) &&
-		t.searchMatches[t.searchMatchIndex] == node
-
+	// A search hit keeps its normal colours: non-matching branches are hidden
+	// and branch context is dimmed, so the cursor is the only emphasis (bd-xkxb).
 	titleStyle := r.NewStyle()
 	if isSelected {
 		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}).Bold(true)
-	} else if isCurrentMatch {
-		// Current search match: bright yellow foreground + bold
-		titleStyle = titleStyle.
-			Foreground(lipgloss.AdaptiveColor{Light: "#7A5600", Dark: "#F1FA8C"}).
-			Bold(true)
-	} else if isSearchMatch {
-		// Other search matches: orange foreground
-		titleStyle = titleStyle.
-			Foreground(lipgloss.AdaptiveColor{Light: "#B06800", Dark: "#FFB86C"})
 	} else {
 		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"})
 	}
@@ -2367,16 +2386,15 @@ func (t *TreeModel) rebuildFilteredFlatList() {
 }
 
 // appendFilteredVisible adds a node to the flat list only if it matches the
-// filter or is a context ancestor of a matching node. Context ancestors are
-// traversed even if not explicitly expanded to ensure matching descendants
-// remain visible (bd-e3w).
+// filter or is branch context: an ancestor of a match, or a descendant of a
+// query hit (bd-e3w, bd-xkxb).
 func (t *TreeModel) appendFilteredVisible(node *IssueTreeNode) {
 	if node == nil || node.Issue == nil {
 		return
 	}
 	id := node.Issue.ID
 	isMatch := t.filterMatches[id]
-	isContext := t.contextAncestors[id]
+	isContext := t.contextAncestors[id] || t.contextDescendants[id]
 
 	if !isMatch && !isContext {
 		return
@@ -3054,6 +3072,7 @@ func (t *TreeModel) ApplyAdvancedFilter(filter string) {
 		t.currentFilter = "all"
 		t.filterMatches = nil
 		t.contextAncestors = nil
+		t.contextDescendants = nil
 		t.advancedPredicates = nil
 		t.rebuildFlatList()
 		return
@@ -3069,6 +3088,7 @@ func (t *TreeModel) ApplyAdvancedFilter(filter string) {
 	t.advancedPredicates = preds
 	t.filterMatches = make(map[string]bool)
 	t.contextAncestors = make(map[string]bool)
+	t.contextDescendants = nil
 
 	for id, node := range t.issueMap {
 		if t.nodeMatchesAdvancedFilter(node, preds) {

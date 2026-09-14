@@ -213,6 +213,81 @@ func TestGlobalSearchShowsOnlyRelevantPreventResultE2E(t *testing.T) {
 	}
 }
 
+// makeBranchSearchFixture is one epic with two features, where only the task
+// under the first feature mentions "zephyr", plus a standalone task (bd-xkxb).
+func makeBranchSearchFixture() []treeFixtureIssue {
+	now := time.Now()
+	at := func(offset int) string { return now.Add(time.Duration(offset) * time.Second).Format(time.RFC3339) }
+	parent := func(id, of string) []*treeFixtureDep {
+		return []*treeFixtureDep{{IssueID: id, DependsOnID: of, Type: "parent-child"}}
+	}
+	return []treeFixtureIssue{
+		{ID: "epic-1", Title: "Quokka acceptance testing", Status: "open", Priority: 1, IssueType: "epic", CreatedAt: at(0)},
+		{ID: "feat-1", Title: "Verify first implementation", Status: "open", Priority: 1, IssueType: "feature", CreatedAt: at(1), Dependencies: parent("feat-1", "epic-1")},
+		{ID: "task-1", Title: "Connect over the zephyr tunnel", Status: "open", Priority: 1, IssueType: "task", CreatedAt: at(2), Dependencies: parent("task-1", "feat-1")},
+		{ID: "feat-2", Title: "Deploy to the cloud", Status: "open", Priority: 1, IssueType: "feature", CreatedAt: at(3), Dependencies: parent("feat-2", "epic-1")},
+		{ID: "solo-1", Title: "Rotate release keys", Status: "open", Priority: 2, IssueType: "task", CreatedAt: at(4)},
+	}
+}
+
+func finalSearchFrame(t *testing.T, out []byte, query string) string {
+	t.Helper()
+	s := string(out)
+	start := strings.LastIndex(s, "/ "+query)
+	if start < 0 {
+		t.Fatalf("final query %q was not rendered\noutput:\n%s", query, s)
+	}
+	return s[start:]
+}
+
+func TestSearchHitOnTaskKeepsItsBranchE2E(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeBranchSearchFixture())
+
+	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
+		kd("/", 150*time.Millisecond),
+		kd("zephyr", 200*time.Millisecond),
+	})
+	if err != nil {
+		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+	}
+
+	frame := finalSearchFrame(t, out, "zephyr")
+	for _, want := range []string{"Quokka acceptance testing", "Verify first implementation", "Connect over the zephyr tunnel"} {
+		if !strings.Contains(frame, want) {
+			t.Errorf("branch row %q is missing\noutput:\n%s", want, out)
+		}
+	}
+	for _, hidden := range []string{"Deploy to the cloud", "Rotate release keys"} {
+		if strings.Contains(frame, hidden) {
+			t.Errorf("row %q outside the hit's branch is visible\noutput:\n%s", hidden, out)
+		}
+	}
+}
+
+func TestSearchHitOnEpicShowsItsSubtreeE2E(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeBranchSearchFixture())
+
+	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
+		kd("/", 150*time.Millisecond),
+		kd("quokka", 200*time.Millisecond),
+	})
+	if err != nil {
+		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+	}
+
+	frame := finalSearchFrame(t, out, "quokka")
+	for _, want := range []string{"Quokka acceptance testing", "Verify first implementation", "Connect over the zephyr tunnel", "Deploy to the cloud"} {
+		if !strings.Contains(frame, want) {
+			t.Errorf("subtree row %q is missing\noutput:\n%s", want, out)
+		}
+	}
+	if strings.Contains(frame, "Rotate release keys") {
+		t.Errorf("unrelated standalone task is visible\noutput:\n%s", out)
+	}
+}
+
 func TestGlobalSearchIgnoresBlockerMentionsForShortIssuePathE2E(t *testing.T) {
 	tempDir := t.TempDir()
 	now := time.Now()

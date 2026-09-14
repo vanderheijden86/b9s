@@ -2605,6 +2605,15 @@ Press `Tab` to complete a partially typed field or an ordinary ID, title, or lab
 
 - **While the query bar is focused, every keystroke goes into the query.** Global shortcuts are suspended, so query characters never trigger actions. Press `Enter` to accept the query and hide the field; press `/` to edit it again. Press `Esc` while editing or after acceptance to clear it.
 - **Incomplete predicates remain permissive.** `label:` shows every issue. Typing `label:l` then narrows the list live to issues with matching labels such as `lane`, `loser`, and `lover`.
+- **The tree keeps the whole branch of every hit and hides every other branch.** A hit's parents up to its top-level epic stay visible, and so does everything below it, so matching an epic shows its features and tasks. Branches without a hit are hidden, including sibling features under the same epic, and a standalone task that matches is shown on its own. Hit rows keep their normal colours; the surrounding branch rows are dimmed. `Tab` still collapses a revealed branch.
+
+```text
+query "tunnel"                              query "acceptance"
+♦ [3bg] Epic: UAT             (dimmed)      ♦ [3bg] Epic: User Acceptance   (hit)
+└─ ▲ [3bg.1] Verify           (dimmed)      ├─ ▲ [3bg.1] Verify            (dimmed)
+   └─ ✔ [3bg.1.1] … tunnel    (hit)         │  └─ ✔ [3bg.1.1] Connect     (dimmed)
+                                            └─ ▲ [3bg.2] Deploy Acceptance (hit)
+```
 - **The first result is revealed with surrounding context.** A distant tree result is placed near the upper third of the viewport instead of at the bottom edge. Use `n` / `N` to move through matches.
 - **Search results are scoped to the active label, assignee, and status filters**, so the match count and `n` / `N` navigation only cover issues you can actually see. Changing a filter while a query is active re-scopes the matches. In XRay mode (`x`), search is scoped to the drilled-down subtree.
 - **Quick filters continue to compose with search.** The `o`, `c`, `r`, and `a` status shortcuts and label/assignee selections narrow results without crowding the search input.
