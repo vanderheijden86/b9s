@@ -2577,7 +2577,7 @@ bw has a comprehensive built-in help system:
 | | `Space` / `Ctrl+Space` | Mark row / mark range |
 | | `Ctrl+\` | Clear marks |
 | | `K` / `Delete` | Close / delete marked issues (else current) |
-| | `f` | Filter to the highlighted issue's top-level branch |
+| | `f` | Toggle the highlighted issue's top-level branch filter |
 | | `o` / `O` | Expand all / Collapse all |
 | | `g` / `G` | Jump to top / bottom |
 | **Time-Travel & Analysis** | `t` | Time-Travel Mode (custom revision) |
@@ -2621,7 +2621,7 @@ Press `Tab` to complete a partially typed field or an ordinary ID, title, or lab
 - **While the query bar is focused, every keystroke goes into the query.** Global shortcuts are suspended, so query characters never trigger actions. Press `Enter` to accept the query and hide the field; press `/` to edit it again. Press `Esc` while editing or after acceptance to clear it.
 - **Incomplete predicates remain permissive.** `label:` shows every issue. Typing `label:l` then narrows the list live to issues with matching labels such as `lane`, `loser`, and `lover`.
 - **The tree keeps the whole branch of every hit and hides every other branch.** A hit's parents up to its top-level epic stay visible, and so does everything below it, so matching an epic shows its features and tasks. Branches without a hit are hidden, including sibling features under the same epic, and a standalone task that matches is shown on its own. Hit rows keep their normal colours; the surrounding branch rows are dimmed. `Tab` still collapses a revealed branch.
-- **Press `f` to filter the highlighted branch immediately.** The tree resolves the selected task, feature, epic, or standalone issue to its top-level parent ID, puts that ID into the shared query, and accepts it as if you had typed `/`, the ID, and `Enter`.
+- **Press `f` to filter the highlighted branch immediately.** The tree resolves the selected task, feature, epic, or standalone issue to its top-level parent ID, puts that ID into the shared query, and accepts it as if you had typed `/`, the ID, and `Enter`. Press `f` again to clear that branch query and restore the full tree.
 
 ```text
 query "tunnel"                              query "acceptance"

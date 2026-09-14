@@ -247,7 +247,7 @@ If B9s cannot connect to the configured Dolt server, it falls back to the next a
 | `Home` / `G` | Top / Bottom | `Tab` | Switch pane focus |
 | `/` | Fuzzy search | `s` | Cycle sort mode |
 | `n` / `N` | Next / Prev match | `l` | Label picker |
-| `f` | Filter highlighted tree branch | | |
+| `f` | Toggle highlighted tree branch filter | | |
 | `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All | `d` | Toggle detail panel |
 | `Ctrl+R` / `F5` | Refresh data immediately | `?` | Show help |
 

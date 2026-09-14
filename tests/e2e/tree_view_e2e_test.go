@@ -724,7 +724,7 @@ func TestTreeViewSearchByID(t *testing.T) {
 	containsAll(t, out, []string{"Epic Two"})
 }
 
-func TestTreeViewFilterHighlightedBranch(t *testing.T) {
+func TestTreeViewToggleHighlightedBranchFilter(t *testing.T) {
 	tempDir := t.TempDir()
 	now := time.Now()
 	issues := []treeFixtureIssue{
@@ -741,17 +741,21 @@ func TestTreeViewFilterHighlightedBranch(t *testing.T) {
 		k("j"),
 		k("j"),
 		k("f"),
+		k("f"),
+		k("G"),
+		k("K"),
 	})
 	if err != nil {
 		t.Fatalf("run tree TUI: %v\noutput:\n%s", err, out)
 	}
 
-	finalFrame := string(out)
-	if lastHeader := strings.LastIndex(finalFrame, "TYPE PRI STATUS"); lastHeader >= 0 {
-		finalFrame = finalFrame[lastHeader:]
+	output := string(out)
+	if !strings.Contains(output, "/ epic-a") {
+		t.Fatalf("first f did not show the accepted branch query:\n%s", truncateOutput(output, 2000))
 	}
-	if !strings.Contains(finalFrame, "/ epic-a") {
-		t.Fatalf("accepted branch query is missing from final frame:\n%s", truncateOutput(finalFrame, 2000))
+	confirmationStart := strings.LastIndex(output, "Close issue?")
+	if confirmationStart < 0 || !strings.Contains(output[confirmationStart:], "epic-b") {
+		t.Fatalf("second f did not restore navigation to the unrelated root:\n%s", truncateOutput(output, 2000))
 	}
 }
 

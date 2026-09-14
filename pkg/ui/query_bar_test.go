@@ -285,6 +285,18 @@ func TestTreeFilterBranchShortcutUsesTopLevelParentID(t *testing.T) {
 			if strings.Join(gotIDs, ",") != strings.Join(tt.wantIDs, ",") {
 				t.Fatalf("visible branch = %v, want %v", gotIDs, tt.wantIDs)
 			}
+
+			m = typeKeys(m, "f")
+
+			if !m.queryState.Empty() || m.queryState.Text() != "" {
+				t.Fatalf("second f left branch query active: %q", m.queryState.Text())
+			}
+			if bar := m.renderUnifiedTitleBar(100); bar != "" {
+				t.Fatalf("second f left query bar visible: %q", stripANSI(bar))
+			}
+			if got := len(treeVisibleIDs(&m.tree)); got != len(issues) {
+				t.Fatalf("second f left %d visible issues, want all %d", got, len(issues))
+			}
 		})
 	}
 }
