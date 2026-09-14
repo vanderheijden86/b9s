@@ -3,6 +3,9 @@
 package main_test
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +50,45 @@ func TestSearchFieldHiddenUntilSlashE2E(t *testing.T) {
 	if !strings.Contains(string(editingOut), "/█") {
 		t.Fatalf("slash did not reveal the search field\noutput:\n%s", editingOut)
 	}
+}
+
+func TestStartupFilterE2E(t *testing.T) {
+	skipIfNoScript(t)
+	tempDir := t.TempDir()
+	now := time.Now()
+	writeTreeFixture(t, tempDir, []treeFixtureIssue{
+		{ID: "backend-open", Title: "Open backend task", Status: "open", Priority: 1, IssueType: "task", CreatedAt: now.Format(time.RFC3339), Labels: []string{"backend"}},
+		{ID: "backend-closed", Title: "Closed backend task", Status: "closed", Priority: 1, IssueType: "task", CreatedAt: now.Add(time.Second).Format(time.RFC3339), Labels: []string{"backend"}},
+		{ID: "frontend-open", Title: "Open frontend task", Status: "open", Priority: 1, IssueType: "task", CreatedAt: now.Add(2 * time.Second).Format(time.RFC3339), Labels: []string{"frontend"}},
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := scriptTUICommand(ctx, buildBvBinary(t), "--filter", "status:open label:backend")
+	if cmd == nil {
+		t.Fatal("script PTY is required for the startup filter regression")
+	}
+	cmd.Dir = tempDir
+	cmd.Env = append(os.Environ(),
+		"TERM=screen-256color",
+		"B9S_TUI_AUTOCLOSE_MS=1500",
+	)
+	ensureCmdStdinCloses(t, ctx, cmd, 5*time.Second)
+	out, err := runCmdToFile(t, cmd)
+	if err != nil {
+		t.Fatalf("filtered TUI run failed: %v\noutput:\n%s", err, out)
+	}
+
+	finalFrame := string(out)
+	if !strings.Contains(finalFrame, "status:open label:backend") || !strings.Contains(finalFrame, "Open backend task") {
+		t.Fatalf("startup filter was not visible or applied\noutput:\n%s", out)
+	}
+	for _, excluded := range []string{"Closed backend task", "Open frontend task"} {
+		if strings.Contains(finalFrame, excluded) {
+			t.Errorf("startup filter retained %q\noutput:\n%s", excluded, out)
+		}
+	}
+	fmt.Println("=== STARTUP FILTER DONE pass=1 fail=0 ===")
 }
 
 func TestSearchTabCompletesPlainLabelE2E(t *testing.T) {

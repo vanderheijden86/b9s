@@ -393,6 +393,27 @@ func TestModelQueryFiltersAllViewsByRepresentativeCases(t *testing.T) {
 	}
 }
 
+func TestWithInitialQueryFiltersOnStartup(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "backend-open", Title: "Open backend task", Status: model.StatusOpen, Labels: []string{"backend"}},
+		{ID: "backend-closed", Title: "Closed backend task", Status: model.StatusClosed, Labels: []string{"backend"}},
+		{ID: "frontend-open", Title: "Open frontend task", Status: model.StatusOpen, Labels: []string{"frontend"}},
+	}
+
+	m := NewModel(issues, "").WithInitialQuery("status:open label:backend")
+
+	visible := m.FilteredIssues()
+	if len(visible) != 1 || visible[0].ID != "backend-open" {
+		t.Fatalf("startup query shows %v, want only backend-open", issueIDs(visible))
+	}
+	if got := m.queryState.Text(); got != "status:open label:backend" {
+		t.Fatalf("startup query text = %q, want it retained", got)
+	}
+	if got := m.queryState.Mode(); got != QueryIdle {
+		t.Fatalf("startup query mode = %v, want idle", got)
+	}
+}
+
 func TestTreeQueryRetainsOnlyAncestorsNeededForContext(t *testing.T) {
 	issues := []model.Issue{
 		{ID: "epic", Title: "Search improvements", IssueType: model.TypeEpic},
