@@ -95,18 +95,18 @@ func recentOnDisk(data []byte) []RecentProject {
 // migrateFavorites seeds an empty recent list from the numbered favorites of
 // older configs, in slot order. Favorites whose path no longer holds a Beads
 // checkout are skipped.
-func (c *Config) migrateFavorites() {
-	if len(c.RecentProjects) > 0 || len(c.Favorites) == 0 {
+func (c *Config) migrateFavorites(legacy legacyConfig) {
+	if len(c.RecentProjects) > 0 || len(legacy.Favorites) == 0 {
 		return
 	}
-	slots := make([]int, 0, len(c.Favorites))
-	for n := range c.Favorites {
+	slots := make([]int, 0, len(legacy.Favorites))
+	for n := range legacy.Favorites {
 		slots = append(slots, n)
 	}
 	sort.Ints(slots)
 
 	for _, n := range slots {
-		project := c.FindProject(c.Favorites[n])
+		project := legacy.findProject(legacy.Favorites[n])
 		if project == nil {
 			continue
 		}

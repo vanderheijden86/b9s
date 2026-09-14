@@ -95,25 +95,3 @@ func TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout(t *testing.T) 
 		t.Errorf("switch project = %+v, want %+v", switchMsg.Project, want)
 	}
 }
-
-func TestWithConfig_IgnoresScanPaths(t *testing.T) {
-	root, projects := createSampleProjects(t)
-	cfg := config.Config{Discovery: config.DiscoveryConfig{ScanPaths: []string{root}, MaxDepth: 2}}
-
-	m := headerModel(t, cfg, projects[0])
-
-	if got := m.ProjectPickerFilteredCount(); got != 1 {
-		t.Errorf("header has %d projects, want only the startup project", got)
-	}
-}
-
-func TestWithConfig_IgnoresRegisteredProjectsList(t *testing.T) {
-	_, projects := createSampleProjects(t)
-	cfg := config.Config{Projects: projects}
-
-	m := headerModel(t, cfg, projects[0])
-
-	if got := m.ProjectPickerFilteredCount(); got != 1 {
-		t.Errorf("header has %d projects, want only the startup project", got)
-	}
-}

@@ -47,7 +47,7 @@ B9s takes the opposite approach: **do fewer things well**. By stripping the code
 - **Kanban board** with three swimlane modes: by status, by priority, and by type
 - **Dependency graph** with a focused view of what blocks the selected issue and what waits on it
 - **Detail panel** with full Markdown rendering (via Glamour), scrollable and toggleable
-- **Project picker** (k9s-style header) with multi-project switching, favorites (1-9 keys), and issue count columns (Open, In Progress, Ready)
+- **Project picker** (k9s-style header) listing the current and recently opened projects on number keys 1-9, with issue count columns (Open, In Progress, Ready)
 - **Inline editing** of title, status, priority, type, assignee, labels, description, and notes (via huh forms)
 - **Issue creation** directly from the TUI (`Ctrl+n`)
 - **Label filtering** with count display
@@ -99,7 +99,7 @@ Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutor
 
 B9s discovers and reads from multiple data backends automatically. On startup, it scans the `.beads/` directory for all available sources and selects the most authoritative one based on a fixed priority order.
 
-Project auto-discovery accepts any supported backend. A server-mode project only needs valid Dolt configuration in `.beads/metadata.json` to appear in the project picker; it does not need a JSONL export. Discovery does not connect to Dolt, so configured projects remain visible when the server or tunnel is temporarily unavailable.
+The project picker lists the project b9s was started in and the projects you opened recently (`recent_projects` in `~/.config/b9s/config.yaml`, at most nine). It does not scan folders for other projects. Any supported backend can be a recent project. A server-mode project only needs valid Dolt configuration in `.beads/metadata.json`; it does not need a JSONL export. A recent project whose server or tunnel is unavailable stays in the picker and is marked `✗` in place of its issue counts.
 
 ### Source Priority
 

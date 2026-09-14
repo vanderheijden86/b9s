@@ -77,9 +77,7 @@ func createModelWithProjects(t *testing.T) (ui.Model, config.Config) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      map[int]string{1: "api-service", 3: "data-pipeline"},
 		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
-		Discovery:      config.DiscoveryConfig{MaxDepth: 3},
 	}
 
 	m := ui.NewModel(issues, "").WithConfig(cfg, "api-service", projects[0].Path)
@@ -464,7 +462,6 @@ func TestProjectPicker_AutoNumbering(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
@@ -492,7 +489,6 @@ func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
@@ -583,7 +579,6 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
@@ -652,7 +647,7 @@ func TestProjectSwitch_DoltOnlyProjectDoesNotRequireJSONL(t *testing.T) {
 		{Name: "active", Path: activeDir},
 		{Name: "shared-dolt", Path: doltDir},
 	}
-	m := ui.NewModel(nil, activePath).WithConfig(config.Config{Projects: projects}, "active", activeDir)
+	m := ui.NewModel(nil, activePath).WithConfig(config.Config{RecentProjects: recentFromProjects(projects...)}, "active", activeDir)
 	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
@@ -689,7 +684,7 @@ func TestProjectReload_DoltIgnoresStartupBeadsDir(t *testing.T) {
 	targetProjectDir := filepath.Dir(targetDir)
 	targetProject := config.Project{Name: "target", Path: targetProjectDir}
 	m := ui.NewModel(nil, filepath.Join(targetDir, "issues.jsonl")).
-		WithConfig(config.Config{Projects: []config.Project{targetProject}}, "target", targetProjectDir).
+		WithConfig(config.Config{RecentProjects: recentFromProjects(targetProject)}, "target", targetProjectDir).
 		WithSourceType(datasource.SourceTypeDolt)
 	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
@@ -711,7 +706,6 @@ func TestProjectSwitch_ShowsLoadingScreen(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
@@ -739,7 +733,6 @@ func TestProjectSwitch_ClearsOldTreeData(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
@@ -772,7 +765,6 @@ func TestProjectSwitch_SameProjectIsNoop(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
@@ -799,7 +791,6 @@ func TestPickerCountsRefreshOnTick(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
@@ -1005,7 +996,7 @@ func TestProjectSwitch_ClearsTreeFilter(t *testing.T) {
 		{ID: "api-3", Title: "Update docs", Status: "open", IssueType: "task", Priority: 3},
 	}
 	cfg := config.Config{
-		Projects: projects,
+		RecentProjects: recentFromProjects(projects...),
 	}
 
 	m := ui.NewModel(activeIssues, "").WithConfig(cfg, "api-service", projects[0].Path)
@@ -1210,7 +1201,6 @@ func TestProjectPicker_PageRelativeNumbering(t *testing.T) {
 
 	cfg := config.Config{
 		RecentProjects: recentFromProjects(projects...),
-		Favorites:      nil,
 		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 

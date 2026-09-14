@@ -51,6 +51,23 @@ func TestProjectSourcesWithoutCheckoutOrDatabaseAreEmpty(t *testing.T) {
 	}
 }
 
+func TestActiveProjectSlotFollowsHeaderOrder(t *testing.T) {
+	cfg := config.Config{RecentProjects: []config.RecentProject{
+		{Name: "first", Database: "first_db", Host: "10.0.0.5:3306"},
+		{Name: "second", Database: "second_db", Host: "10.0.0.5:3306"},
+	}}
+	m := NewModel(nil, "").WithConfig(cfg, "second", "")
+
+	if got := m.activeProjectSlot(); got != 2 {
+		t.Errorf("active project slot = %d, want 2 (its position in the header)", got)
+	}
+
+	m.activeProjectName = "unlisted"
+	if got := m.activeProjectSlot(); got != 0 {
+		t.Errorf("slot for a project missing from the header = %d, want 0", got)
+	}
+}
+
 func TestActiveProjectCarriesDatabaseOfProjectWithoutCheckout(t *testing.T) {
 	cfg := config.Config{RecentProjects: []config.RecentProject{
 		{Name: "remote", Database: "remote_db", Host: "10.0.0.5:3306"},

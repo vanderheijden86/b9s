@@ -17,7 +17,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Project represents a registered project in the config.
+// Project is a project the header can switch to: a checkout at Path, or a Dolt
+// database with no checkout.
 type Project struct {
 	Name string `yaml:"name"`
 	Path string `yaml:"path"`
@@ -71,12 +72,6 @@ func (s *SortConfig) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-// DiscoveryConfig controls auto-discovery of projects.
-type DiscoveryConfig struct {
-	ScanPaths []string `yaml:"scan_paths,omitempty"` // Directories to scan for .beads/
-	MaxDepth  int      `yaml:"max_depth,omitempty"`  // How deep to scan (default 3)
-}
-
 const (
 	DefaultRefreshPollInterval = 500 * time.Millisecond
 	minimumRefreshPollInterval = 100 * time.Millisecond
@@ -113,28 +108,38 @@ type ExperimentalConfig struct {
 
 // Config is the top-level configuration for b9s.
 type Config struct {
-	Projects  []Project      `yaml:"projects,omitempty"`
-	Favorites map[int]string `yaml:"favorites,omitempty"` // Number key (1-9) -> project name
 	// RecentProjects is newest first; see TouchRecent for the ordering rules.
 	RecentProjects []RecentProject    `yaml:"recent_projects,omitempty"`
 	LockRecent     bool               `yaml:"lock_recent,omitempty"`
 	UI             UIConfig           `yaml:"ui,omitempty"`
-	Discovery      DiscoveryConfig    `yaml:"discovery,omitempty"`
 	Refresh        RefreshConfig      `yaml:"refresh,omitempty"`
 	Experimental   ExperimentalConfig `yaml:"experimental,omitempty"`
+}
+
+// legacyConfig holds the projects and numbered favorites older versions kept.
+// They are read only to seed recent_projects once. The discovery scan settings
+// of those versions are not read at all.
+type legacyConfig struct {
+	Projects  []Project      `yaml:"projects"`
+	Favorites map[int]string `yaml:"favorites"`
+}
+
+func (l legacyConfig) findProject(name string) *Project {
+	for i := range l.Projects {
+		if strings.EqualFold(l.Projects[i].Name, name) {
+			return &l.Projects[i]
+		}
+	}
+	return nil
 }
 
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		Favorites: make(map[int]string),
 		UI: UIConfig{
 			DefaultView: "list",
 			SplitRatio:  0.4,
 			Sort:        SortConfig{Field: "created", Direction: "desc"},
-		},
-		Discovery: DiscoveryConfig{
-			MaxDepth: 3,
 		},
 		Refresh: RefreshConfig{
 			PollInterval: RefreshInterval(DefaultRefreshPollInterval),
@@ -223,23 +228,17 @@ func LoadFrom(path string) (Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("parsing config: %w", err)
 	}
-
-	// Ensure favorites map is initialized
-	if cfg.Favorites == nil {
-		cfg.Favorites = make(map[int]string)
-	}
-
-	// Expand ~ in project paths
-	for i := range cfg.Projects {
-		cfg.Projects[i].Path = expandHome(cfg.Projects[i].Path)
-	}
-	for i := range cfg.Discovery.ScanPaths {
-		cfg.Discovery.ScanPaths[i] = expandHome(cfg.Discovery.ScanPaths[i])
-	}
 	for i := range cfg.RecentProjects {
 		cfg.RecentProjects[i].Path = expandHome(cfg.RecentProjects[i].Path)
 	}
-	cfg.migrateFavorites()
+
+	var legacy legacyConfig
+	if err := yaml.Unmarshal(data, &legacy); err == nil {
+		for i := range legacy.Projects {
+			legacy.Projects[i].Path = expandHome(legacy.Projects[i].Path)
+		}
+		cfg.migrateFavorites(legacy)
+	}
 
 	return cfg, nil
 }
@@ -296,47 +295,6 @@ func writeFileAtomic(path string, data []byte) error {
 		return fmt.Errorf("replacing config: %w", err)
 	}
 	return nil
-}
-
-// FindProject returns the project with the given name, or nil.
-func (c Config) FindProject(name string) *Project {
-	for i := range c.Projects {
-		if strings.EqualFold(c.Projects[i].Name, name) {
-			return &c.Projects[i]
-		}
-	}
-	return nil
-}
-
-// FavoriteProject returns the project assigned to number key n (1-9), or nil.
-func (c Config) FavoriteProject(n int) *Project {
-	name, ok := c.Favorites[n]
-	if !ok {
-		return nil
-	}
-	return c.FindProject(name)
-}
-
-// SetFavorite assigns a project name to a number key (1-9).
-func (c *Config) SetFavorite(n int, projectName string) {
-	if c.Favorites == nil {
-		c.Favorites = make(map[int]string)
-	}
-	if projectName == "" {
-		delete(c.Favorites, n)
-	} else {
-		c.Favorites[n] = projectName
-	}
-}
-
-// ProjectFavoriteNumber returns the favorite number (1-9) for a project name, or 0 if not favorited.
-func (c Config) ProjectFavoriteNumber(name string) int {
-	for n, pname := range c.Favorites {
-		if strings.EqualFold(pname, name) {
-			return n
-		}
-	}
-	return 0
 }
 
 // ResolvedPath returns the project path with ~ expanded.

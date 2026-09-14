@@ -49,6 +49,20 @@ func (m Model) activeProject() config.Project {
 	return config.Project{Name: m.activeProjectName, Path: m.activeProjectPath}
 }
 
+// activeProjectSlot is the active project's number key in the header, or 0
+// when the active project is not one of the numbered rows.
+func (m Model) activeProjectSlot() int {
+	for i, p := range m.allProjects {
+		if i >= config.MaxRecentProjects {
+			break
+		}
+		if p.Name == m.activeProjectName && p.ResolvedPath() == m.activeProjectPath {
+			return i + 1
+		}
+	}
+	return 0
+}
+
 // projectKey identifies project in the header count and reachability caches.
 // A checkout keeps its path; projects without one all have an empty path, so
 // they are told apart by server and database instead.

@@ -29,12 +29,6 @@ type SwitchProjectMsg struct {
 	Project config.Project
 }
 
-// ToggleFavoriteMsg is sent when the user toggles a project's favorite slot.
-type ToggleFavoriteMsg struct {
-	ProjectName string
-	SlotNumber  int // 0 = remove, 1-9 = assign
-}
-
 // ProjectPickerModel is an always-visible k9s-style header for selecting projects.
 // It renders as a multi-column panel: project table (# NAME O P R) | shortcuts | B9s logo.
 // Project switching is done via number keys 1-9 or filter mode.
@@ -251,25 +245,6 @@ func (m *ProjectPickerModel) applyFilter() {
 	if m.cursor >= len(m.filtered) {
 		m.cursor = max(0, len(m.filtered)-1)
 	}
-}
-
-// nextAvailableFavoriteSlot cycles through favorite slots for the given entry.
-func (m *ProjectPickerModel) nextAvailableFavoriteSlot(entry ProjectEntry) int {
-	if entry.FavoriteNum > 0 {
-		return 0
-	}
-	used := make(map[int]bool)
-	for _, e := range m.entries {
-		if e.FavoriteNum > 0 {
-			used[e.FavoriteNum] = true
-		}
-	}
-	for n := 1; n <= 9; n++ {
-		if !used[n] {
-			return n
-		}
-	}
-	return 0
 }
 
 // b9sLogo returns the ASCII art logo lines.

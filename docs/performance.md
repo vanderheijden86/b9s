@@ -206,15 +206,19 @@ and comments with three batch queries. On a remote server, connection setup and
 those query boundaries set the latency floor. Use `B9S_DEBUG=1 b9s` to see the
 connection, issue scan, relation batches, and final result timestamps.
 
-Project discovery is a separate filesystem cost. Keep `max_depth` inside the
-`discovery` mapping so the configured limit takes effect:
+The project header does not scan the filesystem. It lists the projects in
+`recent_projects` (at most nine), so its cost does not grow with the number of
+checkouts on disk. The header counts refresh 30 seconds after the previous
+refresh finished. Each refresh reads every recent project concurrently: a
+checkout from its own `.beads` directory, and a project without a checkout
+through one Dolt connection as the startup project's user.
 
-```yaml
-discovery:
-  scan_paths:
-    - ~/Documents
-  max_depth: 2
-```
+The header updates only when every project has answered. A server that refuses
+the connection fails at once and its row shows `✗`. A server that does not
+answer at all holds every row's counts back for up to the 5-second connect
+timeout on each refresh. b9s has no command to forget a recent project; delete
+its entry from `recent_projects` in `~/.config/b9s/config.yaml` when its host is
+gone for good.
 
 A root-level `max_depth` key is ignored, which causes B9s to use the default
 depth of 3.

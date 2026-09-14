@@ -568,7 +568,6 @@ type Model struct {
 	// Project switching (bd-q5z, bd-ey3)
 	activeProjectName string           // Name of the currently loaded project
 	activeProjectPath string           // Path to the project directory
-	activeProjectFavN int              // Favorite number (1-9, or 0)
 	appConfig         config.Config    // Loaded app configuration
 	allProjects       []config.Project // All known projects
 	projectPicker     ProjectPickerModel
@@ -637,8 +636,8 @@ func (m Model) renderGlobalHeader() string {
 	if projectLabel == "" {
 		projectLabel = "untitled"
 	}
-	if m.activeProjectFavN > 0 {
-		projectLabel = fmt.Sprintf("%s (%d)", projectLabel, m.activeProjectFavN)
+	if slot := m.activeProjectSlot(); slot > 0 {
+		projectLabel = fmt.Sprintf("%s (%d)", projectLabel, slot)
 	}
 	projectSection := lipgloss.NewStyle().Foreground(ColorSubtext).Render(projectLabel)
 
@@ -681,7 +680,6 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 	for _, p := range m.allProjects {
 		entry := ProjectEntry{
 			Project:      p,
-			FavoriteNum:  m.appConfig.ProjectFavoriteNumber(p.Name),
 			IsActive:     p.Name == m.activeProjectName,
 			Reachability: m.projectReach[projectKey(p)],
 		}
@@ -1038,7 +1036,6 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
-	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
 	checkout, _ := NewCheckout(projectPath)
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(projectName)
@@ -1557,7 +1554,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Switch to a different project (bd-q5z, bd-ey3, bd-87w)
 		m.activeProjectName = msg.Project.Name
 		m.activeProjectPath = msg.Project.ResolvedPath()
-		m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(msg.Project.Name)
 		checkout, hasCheckout := NewCheckout(msg.Project.ResolvedPath())
 		m.issueWriter.SetCheckout(checkout)
 		m.board.SetActiveProjectName(msg.Project.Name)
@@ -1688,22 +1684,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.projectPicker.SetSourceInfo(m.sourceInfo)
 		m.projectPicker.SetSize(m.width, m.height)
 		return m, tea.Batch(cmds...)
-
-	case ToggleFavoriteMsg:
-		// Toggle favorite slot for a project (bd-q5z)
-		m.appConfig.SetFavorite(msg.SlotNumber, msg.ProjectName)
-		// Update current project's favorite number if it changed
-		if msg.ProjectName == m.activeProjectName {
-			m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(m.activeProjectName)
-		}
-		// Save config
-		_ = config.Save(m.appConfig)
-		// Refresh picker entries (always visible now, bd-ey3)
-		entries := m.buildProjectEntries()
-		m.projectPicker = NewProjectPicker(entries, m.theme)
-		m.projectPicker.SetSourceInfo(m.sourceInfo)
-		m.projectPicker.SetSize(m.width, m.height)
-		return m, nil
 
 	case FileChangedMsg:
 		// File changed on disk - reload issues
