@@ -72,6 +72,30 @@ func TestWithConfig_PrependsStartupProjectMissingFromRecent(t *testing.T) {
 	}
 }
 
+func TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout(t *testing.T) {
+	_, projects := createSampleProjects(t)
+	api := projects[0]
+	cfg := config.Config{RecentProjects: []config.RecentProject{
+		{Name: api.Name, Path: api.Path},
+		{Name: "remote", Database: "remote_db", Host: "10.0.0.5:3306"},
+	}}
+	m := headerModel(t, cfg, api)
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
+	if cmd == nil {
+		t.Fatal("key 2 produced no command")
+	}
+	switchMsg, ok := cmd().(ui.SwitchProjectMsg)
+	if !ok {
+		t.Fatalf("key 2 produced %T, want SwitchProjectMsg", cmd())
+	}
+
+	want := config.Project{Name: "remote", Database: "remote_db", Host: "10.0.0.5:3306"}
+	if switchMsg.Project != want {
+		t.Errorf("switch project = %+v, want %+v", switchMsg.Project, want)
+	}
+}
+
 func TestWithConfig_IgnoresScanPaths(t *testing.T) {
 	root, projects := createSampleProjects(t)
 	cfg := config.Config{Discovery: config.DiscoveryConfig{ScanPaths: []string{root}, MaxDepth: 2}}

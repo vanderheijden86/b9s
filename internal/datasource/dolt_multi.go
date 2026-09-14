@@ -31,6 +31,11 @@ type DoltDBInfo struct {
 func DiscoverDoltDBs(projectPaths map[string]string) []DoltDBInfo {
 	var dbs []DoltDBInfo
 	for name, projPath := range projectPaths {
+		// A project without a checkout has no metadata to read, and an empty
+		// path would resolve .beads against the working directory.
+		if projPath == "" {
+			continue
+		}
 		beadsDir := filepath.Join(projPath, ".beads")
 		sources, err := discoverDoltSources(beadsDir, DiscoveryOptions{})
 		if err != nil || len(sources) == 0 {

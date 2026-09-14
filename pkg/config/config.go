@@ -21,6 +21,9 @@ import (
 type Project struct {
 	Name string `yaml:"name"`
 	Path string `yaml:"path"`
+	// Database and Host identify a Dolt server project that has no checkout.
+	Database string `yaml:"database,omitempty"`
+	Host     string `yaml:"host,omitempty"`
 }
 
 // UIConfig holds UI preference settings.

@@ -296,7 +296,14 @@ func loadProjectCountsCmd(projects []config.Project) tea.Cmd {
 		for _, project := range projects {
 			go func(project config.Project) {
 				path := project.ResolvedPath()
-				issues, err := datasource.LoadIssuesFromDir(filepath.Join(path, ".beads"))
+				beadsDir, ok := projectBeadsDir(path)
+				if !ok {
+					// This loader reads checkouts only; a project without one
+					// has no counts here rather than the working directory's.
+					results <- result{path: path, err: errNoCheckout}
+					return
+				}
+				issues, err := datasource.LoadIssuesFromDir(beadsDir)
 				results <- result{path: path, counts: summarizeProjectIssues(issues), err: err}
 			}(project)
 		}
@@ -421,6 +428,7 @@ type Model struct {
 	sourceInfo       string                  // Human-readable datasource description for title bar
 	doltSource       datasource.DataSource   // Dolt DataSource used for on-demand health checks
 	doltFailure      *DoltFailure            // Non-nil when Dolt was detected but connection failed
+	startupDoltUser  string                  // User the startup project connects as; projects without a checkout reuse it
 	doltPollInterval time.Duration           // Configured Dolt live-refresh interval
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
@@ -688,10 +696,10 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 			entry.InProgressCount = counts.inProgress
 			entry.ReadyCount = counts.ready
 			entry.BlockedCount = counts.blocked
-		} else {
+		} else if beadsDir, ok := projectBeadsDir(p.ResolvedPath()); ok {
 			// Seed the picker from JSONL without writing parser warnings into the TUI
 			// while canonical project sources load asynchronously.
-			beadsPath := filepath.Join(p.ResolvedPath(), ".beads", "issues.jsonl")
+			beadsPath := filepath.Join(beadsDir, "issues.jsonl")
 			silentOpts := loader.ParseOptions{WarningHandler: func(string) {}}
 			if issues, err := loader.LoadIssuesFromFileWithOptions(beadsPath, silentOpts); err == nil {
 				counts := summarizeProjectIssues(issues)
@@ -1019,7 +1027,8 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
 	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
-	m.issueWriter.SetWorkDir(projectPath)
+	checkout, _ := NewCheckout(projectPath)
+	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(projectName)
 	m.updateListDelegate()
 	m.allProjects = headerProjects(cfg.RecentProjects, projectName, projectPath)
@@ -1055,6 +1064,9 @@ func (m Model) WithSourceInfo(info string) Model {
 // triggered by the Shift+D database health popup.
 func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	m.doltSource = s
+	if s.User != "" {
+		m.startupDoltUser = s.User
+	}
 	return m
 }
 
@@ -1062,6 +1074,9 @@ func (m Model) WithDoltSource(s datasource.DataSource) Model {
 // can show what was tried and why it failed, even when the source fell back to JSONL.
 func (m Model) WithDoltFailure(f *DoltFailure) Model {
 	m.doltFailure = f
+	if f != nil && f.User != "" {
+		m.startupDoltUser = f.User
+	}
 	return m
 }
 
@@ -1525,14 +1540,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activeProjectName = msg.Project.Name
 		m.activeProjectPath = msg.Project.ResolvedPath()
 		m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(msg.Project.Name)
-		m.issueWriter.SetWorkDir(msg.Project.ResolvedPath())
+		checkout, hasCheckout := NewCheckout(msg.Project.ResolvedPath())
+		m.issueWriter.SetCheckout(checkout)
 		m.board.SetActiveProjectName(msg.Project.Name)
 		m.updateListDelegate()
-		beadsDir := filepath.Join(msg.Project.ResolvedPath(), ".beads")
-		sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
-			BeadsDir:               beadsDir,
-			ValidateAfterDiscovery: false,
-		})
+		beadsDir, _ := projectBeadsDir(msg.Project.ResolvedPath())
+		sources, discErr := m.projectSources(msg.Project)
 		hasDoltSource := false
 		for _, source := range sources {
 			if source.Type == datasource.SourceTypeDolt {
@@ -1541,17 +1554,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Dolt server projects are fully described by metadata.json and need no
-		// local JSONL file. Keep the conventional path as an inert fallback value;
-		// Dolt reloads use activeProjectPath instead.
-		newPath, err := loader.FindJSONLPath(beadsDir)
-		if err != nil && !hasDoltSource {
+		newPath := ""
+		if hasCheckout {
+			// Dolt server projects are fully described by metadata.json and need no
+			// local JSONL file. Keep the conventional path as an inert fallback value;
+			// Dolt reloads use activeProjectPath instead.
+			var err error
+			newPath, err = loader.FindJSONLPath(beadsDir)
+			if err != nil && !hasDoltSource {
+				m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
+				m.statusIsError = true
+				return m, nil
+			}
+			if err != nil {
+				newPath = filepath.Join(beadsDir, "issues.jsonl")
+			}
+		} else if !hasDoltSource {
 			m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
 			m.statusIsError = true
 			return m, nil
-		}
-		if err != nil {
-			newPath = filepath.Join(beadsDir, "issues.jsonl")
 		}
 		// Stop background worker and old watchers (bd-87w)
 		if m.backgroundWorker != nil {
@@ -1710,11 +1731,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newIssues []model.Issue
 		var err error
-		if m.sourceType == datasource.SourceTypeDolt {
+		if beadsDir, hasCheckout := projectBeadsDir(m.activeProjectPath); m.sourceType == datasource.SourceTypeDolt && !hasCheckout {
+			// A project opened without a checkout has only its database.
+			debug.Log("FileChangedMsg: reloading via datasource.LoadFromSource (Dolt, no checkout, db=%s)", m.doltSource.Database)
+			newIssues, err = datasource.LoadFromSource(m.doltSource)
+			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
+		} else if m.sourceType == datasource.SourceTypeDolt {
 			// Project switching must bypass BEADS_DIR, which identifies the startup
 			// project and otherwise redirects every reload back to that database.
 			debug.Log("FileChangedMsg: reloading via datasource.LoadIssuesFromDir (Dolt, project=%s)", m.activeProjectPath)
-			newIssues, err = datasource.LoadIssuesFromDir(filepath.Join(m.activeProjectPath, ".beads"))
+			newIssues, err = datasource.LoadIssuesFromDir(beadsDir)
 			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
 		} else {
 			// JSONL/SQLite: use existing fast pooled loader
@@ -5812,8 +5838,15 @@ func (m *Model) openInEditor() {
 	// Use the configured beadsPath instead of hardcoded path
 	beadsFile := m.beadsPath
 	if beadsFile == "" {
-		cwd, _ := os.Getwd()
-		if found, err := loader.FindJSONLPath(filepath.Join(cwd, ".beads")); err == nil {
+		// Only the active project's own checkout may be opened for editing; a
+		// project read from its database has no file of its own.
+		beadsDir, ok := projectBeadsDir(m.activeProjectPath)
+		if !ok {
+			m.statusMsg = "read-only: no local checkout for this project"
+			m.statusIsError = true
+			return
+		}
+		if found, err := loader.FindJSONLPath(beadsDir); err == nil {
 			beadsFile = found
 		}
 	}
@@ -6045,10 +6078,7 @@ func (m *Model) exitAllProjectsMode() {
 	m.statusIsError = false
 
 	// Re-discover datasource for current project
-	beadsDir := filepath.Join(m.activeProjectPath, ".beads")
-	if sources, err := datasource.DiscoverSources(datasource.DiscoveryOptions{
-		BeadsDir: beadsDir,
-	}); err == nil {
+	if sources, err := m.projectSources(m.activeProject()); err == nil {
 		for _, s := range sources {
 			if s.Type == datasource.SourceTypeDolt {
 				db := s.Database

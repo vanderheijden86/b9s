@@ -37,7 +37,7 @@ type BdResultMsg struct {
 type IssueWriter struct {
 	bdPath    string
 	available bool
-	workDir   string // Project directory for bd commands; empty = inherit process CWD
+	checkout  Checkout // Where bd runs; none makes every write refuse
 }
 
 // NewIssueWriter creates a new IssueWriter, detecting bd availability
@@ -54,10 +54,10 @@ func (w *IssueWriter) IsAvailable() bool {
 	return w.available
 }
 
-// SetWorkDir sets the working directory for bd commands.
-// When set, all bd commands run in this directory instead of the process CWD.
-func (w *IssueWriter) SetWorkDir(dir string) {
-	w.workDir = dir
+// SetCheckout sets the checkout bd commands run in. The zero Checkout makes
+// the project read-only.
+func (w *IssueWriter) SetCheckout(checkout Checkout) {
+	w.checkout = checkout
 }
 
 // UpdateIssue runs bd update <id> with the given field values
@@ -145,18 +145,22 @@ func (w *IssueWriter) buildCloseArgs(id, reason string) []string {
 	return args
 }
 
-// runBdCmd executes a bd command asynchronously and returns the result
+// runBdCmd executes a bd command asynchronously in the checkout and returns
+// the result. Every write passes through here, so this is the one place that
+// refuses writes for a project opened without a checkout: bd resolves the
+// project from its working directory and would otherwise write elsewhere.
 func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) tea.Cmd {
+	dir := w.checkout.Dir()
+	if dir == "" {
+		return w.readOnlyCmd(op, issueID)
+	}
 	bdPath := w.bdPath
-	workDir := w.workDir
 	return func() tea.Msg {
-		debug.Log("bd-cmd: exec %s %s (workDir=%s)", bdPath, strings.Join(args, " "), workDir)
+		debug.Log("bd-cmd: exec %s %s (dir=%s)", bdPath, strings.Join(args, " "), dir)
 		start := time.Now()
 
 		cmd := exec.Command(bdPath, args...)
-		if workDir != "" {
-			cmd.Dir = workDir
-		}
+		cmd.Dir = dir
 		output, err := cmd.CombinedOutput()
 		outStr := strings.TrimSpace(string(output))
 		elapsed := time.Since(start)
@@ -197,6 +201,18 @@ func (w *IssueWriter) unavailableCmd(op BdOperation, id string) tea.Cmd {
 			IssueID:   id,
 			Success:   false,
 			Error:     fmt.Errorf("bd CLI not found in PATH; install beads to edit issues"),
+		}
+	}
+}
+
+// readOnlyCmd reports that the active project has no checkout to write through.
+func (w *IssueWriter) readOnlyCmd(op BdOperation, id string) tea.Cmd {
+	return func() tea.Msg {
+		return BdResultMsg{
+			Operation: op,
+			IssueID:   id,
+			Success:   false,
+			Error:     fmt.Errorf("read-only: no local checkout for this project"),
 		}
 	}
 }

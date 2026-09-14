@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -140,55 +139,30 @@ func TestIssueWriter_SetPriorityConvenience(t *testing.T) {
 	}
 }
 
-func TestIssueWriter_SetWorkDir(t *testing.T) {
+func TestIssueWriter_SetCheckout(t *testing.T) {
 	w := &IssueWriter{bdPath: "/usr/local/bin/bd", available: true}
-
-	// Default workDir should be empty
-	if w.workDir != "" {
-		t.Errorf("expected empty workDir by default, got %q", w.workDir)
+	if w.checkout.Dir() != "" {
+		t.Errorf("expected no checkout by default, got %q", w.checkout.Dir())
 	}
 
-	// SetWorkDir should update the field
-	w.SetWorkDir("/some/project/path")
-	if w.workDir != "/some/project/path" {
-		t.Errorf("expected workDir %q, got %q", "/some/project/path", w.workDir)
+	checkout := testCheckout(t)
+	w.SetCheckout(checkout)
+	if w.checkout.Dir() != checkout.Dir() {
+		t.Errorf("expected checkout %q, got %q", checkout.Dir(), w.checkout.Dir())
 	}
 }
 
-func TestIssueWriter_RunBdCmd_UsesWorkDir(t *testing.T) {
-	// Create a temp directory to use as the "project" workDir
-	tmpDir := t.TempDir()
-	// Resolve symlinks (macOS /tmp -> /private/tmp)
-	tmpDir, err := filepath.EvalSymlinks(tmpDir)
+func TestIssueWriter_RunBdCmd_RunsInCheckout(t *testing.T) {
+	checkout := testCheckout(t)
+	// Resolve symlinks (macOS /var -> /private/var) so pwd output compares equal.
+	wantDir, err := filepath.EvalSymlinks(checkout.Dir())
 	if err != nil {
 		t.Fatalf("failed to eval symlinks: %v", err)
 	}
 
 	// Use "pwd" as the fake "bd" command to report where the command runs
 	w := &IssueWriter{bdPath: "/bin/pwd", available: true}
-	w.SetWorkDir(tmpDir)
-
-	// runBdCmd should execute "pwd" in the workDir, not the test's CWD
-	cmd := w.runBdCmd(BdOpCreate, "", []string{})
-	msg := cmd()
-	result, ok := msg.(BdResultMsg)
-	if !ok {
-		t.Fatalf("expected BdResultMsg, got %T", msg)
-	}
-	if !result.Success {
-		t.Fatalf("command failed: %v", result.Error)
-	}
-
-	reportedDir := strings.TrimSpace(result.Output)
-	if reportedDir != tmpDir {
-		t.Errorf("expected command to run in workDir %q, but ran in %q", tmpDir, reportedDir)
-	}
-}
-
-func TestIssueWriter_RunBdCmd_DefaultsToProcessCwd(t *testing.T) {
-	// When workDir is empty, command should run in the process CWD (existing behavior)
-	w := &IssueWriter{bdPath: "/bin/pwd", available: true}
-	// workDir left empty intentionally
+	w.SetCheckout(checkout)
 
 	cmd := w.runBdCmd(BdOpCreate, "", []string{})
 	msg := cmd()
@@ -200,17 +174,9 @@ func TestIssueWriter_RunBdCmd_DefaultsToProcessCwd(t *testing.T) {
 		t.Fatalf("command failed: %v", result.Error)
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get cwd: %v", err)
-	}
-	// Resolve symlinks for comparison
-	cwd, _ = filepath.EvalSymlinks(cwd)
-
-	reportedDir := strings.TrimSpace(result.Output)
-	reportedDir, _ = filepath.EvalSymlinks(reportedDir)
-	if reportedDir != cwd {
-		t.Errorf("expected command to run in CWD %q, but ran in %q", cwd, reportedDir)
+	reportedDir, _ := filepath.EvalSymlinks(strings.TrimSpace(result.Output))
+	if reportedDir != wantDir {
+		t.Errorf("expected command to run in checkout %q, but ran in %q", wantDir, reportedDir)
 	}
 }
 

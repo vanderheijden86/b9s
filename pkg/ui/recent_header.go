@@ -9,7 +9,7 @@ func headerProjects(recent []config.RecentProject, startupName, startupPath stri
 	projects := make([]config.Project, 0, len(recent)+1)
 	startupListed := startupPath == ""
 	for _, r := range recent {
-		projects = append(projects, config.Project{Name: r.Name, Path: r.Path})
+		projects = append(projects, config.Project{Name: r.Name, Path: r.Path, Database: r.Database, Host: r.Host})
 		if r.Path != "" && r.Path == startupPath {
 			startupListed = true
 		}

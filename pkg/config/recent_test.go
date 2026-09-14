@@ -320,6 +320,14 @@ func TestSaveRecentTo_CreatesMissingFile(t *testing.T) {
 	}
 }
 
+func TestRecentFromCheckout_RejectsEmptyPathInsideACheckout(t *testing.T) {
+	t.Chdir(writeJSONLProject(t, t.TempDir(), "startup"))
+
+	if got, ok := RecentFromCheckout("remote", ""); ok {
+		t.Errorf("RecentFromCheckout with an empty path = %+v, true; it described the working directory", got)
+	}
+}
+
 func writeJSONLProject(t *testing.T, root, name string) string {
 	t.Helper()
 	path := filepath.Join(root, name)

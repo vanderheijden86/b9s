@@ -121,6 +121,11 @@ func (c *Config) migrateFavorites() {
 // server backend takes precedence, because the database, not the folder, is
 // what another checkout of the same project would share.
 func RecentFromCheckout(name, path string) (RecentProject, bool) {
+	// An empty path would resolve .beads against the working directory and
+	// describe whichever project b9s was started in.
+	if path == "" {
+		return RecentProject{}, false
+	}
 	sources, err := datasource.DiscoverSources(datasource.DiscoveryOptions{
 		BeadsDir:            filepath.Join(path, ".beads"),
 		RepoPath:            path,
