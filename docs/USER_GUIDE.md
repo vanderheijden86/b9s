@@ -826,7 +826,7 @@ The Tree View renders only parent-child relationships, creating a work breakdown
 | **Type Icon** | 🎯 Epic, ✨ Feature, 🐛 Bug, 📝 Task, 🔧 Chore |
 | **Priority** | P0 (critical red), P1 (high), P2 (medium gray), P3+ (muted) |
 | **Status Dot** | ● Open (green), ◐ In Progress (yellow), ⚠ Blocked (red), ○ Closed (gray) |
-| **Lane State** | Dispatcher-owned `lane-stage` value, shown on terminals at least 100 columns wide; blank for issues outside a lane |
+| **Lane State** | Dispatcher-owned `lane-stage` value. Auto hides when showing it would truncate more than half of the displayed task and feature titles; blank for issues outside a lane |
 | **Age** | Time since the issue was last updated (`updated_at`), so a lane transition shows as recent activity |
 
 ### Tree Building Algorithm
@@ -862,6 +862,7 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `O` | Collapse all nodes in the tree |
 | **Integration** | |
 | `Tab` | Sync selection to detail panel (in split view) |
+| `C` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
 | `E` / `Esc` | Exit tree view, return to list |
 
 ### Use Cases

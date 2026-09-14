@@ -2469,6 +2469,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.tree.CloseSortPopup()
 					return m, nil
 				}
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsColumnPopupOpen() {
+					m.tree.CloseColumnPopup()
+					return m, nil
+				}
 				// Escape closes modals and goes back
 				if m.showDetails && !m.isSplitView {
 					m.showDetails = false
@@ -3139,6 +3143,21 @@ func (m *Model) syncBoardToDetail() {
 
 // handleTreeKeys handles keyboard input when tree view is focused (bv-gllx)
 func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
+	// Column popup mode keeps changes local to the running session.
+	if m.tree.IsColumnPopupOpen() {
+		switch msg.String() {
+		case "j", "down":
+			m.tree.ColumnPopupDown()
+		case "k", "up":
+			m.tree.ColumnPopupUp()
+		case " ", "space", "enter":
+			m.tree.CycleColumnPreference()
+		case "esc", "C":
+			m.tree.CloseColumnPopup()
+		}
+		return m
+	}
+
 	// Sort popup mode: consume j/k/enter/esc/s only (bd-u81)
 	if m.tree.IsSortPopupOpen() {
 		switch msg.String() {
@@ -3229,6 +3248,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "s":
 		// Open sort popup menu (bd-u81)
 		m.tree.OpenSortPopup()
+	case "C":
+		m.tree.OpenColumnPopup()
 	case "/":
 		m.queryState.StartEditing()
 	case "n":
@@ -4393,6 +4414,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"d", "Toggle detail panel"},
 		{"o/c/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
+		{"C", "Choose columns"},
 		{"/", "Search tree"},
 		{"n/N", "Next/prev match"},
 		{"O", "Occur (search filter)"},
@@ -4575,6 +4597,7 @@ func (m *Model) renderFooter() string {
 			{"g", "deps"},
 			{"j/k", "nav"},
 			{"s", "sort"},
+			{"C", "columns"},
 			{"/", "search"},
 			{"e", "edit"},
 			{"K", "close"},
@@ -5418,6 +5441,11 @@ func (m Model) TreeSortDirection() SortDirection {
 // TreeSortPopupOpen returns whether the sort popup overlay is visible (bd-u81).
 func (m Model) TreeSortPopupOpen() bool {
 	return m.tree.IsSortPopupOpen()
+}
+
+// TreeColumnPopupOpen returns whether the tree column selector is visible.
+func (m Model) TreeColumnPopupOpen() bool {
+	return m.tree.IsColumnPopupOpen()
 }
 
 // TreeBookmarkedIDs returns the IDs of bookmarked tree nodes (bd-k4n).

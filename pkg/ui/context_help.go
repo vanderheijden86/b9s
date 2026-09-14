@@ -127,7 +127,7 @@ const contextHelpTree = `## Tree View
 
 **Filtering**
   o/c/r/a   Open/closed/ready/all
-  s         Sort popup · /  Search
+  s         Sort popup · C  Columns · /  Search
   n/N       Next/prev match
 
 **Modes**

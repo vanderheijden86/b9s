@@ -197,6 +197,59 @@ const selectionGutterWidth = 0
 
 const computedBlockerBadgeWidth = 4
 
+// ColumnPreference records whether an optional tree column follows the
+// responsive default or an explicit session override.
+type ColumnPreference uint8
+
+const (
+	ColumnAuto ColumnPreference = iota
+	ColumnShow
+	ColumnHide
+)
+
+func (p ColumnPreference) String() string {
+	switch p {
+	case ColumnShow:
+		return "Show"
+	case ColumnHide:
+		return "Hide"
+	default:
+		return "Auto"
+	}
+}
+
+// TreeColumn identifies the optional columns in the tree table. Issue details
+// such as hierarchy, status, and title remain fixed because they identify the
+// row itself.
+type TreeColumn uint8
+
+const (
+	TreeColumnLaneStage TreeColumn = iota
+	TreeColumnUpdated
+	TreeColumnID
+	treeColumnCount
+)
+
+func (c TreeColumn) String() string {
+	switch c {
+	case TreeColumnLaneStage:
+		return "Lane state"
+	case TreeColumnUpdated:
+		return "Updated"
+	case TreeColumnID:
+		return "ID"
+	default:
+		return "Unknown"
+	}
+}
+
+type treeColumnLayout struct {
+	laneStage  bool
+	updated    bool
+	id         bool
+	maxIDWidth int
+}
+
 // IssueTreeNode represents a node in the hierarchical issue tree
 type IssueTreeNode struct {
 	Issue    *model.Issue     // Reference to the actual issue
@@ -245,6 +298,14 @@ type TreeModel struct {
 	// Sort popup state (bd-t4e)
 	sortPopupOpen   bool // Is the sort popup overlay visible?
 	sortPopupCursor int  // Currently highlighted field index in the popup
+
+	// Column popup state. Preferences are session-only, matching tree sort
+	// overrides, so one terminal does not change another terminal's layout.
+	columnPopupOpen   bool
+	columnPopupCursor int
+	columnPreferences [treeColumnCount]ColumnPreference
+	columnLayoutCache treeColumnLayout
+	columnLayoutValid bool
 
 	// Search state (bd-uus)
 	searchMode       bool             // Is search input active?
@@ -368,6 +429,9 @@ func buildIssueTreeNodes(issues []model.Issue) ([]*IssueTreeNode, map[string]*Is
 
 // SetSize updates the available dimensions for the tree view
 func (t *TreeModel) SetSize(width, height int) {
+	if t.width != width {
+		t.invalidateColumnLayout()
+	}
 	t.width = width
 	t.height = height
 	t.viewport.Width = width
@@ -378,6 +442,7 @@ func (t *TreeModel) SetSize(width, height int) {
 // Implementation for bv-j3ck.
 func (t *TreeModel) Build(issues []model.Issue) {
 	// Reset state
+	t.invalidateColumnLayout()
 	t.roots = nil
 	t.flatList = nil
 	t.issueMap = make(map[string]*IssueTreeNode)
@@ -795,6 +860,7 @@ func (t *TreeModel) IsSortPopupOpen() bool {
 
 // OpenSortPopup opens the sort popup overlay, positioning the cursor on the current sort field.
 func (t *TreeModel) OpenSortPopup() {
+	t.columnPopupOpen = false
 	t.sortPopupOpen = true
 	t.sortPopupCursor = int(t.sortField)
 }
@@ -892,6 +958,113 @@ func (t *TreeModel) RenderSortPopup() string {
 		Bold(true)
 
 	return boxStyle.Render(titleStyle.Render("Sort by")+"\n"+content) + "\n"
+}
+
+// IsColumnPopupOpen returns whether the optional-column selector is visible.
+func (t *TreeModel) IsColumnPopupOpen() bool {
+	return t.columnPopupOpen
+}
+
+// OpenColumnPopup opens the selector without changing any preferences.
+func (t *TreeModel) OpenColumnPopup() {
+	t.sortPopupOpen = false
+	t.columnPopupOpen = true
+	t.columnPopupCursor = 0
+}
+
+// CloseColumnPopup closes the selector and keeps the session preferences.
+func (t *TreeModel) CloseColumnPopup() {
+	t.columnPopupOpen = false
+}
+
+// ColumnPopupDown moves to the next optional column.
+func (t *TreeModel) ColumnPopupDown() {
+	if t.columnPopupCursor < int(treeColumnCount)-1 {
+		t.columnPopupCursor++
+	}
+}
+
+// ColumnPopupUp moves to the previous optional column.
+func (t *TreeModel) ColumnPopupUp() {
+	if t.columnPopupCursor > 0 {
+		t.columnPopupCursor--
+	}
+}
+
+// CycleColumnPreference rotates Auto, Show, and Hide for the selected column.
+func (t *TreeModel) CycleColumnPreference() {
+	column := TreeColumn(t.columnPopupCursor)
+	preference := t.ColumnPreference(column)
+	t.SetColumnPreference(column, (preference+1)%3)
+}
+
+// SetColumnPreference applies a session-only preference for an optional column.
+func (t *TreeModel) SetColumnPreference(column TreeColumn, preference ColumnPreference) {
+	if column >= treeColumnCount || preference > ColumnHide {
+		return
+	}
+	t.columnPreferences[column] = preference
+	t.invalidateColumnLayout()
+}
+
+// ColumnPreference returns the current session preference for a column.
+func (t *TreeModel) ColumnPreference(column TreeColumn) ColumnPreference {
+	if column >= treeColumnCount {
+		return ColumnAuto
+	}
+	return t.columnPreferences[column]
+}
+
+// RenderColumnPopup renders the optional-column selector. Space or Enter cycles
+// a preference; Escape or C closes it.
+func (t *TreeModel) RenderColumnPopup() string {
+	if !t.columnPopupOpen {
+		return ""
+	}
+
+	r := t.theme.Renderer
+	layout := t.resolveColumnLayout()
+	var sb strings.Builder
+	for column := TreeColumn(0); column < treeColumnCount; column++ {
+		preference := t.ColumnPreference(column)
+		preferenceLabel := preference.String()
+		if preference == ColumnAuto {
+			resolved := "hidden"
+			switch column {
+			case TreeColumnLaneStage:
+				if layout.laneStage {
+					resolved = "shown"
+				}
+			case TreeColumnUpdated:
+				if layout.updated {
+					resolved = "shown"
+				}
+			case TreeColumnID:
+				if layout.id {
+					resolved = "shown"
+				}
+			}
+			preferenceLabel = fmt.Sprintf("Auto (%s)", resolved)
+		}
+		line := fmt.Sprintf("%-12s  %s", column.String(), preferenceLabel)
+		if int(column) == t.columnPopupCursor {
+			line = r.NewStyle().Foreground(t.theme.Primary).Bold(true).Render("▸ " + line)
+		} else {
+			line = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"}).Render("  " + line)
+		}
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
+	sb.WriteString(r.NewStyle().Foreground(t.theme.Muted).Render("  space/enter: cycle  esc/C: close"))
+	sb.WriteString("\n")
+
+	content := strings.TrimRight(sb.String(), "\n")
+	boxStyle := r.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(t.theme.Primary).
+		Padding(0, 1)
+	titleStyle := r.NewStyle().Foreground(t.theme.Primary).Bold(true)
+	return boxStyle.Render(titleStyle.Render("Columns")+"\n"+content) + "\n"
 }
 
 // SetPageRankScores sets externally-computed PageRank scores for sort-by-pagerank (bd-x3l).
@@ -1131,9 +1304,10 @@ func (t *TreeModel) View() string {
 	}
 
 	var sb strings.Builder
+	layout := t.resolveColumnLayout()
 
 	// Prepend the column header row (bd-0ex, bd-s2k)
-	sb.WriteString(t.RenderHeader())
+	sb.WriteString(t.renderHeader(layout))
 	// Show [FOLLOW] badge when follow mode is active (bd-c0c)
 	if t.followMode {
 		followBadge := t.theme.Renderer.NewStyle().
@@ -1176,19 +1350,6 @@ func (t *TreeModel) View() string {
 		end -= extraLines
 	}
 
-	// Compute max short ID width across visible nodes for column alignment (bd-uyzc)
-	maxIDWidth := 0
-	for i := start; i < end; i++ {
-		node := t.flatList[i]
-		if node == nil || node.Issue == nil {
-			continue
-		}
-		w := lipgloss.Width(shortIDSuffix(node.Issue.ID))
-		if w > maxIDWidth {
-			maxIDWidth = w
-		}
-	}
-
 	// Render only visible nodes (bv-db02: windowed rendering)
 	for i := start; i < end; i++ {
 		node := t.flatList[i]
@@ -1197,7 +1358,7 @@ func (t *TreeModel) View() string {
 		}
 
 		isSelected := i == t.cursor
-		line := t.renderNode(node, isSelected, maxIDWidth)
+		line := t.renderNodeWithLayout(node, isSelected, layout)
 
 		// renderNode already applies Width + Background for selected rows (bd-hdgh)
 		if !isSelected && t.IsFilterDimmed(node) {
@@ -1235,6 +1396,22 @@ func (t *TreeModel) View() string {
 			// Replace from the bottom
 			replaceStart := len(lines) - len(popupLines)
 			if replaceStart < 1 { // keep at least the header
+				replaceStart = 1
+			}
+			lines = lines[:replaceStart]
+			lines = append(lines, popupLines...)
+			return strings.Join(lines, "\n") + "\n"
+		}
+	}
+
+	if t.columnPopupOpen {
+		output := sb.String()
+		popupContent := t.RenderColumnPopup()
+		if popupContent != "" {
+			lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+			popupLines := strings.Split(strings.TrimRight(popupContent, "\n"), "\n")
+			replaceStart := len(lines) - len(popupLines)
+			if replaceStart < 1 {
 				replaceStart = 1
 			}
 			lines = lines[:replaceStart]
@@ -1353,6 +1530,10 @@ func (t *TreeModel) renderEmptyState() string {
 // labels aligned to match the row content below (bd-xhyo, bd-y0ct).
 // Row layout: [gutter 2] [expand 1] [space 1] [icon 1] [space 1] [status 4] [space 1] [title...] ... [lane 12] [space 2] [age 12] [space 2] [ID maxW]
 func (t *TreeModel) RenderHeader() string {
+	return t.renderHeader(t.resolveColumnLayout())
+}
+
+func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 	width := t.width
 	if width <= 0 {
 		width = 80
@@ -1389,28 +1570,18 @@ func (t *TreeModel) RenderHeader() string {
 	// Right side: sort badge (left-aligned in age column) + ID label (left-aligned)
 	sortBadge := fmt.Sprintf("[%s %s]", t.sortField.String(), t.sortDirection.Indicator())
 
-	// Compute maxIDWidth from visible nodes (same as View does)
-	maxIDWidth := 2 // minimum "ID" label width
-	start, end := t.visibleRange()
-	for i := start; i < end; i++ {
-		node := t.flatList[i]
-		if node == nil || node.Issue == nil {
-			continue
-		}
-		w := lipgloss.Width(shortIDSuffix(node.Issue.ID))
-		if w > maxIDWidth {
-			maxIDWidth = w
-		}
-	}
-
 	// Right side matches the row. The dispatcher-owned lane stage gets its own
 	// column on layouts wide enough to keep the issue title useful.
 	rightParts := make([]string, 0, 3)
-	if showLaneStageColumn(width) {
+	if layout.laneStage {
 		rightParts = append(rightParts, fmt.Sprintf("%12s", "LANE STATE"))
 	}
-	rightParts = append(rightParts, fmt.Sprintf("%-12s", sortBadge))
-	rightParts = append(rightParts, fmt.Sprintf("%-*s", maxIDWidth, "ID"))
+	if layout.updated {
+		rightParts = append(rightParts, fmt.Sprintf("%-12s", sortBadge))
+	}
+	if layout.id {
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.maxIDWidth, "ID"))
+	}
 	rightSide := strings.Join(rightParts, "  ")
 	rightWidth := lipgloss.Width(rightSide)
 
@@ -1456,6 +1627,14 @@ func bgSeqFromColor(c lipgloss.TerminalColor, r *lipgloss.Renderer) string {
 // renderNode renders a single tree node with column-aligned layout matching the
 // main list delegate: [tree-prefix] [expand] [type] [prio-badge] [status-badge] [ID] [title] [age]
 func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth int) string {
+	layout := t.resolveColumnLayout()
+	if layout.id {
+		layout.maxIDWidth = maxIDWidth
+	}
+	return t.renderNodeWithLayout(node, isSelected, layout)
+}
+
+func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, layout treeColumnLayout) string {
 	if node == nil || node.Issue == nil {
 		return ""
 	}
@@ -1466,7 +1645,6 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	if width <= 0 {
 		width = 80
 	}
-	showLaneStage := showLaneStageColumn(width)
 	// Reduce width by 1 to prevent terminal wrapping on the exact edge,
 	// and by selectionGutterWidth so all rows (selected and non-selected)
 	// render at the same content width — the gutter is filled by the
@@ -1524,35 +1702,35 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	rightWidth := 0
 	var rightParts []string
 	darkFg := lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}
-	if showLaneStage {
+	if layout.laneStage {
 		stage := truncateRunesHelper(dispatcherLaneStage(issue.Labels), 12, "…")
 		stageStyle := t.theme.SecondaryText
 		if isSelected {
 			stageStyle = r.NewStyle().Foreground(darkFg)
 		}
 		rightParts = append(rightParts, stageStyle.Render(fmt.Sprintf("%-12s", stage)))
-		rightWidth += 14 // 12 lane stage + 2 gap before age
 	}
 
-	if width > 60 {
+	if layout.updated {
 		ageStr := FormatTimeRel(issue.UpdatedAt)
 		ageStyle := t.theme.MutedText
 		if isSelected {
 			ageStyle = r.NewStyle().Foreground(darkFg)
 		}
 		rightParts = append(rightParts, ageStyle.Render(fmt.Sprintf("%12s", ageStr)))
-		rightWidth += 14 // 12 age + 2 gap before ID
 	}
 
 	// Short ID suffix at the far right, left-aligned to maxIDWidth for column alignment (bd-03l, bd-uyzc)
-	shortID := shortIDSuffix(issue.ID)
-	paddedID := fmt.Sprintf("%-*s", maxIDWidth, shortID)
-	idStyle := t.theme.SecondaryText
-	if isSelected {
-		idStyle = r.NewStyle().Foreground(darkFg)
+	if layout.id {
+		shortID := shortIDSuffix(issue.ID)
+		paddedID := fmt.Sprintf("%-*s", layout.maxIDWidth, shortID)
+		idStyle := t.theme.SecondaryText
+		if isSelected {
+			idStyle = r.NewStyle().Foreground(darkFg)
+		}
+		rightParts = append(rightParts, idStyle.Render(paddedID))
 	}
-	rightParts = append(rightParts, idStyle.Render(paddedID))
-	rightWidth += maxIDWidth
+	rightWidth = lipgloss.Width(strings.Join(rightParts, "  "))
 
 	// ── Bookmark indicator (bd-k4n) ──
 	isBookmarked := t.bookmarks[issue.ID]
@@ -1628,8 +1806,116 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	return row
 }
 
-func showLaneStageColumn(width int) bool {
-	return width >= 100
+func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
+	if t.columnLayoutValid {
+		return t.columnLayoutCache
+	}
+	effectiveWidth := t.width
+	if effectiveWidth <= 0 {
+		effectiveWidth = 80
+	}
+	layout := treeColumnLayout{
+		updated: resolveColumnPreference(t.ColumnPreference(TreeColumnUpdated), effectiveWidth > 60),
+		id:      resolveColumnPreference(t.ColumnPreference(TreeColumnID), true),
+	}
+	if layout.id {
+		layout.maxIDWidth = t.displayedMaxIDWidth()
+	}
+
+	layout.laneStage = resolveColumnPreference(
+		t.ColumnPreference(TreeColumnLaneStage),
+		t.laneStageFitsDisplayedWorkTitles(layout),
+	)
+	t.columnLayoutCache = layout
+	t.columnLayoutValid = true
+	return layout
+}
+
+func (t *TreeModel) invalidateColumnLayout() {
+	t.columnLayoutValid = false
+}
+
+func resolveColumnPreference(preference ColumnPreference, autoVisible bool) bool {
+	switch preference {
+	case ColumnShow:
+		return true
+	case ColumnHide:
+		return false
+	default:
+		return autoVisible
+	}
+}
+
+func (t *TreeModel) displayedMaxIDWidth() int {
+	maxIDWidth := 2
+	for _, node := range t.flatList {
+		if node == nil || node.Issue == nil {
+			continue
+		}
+		if width := lipgloss.Width(shortIDSuffix(node.Issue.ID)); width > maxIDWidth {
+			maxIDWidth = width
+		}
+	}
+	return maxIDWidth
+}
+
+func (t *TreeModel) laneStageFitsDisplayedWorkTitles(layout treeColumnLayout) bool {
+	layout.laneStage = true
+	eligible := 0
+	truncated := 0
+	for _, node := range t.flatList {
+		if node == nil || node.Issue == nil {
+			continue
+		}
+		if node.Issue.IssueType != model.TypeTask && node.Issue.IssueType != model.TypeFeature {
+			continue
+		}
+		eligible++
+		if lipgloss.Width(node.Issue.Title) > t.titleWidthForLayout(node, layout) {
+			truncated++
+		}
+	}
+	return eligible == 0 || truncated*2 <= eligible
+}
+
+func (t *TreeModel) titleWidthForLayout(node *IssueTreeNode, layout treeColumnLayout) int {
+	width := t.width
+	if width <= 0 {
+		width = 80
+	}
+	width = width - 1 - selectionGutterWidth
+
+	fixedWidth := 9 + computedBlockerBadgeWidth + lipgloss.Width(t.buildTreePrefix(node))
+	if t.IsMarked(node.Issue.ID) {
+		fixedWidth++
+	}
+	if t.bookmarks[node.Issue.ID] {
+		fixedWidth += 2
+	}
+
+	rightWidths := make([]int, 0, 3)
+	if layout.laneStage {
+		rightWidths = append(rightWidths, 12)
+	}
+	if layout.updated {
+		rightWidths = append(rightWidths, 12)
+	}
+	if layout.id {
+		rightWidths = append(rightWidths, layout.maxIDWidth)
+	}
+	rightWidth := 0
+	for _, columnWidth := range rightWidths {
+		rightWidth += columnWidth
+	}
+	if len(rightWidths) > 1 {
+		rightWidth += 2 * (len(rightWidths) - 1)
+	}
+
+	titleWidth := width - fixedWidth - rightWidth - 2
+	if titleWidth < 5 {
+		return 5
+	}
+	return titleWidth
 }
 
 func dispatcherLaneStage(labels []string) string {
@@ -2286,6 +2572,7 @@ func (t *TreeModel) setExpandedRecursive(node *IssueTreeNode, expanded bool) {
 // When a filter is active, dispatches to rebuildFilteredFlatList (bd-e3w).
 // When XRay mode is active (bd-0rc), only shows the xrayRoot subtree.
 func (t *TreeModel) rebuildFlatList() {
+	t.invalidateColumnLayout()
 	if t.flatMode {
 		t.rebuildFlatModeList()
 		return
@@ -2739,6 +3026,7 @@ func (t *TreeModel) ToggleBookmark() {
 	} else {
 		t.bookmarks[issue.ID] = true
 	}
+	t.invalidateColumnLayout()
 	t.saveState()
 }
 
@@ -3167,11 +3455,13 @@ func (t *TreeModel) ToggleMark() {
 	} else {
 		t.markedIDs[id] = true
 	}
+	t.invalidateColumnLayout()
 }
 
 // UnmarkAll clears all marks.
 func (t *TreeModel) UnmarkAll() {
 	t.markedIDs = nil
+	t.invalidateColumnLayout()
 }
 
 // IsMarked returns true if the given issue ID is marked.
