@@ -25,6 +25,7 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/version"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"golang.org/x/term"
 )
 
 func main() {
@@ -40,6 +41,7 @@ func main() {
 	backgroundMode := flag.Bool("background-mode", false, "Enable experimental background snapshot loading (TUI only)")
 	noBackgroundMode := flag.Bool("no-background-mode", false, "Disable experimental background snapshot loading (TUI only)")
 	debugFlag := flag.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
+	noFallback := flag.Bool("no-fallback", false, "Exit when the current folder cannot be opened instead of opening the last project that worked")
 	flag.Parse()
 
 	// Debug logging to .b9s/debug.log
@@ -149,23 +151,34 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Load issues from current directory
-	issues, err := datasource.LoadIssues("")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading beads: %v\n", err)
-		fmt.Fprintln(os.Stderr, "Make sure you are in a project initialized with 'bd init'.")
-		os.Exit(1)
-	}
-
-	// Load application config before constructing watchers so the configured
-	// refresh interval applies from the first poll.
+	// Load application config before opening a project: a fallback reads the
+	// recent list, and the configured refresh interval applies from the first
+	// poll.
 	appCfg, cfgErr := config.Load()
 	if cfgErr != nil {
 		appCfg = config.DefaultConfig()
 	}
 
-	// Get beads file path for live reload (respects BEADS_DIR env var)
-	beadsDir, _ := loader.GetBeadsDir("")
+	// The startup folder respects BEADS_DIR and git worktrees.
+	startupBeadsDir, _ := loader.GetBeadsDir("")
+	startupDir := filepath.Dir(startupBeadsDir)
+	interactive := !*noFallback && term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+	choice, err := chooseStartupProject(filepath.Base(startupDir), startupDir, &appCfg, interactive, datasource.OpenProject)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if choice.StartupFailure != nil {
+		fmt.Fprint(os.Stderr, formatOpenFailure(choice.StartupFailure))
+		fmt.Fprintf(os.Stderr, "Opening %s instead, the last project that opened successfully.\n", choice.Name)
+	}
+	issues := choice.Opened.Issues
+
+	// Get beads file path for live reload
+	beadsDir := startupBeadsDir
+	if choice.Dir != startupDir {
+		beadsDir = filepath.Join(choice.Dir, ".beads")
+	}
 	beadsPath, _ := loader.FindJSONLPath(beadsDir)
 
 	// Detect source type and create Dolt watcher if applicable.
@@ -246,11 +259,6 @@ func main() {
 		issues = filterByRepo(issues, *repoFilter)
 	}
 
-	if len(issues) == 0 {
-		fmt.Println("No issues found. Create some with 'bd create'!")
-		os.Exit(0)
-	}
-
 	// Background mode rollout:
 	// CLI flags override env var, env var overrides config file
 	if *backgroundMode && *noBackgroundMode {
@@ -279,14 +287,17 @@ func main() {
 		}
 	}
 
-	// Detect current project name from cwd
-	projectName := filepath.Base(projectDir)
+	projectName := choice.Name
 	projectPath := projectDir
 
 	// A config that failed to load is never saved: writing DefaultConfig back
-	// would erase a file the user may be in the middle of editing.
+	// would erase a file the user may be in the middle of editing. Only a
+	// project whose issues loaded reaches this point, so a folder that fails
+	// to open never takes a number key.
 	if cfgErr == nil {
-		if recent, ok := config.RecentFromCheckout(projectName, projectPath); ok && appCfg.TouchRecent(recent) {
+		if recent, ok := config.RecentFromCheckout(projectName, projectPath); ok {
+			appCfg.TouchRecent(recent)
+			appCfg.MarkOpened(recent, time.Now())
 			if err := config.SaveRecentTo(config.ConfigPath(), appCfg.RecentProjects, appCfg.LockRecent); err != nil {
 				debug.Log("config: saving recent projects failed: %v", err)
 			}
