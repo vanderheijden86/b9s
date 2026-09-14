@@ -3104,6 +3104,7 @@ func (m *Model) syncBoardToDetail() {
 
 // handleTreeKeys handles keyboard input when tree view is focused (bv-gllx)
 func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
+	m.sizeTreeToView()
 	// Sort popup mode: consume j/k/enter/esc/s only (bd-u81)
 	if m.tree.IsSortPopupOpen() {
 		switch msg.String() {
@@ -3655,7 +3656,7 @@ func (m Model) View() string {
 		} else if m.isSplitView && !m.treeDetailHidden {
 			body = m.renderTreeSplitView()
 		} else {
-			m.tree.SetSize(m.width, m.bodyHeight())
+			m.sizeTreeToView()
 			body = m.tree.View()
 		}
 	} else if m.isBoardView {
@@ -3663,9 +3664,7 @@ func (m Model) View() string {
 	} else if m.isSplitView {
 		body = m.renderSplitView()
 	} else {
-		// Tree view is always the default (bd-8hw.4)
-		m.tree.SetSize(m.width, m.bodyHeight())
-		body = m.tree.View()
+		body = m.renderListWithHeader()
 	}
 
 	footer := m.renderFooter()
@@ -3990,12 +3989,6 @@ func formatBytes(b int64) string {
 func (m Model) renderListWithHeader() string {
 	t := m.theme
 
-	// Calculate dimensions based on actual list height set in sizing
-	availableHeight := m.list.Height()
-	if availableHeight == 0 {
-		availableHeight = m.height - 3 // fallback
-	}
-
 	// Render column header
 	headerStyle := t.Renderer.NewStyle().
 		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
@@ -4012,7 +4005,7 @@ func (m Model) renderListWithHeader() string {
 	// Page info
 	totalItems := len(m.list.Items())
 	currentIdx := m.list.Index()
-	itemsPerPage := availableHeight
+	itemsPerPage := m.list.Paginator.PerPage
 	if itemsPerPage < 1 {
 		itemsPerPage = 1
 	}
@@ -4048,12 +4041,7 @@ func (m Model) renderListWithHeader() string {
 	// Page indicator line
 	pageLine := pageStyle.Render(pageInfo)
 
-	// Combine all elements and force exact height
-	// bodyHeight = m.height - 2 (1 for global header, 1 for footer)
-	bodyHeight := m.height - 2
-	if bodyHeight < 3 {
-		bodyHeight = 3
-	}
+	bodyHeight := m.bodyHeight()
 
 	// Build content with explicit height constraint
 	// Header (1) + List + PageLine (1) must fit in bodyHeight
@@ -4095,7 +4083,7 @@ func (m Model) renderSplitView() string {
 	// Page info for list
 	totalItems := len(m.list.Items())
 	currentIdx := m.list.Index()
-	listHeight := m.list.Height()
+	listHeight := m.list.Paginator.PerPage
 	if listHeight == 0 {
 		listHeight = panelHeight - 3 // fallback
 	}
@@ -4146,6 +4134,16 @@ func (m Model) renderSplitView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
 
+// sizeTreeToView keeps keyboard paging and rendering on the same row count.
+// View has a value receiver, so its layout changes do not persist into Update.
+func (m *Model) sizeTreeToView() {
+	if m.isSplitView && !m.treeDetailHidden {
+		m.tree.SetSize(m.list.Width(), max(1, m.height-4))
+	} else {
+		m.tree.SetSize(m.width, m.bodyHeight())
+	}
+}
+
 // renderTreeSplitView renders the tree view in a split layout with a detail panel on the right,
 // mirroring renderSplitView but using the tree for the left pane.
 func (m Model) renderTreeSplitView() string {
@@ -4163,13 +4161,7 @@ func (m Model) renderTreeSplitView() string {
 	treeInnerWidth := m.list.Width()
 	panelHeight := m.height - 2 // 1 for global header, 1 for footer
 
-	// Set tree size to fit inside the panel (border takes 2 lines)
-	// The header row is now rendered inside tree.View() via RenderHeader() (bd-s2k)
-	treeHeight := panelHeight - 2
-	if treeHeight < 1 {
-		treeHeight = 1
-	}
-	m.tree.SetSize(treeInnerWidth, treeHeight)
+	m.sizeTreeToView()
 
 	// tree.View() includes the header row (bd-s2k)
 	treeContent := m.tree.View()

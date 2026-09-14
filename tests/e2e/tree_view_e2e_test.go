@@ -857,6 +857,58 @@ const (
 	mouseWheelDown = "\x1b[<65;10;10M"
 )
 
+func TestTreeViewArrowPagingUsesTerminalHeight(t *testing.T) {
+	dir := t.TempDir()
+	issues := make([]treeFixtureIssue, 100)
+	for i := range issues {
+		issues[i] = treeFixtureIssue{
+			ID: fmt.Sprintf("page-%02d", i), Title: fmt.Sprintf("PagingTask%02d", i),
+			Status: "open", IssueType: "task",
+			CreatedAt: time.Date(2026, 1, 1, 0, 0, i, 0, time.UTC).Format(time.RFC3339),
+		}
+	}
+	writeTreeFixture(t, dir, issues)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := scriptTUICommand(ctx, "/bin/sh", "-c", fmt.Sprintf("stty rows 20 cols 80; exec '%s'", buildBvBinary(t)))
+	if cmd == nil {
+		t.Fatal("script PTY is required for the paging regression")
+	}
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "TERM=screen-256color", "B9S_TUI_AUTOCLOSE_MS=2500")
+	stdinR, stdinW := io.Pipe()
+	cmd.Stdin = stdinR
+	t.Cleanup(func() {
+		_ = stdinW.Close()
+		_ = stdinR.Close()
+	})
+	go func() {
+		defer stdinW.Close()
+		for _, key := range []string{arrowRight, arrowLeft} {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(700 * time.Millisecond):
+			}
+			if _, err := io.WriteString(stdinW, key); err != nil {
+				return
+			}
+		}
+	}()
+	out, err := runCmdToFile(t, cmd)
+	if err != nil || ctx.Err() != nil {
+		t.Fatalf("TUI failed: %v (context: %v)\n%s", err, ctx.Err(), out)
+	}
+	output := string(out)
+	pageTwo := strings.Index(output, "Page 2/")
+	if pageTwo < 0 {
+		t.Fatalf("Right arrow must render page two at the terminal height:\n%s", output)
+	}
+	if !strings.Contains(output[pageTwo:], "Page 1/") {
+		t.Fatalf("Left arrow must render page one after page two:\n%s", output)
+	}
+}
+
 func TestTreeViewMouseWheelDownNavigation(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))

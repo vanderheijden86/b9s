@@ -203,9 +203,11 @@ If B9s cannot connect to the configured Dolt server, it falls back to the next a
 | `j` / `k` | Next / Previous | `q` / `Esc` | Quit / Back |
 | `Home` / `G` | Top / Bottom | `Tab` | Switch pane focus |
 | `/` | Fuzzy search | `s` | Cycle sort mode |
-| `n` / `N` | Next / Prev match | `l` | Label picker |
+| `n` / `N` | Next / Prev match | `L` | Label picker |
 | `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All | `d` | Toggle detail panel |
 | `Ctrl+R` / `F5` | Refresh data immediately | `?` | Show help |
+
+Left/Right arrows move backward/forward by one visible page in tree and list views. In the tree, `h`/`l` collapse/expand nodes; Up/Down arrows and `j`/`k` move one row at a time.
 
 The mouse wheel moves through tasks and scrolls the detail pane. To select terminal text while mouse reporting is active, hold the terminal's override while dragging (`Option` in iTerm2, commonly `Shift` elsewhere).
 

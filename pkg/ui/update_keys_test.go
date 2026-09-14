@@ -1,12 +1,86 @@
 package ui
 
 import (
+	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
+
+func TestArrowKeysPaginateVisiblePage(t *testing.T) {
+	for _, view := range []string{"tree", "tree-detail", "list"} {
+		for _, width := range []int{80, 160} {
+			for _, direction := range []tea.KeyType{tea.KeyRight, tea.KeyLeft} {
+				t.Run(fmt.Sprintf("%s/width%d/%s", view, width, tea.KeyMsg{Type: direction}.String()), func(t *testing.T) {
+					issues := make([]model.Issue, 100)
+					for i := range issues {
+						issues[i] = model.Issue{
+							ID: fmt.Sprintf("page-%02d", i), Title: fmt.Sprintf("Paging task %02d", i),
+							Status: model.StatusOpen, IssueType: model.TypeTask,
+							CreatedAt: time.Date(2026, 1, 1, 0, 0, i, 0, time.UTC),
+						}
+					}
+					m := NewModel(issues, "")
+					if view == "list" {
+						m.focused = focusList
+						m.treeViewActive = false
+					}
+					updated, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: 20})
+					m = updated.(Model)
+					if view == "tree-detail" && m.isSplitView {
+						updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
+						m = updated.(Model)
+					}
+
+					pageSize := m.list.Paginator.PerPage
+					if view != "list" {
+						match := regexp.MustCompile(`Page 1/\d+ \(1-(\d+) of 100\)`).FindStringSubmatch(m.View())
+						if len(match) != 2 {
+							t.Fatalf("missing initial tree page indicator:\n%s", m.View())
+						}
+						var err error
+						pageSize, err = strconv.Atoi(match[1])
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+					if pageSize < 2 || pageSize >= len(issues) {
+						t.Fatalf("fixture needs multiple pages, got page size %d", pageSize)
+					}
+
+					wantIndex := pageSize
+					if direction == tea.KeyLeft {
+						// Start on page three independently of the Right key handler.
+						if view == "list" {
+							m.list.Select(2 * pageSize)
+						} else {
+							m.tree.SelectByID(issues[2*pageSize].ID)
+							m.tree.viewportOffset = 2 * pageSize
+						}
+					}
+					_ = m.View()
+					updated, _ = m.Update(tea.KeyMsg{Type: direction})
+					m = updated.(Model)
+					selected := m.getSelectedIssue()
+					if selected == nil || selected.ID != issues[wantIndex].ID {
+						t.Fatalf("%s must move one visible page (%d rows) to %s, got %+v", tea.KeyMsg{Type: direction}.String(), pageSize, issues[wantIndex].ID, selected)
+					}
+					if !strings.Contains(m.View(), issues[wantIndex].Title) {
+						t.Fatalf("paged selection must be visible:\n%s", m.View())
+					}
+					if !strings.Contains(m.View(), "Page 2") {
+						t.Fatalf("paging must render the second page:\n%s", m.View())
+					}
+				})
+			}
+		}
+	}
+}
 
 func TestShiftKClosesSelectedIssueAfterConfirmation(t *testing.T) {
 	issues := []model.Issue{
