@@ -282,6 +282,16 @@ func main() {
 	projectName := filepath.Base(projectDir)
 	projectPath := projectDir
 
+	// A config that failed to load is never saved: writing DefaultConfig back
+	// would erase a file the user may be in the middle of editing.
+	if cfgErr == nil {
+		if recent, ok := config.RecentFromCheckout(projectName, projectPath); ok && appCfg.TouchRecent(recent) {
+			if err := config.SaveRecentTo(config.ConfigPath(), appCfg.RecentProjects, appCfg.LockRecent); err != nil {
+				debug.Log("config: saving recent projects failed: %v", err)
+			}
+		}
+	}
+
 	// Launch TUI
 	m := ui.NewModel(issues, beadsPath).
 		WithSourceType(detectedSourceType).

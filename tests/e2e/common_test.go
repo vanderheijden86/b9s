@@ -27,9 +27,20 @@ func TestMain(m *testing.M) {
 	os.Setenv("B9S_NO_BROWSER", "1")
 	os.Setenv("B9S_TEST_MODE", "1")
 
+	// b9s saves the projects it opens into its user config. Every binary a test
+	// starts inherits this directory, so fixture projects never reach the
+	// developer's real recent list.
+	configHome, err := os.MkdirTemp("", "b9s-e2e-config-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create isolated config dir: %v\n", err)
+		os.Exit(1)
+	}
+	os.Setenv("XDG_CONFIG_HOME", configHome)
+
 	// Build the binary once for all tests
 	if err := buildBvOnce(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to build bv binary: %v\n", err)
+		_ = os.RemoveAll(configHome)
 		os.Exit(1)
 	}
 
@@ -39,7 +50,22 @@ func TestMain(m *testing.M) {
 	if bvBinaryDir != "" {
 		_ = os.RemoveAll(bvBinaryDir)
 	}
+	// os.Exit skips deferred calls, so cleanup runs explicitly.
+	_ = os.RemoveAll(configHome)
 	os.Exit(code)
+}
+
+// TestE2EUsesIsolatedConfigHome fails if the suite would start b9s against the
+// developer's own config, where each run would add fixture projects to the
+// recent list.
+func TestE2EUsesIsolatedConfigHome(t *testing.T) {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
+		t.Fatal("XDG_CONFIG_HOME is unset; b9s would read and write ~/.config/b9s")
+	}
+	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(configHome, home) {
+		t.Fatalf("XDG_CONFIG_HOME = %q is inside the home directory", configHome)
+	}
 }
 
 func detectScriptTUICapability(bvPath string) (bool, string) {

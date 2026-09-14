@@ -265,9 +265,13 @@ func SaveTo(cfg Config, path string) error {
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
+	return writeFileAtomic(path, data)
+}
 
-	// Write-then-rename so a reader never sees a half-written file.
-	tmp, err := os.CreateTemp(dir, ".config-*.yaml")
+// writeFileAtomic writes data to a temp file beside path and renames it into
+// place, so a reader never sees a half-written config.
+func writeFileAtomic(path string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".config-*.yaml")
 	if err != nil {
 		return fmt.Errorf("creating temp config: %w", err)
 	}
@@ -288,7 +292,6 @@ func SaveTo(cfg Config, path string) error {
 	if err := os.Rename(tmpPath, path); err != nil {
 		return fmt.Errorf("replacing config: %w", err)
 	}
-
 	return nil
 }
 

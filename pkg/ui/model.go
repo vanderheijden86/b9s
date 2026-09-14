@@ -704,42 +704,12 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 		entries = append(entries, entry)
 	}
 
-	// Determine whether any explicit favorites are configured.
-	hasFavorites := false
-	for _, e := range entries {
-		if e.FavoriteNum > 0 {
-			hasFavorites = true
-			break
-		}
-	}
-
-	if hasFavorites {
-		// When favorites are explicitly configured, sort by FavoriteNum to keep them
-		// in their assigned order, with un-favorited entries alphabetically at the end.
-		// The active project should already have a FavoriteNum, so it stays in its slot.
-		sort.SliceStable(entries, func(i, j int) bool {
-			iFav := entries[i].FavoriteNum > 0
-			jFav := entries[j].FavoriteNum > 0
-			if iFav != jFav {
-				return iFav
-			}
-			if iFav && jFav {
-				return entries[i].FavoriteNum < entries[j].FavoriteNum
-			}
-			return entries[i].Project.Name < entries[j].Project.Name
-		})
-	} else {
-		// No favorites configured: sort alphabetically for stable numbering.
-		// Numbers must not change when switching projects (bd-jorl).
-		// Active project is always visible via j/k scrolling if it falls beyond position 10.
-		sort.SliceStable(entries, func(i, j int) bool {
-			return entries[i].Project.Name < entries[j].Project.Name
-		})
-		// Auto-number 1-9 after sorting.
-		for i := range entries {
-			if i >= 9 {
-				break
-			}
+	// Rows keep the recent list's stored order and are numbered by position.
+	// TouchRecent never moves an existing entry, so a project's number stays
+	// the same while switching between recent projects (bd-jorl).
+	for i := range entries {
+		entries[i].FavoriteNum = 0
+		if i < config.MaxRecentProjects {
 			entries[i].FavoriteNum = i + 1
 		}
 	}
@@ -1052,29 +1022,7 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.issueWriter.SetWorkDir(projectPath)
 	m.board.SetActiveProjectName(projectName)
 	m.updateListDelegate()
-	projects, errs := config.DiscoverProjectsWithErrors(cfg)
-	for _, e := range errs {
-		debug.Log("project discovery: skipping %s", e)
-	}
-
-	// Ensure the current project is always in the list, even without
-	// scan_paths or registered projects in config (bd-i21s).
-	if projectPath != "" {
-		found := false
-		for _, p := range projects {
-			if p.ResolvedPath() == projectPath {
-				found = true
-				break
-			}
-		}
-		if !found {
-			projects = append(projects, config.Project{
-				Name: projectName,
-				Path: projectPath,
-			})
-		}
-	}
-	m.allProjects = projects
+	m.allProjects = headerProjects(cfg.RecentProjects, projectName, projectPath)
 	entries := m.buildProjectEntries()
 	m.projectPicker = NewProjectPicker(entries, m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)
