@@ -457,6 +457,21 @@ func TestTreeViewSortPopupOpensOnS(t *testing.T) {
 	}
 }
 
+func TestTreeViewColumnPopupOpensOnC(t *testing.T) {
+	issues := createTreeTestIssues()
+	m := ui.NewModel(issues, "")
+	m = enterTreeView(t, m)
+
+	if m.TreeColumnPopupOpen() {
+		t.Fatal("column popup should be closed initially")
+	}
+
+	m = sendKey(t, m, "C")
+	if !m.TreeColumnPopupOpen() {
+		t.Error("column popup should be open after pressing C")
+	}
+}
+
 // TestTreeViewSortPopupEscCloses verifies that Esc closes the sort popup without changing sort.
 func TestTreeViewSortPopupEscCloses(t *testing.T) {
 	issues := createTreeTestIssues()

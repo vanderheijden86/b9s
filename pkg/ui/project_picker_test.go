@@ -76,10 +76,8 @@ func createModelWithProjects(t *testing.T) (ui.Model, config.Config) {
 	}
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: map[int]string{1: "api-service", 3: "data-pipeline"},
-		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
-		Discovery: config.DiscoveryConfig{MaxDepth: 3},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
 	m := ui.NewModel(issues, "").WithConfig(cfg, "api-service", projects[0].Path)
@@ -463,9 +461,8 @@ func TestProjectPicker_AutoNumbering(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -491,9 +488,8 @@ func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -516,10 +512,10 @@ func TestProjectPicker_NumberKeySwitchesWithoutFavorites(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
 	}
-	// After sorting (active first, then alphabetical), position 2 is "data-pipeline"
-	// (api-service=1 [active], data-pipeline=2, web-frontend=3).
-	if switchMsg.Project.Name != "data-pipeline" {
-		t.Errorf("expected 'data-pipeline', got %q", switchMsg.Project.Name)
+	// Rows follow the recent list's stored order:
+	// api-service=1 [active], web-frontend=2, data-pipeline=3.
+	if switchMsg.Project.Name != "web-frontend" {
+		t.Errorf("expected 'web-frontend', got %q", switchMsg.Project.Name)
 	}
 }
 
@@ -582,9 +578,8 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -608,17 +603,17 @@ func TestProjectSwitch_FullCycleLoadsNewData(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SwitchProjectMsg, got %T", msg)
 	}
-	// After sorting (active first, then alphabetical), position 2 is "data-pipeline".
-	if switchMsg.Project.Name != "data-pipeline" {
-		t.Fatalf("expected data-pipeline, got %q", switchMsg.Project.Name)
+	// Rows follow the recent list's stored order, so position 2 is web-frontend.
+	if switchMsg.Project.Name != "web-frontend" {
+		t.Fatalf("expected web-frontend, got %q", switchMsg.Project.Name)
 	}
 
 	newM, switchCmd := m.Update(switchMsg)
 	m = newM.(ui.Model)
 
 	view := m.View()
-	if !strings.Contains(view, "data-pipeline") {
-		t.Error("view should mention data-pipeline after switch")
+	if !strings.Contains(view, "web-frontend") {
+		t.Error("view should mention web-frontend after switch")
 	}
 
 	if switchCmd == nil {
@@ -652,7 +647,7 @@ func TestProjectSwitch_DoltOnlyProjectDoesNotRequireJSONL(t *testing.T) {
 		{Name: "active", Path: activeDir},
 		{Name: "shared-dolt", Path: doltDir},
 	}
-	m := ui.NewModel(nil, activePath).WithConfig(config.Config{Projects: projects}, "active", activeDir)
+	m := ui.NewModel(nil, activePath).WithConfig(config.Config{RecentProjects: recentFromProjects(projects...)}, "active", activeDir)
 	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
 
@@ -689,7 +684,7 @@ func TestProjectReload_DoltIgnoresStartupBeadsDir(t *testing.T) {
 	targetProjectDir := filepath.Dir(targetDir)
 	targetProject := config.Project{Name: "target", Path: targetProjectDir}
 	m := ui.NewModel(nil, filepath.Join(targetDir, "issues.jsonl")).
-		WithConfig(config.Config{Projects: []config.Project{targetProject}}, "target", targetProjectDir).
+		WithConfig(config.Config{RecentProjects: recentFromProjects(targetProject)}, "target", targetProjectDir).
 		WithSourceType(datasource.SourceTypeDolt)
 	newM, _ := m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = newM.(ui.Model)
@@ -710,9 +705,8 @@ func TestProjectSwitch_ShowsLoadingScreen(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -738,9 +732,8 @@ func TestProjectSwitch_ClearsOldTreeData(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -771,9 +764,8 @@ func TestProjectSwitch_SameProjectIsNoop(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -798,9 +790,8 @@ func TestPickerCountsRefreshOnTick(t *testing.T) {
 	_, projects := createSampleProjects(t)
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "tree", SplitRatio: 0.4},
 	}
 
 	issues := []model.Issue{
@@ -891,10 +882,10 @@ func TestPickerCountsUseCanonicalSourceForInactiveProjects(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := config.Config{Projects: []config.Project{
-		{Name: "active-project", Path: activeDir},
-		{Name: "canonical-project", Path: canonicalDir},
-	}}
+	cfg := config.Config{RecentProjects: recentFromProjects(
+		config.Project{Name: "active-project", Path: activeDir},
+		config.Project{Name: "canonical-project", Path: canonicalDir},
+	)}
 	activeIssues := []model.Issue{{ID: "active-1", Title: "Active", Status: "open", IssueType: "task", Priority: 2}}
 	m := ui.NewModel(activeIssues, filepath.Join(activeDir, ".beads", "issues.jsonl")).
 		WithConfig(cfg, "active-project", activeDir)
@@ -959,10 +950,10 @@ func TestPickerCounts_BlockedByDependencies(t *testing.T) {
 	}
 
 	cfg := config.Config{
-		Projects: []config.Project{
-			{Name: "active-project", Path: activeDir},
-			{Name: "dep-project", Path: projDir},
-		},
+		RecentProjects: recentFromProjects(
+			config.Project{Name: "active-project", Path: activeDir},
+			config.Project{Name: "dep-project", Path: projDir},
+		),
 	}
 	activeIssues := []model.Issue{
 		{ID: "act-1", Title: "Active task", Status: "open", IssueType: "task", Priority: 2},
@@ -1005,7 +996,7 @@ func TestProjectSwitch_ClearsTreeFilter(t *testing.T) {
 		{ID: "api-3", Title: "Update docs", Status: "open", IssueType: "task", Priority: 3},
 	}
 	cfg := config.Config{
-		Projects: projects,
+		RecentProjects: recentFromProjects(projects...),
 	}
 
 	m := ui.NewModel(activeIssues, "").WithConfig(cfg, "api-service", projects[0].Path)
@@ -1209,9 +1200,8 @@ func TestProjectPicker_PageRelativeNumbering(t *testing.T) {
 	_, projects := createSampleProjects(t) // api-service, web-frontend, data-pipeline
 
 	cfg := config.Config{
-		Projects:  projects,
-		Favorites: nil,
-		UI:        config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
+		RecentProjects: recentFromProjects(projects...),
+		UI:             config.UIConfig{DefaultView: "list", SplitRatio: 0.4},
 	}
 
 	m := ui.NewModel(nil, "").WithConfig(cfg, "api-service", projects[0].Path)

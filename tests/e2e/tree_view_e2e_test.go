@@ -145,6 +145,41 @@ func TestTreeViewShowsComputedBlockerBadge(t *testing.T) {
 	containsAll(t, out, []string{"Blocked Task C", "◈1"})
 }
 
+func adaptiveColumnFixture(t *testing.T) []treeFixtureIssue {
+	t.Helper()
+	now := time.Now()
+	longTitle := strings.Repeat("Long acceptance task title ", 8)
+	return []treeFixtureIssue{
+		{ID: "column-short", Title: "Short task", Status: "open", Priority: 2, IssueType: "task", CreatedAt: now.Format(time.RFC3339), Labels: []string{"lane-stage=DONE"}},
+		{ID: "column-long-1", Title: longTitle, Status: "open", Priority: 2, IssueType: "task", CreatedAt: now.Add(-time.Second).Format(time.RFC3339), Labels: []string{"lane-stage=QUEUED"}},
+		{ID: "column-long-2", Title: longTitle, Status: "open", Priority: 2, IssueType: "feature", CreatedAt: now.Add(-2 * time.Second).Format(time.RFC3339), Labels: []string{"lane-stage=RUNNING"}},
+	}
+}
+
+func TestTreeViewAutoHidesLaneStageInNarrowContentLayout(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, adaptiveColumnFixture(t))
+
+	out, err := runTreeTUI(t, tempDir, 1200, nil)
+	if err != nil {
+		t.Fatalf("run tree TUI: %v", err)
+	}
+	if strings.Contains(string(out), "LANE STATE") {
+		t.Fatalf("lane stage should be auto-hidden when most work titles truncate:\n%s", out)
+	}
+}
+
+func TestTreeViewColumnSelectorForcesLaneStageVisible(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, adaptiveColumnFixture(t))
+
+	out, err := runTreeTUI(t, tempDir, 1800, []keyStep{k("C"), k(" "), k("C")})
+	if err != nil {
+		t.Fatalf("run tree TUI: %v", err)
+	}
+	containsAll(t, out, []string{"LANE STATE", "RUNNING"})
+}
+
 // runTreeTUI launches bv in a PTY, sends the given key sequence, and returns the captured output.
 // Keys are sent with configurable delays. The TUI auto-closes after autoCloseMs.
 func runTreeTUI(t *testing.T, dir string, autoCloseMs int, keys []keyStep) ([]byte, error) {
@@ -687,6 +722,37 @@ func TestTreeViewSearchByID(t *testing.T) {
 
 	// Should find Epic Two by its epic-2 ID search.
 	containsAll(t, out, []string{"Epic Two"})
+}
+
+func TestTreeViewFilterHighlightedBranch(t *testing.T) {
+	tempDir := t.TempDir()
+	now := time.Now()
+	issues := []treeFixtureIssue{
+		{ID: "epic-a", Title: "First epic", Status: "open", Priority: 1, IssueType: "epic", CreatedAt: now.Format(time.RFC3339)},
+		{ID: "feature-a", Title: "Nested feature", Status: "open", Priority: 2, IssueType: "feature", CreatedAt: now.Add(-time.Second).Format(time.RFC3339), Dependencies: []*treeFixtureDep{{IssueID: "feature-a", DependsOnID: "epic-a", Type: "parent-child"}}},
+		{ID: "task-a", Title: "Nested task", Status: "open", Priority: 2, IssueType: "task", CreatedAt: now.Add(-2 * time.Second).Format(time.RFC3339), Dependencies: []*treeFixtureDep{{IssueID: "task-a", DependsOnID: "feature-a", Type: "parent-child"}}},
+		{ID: "epic-b", Title: "Second epic", Status: "open", Priority: 1, IssueType: "epic", CreatedAt: now.Add(-3 * time.Second).Format(time.RFC3339)},
+	}
+	writeTreeFixture(t, tempDir, issues)
+
+	out, err := runTreeTUI(t, tempDir, 2500, []keyStep{
+		k("X"),
+		k("\x1b[H"),
+		k("j"),
+		k("j"),
+		k("f"),
+	})
+	if err != nil {
+		t.Fatalf("run tree TUI: %v\noutput:\n%s", err, out)
+	}
+
+	finalFrame := string(out)
+	if lastHeader := strings.LastIndex(finalFrame, "TYPE PRI STATUS"); lastHeader >= 0 {
+		finalFrame = finalFrame[lastHeader:]
+	}
+	if !strings.Contains(finalFrame, "/ epic-a") {
+		t.Fatalf("accepted branch query is missing from final frame:\n%s", truncateOutput(finalFrame, 2000))
+	}
 }
 
 // ============================================================================

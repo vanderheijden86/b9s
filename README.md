@@ -41,19 +41,20 @@ B9s takes the opposite approach: **do fewer things well**. By stripping the code
 
 ## Features
 
-- **Tree view** with parent/child hierarchy, computed `◈N` open-blocker indicators, split-pane detail, search with occurrence filtering, bookmarking, XRay drill-down, and k9s-style marking (`Space`, `ctrl+space` range, `ctrl+\` clear) so `K` and `Delete` act on every marked issue at once. Press `g` on a row to inspect the blocker identities. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics.
+- **Tree view** with parent/child hierarchy, computed `◈N` open-blocker indicators, split-pane detail, search with occurrence filtering, bookmarking, XRay drill-down, and k9s-style marking (`Space`, `ctrl+space` range, `ctrl+\` clear) so `K` and `Delete` act on every marked issue at once. Press `g` on a row to inspect the blocker identities. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics. Optional columns adapt to title space; press `C` to set Lane state, Updated, or ID to `Auto`, `Show`, or `Hide` for the current session.
 - **Global fuzzy search** across issue IDs, titles, and labels, shared by tree, list, and board
 - **List view** with sorting (created, priority, updated) and status/label filtering
 - **Kanban board** with three swimlane modes: by status, by priority, and by type
 - **Dependency graph** with a focused view of what blocks the selected issue and what waits on it
 - **Detail panel** with full Markdown rendering (via Glamour), scrollable and toggleable
-- **Project picker** (k9s-style header) with multi-project switching, favorites (1-9 keys), and issue count columns (Open, In Progress, Ready)
+- **Project picker** (k9s-style header) listing the current and recently opened projects on number keys 1-9, with issue count columns (Open, In Progress, Ready)
 - **Inline editing** of title, status, priority, type, assignee, labels, description, and notes (via huh forms)
 - **Issue creation** directly from the TUI (`Ctrl+n`)
 - **Label filtering** with count display
 - **Live reload** for JSONL file changes and Dolt working-set changes, with `Ctrl+R` / `F5` manual refresh
 - **Self-updating** (`--update`, `--check-update`, `--rollback`)
 - **Repository prefix filtering** (`--repo`)
+- **Startup filters** (`--filter`) using the same composable query language as the TUI
 - **Large dataset handling** with tiered loading and issue pooling for 1k-20k+ issues
 - **Interactive tutorial** (`` ` `` backtick) for guided feature walkthrough
 
@@ -95,11 +96,40 @@ b9s
 
 Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutorial.
 
+Start B9s with the same filter syntax accepted by the in-app `/` query field:
+
+```bash
+b9s --filter 'status:open label:backend'
+b9s --filter 'type:bug !assignee:andre'
+b9s --filter 'release blocker'
+```
+
+Predicates can target `id`, `title`, `status`, `priority`, `type`, `label`, `assignee`, or `project`. Separate fields compose with AND, repeated positive values for one field compose with OR, and `!` negates a predicate. Plain text fuzzily matches issue IDs, titles, and labels.
+
+The flag is suitable for shell scripts and tmux bindings. For example:
+
+```tmux
+bind-key B new-window -c '#{pane_current_path}' "b9s --filter 'status:open label:backend'"
+```
+
 ## Data Backends
 
 B9s discovers and reads from multiple data backends automatically. On startup, it scans the `.beads/` directory for all available sources and selects the most authoritative one based on a fixed priority order.
 
-Project auto-discovery accepts any supported backend. A server-mode project only needs valid Dolt configuration in `.beads/metadata.json` to appear in the project picker; it does not need a JSONL export. Discovery does not connect to Dolt, so configured projects remain visible when the server or tunnel is temporarily unavailable.
+The project picker lists the project b9s was started in and the projects you opened recently (`recent_projects` in `~/.config/b9s/config.yaml`, at most nine). It does not scan folders for other projects. Any supported backend can be a recent project. A server-mode project only needs valid Dolt configuration in `.beads/metadata.json`; it does not need a JSONL export. A recent project whose server or tunnel is unavailable stays in the picker and is marked `✗` in place of its issue counts.
+
+A project b9s has not seen yet is prepended as `<1>`; a project already in the list keeps its number, so switching never renumbers the header. Set `lock_recent: true` to freeze the list. There is no in-app way to remove an entry; edit the file:
+
+```yaml
+recent_projects:
+  - name: b9s
+    database: b9s
+    host: 127.0.0.1:3306
+    path: /Users/me/Documents/b9s   # empty for a database without a local checkout
+lock_recent: false
+```
+
+Type `:project` to list the Beads databases the startup project's Dolt user can read. Enter adds the selected database to the recent list and opens it. A project without a local checkout opens read-only, because writes run `bd` inside a checkout. The older `discovery.scan_paths`, `projects:` and `favorites:` settings are no longer read; favorites are copied into `recent_projects` once.
 
 ### Source Priority
 
@@ -217,6 +247,7 @@ If B9s cannot connect to the configured Dolt server, it falls back to the next a
 | `Home` / `G` | Top / Bottom | `Tab` | Switch pane focus |
 | `/` | Fuzzy search | `s` | Cycle sort mode |
 | `n` / `N` | Next / Prev match | `l` | Label picker |
+| `f` | Filter highlighted tree branch | | |
 | `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All | `d` | Toggle detail panel |
 | `Ctrl+R` / `F5` | Refresh data immediately | `?` | Show help |
 
@@ -233,6 +264,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. To select termi
 | `Delete` | Permanently delete selected issue after confirmation |
 | `?` | Keyboard shortcuts help |
 | `[` / `]` | Resize split pane |
+| `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table; Tab accepts the suggestion |
 
 ## Acknowledgments
 

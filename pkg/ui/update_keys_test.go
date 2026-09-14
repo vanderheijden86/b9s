@@ -13,7 +13,7 @@ func TestShiftKClosesSelectedIssueAfterConfirmation(t *testing.T) {
 		{ID: "bd-123", Title: "Close this ticket", Status: model.StatusOpen},
 	}
 	m := NewModel(issues, "")
-	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true}
+	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true, checkout: testCheckout(t)}
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("K")})
 	m = updated.(Model)
@@ -53,7 +53,7 @@ func TestShiftKCloseConfirmationCanBeCancelled(t *testing.T) {
 	m := NewModel([]model.Issue{
 		{ID: "bd-123", Title: "Keep this ticket open", Status: model.StatusOpen},
 	}, "")
-	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true}
+	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true, checkout: testCheckout(t)}
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("K")})
 	m = updated.(Model)

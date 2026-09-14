@@ -4435,6 +4435,109 @@ func TestTreeViewRendersLaneStageAtMinimumColumnWidth(t *testing.T) {
 	}
 }
 
+func TestTreeViewAutoHidesLaneStageWhenMostDisplayedWorkTitlesWouldTruncate(t *testing.T) {
+	longTitle := strings.Repeat("long task title ", 5)
+	issues := []model.Issue{
+		{ID: "bd-long-1", Title: longTitle, Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: time.Now(), Labels: []string{"lane-stage=QUEUED"}},
+		{ID: "bd-long-2", Title: longTitle, Status: model.StatusOpen, IssueType: model.TypeFeature, CreatedAt: time.Now(), Labels: []string{"lane-stage=RUNNING"}},
+		{ID: "bd-short", Title: "Short task", Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: time.Now(), Labels: []string{"lane-stage=DONE"}},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	view := stripANSI(tree.View())
+	if strings.Contains(view, "LANE STATE") {
+		t.Fatalf("lane stage should be hidden when it truncates more than half of displayed task and feature titles:\n%s", view)
+	}
+}
+
+func TestTreeViewAdaptiveLaneStageUsesAllDisplayedRowsToAvoidScrollJitter(t *testing.T) {
+	now := time.Now()
+	longTitle := strings.Repeat("long task title ", 5)
+	issues := []model.Issue{
+		{ID: "bd-short", Title: "Short task", Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: now, Labels: []string{"lane-stage=DONE"}},
+		{ID: "bd-long-1", Title: longTitle, Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: now.Add(-time.Second), Labels: []string{"lane-stage=QUEUED"}},
+		{ID: "bd-long-2", Title: longTitle, Status: model.StatusOpen, IssueType: model.TypeFeature, CreatedAt: now.Add(-2 * time.Second), Labels: []string{"lane-stage=RUNNING"}},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(100, 2)
+
+	view := stripANSI(tree.View())
+	if strings.Contains(view, "LANE STATE") {
+		t.Fatalf("lane stage should use the whole displayed tree instead of changing as the viewport scrolls:\n%s", view)
+	}
+}
+
+func TestTreeViewKeepsLaneStageAtExactlyHalfTruncated(t *testing.T) {
+	issues := []model.Issue{
+		{ID: "bd-long", Title: strings.Repeat("long task title ", 5), Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: time.Now(), Labels: []string{"lane-stage=QUEUED"}},
+		{ID: "bd-short", Title: "Short task", Status: model.StatusOpen, IssueType: model.TypeFeature, CreatedAt: time.Now(), Labels: []string{"lane-stage=RUNNING"}},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	view := stripANSI(tree.View())
+	if !strings.Contains(view, "LANE STATE") {
+		t.Fatalf("lane stage should remain visible when exactly half of displayed task and feature titles truncate:\n%s", view)
+	}
+}
+
+func TestTreeColumnPopupCanForceLaneStageVisible(t *testing.T) {
+	longTitle := strings.Repeat("long task title ", 5)
+	issues := []model.Issue{
+		{ID: "bd-long-1", Title: longTitle, Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: time.Now(), Labels: []string{"lane-stage=QUEUED"}},
+		{ID: "bd-long-2", Title: longTitle, Status: model.StatusOpen, IssueType: model.TypeFeature, CreatedAt: time.Now(), Labels: []string{"lane-stage=RUNNING"}},
+		{ID: "bd-short", Title: "Short task", Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: time.Now(), Labels: []string{"lane-stage=DONE"}},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.Build(issues)
+	tree.SetSize(100, 20)
+
+	if strings.Contains(stripANSI(tree.View()), "LANE STATE") {
+		t.Fatal("test setup should start with lane stage auto-hidden")
+	}
+
+	tree.SetColumnPreference(TreeColumnLaneStage, ColumnShow)
+	view := stripANSI(tree.View())
+	if !strings.Contains(view, "LANE STATE") || !strings.Contains(view, "RUNNING") {
+		t.Fatalf("an explicit Show preference must override narrow-mode adaptation:\n%s", view)
+	}
+}
+
+func TestTreeColumnPopupListsOptionalColumnsAndCyclesPreference(t *testing.T) {
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.OpenColumnPopup()
+
+	popup := stripANSI(tree.RenderColumnPopup())
+	for _, label := range []string{"Lane state", "Updated", "ID"} {
+		if !strings.Contains(popup, label) {
+			t.Fatalf("column popup missing %q: %q", label, popup)
+		}
+	}
+	if got := tree.ColumnPreference(TreeColumnLaneStage); got != ColumnAuto {
+		t.Fatalf("lane stage should default to Auto, got %v", got)
+	}
+	if !strings.Contains(popup, "Auto (shown)") {
+		t.Fatalf("Auto should disclose its resolved visibility: %q", popup)
+	}
+
+	tree.CycleColumnPreference()
+	if got := tree.ColumnPreference(TreeColumnLaneStage); got != ColumnShow {
+		t.Fatalf("first cycle should force Show, got %v", got)
+	}
+	tree.CycleColumnPreference()
+	if got := tree.ColumnPreference(TreeColumnLaneStage); got != ColumnHide {
+		t.Fatalf("second cycle should force Hide, got %v", got)
+	}
+	tree.CycleColumnPreference()
+	if got := tree.ColumnPreference(TreeColumnLaneStage); got != ColumnAuto {
+		t.Fatalf("third cycle should return to Auto, got %v", got)
+	}
+}
+
 func TestHelpOverlayAdvertisesGraphView(t *testing.T) {
 	m := NewModel(nil, "")
 	help := stripANSI(m.renderHelpOverlay())

@@ -278,3 +278,10 @@ func (s QueryState) Query() IssueQuery {
 func (s QueryState) Matches(issue model.Issue) bool {
 	return s.query.Matches(issue)
 }
+
+// WithInitialQuery applies the canonical issue query before the TUI starts.
+func (m Model) WithInitialQuery(query string) Model {
+	m.setQueryText(query)
+	m.queryState.Accept()
+	return m
+}

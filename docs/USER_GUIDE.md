@@ -826,7 +826,7 @@ The Tree View renders only parent-child relationships, creating a work breakdown
 | **Type Icon** | 🎯 Epic, ✨ Feature, 🐛 Bug, 📝 Task, 🔧 Chore |
 | **Priority** | P0 (critical red), P1 (high), P2 (medium gray), P3+ (muted) |
 | **Status Dot** | ● Open (green), ◐ In Progress (yellow), ⚠ Blocked (red), ○ Closed (gray) |
-| **Lane State** | Dispatcher-owned `lane-stage` value, shown on terminals at least 100 columns wide; blank for issues outside a lane |
+| **Lane State** | Dispatcher-owned `lane-stage` value. Auto hides when showing it would truncate more than half of the displayed task and feature titles; blank for issues outside a lane |
 | **Age** | Time since the issue was last updated (`updated_at`), so a lane transition shows as recent activity |
 
 ### Tree Building Algorithm
@@ -868,6 +868,7 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `Delete` | Delete every marked issue, or the current node when none are marked |
 | **Integration** | |
 | `Tab` | Sync selection to detail panel (in split view) |
+| `C` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
 | `E` / `Esc` | Exit tree view, return to list |
 
 Marking follows k9s. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
@@ -2574,6 +2575,7 @@ bw has a comprehensive built-in help system:
 | | `Space` / `Ctrl+Space` | Mark row / mark range |
 | | `Ctrl+\` | Clear marks |
 | | `K` / `Delete` | Close / delete marked issues (else current) |
+| | `f` | Filter to the highlighted issue's top-level branch |
 | | `o` / `O` | Expand all / Collapse all |
 | | `g` / `G` | Jump to top / bottom |
 | **Time-Travel & Analysis** | `t` | Time-Travel Mode (custom revision) |
@@ -2616,6 +2618,16 @@ Press `Tab` to complete a partially typed field or an ordinary ID, title, or lab
 
 - **While the query bar is focused, every keystroke goes into the query.** Global shortcuts are suspended, so query characters never trigger actions. Press `Enter` to accept the query and hide the field; press `/` to edit it again. Press `Esc` while editing or after acceptance to clear it.
 - **Incomplete predicates remain permissive.** `label:` shows every issue. Typing `label:l` then narrows the list live to issues with matching labels such as `lane`, `loser`, and `lover`.
+- **The tree keeps the whole branch of every hit and hides every other branch.** A hit's parents up to its top-level epic stay visible, and so does everything below it, so matching an epic shows its features and tasks. Branches without a hit are hidden, including sibling features under the same epic, and a standalone task that matches is shown on its own. Hit rows keep their normal colours; the surrounding branch rows are dimmed. `Tab` still collapses a revealed branch.
+- **Press `f` to filter the highlighted branch immediately.** The tree resolves the selected task, feature, epic, or standalone issue to its top-level parent ID, puts that ID into the shared query, and accepts it as if you had typed `/`, the ID, and `Enter`.
+
+```text
+query "tunnel"                              query "acceptance"
+♦ [3bg] Epic: UAT             (dimmed)      ♦ [3bg] Epic: User Acceptance   (hit)
+└─ ▲ [3bg.1] Verify           (dimmed)      ├─ ▲ [3bg.1] Verify            (dimmed)
+   └─ ✔ [3bg.1.1] … tunnel    (hit)         │  └─ ✔ [3bg.1.1] Connect     (dimmed)
+                                            └─ ▲ [3bg.2] Deploy Acceptance (hit)
+```
 - **The first result is revealed with surrounding context.** A distant tree result is placed near the upper third of the viewport instead of at the bottom edge. Use `n` / `N` to move through matches.
 - **Search results are scoped to the active label, assignee, and status filters**, so the match count and `n` / `N` navigation only cover issues you can actually see. Changing a filter while a query is active re-scopes the matches. In XRay mode (`x`), search is scoped to the drilled-down subtree.
 - **Quick filters continue to compose with search.** The `o`, `c`, `r`, and `a` status shortcuts and label/assignee selections narrow results without crowding the search input.

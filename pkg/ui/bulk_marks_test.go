@@ -18,7 +18,7 @@ func newBulkMarkModel(t *testing.T) Model {
 		{ID: "bd-2", Title: "Second", Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: now.Add(2 * time.Hour)},
 		{ID: "bd-3", Title: "Third", Status: model.StatusOpen, IssueType: model.TypeTask, CreatedAt: now.Add(time.Hour)},
 	}, "")
-	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true}
+	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true, checkout: testCheckout(t)}
 	m.tree.SelectByID("bd-1")
 	return m
 }

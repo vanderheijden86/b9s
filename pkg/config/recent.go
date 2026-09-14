@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -12,17 +14,26 @@ import (
 // MaxRecentProjects caps the recent list so every entry has a number key (1-9).
 const MaxRecentProjects = 9
 
-// RecentProject is a project the user has viewed, identified by the Dolt
-// server address and database it reads from.
+const recentProjectsKey = "recent_projects"
+
+// RecentProject is a project the user has viewed. A Dolt server project is
+// identified by its server address and database; a JSONL or SQLite project
+// has neither and is identified by its checkout path.
 type RecentProject struct {
 	Name     string `yaml:"name"`
-	Database string `yaml:"database"`
-	Host     string `yaml:"host"`
+	Database string `yaml:"database,omitempty"`
+	Host     string `yaml:"host,omitempty"`
 	Path     string `yaml:"path,omitempty"`
 }
 
+// sameProject compares server identity only when both entries carry one. An
+// entry written by hand may lack the database of a Dolt checkout, and must
+// still match that checkout by path rather than gain a duplicate.
 func (p RecentProject) sameProject(other RecentProject) bool {
-	return p.Host == other.Host && p.Database == other.Database
+	if p.Database != "" && other.Database != "" {
+		return p.Host == other.Host && p.Database == other.Database
+	}
+	return p.Path != "" && p.Path == other.Path
 }
 
 // TouchRecent records p as viewed and reports whether the list changed.
@@ -82,32 +93,39 @@ func recentOnDisk(data []byte) []RecentProject {
 }
 
 // migrateFavorites seeds an empty recent list from the numbered favorites of
-// older configs, in slot order. Favorites that do not resolve to a Dolt server
-// project are skipped: the recent list only holds server-backed projects.
-func (c *Config) migrateFavorites() {
-	if len(c.RecentProjects) > 0 || len(c.Favorites) == 0 {
+// older configs, in slot order. Favorites whose path no longer holds a Beads
+// checkout are skipped.
+func (c *Config) migrateFavorites(legacy legacyConfig) {
+	if len(c.RecentProjects) > 0 || len(legacy.Favorites) == 0 {
 		return
 	}
-	slots := make([]int, 0, len(c.Favorites))
-	for n := range c.Favorites {
+	slots := make([]int, 0, len(legacy.Favorites))
+	for n := range legacy.Favorites {
 		slots = append(slots, n)
 	}
 	sort.Ints(slots)
 
 	for _, n := range slots {
-		project := c.FindProject(c.Favorites[n])
+		project := legacy.findProject(legacy.Favorites[n])
 		if project == nil {
 			continue
 		}
-		if recent, ok := recentFromCheckout(project.Name, project.ResolvedPath()); ok && !containsRecent(c.RecentProjects, recent) {
+		if recent, ok := RecentFromCheckout(project.Name, project.ResolvedPath()); ok && !containsRecent(c.RecentProjects, recent) {
 			c.RecentProjects = append(c.RecentProjects, recent)
 		}
 	}
 	c.RecentProjects = trimRecent(c.RecentProjects)
 }
 
-// recentFromCheckout describes the Dolt server project checked out at path.
-func recentFromCheckout(name, path string) (RecentProject, bool) {
+// RecentFromCheckout describes the Beads project checked out at path. A Dolt
+// server backend takes precedence, because the database, not the folder, is
+// what another checkout of the same project would share.
+func RecentFromCheckout(name, path string) (RecentProject, bool) {
+	// An empty path would resolve .beads against the working directory and
+	// describe whichever project b9s was started in.
+	if path == "" {
+		return RecentProject{}, false
+	}
 	sources, err := datasource.DiscoverSources(datasource.DiscoveryOptions{
 		BeadsDir:            filepath.Join(path, ".beads"),
 		RepoPath:            path,
@@ -116,10 +134,74 @@ func recentFromCheckout(name, path string) (RecentProject, bool) {
 	if err != nil {
 		return RecentProject{}, false
 	}
+	hasLocalSource := false
 	for _, source := range sources {
-		if source.Type == datasource.SourceTypeDolt {
+		switch source.Type {
+		case datasource.SourceTypeDolt:
 			return RecentProject{Name: name, Database: source.Database, Host: source.Path, Path: path}, true
+		case datasource.SourceTypeJSONLLocal, datasource.SourceTypeSQLite:
+			hasLocalSource = true
 		}
 	}
-	return RecentProject{}, false
+	if !hasLocalSource {
+		return RecentProject{}, false
+	}
+	return RecentProject{Name: name, Path: path}, true
+}
+
+// SaveRecentTo writes recent as the config file's recent_projects and leaves
+// every other key, and the user's comments, as they are. Opening a project
+// saves this list, so it must not rewrite a hand-edited file with defaults.
+func SaveRecentTo(path string, recent []RecentProject, locked bool) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+
+	var doc yaml.Node
+	existing, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		if err := yaml.Unmarshal(existing, &doc); err != nil {
+			return fmt.Errorf("parsing config: %w", err)
+		}
+		recent = mergeRecent(recent, recentOnDisk(existing), locked)
+	case os.IsNotExist(err):
+	default:
+		return fmt.Errorf("reading config: %w", err)
+	}
+
+	if doc.Kind == 0 {
+		doc.Kind = yaml.DocumentNode
+	}
+	if len(doc.Content) == 0 {
+		doc.Content = []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return fmt.Errorf("parsing config: top level is not a mapping")
+	}
+
+	var value yaml.Node
+	if err := value.Encode(recent); err != nil {
+		return fmt.Errorf("encoding recent projects: %w", err)
+	}
+	setMappingValue(root, recentProjectsKey, &value)
+
+	data, err := yaml.Marshal(&doc)
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+	return writeFileAtomic(path, data)
+}
+
+func setMappingValue(mapping *yaml.Node, key string, value *yaml.Node) {
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == key {
+			mapping.Content[i+1] = value
+			return
+		}
+	}
+	mapping.Content = append(mapping.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key},
+		value)
 }

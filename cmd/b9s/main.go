@@ -36,6 +36,7 @@ func main() {
 	rollbackFlag := flag.Bool("rollback", false, "Rollback to the previous version (from backup)")
 	yesFlag := flag.Bool("yes", false, "Skip confirmation prompts (use with --update)")
 	repoFilter := flag.String("repo", "", "Filter issues by repository prefix (e.g., 'api-' or 'api')")
+	initialFilter := flag.String("filter", "", "Start with an issue query applied (e.g., 'status:open label:backend')")
 	backgroundMode := flag.Bool("background-mode", false, "Enable experimental background snapshot loading (TUI only)")
 	noBackgroundMode := flag.Bool("no-background-mode", false, "Disable experimental background snapshot loading (TUI only)")
 	debugFlag := flag.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
@@ -282,6 +283,16 @@ func main() {
 	projectName := filepath.Base(projectDir)
 	projectPath := projectDir
 
+	// A config that failed to load is never saved: writing DefaultConfig back
+	// would erase a file the user may be in the middle of editing.
+	if cfgErr == nil {
+		if recent, ok := config.RecentFromCheckout(projectName, projectPath); ok && appCfg.TouchRecent(recent) {
+			if err := config.SaveRecentTo(config.ConfigPath(), appCfg.RecentProjects, appCfg.LockRecent); err != nil {
+				debug.Log("config: saving recent projects failed: %v", err)
+			}
+		}
+	}
+
 	// Launch TUI
 	m := ui.NewModel(issues, beadsPath).
 		WithSourceType(detectedSourceType).
@@ -289,7 +300,8 @@ func main() {
 		WithDoltSource(doltSource).
 		WithDoltFailure(doltFailure).
 		WithSourceInfo(sourceInfo).
-		WithConfig(appCfg, projectName, projectPath)
+		WithConfig(appCfg, projectName, projectPath).
+		WithInitialQuery(*initialFilter)
 	defer m.Stop()
 
 	if err := runTUIProgram(m); err != nil {

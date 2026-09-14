@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 )
 
@@ -16,6 +17,7 @@ type ProjectEntry struct {
 	Project         config.Project
 	FavoriteNum     int  // 0 = not favorited, 1-9 = key
 	IsActive        bool // Currently loaded project
+	Reachability    datasource.Reachability
 	OpenCount       int
 	InProgressCount int
 	ReadyCount      int
@@ -25,12 +27,6 @@ type ProjectEntry struct {
 // SwitchProjectMsg is sent when the user selects a project to switch to.
 type SwitchProjectMsg struct {
 	Project config.Project
-}
-
-// ToggleFavoriteMsg is sent when the user toggles a project's favorite slot.
-type ToggleFavoriteMsg struct {
-	ProjectName string
-	SlotNumber  int // 0 = remove, 1-9 = assign
 }
 
 // ProjectPickerModel is an always-visible k9s-style header for selecting projects.
@@ -249,25 +245,6 @@ func (m *ProjectPickerModel) applyFilter() {
 	if m.cursor >= len(m.filtered) {
 		m.cursor = max(0, len(m.filtered)-1)
 	}
-}
-
-// nextAvailableFavoriteSlot cycles through favorite slots for the given entry.
-func (m *ProjectPickerModel) nextAvailableFavoriteSlot(entry ProjectEntry) int {
-	if entry.FavoriteNum > 0 {
-		return 0
-	}
-	used := make(map[int]bool)
-	for _, e := range m.entries {
-		if e.FavoriteNum > 0 {
-			used[e.FavoriteNum] = true
-		}
-	}
-	for n := 1; n <= 9; n++ {
-		if !used[n] {
-			return n
-		}
-	}
-	return 0
 }
 
 // b9sLogo returns the ASCII art logo lines.
@@ -575,20 +552,27 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 			name = name[:nameW-3] + "..."
 		}
 
-		rowText := fmt.Sprintf("<%s> %-*s  %3d %3d %3d",
-			numStr, nameW, name,
-			entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
+		// A project b9s cannot read shows a mark in place of counts; its
+		// reason appears in the status line and health popup when opened.
+		unreadable := entry.Reachability == datasource.ReachDenied ||
+			entry.Reachability == datasource.ReachServerDown ||
+			entry.Reachability == datasource.ReachNoIssuesTable
+		countsText := fmt.Sprintf("%3d %3d %3d", entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
+		if unreadable {
+			countsText = fmt.Sprintf("%11s", "✗")
+		}
+		rowText := fmt.Sprintf("<%s> %-*s  %s", numStr, nameW, name, countsText)
 
 		switch {
 		case isCursor:
 			return cursorStyle.Render(rowText)
 		case entry.IsActive:
 			return activeStyle.Render(rowText)
+		case unreadable:
+			return dimStyle.Render(rowText)
 		default:
 			numPart := numStyle.Render(fmt.Sprintf("<%s>", numStr))
-			restText := fmt.Sprintf(" %-*s  %3d %3d %3d",
-				nameW, name,
-				entry.OpenCount, entry.InProgressCount, entry.ReadyCount)
+			restText := fmt.Sprintf(" %-*s  %s", nameW, name, countsText)
 			return numPart + normalStyle.Render(restText)
 		}
 	}

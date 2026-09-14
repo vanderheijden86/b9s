@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -191,6 +192,148 @@ func TestSaveTo_LeavesOnlyTheConfigFile(t *testing.T) {
 		}
 		t.Errorf("expected only config.yaml, found %v", names)
 	}
+}
+
+func TestTouchRecent_IdentifiesCheckoutWithoutDatabaseByPath(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{{Name: "a", Path: "/work/a"}, {Name: "b", Path: "/work/b"}}
+
+	sameChanged := cfg.TouchRecent(RecentProject{Name: "a", Path: "/work/a"})
+	otherChanged := cfg.TouchRecent(RecentProject{Name: "a", Path: "/elsewhere/a"})
+
+	if sameChanged {
+		t.Error("expected the same checkout path to keep its slot")
+	}
+	if !otherChanged {
+		t.Error("expected a different checkout path with the same name to be a new entry")
+	}
+	if got, want := len(cfg.RecentProjects), 3; got != want {
+		t.Errorf("expected %d entries, got %d", want, got)
+	}
+}
+
+func TestRecentFromCheckout_DoltProjectUsesServerIdentity(t *testing.T) {
+	path := writeDoltProject(t, t.TempDir(), "alpha", "alpha_db")
+
+	got, ok := RecentFromCheckout("alpha", path)
+
+	want := RecentProject{Name: "alpha", Database: "alpha_db", Host: "127.0.0.1:3306", Path: path}
+	if !ok || got != want {
+		t.Errorf("RecentFromCheckout = %+v, %v; want %+v, true", got, ok, want)
+	}
+}
+
+func TestRecentFromCheckout_JSONLProjectUsesPath(t *testing.T) {
+	path := writeJSONLProject(t, t.TempDir(), "gamma")
+
+	got, ok := RecentFromCheckout("gamma", path)
+
+	want := RecentProject{Name: "gamma", Path: path}
+	if !ok || got != want {
+		t.Errorf("RecentFromCheckout = %+v, %v; want %+v, true", got, ok, want)
+	}
+}
+
+func TestRecentFromCheckout_RejectsDirectoryWithoutBeads(t *testing.T) {
+	if got, ok := RecentFromCheckout("empty", t.TempDir()); ok {
+		t.Errorf("RecentFromCheckout = %+v, true; want false for a directory without .beads", got)
+	}
+}
+
+func TestLoadFrom_MigratesJSONLFavoriteByPath(t *testing.T) {
+	dir := t.TempDir()
+	gamma := writeJSONLProject(t, dir, "gamma")
+	cfgPath := filepath.Join(dir, "config.yaml")
+	writeFile(t, cfgPath, fmt.Sprintf(`projects:
+  - name: gamma
+    path: %s
+favorites:
+  1: gamma
+`, gamma))
+
+	cfg, err := LoadFrom(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+
+	want := []RecentProject{{Name: "gamma", Path: gamma}}
+	if !reflect.DeepEqual(cfg.RecentProjects, want) {
+		t.Errorf("recent = %+v, want %+v", cfg.RecentProjects, want)
+	}
+}
+
+func TestTouchRecent_MatchesByPathWhenOnlyOneEntryHasDatabase(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{{Name: "a", Path: "/work/a"}}
+
+	changed := cfg.TouchRecent(RecentProject{Name: "a", Database: "a", Host: "127.0.0.1:3306", Path: "/work/a"})
+
+	if changed {
+		t.Errorf("expected the same checkout to keep its slot, recent = %+v", cfg.RecentProjects)
+	}
+}
+
+func TestSaveRecentTo_ReplacesOnlyRecentProjects(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+	writeFile(t, cfgPath, `# my b9s settings
+ui:
+  default_view: tree # I like trees
+recent_projects:
+  - name: old
+    path: /work/old
+`)
+
+	if err := SaveRecentTo(cfgPath, []RecentProject{{Name: "new", Path: "/work/new"}}, false); err != nil {
+		t.Fatalf("SaveRecentTo: %v", err)
+	}
+
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	for _, want := range []string{"# my b9s settings", "default_view: tree # I like trees", "name: new", "name: old"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("saved config lacks %q:\n%s", want, text)
+		}
+	}
+	for _, unwanted := range []string{"split_ratio", "poll_interval", "max_depth", "sort:"} {
+		if strings.Contains(text, unwanted) {
+			t.Errorf("saved config gained default %q:\n%s", unwanted, text)
+		}
+	}
+}
+
+func TestSaveRecentTo_CreatesMissingFile(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "b9s", "config.yaml")
+
+	if err := SaveRecentTo(cfgPath, []RecentProject{{Name: "new", Path: "/work/new"}}, false); err != nil {
+		t.Fatalf("SaveRecentTo: %v", err)
+	}
+
+	cfg, err := LoadFrom(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if got, want := recentNames(cfg.RecentProjects), []string{"new"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("recent = %v, want %v", got, want)
+	}
+}
+
+func TestRecentFromCheckout_RejectsEmptyPathInsideACheckout(t *testing.T) {
+	t.Chdir(writeJSONLProject(t, t.TempDir(), "startup"))
+
+	if got, ok := RecentFromCheckout("remote", ""); ok {
+		t.Errorf("RecentFromCheckout with an empty path = %+v, true; it described the working directory", got)
+	}
+}
+
+func writeJSONLProject(t *testing.T, root, name string) string {
+	t.Helper()
+	path := filepath.Join(root, name)
+	writeFile(t, filepath.Join(path, ".beads", "issues.jsonl"),
+		`{"id":"g-1","title":"Task","status":"open","issue_type":"task","priority":2,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z"}`+"\n")
+	return path
 }
 
 func writeDoltProject(t *testing.T, root, name, database string) string {

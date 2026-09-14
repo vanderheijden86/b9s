@@ -250,6 +250,7 @@ type PickerRefreshTickMsg struct{}
 
 type projectCountsLoadedMsg struct {
 	counts map[string]projectCounts
+	reach  map[string]datasource.Reachability // by projectKey; absent means not yet known
 }
 
 type projectCounts struct {
@@ -286,11 +287,11 @@ func pickerRefreshTickCmd() tea.Cmd {
 	})
 }
 
-func loadProjectCountsCmd(projects []config.Project) tea.Cmd {
+func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd {
 	projects = append([]config.Project(nil), projects...)
 	return func() tea.Msg {
 		type result struct {
-			path   string
+			key    string
 			counts projectCounts
 			err    error
 		}
@@ -298,22 +299,38 @@ func loadProjectCountsCmd(projects []config.Project) tea.Cmd {
 		results := make(chan result, len(projects))
 		for _, project := range projects {
 			go func(project config.Project) {
-				path := project.ResolvedPath()
-				issues, err := datasource.LoadIssuesFromDir(filepath.Join(path, ".beads"))
-				results <- result{path: path, counts: summarizeProjectIssues(issues), err: err}
+				key := projectKey(project)
+				if beadsDir, ok := projectBeadsDir(project.ResolvedPath()); ok {
+					issues, err := datasource.LoadIssuesFromDir(beadsDir)
+					results <- result{key: key, counts: summarizeProjectIssues(issues), err: err}
+					return
+				}
+				if project.Database == "" {
+					results <- result{key: key, err: errNoCheckout}
+					return
+				}
+				// Never the working directory: a project without a checkout is
+				// counted from its own database.
+				issues, err := datasource.LoadFromSource(databaseSource(project, startupUser))
+				results <- result{key: key, counts: summarizeProjectIssues(issues), err: err}
 			}(project)
 		}
 
 		counts := make(map[string]projectCounts, len(projects))
+		reach := make(map[string]datasource.Reachability, len(projects))
 		for range projects {
 			loaded := <-results
-			if loaded.err != nil {
-				debug.Log("project counts: load %s failed: %v", loaded.path, loaded.err)
+			if loaded.err == errNoCheckout {
 				continue
 			}
-			counts[loaded.path] = loaded.counts
+			reach[loaded.key] = datasource.ClassifyConnError(loaded.err)
+			if loaded.err != nil {
+				debug.Log("project counts: load %s failed: %v", loaded.key, loaded.err)
+				continue
+			}
+			counts[loaded.key] = loaded.counts
 		}
-		return projectCountsLoadedMsg{counts: counts}
+		return projectCountsLoadedMsg{counts: counts, reach: reach}
 	}
 }
 
@@ -424,7 +441,11 @@ type Model struct {
 	sourceInfo       string                  // Human-readable datasource description for title bar
 	doltSource       datasource.DataSource   // Dolt DataSource used for on-demand health checks
 	doltFailure      *DoltFailure            // Non-nil when Dolt was detected but connection failed
-	doltPollInterval time.Duration           // Configured Dolt live-refresh interval
+	startupDoltUser  string                  // User the startup project connects as; projects without a checkout reuse it
+	startupDoltHost  string                  // Server the startup project connects to; :project lists its databases
+	showProjectTable bool
+	projectTable     ProjectTableModel
+	doltPollInterval time.Duration // Configured Dolt live-refresh interval
 
 	// Background Worker (Phase 2 architecture - bv-m7v8)
 	// snapshot is the current immutable data snapshot from BackgroundWorker.
@@ -553,11 +574,11 @@ type Model struct {
 	// Project switching (bd-q5z, bd-ey3)
 	activeProjectName string           // Name of the currently loaded project
 	activeProjectPath string           // Path to the project directory
-	activeProjectFavN int              // Favorite number (1-9, or 0)
 	appConfig         config.Config    // Loaded app configuration
 	allProjects       []config.Project // All known projects
 	projectPicker     ProjectPickerModel
 	projectCountCache map[string]projectCounts
+	projectReach      map[string]datasource.Reachability // by projectKey
 
 	// All-projects mode (bd-g68w): read-only cross-project view
 	allProjectsMode  bool
@@ -621,8 +642,8 @@ func (m Model) renderGlobalHeader() string {
 	if projectLabel == "" {
 		projectLabel = "untitled"
 	}
-	if m.activeProjectFavN > 0 {
-		projectLabel = fmt.Sprintf("%s (%d)", projectLabel, m.activeProjectFavN)
+	if slot := m.activeProjectSlot(); slot > 0 {
+		projectLabel = fmt.Sprintf("%s (%d)", projectLabel, slot)
 	}
 	projectSection := lipgloss.NewStyle().Foreground(ColorSubtext).Render(projectLabel)
 
@@ -664,9 +685,9 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 	entries := make([]ProjectEntry, 0, len(m.allProjects))
 	for _, p := range m.allProjects {
 		entry := ProjectEntry{
-			Project:     p,
-			FavoriteNum: m.appConfig.ProjectFavoriteNumber(p.Name),
-			IsActive:    p.Name == m.activeProjectName,
+			Project:      p,
+			IsActive:     p.Name == m.activeProjectName,
+			Reachability: m.projectReach[projectKey(p)],
 		}
 		// Load issue counts if this is the active project
 		if entry.IsActive {
@@ -686,15 +707,15 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 					entry.OpenCount++
 				}
 			}
-		} else if counts, ok := m.projectCountCache[p.ResolvedPath()]; ok {
+		} else if counts, ok := m.projectCountCache[projectKey(p)]; ok {
 			entry.OpenCount = counts.open
 			entry.InProgressCount = counts.inProgress
 			entry.ReadyCount = counts.ready
 			entry.BlockedCount = counts.blocked
-		} else {
+		} else if beadsDir, ok := projectBeadsDir(p.ResolvedPath()); ok {
 			// Seed the picker from JSONL without writing parser warnings into the TUI
 			// while canonical project sources load asynchronously.
-			beadsPath := filepath.Join(p.ResolvedPath(), ".beads", "issues.jsonl")
+			beadsPath := filepath.Join(beadsDir, "issues.jsonl")
 			silentOpts := loader.ParseOptions{WarningHandler: func(string) {}}
 			if issues, err := loader.LoadIssuesFromFileWithOptions(beadsPath, silentOpts); err == nil {
 				counts := summarizeProjectIssues(issues)
@@ -707,42 +728,12 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 		entries = append(entries, entry)
 	}
 
-	// Determine whether any explicit favorites are configured.
-	hasFavorites := false
-	for _, e := range entries {
-		if e.FavoriteNum > 0 {
-			hasFavorites = true
-			break
-		}
-	}
-
-	if hasFavorites {
-		// When favorites are explicitly configured, sort by FavoriteNum to keep them
-		// in their assigned order, with un-favorited entries alphabetically at the end.
-		// The active project should already have a FavoriteNum, so it stays in its slot.
-		sort.SliceStable(entries, func(i, j int) bool {
-			iFav := entries[i].FavoriteNum > 0
-			jFav := entries[j].FavoriteNum > 0
-			if iFav != jFav {
-				return iFav
-			}
-			if iFav && jFav {
-				return entries[i].FavoriteNum < entries[j].FavoriteNum
-			}
-			return entries[i].Project.Name < entries[j].Project.Name
-		})
-	} else {
-		// No favorites configured: sort alphabetically for stable numbering.
-		// Numbers must not change when switching projects (bd-jorl).
-		// Active project is always visible via j/k scrolling if it falls beyond position 10.
-		sort.SliceStable(entries, func(i, j int) bool {
-			return entries[i].Project.Name < entries[j].Project.Name
-		})
-		// Auto-number 1-9 after sorting.
-		for i := range entries {
-			if i >= 9 {
-				break
-			}
+	// Rows keep the recent list's stored order and are numbered by position.
+	// TouchRecent never moves an existing entry, so a project's number stays
+	// the same while switching between recent projects (bd-jorl).
+	for i := range entries {
+		entries[i].FavoriteNum = 0
+		if i < config.MaxRecentProjects {
 			entries[i].FavoriteNum = i + 1
 		}
 	}
@@ -1051,33 +1042,11 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
-	m.activeProjectFavN = cfg.ProjectFavoriteNumber(projectName)
-	m.issueWriter.SetWorkDir(projectPath)
+	checkout, _ := NewCheckout(projectPath)
+	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(projectName)
 	m.updateListDelegate()
-	projects, errs := config.DiscoverProjectsWithErrors(cfg)
-	for _, e := range errs {
-		debug.Log("project discovery: skipping %s", e)
-	}
-
-	// Ensure the current project is always in the list, even without
-	// scan_paths or registered projects in config (bd-i21s).
-	if projectPath != "" {
-		found := false
-		for _, p := range projects {
-			if p.ResolvedPath() == projectPath {
-				found = true
-				break
-			}
-		}
-		if !found {
-			projects = append(projects, config.Project{
-				Name: projectName,
-				Path: projectPath,
-			})
-		}
-	}
-	m.allProjects = projects
+	m.allProjects = headerProjects(cfg.RecentProjects, projectName, projectPath)
 	entries := m.buildProjectEntries()
 	m.projectPicker = NewProjectPicker(entries, m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)
@@ -1110,6 +1079,12 @@ func (m Model) WithSourceInfo(info string) Model {
 // triggered by the Shift+D database health popup.
 func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	m.doltSource = s
+	if s.User != "" {
+		m.startupDoltUser = s.User
+	}
+	if s.Path != "" {
+		m.startupDoltHost = s.Path
+	}
 	return m
 }
 
@@ -1117,6 +1092,12 @@ func (m Model) WithDoltSource(s datasource.DataSource) Model {
 // can show what was tried and why it failed, even when the source fell back to JSONL.
 func (m Model) WithDoltFailure(f *DoltFailure) Model {
 	m.doltFailure = f
+	if f != nil && f.User != "" {
+		m.startupDoltUser = f.User
+	}
+	if f != nil && f.Server != "" {
+		m.startupDoltHost = f.Server
+	}
 	return m
 }
 
@@ -1138,7 +1119,7 @@ func (m Model) Init() tea.Cmd {
 	}
 	// Load picker counts outside the update loop, then schedule periodic refreshes.
 	if len(m.allProjects) > 1 {
-		cmds = append(cmds, loadProjectCountsCmd(m.allProjects))
+		cmds = append(cmds, loadProjectCountsCmd(m.allProjects, m.startupDoltUser))
 	}
 	return tea.Batch(cmds...)
 }
@@ -1319,7 +1300,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PickerRefreshTickMsg:
 		// Periodic refresh of project picker counts (bd-8yc)
 		if len(m.allProjects) > 0 {
-			return m, loadProjectCountsCmd(m.allProjects)
+			return m, loadProjectCountsCmd(m.allProjects, m.startupDoltUser)
 		}
 		return m, nil
 
@@ -1327,8 +1308,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.projectCountCache == nil {
 			m.projectCountCache = make(map[string]projectCounts, len(msg.counts))
 		}
-		for path, counts := range msg.counts {
-			m.projectCountCache[path] = counts
+		for key, counts := range msg.counts {
+			m.projectCountCache[key] = counts
+		}
+		if m.projectReach == nil {
+			m.projectReach = make(map[string]datasource.Reachability, len(msg.reach))
+		}
+		for key, reach := range msg.reach {
+			m.projectReach[key] = reach
 		}
 		entries := m.buildProjectEntries()
 		m.projectPicker = NewProjectPicker(entries, m.theme)
@@ -1587,15 +1574,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Switch to a different project (bd-q5z, bd-ey3, bd-87w)
 		m.activeProjectName = msg.Project.Name
 		m.activeProjectPath = msg.Project.ResolvedPath()
-		m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(msg.Project.Name)
-		m.issueWriter.SetWorkDir(msg.Project.ResolvedPath())
+		checkout, hasCheckout := NewCheckout(msg.Project.ResolvedPath())
+		m.issueWriter.SetCheckout(checkout)
 		m.board.SetActiveProjectName(msg.Project.Name)
 		m.updateListDelegate()
-		beadsDir := filepath.Join(msg.Project.ResolvedPath(), ".beads")
-		sources, discErr := datasource.DiscoverSources(datasource.DiscoveryOptions{
-			BeadsDir:               beadsDir,
-			ValidateAfterDiscovery: false,
-		})
+		beadsDir, _ := projectBeadsDir(msg.Project.ResolvedPath())
+		sources, discErr := m.projectSources(msg.Project)
 		hasDoltSource := false
 		for _, source := range sources {
 			if source.Type == datasource.SourceTypeDolt {
@@ -1604,17 +1588,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Dolt server projects are fully described by metadata.json and need no
-		// local JSONL file. Keep the conventional path as an inert fallback value;
-		// Dolt reloads use activeProjectPath instead.
-		newPath, err := loader.FindJSONLPath(beadsDir)
-		if err != nil && !hasDoltSource {
+		newPath := ""
+		if hasCheckout {
+			// Dolt server projects are fully described by metadata.json and need no
+			// local JSONL file. Keep the conventional path as an inert fallback value;
+			// Dolt reloads use activeProjectPath instead.
+			var err error
+			newPath, err = loader.FindJSONLPath(beadsDir)
+			if err != nil && !hasDoltSource {
+				m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
+				m.statusIsError = true
+				return m, nil
+			}
+			if err != nil {
+				newPath = filepath.Join(beadsDir, "issues.jsonl")
+			}
+		} else if !hasDoltSource {
 			m.statusMsg = fmt.Sprintf("No beads found in %s", msg.Project.Name)
 			m.statusIsError = true
 			return m, nil
-		}
-		if err != nil {
-			newPath = filepath.Join(beadsDir, "issues.jsonl")
 		}
 		// Stop background worker and old watchers (bd-87w)
 		if m.backgroundWorker != nil {
@@ -1713,21 +1705,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.projectPicker.SetSize(m.width, m.height)
 		return m, tea.Batch(cmds...)
 
-	case ToggleFavoriteMsg:
-		// Toggle favorite slot for a project (bd-q5z)
-		m.appConfig.SetFavorite(msg.SlotNumber, msg.ProjectName)
-		// Update current project's favorite number if it changed
-		if msg.ProjectName == m.activeProjectName {
-			m.activeProjectFavN = m.appConfig.ProjectFavoriteNumber(m.activeProjectName)
-		}
-		// Save config
-		_ = config.Save(m.appConfig)
-		// Refresh picker entries (always visible now, bd-ey3)
-		entries := m.buildProjectEntries()
-		m.projectPicker = NewProjectPicker(entries, m.theme)
-		m.projectPicker.SetSourceInfo(m.sourceInfo)
-		m.projectPicker.SetSize(m.width, m.height)
-		return m, nil
+	case OpenProjectTableMsg:
+		return m.openProjectTable()
+
+	case projectTableLoadedMsg:
+		return m.handleProjectTableLoaded(msg), nil
 
 	case FileChangedMsg:
 		// File changed on disk - reload issues
@@ -1773,11 +1755,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var newIssues []model.Issue
 		var err error
-		if m.sourceType == datasource.SourceTypeDolt {
+		if beadsDir, hasCheckout := projectBeadsDir(m.activeProjectPath); m.sourceType == datasource.SourceTypeDolt && !hasCheckout {
+			// A project opened without a checkout has only its database.
+			debug.Log("FileChangedMsg: reloading via datasource.LoadFromSource (Dolt, no checkout, db=%s)", m.doltSource.Database)
+			newIssues, err = datasource.LoadFromSource(m.doltSource)
+			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
+		} else if m.sourceType == datasource.SourceTypeDolt {
 			// Project switching must bypass BEADS_DIR, which identifies the startup
 			// project and otherwise redirects every reload back to that database.
 			debug.Log("FileChangedMsg: reloading via datasource.LoadIssuesFromDir (Dolt, project=%s)", m.activeProjectPath)
-			newIssues, err = datasource.LoadIssuesFromDir(filepath.Join(m.activeProjectPath, ".beads"))
+			newIssues, err = datasource.LoadIssuesFromDir(beadsDir)
 			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
 		} else {
 			// JSONL/SQLite: use existing fast pooled loader
@@ -2105,6 +2092,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m = m.handleRepoPickerKeys(msg)
 			return m, nil
+		}
+
+		// The :project table owns every key while it is open, so its j/k and
+		// Enter never reach the view underneath.
+		if m.showProjectTable {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			var tableCmd tea.Cmd
+			m, tableCmd = m.handleProjectTableKeys(msg)
+			return m, tableCmd
 		}
 
 		if m.issueConfirm.action != issueConfirmNone {
@@ -2487,6 +2485,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsSortPopupOpen() {
 					m.tree.CloseSortPopup()
+					return m, nil
+				}
+				if (m.treeViewActive || m.focused == focusTree) && m.tree.IsColumnPopupOpen() {
+					m.tree.CloseColumnPopup()
 					return m, nil
 				}
 				// Escape closes modals and goes back
@@ -3151,6 +3153,21 @@ func (m *Model) syncBoardToDetail() {
 
 // handleTreeKeys handles keyboard input when tree view is focused (bv-gllx)
 func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
+	// Column popup mode keeps changes local to the running session.
+	if m.tree.IsColumnPopupOpen() {
+		switch msg.String() {
+		case "j", "down":
+			m.tree.ColumnPopupDown()
+		case "k", "up":
+			m.tree.ColumnPopupUp()
+		case " ", "space", "enter":
+			m.tree.CycleColumnPreference()
+		case "esc", "C":
+			m.tree.CloseColumnPopup()
+		}
+		return m
+	}
+
 	// Sort popup mode: consume j/k/enter/esc/s only (bd-u81)
 	if m.tree.IsSortPopupOpen() {
 		switch msg.String() {
@@ -3241,8 +3258,12 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "s":
 		// Open sort popup menu (bd-u81)
 		m.tree.OpenSortPopup()
+	case "C":
+		m.tree.OpenColumnPopup()
 	case "/":
 		m.queryState.StartEditing()
+	case "f":
+		m.filterSelectedTreeBranch()
 	case "n":
 		// Next search match (bd-wf8)
 		m.tree.NextSearchMatch()
@@ -3675,6 +3696,9 @@ func (m Model) View() string {
 		isOverlay = true
 	} else if m.showRepoPicker {
 		body = m.repoPicker.View()
+		isOverlay = true
+	} else if m.showProjectTable {
+		body = m.projectTable.View()
 		isOverlay = true
 	} else if m.showLabelPicker {
 		body = m.labelPicker.View()
@@ -4351,6 +4375,7 @@ func (m *Model) renderHelpOverlay() string {
 
 	globalSection := []struct{ key, desc string }{
 		{"?", "This help"},
+		{":", "Command prompt"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},
 		{"'", "Recipes"},
@@ -4416,7 +4441,9 @@ func (m *Model) renderHelpOverlay() string {
 		{"d", "Toggle detail panel"},
 		{"o/c/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
+		{"C", "Choose columns"},
 		{"/", "Search tree"},
+		{"f", "Filter highlighted branch"},
 		{"n/N", "Next/prev match"},
 		{"O", "Occur (search filter)"},
 		{"x", "XRay drill-down"},
@@ -4600,7 +4627,9 @@ func (m *Model) renderFooter() string {
 			{"g", "deps"},
 			{"j/k", "nav"},
 			{"s", "sort"},
+			{"C", "columns"},
 			{"/", "search"},
+			{"f", "branch"},
 			{"e", "edit"},
 			{"K", "close"},
 			{"del", "delete"},
@@ -4822,6 +4851,16 @@ func (m *Model) setQueryText(text string) {
 	m.applyFilter()
 	m.tree.SetIssueQuery(m.queryState.Query())
 	m.syncTreeToDetail()
+}
+
+func (m *Model) filterSelectedTreeBranch() {
+	rootID := m.tree.SelectedBranchRootID()
+	if rootID == "" {
+		return
+	}
+	m.queryState.StartEditing()
+	m.setQueryText(rootID)
+	m.queryState.Accept()
 }
 
 func (m Model) handleQueryKey(msg tea.KeyMsg) Model {
@@ -5450,6 +5489,11 @@ func (m Model) TreeSortPopupOpen() bool {
 	return m.tree.IsSortPopupOpen()
 }
 
+// TreeColumnPopupOpen returns whether the tree column selector is visible.
+func (m Model) TreeColumnPopupOpen() bool {
+	return m.tree.IsColumnPopupOpen()
+}
+
 // TreeBookmarkedIDs returns the IDs of bookmarked tree nodes (bd-k4n).
 func (m Model) TreeBookmarkedIDs() []string {
 	return m.tree.TreeBookmarkedIDs()
@@ -5895,8 +5939,15 @@ func (m *Model) openInEditor() {
 	// Use the configured beadsPath instead of hardcoded path
 	beadsFile := m.beadsPath
 	if beadsFile == "" {
-		cwd, _ := os.Getwd()
-		if found, err := loader.FindJSONLPath(filepath.Join(cwd, ".beads")); err == nil {
+		// Only the active project's own checkout may be opened for editing; a
+		// project read from its database has no file of its own.
+		beadsDir, ok := projectBeadsDir(m.activeProjectPath)
+		if !ok {
+			m.statusMsg = "read-only: no local checkout for this project"
+			m.statusIsError = true
+			return
+		}
+		if found, err := loader.FindJSONLPath(beadsDir); err == nil {
 			beadsFile = found
 		}
 	}
@@ -6026,13 +6077,7 @@ func (m *Model) RenderDebugView(viewName string, width, height int) string {
 // enterAllProjectsMode discovers all Dolt databases from project configs,
 // creates a MultiDoltReader, loads all issues, and sets allProjectsMode (bd-g68w).
 func (m *Model) enterAllProjectsMode() tea.Cmd {
-	// Collect project paths keyed by name
-	projectPaths := make(map[string]string, len(m.allProjects))
-	for _, p := range m.allProjects {
-		projectPaths[p.Name] = p.ResolvedPath()
-	}
-
-	dbs := datasource.DiscoverDoltDBs(projectPaths)
+	dbs := m.allProjectsDBs()
 	if len(dbs) == 0 {
 		m.statusMsg = "No Dolt-backed projects found"
 		m.statusIsError = true
@@ -6128,10 +6173,7 @@ func (m *Model) exitAllProjectsMode() {
 	m.statusIsError = false
 
 	// Re-discover datasource for current project
-	beadsDir := filepath.Join(m.activeProjectPath, ".beads")
-	if sources, err := datasource.DiscoverSources(datasource.DiscoveryOptions{
-		BeadsDir: beadsDir,
-	}); err == nil {
+	if sources, err := m.projectSources(m.activeProject()); err == nil {
 		for _, s := range sources {
 			if s.Type == datasource.SourceTypeDolt {
 				db := s.Database
