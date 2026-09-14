@@ -131,6 +131,23 @@ lock_recent: false
 
 Type `:project` to list the Beads databases the startup project's Dolt user can read. Enter adds the selected database to the recent list and opens it. A project without a local checkout opens read-only, because writes run `bd` inside a checkout. The older `discovery.scan_paths`, `projects:` and `favorites:` settings are no longer read; favorites are copied into `recent_projects` once.
 
+#### Projects that cannot be opened
+
+Switching loads the new project before it replaces the one on screen. While it loads, the status line shows `Opening <name>…`, the current project stays browsable, and edits wait; press `Esc` to cancel. If the project cannot be opened, you stay where you were and a popup names the reason and what to try:
+
+| Reason | Example |
+|--------|---------|
+| Not a Beads project | the folder has no `.beads` directory |
+| Server unreachable | the Dolt server or SSH tunnel is down |
+| Access denied | the Dolt user may not read that database |
+| Not a Beads database | the database has no `issues` table, or does not exist |
+| Unreadable | no issues file or Dolt configuration could be read |
+| Timed out | the project did not open within 10 seconds |
+
+Press `r` in the popup to retry. A project joins `recent_projects` and records `opened_at` only after its issues load, so a project that fails never takes a number key.
+
+When the folder b9s is started in cannot be opened, b9s prints the reason and next steps. In a terminal it then opens the recent project that most recently opened successfully and shows the same popup. Without a terminal, or with `--no-fallback`, it exits with status 1 instead, so scripts never act on a different project. An empty project opens normally.
+
 ### Source Priority
 
 When multiple backends are present, B9s picks the highest-priority source:
@@ -237,7 +254,7 @@ B9s reads `.beads/issues.jsonl` and `.beads/beads.db` for backward compatibility
 
 ### Fallback Behavior
 
-If B9s cannot connect to the configured Dolt server, it falls back to the next available source (SQLite, then JSONL). Press `Shift+D` in the TUI to open the health popup, which shows the active datasource and any connection failure details.
+If B9s cannot connect to the configured Dolt server, it falls back to the next available source (SQLite, then JSONL). Press `Shift+D` in the TUI to open the health popup, which shows the active datasource and any connection failure details. When no source can be read at all, the project does not open; see [Projects that cannot be opened](#projects-that-cannot-be-opened).
 
 ## Keyboard Quick Reference
 
