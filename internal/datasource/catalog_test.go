@@ -20,6 +20,8 @@ func TestClassifyConnError(t *testing.T) {
 		{name: "access denied", err: &mysql.MySQLError{Number: 1045, Message: "Access denied for user 'bd_b9s'"}, want: ReachDenied},
 		{name: "database access denied", err: &mysql.MySQLError{Number: 1044}, want: ReachDenied},
 		{name: "wrapped access denied", err: fmt.Errorf("cannot connect: %w", &mysql.MySQLError{Number: 1045}), want: ReachDenied},
+		{name: "dolt database access denied", err: &mysql.MySQLError{Number: 1105, Message: "Access denied for user 'bd_b9s'@'%' to database 'LP_Team'"}, want: ReachDenied},
+		{name: "other dolt generic error", err: &mysql.MySQLError{Number: 1105, Message: "branch not found"}, want: ReachUnknown},
 		{name: "missing issues table", err: &mysql.MySQLError{Number: 1146}, want: ReachNoIssuesTable},
 		{name: "dial failure", err: &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}, want: ReachServerDown},
 		{name: "deadline", err: fmt.Errorf("ping: %w", context.DeadlineExceeded), want: ReachServerDown},
