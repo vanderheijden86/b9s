@@ -24,12 +24,17 @@ func (m Model) projectSources(project config.Project) ([]datasource.DataSource, 
 	if project.Database == "" {
 		return nil, nil
 	}
-	return []datasource.DataSource{{
+	return []datasource.DataSource{databaseSource(project, m.startupDoltUser)}, nil
+}
+
+// databaseSource reads project straight from its Dolt database as user.
+func databaseSource(project config.Project, user string) datasource.DataSource {
+	return datasource.DataSource{
 		Type:     datasource.SourceTypeDolt,
 		Path:     project.Host,
 		Database: project.Database,
-		User:     m.startupDoltUser,
-	}}, nil
+		User:     user,
+	}
 }
 
 // activeProject is the active header project, including the database of a
@@ -42,4 +47,37 @@ func (m Model) activeProject() config.Project {
 		}
 	}
 	return config.Project{Name: m.activeProjectName, Path: m.activeProjectPath}
+}
+
+// projectKey identifies project in the header count and reachability caches.
+// A checkout keeps its path; projects without one all have an empty path, so
+// they are told apart by server and database instead.
+func projectKey(project config.Project) string {
+	if path := project.ResolvedPath(); path != "" {
+		return path
+	}
+	return "db:" + project.Host + "/" + project.Database
+}
+
+// allProjectsDBs lists the Dolt databases the 0 view combines: those found in
+// checkouts' metadata, and those of projects opened without a checkout, read
+// as the startup user.
+func (m Model) allProjectsDBs() []datasource.DoltDBInfo {
+	checkoutPaths := make(map[string]string, len(m.allProjects))
+	var withoutCheckout []datasource.DoltDBInfo
+	for _, p := range m.allProjects {
+		if _, ok := projectBeadsDir(p.ResolvedPath()); ok {
+			checkoutPaths[p.Name] = p.ResolvedPath()
+			continue
+		}
+		if p.Database != "" {
+			withoutCheckout = append(withoutCheckout, datasource.DoltDBInfo{
+				Name:     p.Name,
+				Host:     p.Host,
+				User:     m.startupDoltUser,
+				Database: p.Database,
+			})
+		}
+	}
+	return append(datasource.DiscoverDoltDBs(checkoutPaths), withoutCheckout...)
 }

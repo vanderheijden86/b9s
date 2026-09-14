@@ -247,6 +247,7 @@ type PickerRefreshTickMsg struct{}
 
 type projectCountsLoadedMsg struct {
 	counts map[string]projectCounts
+	reach  map[string]datasource.Reachability // by projectKey; absent means not yet known
 }
 
 type projectCounts struct {
@@ -283,11 +284,11 @@ func pickerRefreshTickCmd() tea.Cmd {
 	})
 }
 
-func loadProjectCountsCmd(projects []config.Project) tea.Cmd {
+func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd {
 	projects = append([]config.Project(nil), projects...)
 	return func() tea.Msg {
 		type result struct {
-			path   string
+			key    string
 			counts projectCounts
 			err    error
 		}
@@ -295,29 +296,38 @@ func loadProjectCountsCmd(projects []config.Project) tea.Cmd {
 		results := make(chan result, len(projects))
 		for _, project := range projects {
 			go func(project config.Project) {
-				path := project.ResolvedPath()
-				beadsDir, ok := projectBeadsDir(path)
-				if !ok {
-					// This loader reads checkouts only; a project without one
-					// has no counts here rather than the working directory's.
-					results <- result{path: path, err: errNoCheckout}
+				key := projectKey(project)
+				if beadsDir, ok := projectBeadsDir(project.ResolvedPath()); ok {
+					issues, err := datasource.LoadIssuesFromDir(beadsDir)
+					results <- result{key: key, counts: summarizeProjectIssues(issues), err: err}
 					return
 				}
-				issues, err := datasource.LoadIssuesFromDir(beadsDir)
-				results <- result{path: path, counts: summarizeProjectIssues(issues), err: err}
+				if project.Database == "" {
+					results <- result{key: key, err: errNoCheckout}
+					return
+				}
+				// Never the working directory: a project without a checkout is
+				// counted from its own database.
+				issues, err := datasource.LoadFromSource(databaseSource(project, startupUser))
+				results <- result{key: key, counts: summarizeProjectIssues(issues), err: err}
 			}(project)
 		}
 
 		counts := make(map[string]projectCounts, len(projects))
+		reach := make(map[string]datasource.Reachability, len(projects))
 		for range projects {
 			loaded := <-results
-			if loaded.err != nil {
-				debug.Log("project counts: load %s failed: %v", loaded.path, loaded.err)
+			if loaded.err == errNoCheckout {
 				continue
 			}
-			counts[loaded.path] = loaded.counts
+			reach[loaded.key] = datasource.ClassifyConnError(loaded.err)
+			if loaded.err != nil {
+				debug.Log("project counts: load %s failed: %v", loaded.key, loaded.err)
+				continue
+			}
+			counts[loaded.key] = loaded.counts
 		}
-		return projectCountsLoadedMsg{counts: counts}
+		return projectCountsLoadedMsg{counts: counts, reach: reach}
 	}
 }
 
@@ -563,6 +573,7 @@ type Model struct {
 	allProjects       []config.Project // All known projects
 	projectPicker     ProjectPickerModel
 	projectCountCache map[string]projectCounts
+	projectReach      map[string]datasource.Reachability // by projectKey
 
 	// All-projects mode (bd-g68w): read-only cross-project view
 	allProjectsMode  bool
@@ -669,9 +680,10 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 	entries := make([]ProjectEntry, 0, len(m.allProjects))
 	for _, p := range m.allProjects {
 		entry := ProjectEntry{
-			Project:     p,
-			FavoriteNum: m.appConfig.ProjectFavoriteNumber(p.Name),
-			IsActive:    p.Name == m.activeProjectName,
+			Project:      p,
+			FavoriteNum:  m.appConfig.ProjectFavoriteNumber(p.Name),
+			IsActive:     p.Name == m.activeProjectName,
+			Reachability: m.projectReach[projectKey(p)],
 		}
 		// Load issue counts if this is the active project
 		if entry.IsActive {
@@ -691,7 +703,7 @@ func (m Model) buildProjectEntries() []ProjectEntry {
 					entry.OpenCount++
 				}
 			}
-		} else if counts, ok := m.projectCountCache[p.ResolvedPath()]; ok {
+		} else if counts, ok := m.projectCountCache[projectKey(p)]; ok {
 			entry.OpenCount = counts.open
 			entry.InProgressCount = counts.inProgress
 			entry.ReadyCount = counts.ready
@@ -1098,7 +1110,7 @@ func (m Model) Init() tea.Cmd {
 	}
 	// Load picker counts outside the update loop, then schedule periodic refreshes.
 	if len(m.allProjects) > 1 {
-		cmds = append(cmds, loadProjectCountsCmd(m.allProjects))
+		cmds = append(cmds, loadProjectCountsCmd(m.allProjects, m.startupDoltUser))
 	}
 	return tea.Batch(cmds...)
 }
@@ -1271,7 +1283,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PickerRefreshTickMsg:
 		// Periodic refresh of project picker counts (bd-8yc)
 		if len(m.allProjects) > 0 {
-			return m, loadProjectCountsCmd(m.allProjects)
+			return m, loadProjectCountsCmd(m.allProjects, m.startupDoltUser)
 		}
 		return m, nil
 
@@ -1279,8 +1291,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.projectCountCache == nil {
 			m.projectCountCache = make(map[string]projectCounts, len(msg.counts))
 		}
-		for path, counts := range msg.counts {
-			m.projectCountCache[path] = counts
+		for key, counts := range msg.counts {
+			m.projectCountCache[key] = counts
+		}
+		if m.projectReach == nil {
+			m.projectReach = make(map[string]datasource.Reachability, len(msg.reach))
+		}
+		for key, reach := range msg.reach {
+			m.projectReach[key] = reach
 		}
 		entries := m.buildProjectEntries()
 		m.projectPicker = NewProjectPicker(entries, m.theme)
@@ -5976,13 +5994,7 @@ func (m *Model) RenderDebugView(viewName string, width, height int) string {
 // enterAllProjectsMode discovers all Dolt databases from project configs,
 // creates a MultiDoltReader, loads all issues, and sets allProjectsMode (bd-g68w).
 func (m *Model) enterAllProjectsMode() tea.Cmd {
-	// Collect project paths keyed by name
-	projectPaths := make(map[string]string, len(m.allProjects))
-	for _, p := range m.allProjects {
-		projectPaths[p.Name] = p.ResolvedPath()
-	}
-
-	dbs := datasource.DiscoverDoltDBs(projectPaths)
+	dbs := m.allProjectsDBs()
 	if len(dbs) == 0 {
 		m.statusMsg = "No Dolt-backed projects found"
 		m.statusIsError = true
