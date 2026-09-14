@@ -1,0 +1,104 @@
+package ui
+
+import (
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+// PromptMode is the ':' command prompt's input lifecycle.
+type PromptMode uint8
+
+const (
+	PromptIdle PromptMode = iota
+	PromptEditing
+)
+
+// OpenProjectTableMsg asks the model to show the :project table.
+type OpenProjectTableMsg struct{}
+
+// CommandPrompt owns the ':' prompt text.
+type CommandPrompt struct {
+	mode PromptMode
+	text string
+}
+
+func (p CommandPrompt) Mode() PromptMode { return p.mode }
+
+func (p CommandPrompt) Text() string { return p.text }
+
+// Suggestion is the canonical command the typed text is a prefix of.
+func (p CommandPrompt) Suggestion() string { return commandSuggestion(p.text) }
+
+func (p *CommandPrompt) Start() {
+	p.mode = PromptEditing
+	p.text = ""
+}
+
+func (p *CommandPrompt) Cancel() {
+	p.mode = PromptIdle
+	p.text = ""
+}
+
+func (p *CommandPrompt) Append(runes ...rune) {
+	p.text += string(runes)
+}
+
+func (p *CommandPrompt) Backspace() {
+	runes := []rune(p.text)
+	if len(runes) > 0 {
+		p.text = string(runes[:len(runes)-1])
+	}
+}
+
+func (p *CommandPrompt) AcceptSuggestion() {
+	if suggestion := p.Suggestion(); suggestion != "" {
+		p.text = suggestion
+	}
+}
+
+func (m Model) handleCommandPromptKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.commandPrompt.Cancel()
+	case "enter":
+		text := m.commandPrompt.Text()
+		m.commandPrompt.Cancel()
+		if strings.TrimSpace(text) == "" {
+			return m, nil
+		}
+		command, err := ResolveCommand(text)
+		if err != nil {
+			m.statusMsg = err.Error()
+			m.statusIsError = true
+			return m, nil
+		}
+		return m.executeCommand(command)
+	case "tab", "right":
+		m.commandPrompt.AcceptSuggestion()
+	case "backspace":
+		// Backspace on an empty prompt closes it, as in k9s.
+		if m.commandPrompt.Text() == "" {
+			m.commandPrompt.Cancel()
+		} else {
+			m.commandPrompt.Backspace()
+		}
+	default:
+		if msg.Type == tea.KeyRunes && len(msg.Runes) > 0 {
+			m.commandPrompt.Append(msg.Runes...)
+		}
+	}
+	return m, nil
+}
+
+func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
+	switch command.Kind {
+	case CommandTypeFilter:
+		m.setQueryText(withTypeFilter(m.queryState.Text(), command.IssueType))
+	case CommandClearType:
+		m.setQueryText(withTypeFilter(m.queryState.Text(), ""))
+	case CommandProjects:
+		return m, func() tea.Msg { return OpenProjectTableMsg{} }
+	}
+	return m, nil
+}

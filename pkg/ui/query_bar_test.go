@@ -52,15 +52,19 @@ func TestQueryBarIsHiddenUntilSlashStartsEditing(t *testing.T) {
 	}
 }
 
-func TestQueryBarHidesAfterAccept(t *testing.T) {
+func TestAcceptedQueryStaysVisibleAsChip(t *testing.T) {
 	m := newSearchFilterModel(t, "")
 	m = typeKeys(m, "/", "l", "a", "n", "e")
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(Model)
 
-	if bar := m.renderUnifiedTitleBar(80); bar != "" {
-		t.Fatalf("accepted query bar = %q, want hidden", stripANSI(bar))
+	bar := stripANSI(m.renderUnifiedTitleBar(80))
+	if !strings.Contains(bar, "/ lane") {
+		t.Fatalf("accepted query bar = %q, want a chip showing / lane", bar)
+	}
+	if strings.Contains(bar, "█") {
+		t.Fatalf("accepted query bar = %q, want no editing cursor", bar)
 	}
 	if got := m.queryState.Text(); got != "lane" {
 		t.Fatalf("accepted query = %q, want lane", got)
@@ -112,8 +116,8 @@ func TestSharedQueryFiltersByIDAndPersistsAfterAccept(t *testing.T) {
 		t.Fatalf("accepted query = %q, want it to persist", got)
 	}
 
-	if bar := m.renderUnifiedTitleBar(120); bar != "" {
-		t.Errorf("accepted query bar %q should be hidden", stripANSI(bar))
+	if bar := stripANSI(m.renderUnifiedTitleBar(120)); !strings.Contains(bar, "/ id:bv-3") {
+		t.Errorf("accepted query bar %q should show the active filter as a chip", bar)
 	}
 }
 

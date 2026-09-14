@@ -525,6 +525,7 @@ type Model struct {
 	// Edit modal for full issue editing (bd-a83)
 	showEditModal bool
 	editModal     EditModal
+	commandPrompt CommandPrompt
 
 	// Project switching (bd-q5z, bd-ey3)
 	activeProjectName string           // Name of the currently loaded project
@@ -2130,6 +2131,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			m = m.handleQueryKey(msg)
+			return m, tea.Batch(cmds...)
+		}
+		// The ':' prompt sits after the query guard, so ':' typed into a query
+		// stays query text, and before the Escape handler below, so Escape
+		// closes the prompt without clearing an accepted filter.
+		if m.commandPrompt.Mode() == PromptEditing {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			var promptCmd tea.Cmd
+			m, promptCmd = m.handleCommandPromptKey(msg)
+			return m, tea.Batch(append(cmds, promptCmd)...)
+		}
+		if msg.String() == ":" && m.list.FilterState() != list.Filtering && !m.showHelp && !m.showTutorial {
+			m.commandPrompt.Start()
 			return m, tea.Batch(cmds...)
 		}
 		if msg.String() == "esc" && m.queryState.Text() != "" {
@@ -6465,11 +6481,17 @@ const unifiedQueryBarHeight = 3
 
 var unifiedQueryBorder = lipgloss.AdaptiveColor{Light: "#285B35", Dark: "#1F5E3B"}
 
+// queryBarVisible reports whether the title bar is shown: while typing a query
+// or a ':' command, and while an accepted query still filters the view, so an
+// active filter is never invisible.
 func (m Model) queryBarVisible() bool {
-	return m.queryState.Mode() == QueryEditing
+	return m.queryState.Mode() == QueryEditing ||
+		m.commandPrompt.Mode() == PromptEditing ||
+		m.queryState.Text() != ""
 }
 
-// renderUnifiedTitleBar renders the global fuzzy-search field.
+// renderUnifiedTitleBar renders the global fuzzy-search field, the ':' command
+// prompt, or the accepted query as a chip.
 func (m Model) renderUnifiedTitleBar(w int) string {
 	if !m.queryBarVisible() {
 		return ""
@@ -6479,6 +6501,7 @@ func (m Model) renderUnifiedTitleBar(w int) string {
 		w = 80
 	}
 	queryStyle := t.Renderer.NewStyle().Foreground(t.Base.GetForeground())
+	suggestionStyle := t.Renderer.NewStyle().Foreground(commandSuggestionColor)
 
 	queryText := m.queryState.Text()
 	content := ""
@@ -6489,16 +6512,26 @@ func (m Model) renderUnifiedTitleBar(w int) string {
 			content = m.activeProjectName + "  "
 		}
 	}
-	content += "/"
-	if queryText != "" {
-		content += " " + queryText
-	}
-	if m.queryState.Mode() == QueryEditing {
-		content += "█"
+	suggestion := ""
+	if m.commandPrompt.Mode() == PromptEditing {
+		typed := m.commandPrompt.Text()
+		content += ":" + typed + "█"
+		suggestion = strings.TrimPrefix(m.commandPrompt.Suggestion(), strings.ToLower(strings.TrimSpace(typed)))
+	} else {
+		content += "/"
+		if queryText != "" {
+			content += " " + queryText
+		}
+		if m.queryState.Mode() == QueryEditing {
+			content += "█"
+		}
 	}
 	contentWidth := w - 4
 	if contentWidth < 1 {
 		contentWidth = 1
+	}
+	if lipgloss.Width(content+suggestion) > contentWidth {
+		suggestion = ""
 	}
 	content = truncateRunesHelper(content, contentWidth, "…")
 	boxWidth := w - 2
@@ -6510,8 +6543,10 @@ func (m Model) renderUnifiedTitleBar(w int) string {
 		BorderForeground(unifiedQueryBorder).
 		Padding(0, 1).
 		Width(boxWidth).
-		Render(queryStyle.Render(content))
+		Render(queryStyle.Render(content) + suggestionStyle.Render(suggestion))
 }
+
+var commandSuggestionColor = lipgloss.Color("#6C7086")
 
 // renderAssigneeBar renders the top bar in assignee mode, showing assignees with counts
 // and number key assignments (bd-gs45.1).
