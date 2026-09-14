@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,12 +20,13 @@ import (
 
 // Integration tests for the Dolt backend.
 //
-// Configuration is loaded from .env.test in the repo root (auto-detected).
-// Override with env vars: B9S_TEST_DOLT_HOST, B9S_TEST_DOLT_PORT, B9S_TEST_DOLT_USER.
+// Read-only tests use B9S_TEST_DOLT_HOST, B9S_TEST_DOLT_PORT and
+// B9S_TEST_DOLT_USER, loaded from .env.test in the repo root when unset.
 // Password comes from BEADS_DOLT_PASSWORD (not stored in .env.test).
 //
-// The tests create a temporary database, populate it with test data,
-// run all assertions, and drop it on cleanup.
+// Tests that create a temporary database, populate it and drop it on cleanup
+// run only against the disposable local server in B9S_TEST_DOLT_SCRATCH_ADDR
+// (see scratch_server_test.go), and skip when it is unset.
 
 func init() {
 	loadEnvTestFile()
@@ -94,10 +96,7 @@ func doltIntegrationDSN(dbName string) string {
 	if port == "" {
 		port = "3306"
 	}
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 	password := os.Getenv("BEADS_DOLT_PASSWORD")
 	if dbName == "" {
 		dbName = "b9s_test"
@@ -132,42 +131,14 @@ func testDB(t *testing.T) (dbName string, addr string, cleanup func()) {
 	dbName = fmt.Sprintf("%s%d", testDBPrefix, time.Now().UnixNano())
 
 	// Connect without a database to create one
-	serverDSN := doltIntegrationDSN("")
-	// Strip database from DSN for server-level ops
-	host := os.Getenv("B9S_TEST_DOLT_HOST")
-	port := os.Getenv("B9S_TEST_DOLT_PORT")
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if host == "" {
-		host = "osen.co"
+	addr = requireScratchServer(t)
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		t.Fatalf("scratch server address %q: %v", addr, err)
 	}
-	if port == "" {
-		port = "3306"
-	}
-	if user == "" {
-		user = "root"
-	}
-
+	user := scratchServerUser()
 	password := os.Getenv("BEADS_DOLT_PASSWORD")
-
-	if serverDSN == "" {
-		if password != "" {
-			serverDSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/?parseTime=true&timeout=10s", user, password, host, port)
-		} else {
-			serverDSN = fmt.Sprintf("%s@tcp(%s:%s)/?parseTime=true&timeout=10s", user, host, port)
-		}
-	} else {
-		// Use DSN but connect to no specific database
-		if idx := strings.LastIndex(serverDSN, "/"); idx != -1 {
-			paramIdx := strings.Index(serverDSN[idx:], "?")
-			if paramIdx != -1 {
-				serverDSN = serverDSN[:idx+1] + serverDSN[idx+paramIdx:]
-			} else {
-				serverDSN = serverDSN[:idx+1]
-			}
-		}
-	}
-
-	addr = fmt.Sprintf("%s:%s", host, port)
+	serverDSN := buildDSN(user, password, addr, "")
 
 	db, err := sql.Open("mysql", serverDSN)
 	if err != nil {
@@ -312,10 +283,7 @@ func testDB(t *testing.T) (dbName string, addr string, cleanup func()) {
 func newTestDoltReader(t *testing.T, dbName, addr string) *DoltReader {
 	t.Helper()
 
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 	password := os.Getenv("BEADS_DOLT_PASSWORD")
 
 	var dsn string
@@ -751,10 +719,7 @@ func TestDoltIntegration_WatcherDetectsChange(t *testing.T) {
 	dbName, addr, cleanup := testDB(t)
 	defer cleanup()
 
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 
 	source := DataSource{
 		Type:     SourceTypeDolt,
@@ -823,10 +788,7 @@ func TestDoltIntegration_WatcherDetectsUncommittedWorkingSetChange(t *testing.T)
 	dbName, addr, cleanup := testDB(t)
 	defer cleanup()
 
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 
 	source := DataSource{
 		Type:     SourceTypeDolt,
@@ -885,10 +847,7 @@ func TestDoltIntegration_WriteReadCycle(t *testing.T) {
 	dbName, addr, cleanup := testDB(t)
 	defer cleanup()
 
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 
 	reader := newTestDoltReader(t, dbName, addr)
 	defer reader.Close()
@@ -959,21 +918,10 @@ func TestDoltIntegration_EmptyDatabase(t *testing.T) {
 	skipIfNoDoltIntegration(t)
 
 	// Create a database with schema but no data
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
-	host := os.Getenv("B9S_TEST_DOLT_HOST")
-	if host == "" {
-		host = "osen.co"
-	}
-	port := os.Getenv("B9S_TEST_DOLT_PORT")
-	if port == "" {
-		port = "3306"
-	}
+	addr := requireScratchServer(t)
+	user := scratchServerUser()
 
 	dbName := fmt.Sprintf("%s%d_empty", testDBPrefix, time.Now().UnixNano())
-	addr := fmt.Sprintf("%s:%s", host, port)
 
 	serverDSN := buildDSN(user, os.Getenv("BEADS_DOLT_PASSWORD"), addr, "")
 	db, err := sql.Open("mysql", serverDSN)
@@ -1035,10 +983,7 @@ func TestDoltIntegration_EmptyDatabase(t *testing.T) {
 // openMutationDB opens a raw SQL connection to the test database for writes.
 func openMutationDB(t *testing.T, dbName, addr string) *sql.DB {
 	t.Helper()
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 	dsn := buildDSN(user, os.Getenv("BEADS_DOLT_PASSWORD"), addr, dbName)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -1330,20 +1275,13 @@ func skipIfNoBdCLI(t *testing.T) {
 func setupBdProject(t *testing.T) (workDir, dbName, addr string, cleanup func()) {
 	t.Helper()
 
-	host := os.Getenv("B9S_TEST_DOLT_HOST")
-	if host == "" {
-		host = "osen.co"
+	addr = requireScratchServer(t)
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		t.Fatalf("scratch server address %q: %v", addr, err)
 	}
-	port := os.Getenv("B9S_TEST_DOLT_PORT")
-	if port == "" {
-		port = "3306"
-	}
-	user := os.Getenv("B9S_TEST_DOLT_USER")
-	if user == "" {
-		user = "root"
-	}
+	user := scratchServerUser()
 	password := os.Getenv("BEADS_DOLT_PASSWORD")
-	addr = fmt.Sprintf("%s:%s", host, port)
 
 	// Unique database name for this test
 	dbName = fmt.Sprintf("%s%d_bd", testDBPrefix, time.Now().UnixNano())

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -24,6 +25,9 @@ type RecentProject struct {
 	Database string `yaml:"database,omitempty"`
 	Host     string `yaml:"host,omitempty"`
 	Path     string `yaml:"path,omitempty"`
+	// OpenedAt is when this project's issues last loaded. It is never set for
+	// a project that failed to open, so it names a project known to work.
+	OpenedAt time.Time `yaml:"opened_at,omitempty"`
 }
 
 // sameProject compares server identity only when both entries carry one. An
@@ -68,17 +72,31 @@ func trimRecent(list []RecentProject) []RecentProject {
 
 // mergeRecent keeps the order of mine and appends entries only another b9s
 // process has saved, so concurrent windows do not erase each other's history.
+// For a project both lists hold, the later OpenedAt wins: another window may
+// have opened it more recently than this one.
 func mergeRecent(mine, onDisk []RecentProject, locked bool) []RecentProject {
-	if locked {
-		return mine
-	}
 	merged := append([]RecentProject(nil), mine...)
 	for _, p := range onDisk {
-		if !containsRecent(merged, p) {
+		i := indexRecent(merged, p)
+		switch {
+		case i >= 0:
+			if p.OpenedAt.After(merged[i].OpenedAt) {
+				merged[i].OpenedAt = p.OpenedAt
+			}
+		case !locked:
 			merged = append(merged, p)
 		}
 	}
 	return trimRecent(merged)
+}
+
+func indexRecent(list []RecentProject, p RecentProject) int {
+	for i, existing := range list {
+		if existing.sameProject(p) {
+			return i
+		}
+	}
+	return -1
 }
 
 // recentOnDisk reads only the recent list from an existing config file.
@@ -192,6 +210,34 @@ func SaveRecentTo(path string, recent []RecentProject, locked bool) error {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 	return writeFileAtomic(path, data)
+}
+
+// MarkOpened records that p's issues loaded at the given time. It changes only
+// an entry already in the list, so it never moves a project to a new slot.
+func (c *Config) MarkOpened(p RecentProject, at time.Time) bool {
+	for i := range c.RecentProjects {
+		if c.RecentProjects[i].sameProject(p) {
+			c.RecentProjects[i].OpenedAt = at
+			return true
+		}
+	}
+	return false
+}
+
+// LastOpened returns the project that most recently opened successfully,
+// skipping except. Entries that never opened are not candidates.
+func (c *Config) LastOpened(except RecentProject) (RecentProject, bool) {
+	var last RecentProject
+	found := false
+	for _, p := range c.RecentProjects {
+		if p.OpenedAt.IsZero() || p.sameProject(except) {
+			continue
+		}
+		if !found || p.OpenedAt.After(last.OpenedAt) {
+			last, found = p, true
+		}
+	}
+	return last, found
 }
 
 func setMappingValue(mapping *yaml.Node, key string, value *yaml.Node) {

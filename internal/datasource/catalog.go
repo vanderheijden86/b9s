@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -31,6 +32,9 @@ const (
 	mysqlErrDBAccessDenied = 1044
 	mysqlErrAccessDenied   = 1045
 	mysqlErrNoSuchTable    = 1146
+	// Dolt reports a database the user may not read as this generic error,
+	// with an "Access denied" message.
+	mysqlErrUnknown = 1105
 )
 
 const catalogQueryTimeout = 10 * time.Second
@@ -64,6 +68,11 @@ func ClassifyConnError(err error) Reachability {
 			return ReachDenied
 		case mysqlErrNoSuchTable:
 			return ReachNoIssuesTable
+		case mysqlErrUnknown:
+			if strings.HasPrefix(mysqlErr.Message, "Access denied") {
+				return ReachDenied
+			}
+			return ReachUnknown
 		default:
 			return ReachUnknown
 		}
