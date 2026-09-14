@@ -71,12 +71,15 @@ type ExperimentalConfig struct {
 
 // Config is the top-level configuration for b9s.
 type Config struct {
-	Projects     []Project          `yaml:"projects,omitempty"`
-	Favorites    map[int]string     `yaml:"favorites,omitempty"` // Number key (1-9) -> project name
-	UI           UIConfig           `yaml:"ui,omitempty"`
-	Discovery    DiscoveryConfig    `yaml:"discovery,omitempty"`
-	Refresh      RefreshConfig      `yaml:"refresh,omitempty"`
-	Experimental ExperimentalConfig `yaml:"experimental,omitempty"`
+	Projects  []Project      `yaml:"projects,omitempty"`
+	Favorites map[int]string `yaml:"favorites,omitempty"` // Number key (1-9) -> project name
+	// RecentProjects is newest first; see TouchRecent for the ordering rules.
+	RecentProjects []RecentProject    `yaml:"recent_projects,omitempty"`
+	LockRecent     bool               `yaml:"lock_recent,omitempty"`
+	UI             UIConfig           `yaml:"ui,omitempty"`
+	Discovery      DiscoveryConfig    `yaml:"discovery,omitempty"`
+	Refresh        RefreshConfig      `yaml:"refresh,omitempty"`
+	Experimental   ExperimentalConfig `yaml:"experimental,omitempty"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -190,6 +193,10 @@ func LoadFrom(path string) (Config, error) {
 	for i := range cfg.Discovery.ScanPaths {
 		cfg.Discovery.ScanPaths[i] = expandHome(cfg.Discovery.ScanPaths[i])
 	}
+	for i := range cfg.RecentProjects {
+		cfg.RecentProjects[i].Path = expandHome(cfg.RecentProjects[i].Path)
+	}
+	cfg.migrateFavorites()
 
 	return cfg, nil
 }
@@ -210,13 +217,36 @@ func SaveTo(cfg Config, path string) error {
 		return fmt.Errorf("creating config directory: %w", err)
 	}
 
+	if existing, err := os.ReadFile(path); err == nil {
+		cfg.RecentProjects = mergeRecent(cfg.RecentProjects, recentOnDisk(existing), cfg.LockRecent)
+	}
+
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	// Write-then-rename so a reader never sees a half-written file.
+	tmp, err := os.CreateTemp(dir, ".config-*.yaml")
+	if err != nil {
+		return fmt.Errorf("creating temp config: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
 		return fmt.Errorf("writing config: %w", err)
+	}
+	if err := tmp.Chmod(0o644); err != nil {
+		tmp.Close()
+		return fmt.Errorf("writing config: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replacing config: %w", err)
 	}
 
 	return nil
