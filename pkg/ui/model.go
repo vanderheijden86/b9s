@@ -623,6 +623,29 @@ func (m Model) bodyHeight() int {
 	return h
 }
 
+// treeLayoutSize returns the width and height the tree is drawn with. Cursor
+// scrolling runs in Update and drawing in View, so both size the tree from
+// here; otherwise the cursor scrolls against a height that is not on screen.
+func (m Model) treeLayoutSize() (width, height int) {
+	if m.isSplitView && !m.treeDetailHidden {
+		// Inside a bordered panel between the global header and the footer
+		return m.list.Width(), max(m.height-4, 1)
+	}
+	return m.width, m.bodyHeight()
+}
+
+// syncTreeSize applies treeLayoutSize to the tree when the layout has moved.
+// Before the first WindowSizeMsg there is no layout to apply.
+func (m *Model) syncTreeSize() {
+	if !m.ready {
+		return
+	}
+	width, height := m.treeLayoutSize()
+	if width != m.tree.width || height != m.tree.height {
+		m.tree.SetSize(width, height)
+	}
+}
+
 // currentViewName returns a human-readable name for the current view mode.
 func (m Model) currentViewName() string {
 	if m.isGraphView {
@@ -1137,7 +1160,21 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// Update keeps the tree sized to its layout on both sides of every message: key
+// handling scrolls against the height the tree is drawn with, and a message
+// that changes the layout (resize, query bar, picker, split) re-follows the
+// cursor at the new height.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.syncTreeSize()
+	next, cmd := m.update(msg)
+	if updated, ok := next.(Model); ok {
+		updated.syncTreeSize()
+		next = updated
+	}
+	return next, cmd
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	var listKeyConsumed bool // set by handleListKeys when key was handled (bd-kob)
@@ -1288,7 +1325,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.list.SetItems(items)
 			m.tree.Build(m.issues)
-			m.tree.SetSize(m.width, m.bodyHeight())
+			m.tree.SetSize(m.treeLayoutSize())
 			m.tree.SetGlobalIssueMap(m.issueMap)
 			m.statusMsg = fmt.Sprintf("All projects: %d issues", len(allIssues))
 			m.statusIsError = false
@@ -1523,7 +1560,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The tree is visible in all non-overlay states (it's the default view),
 		// so it must stay in sync even when picker or detail has focus.
 		m.tree.BuildFromSnapshot(m.snapshot)
-		m.tree.SetSize(m.width, m.bodyHeight())
+		m.tree.SetSize(m.treeLayoutSize())
 		m.tree.SetGlobalIssueMap(m.issueMap)
 		m.tree.DetectAndFollowChanges(issueIDs(m.issues))
 
@@ -1807,7 +1844,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				treeStart = time.Now()
 			}
 			m.tree.Build(m.issues)
-			m.tree.SetSize(m.width, m.bodyHeight())
+			m.tree.SetSize(m.treeLayoutSize())
 			m.tree.SetGlobalIssueMap(m.issueMap)
 			m.tree.DetectAndFollowChanges(issueIDs(m.issues))
 			if profileRefresh {
@@ -2173,7 +2210,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "H" && m.list.FilterState() != list.Filtering {
 			m.pickerVisible = !m.pickerVisible
 			// Resize tree/board after toggling to reclaim/yield space
-			m.tree.SetSize(m.width, m.bodyHeight())
+			m.tree.SetSize(m.treeLayoutSize())
 			return m, nil
 		}
 
@@ -3736,7 +3773,7 @@ func (m Model) View() string {
 		} else if m.isSplitView && !m.treeDetailHidden {
 			body = m.renderTreeSplitView()
 		} else {
-			m.tree.SetSize(m.width, m.bodyHeight())
+			m.tree.SetSize(m.treeLayoutSize())
 			body = m.tree.View()
 		}
 	} else if m.isBoardView {
@@ -3745,7 +3782,7 @@ func (m Model) View() string {
 		body = m.renderSplitView()
 	} else {
 		// Tree view is always the default (bd-8hw.4)
-		m.tree.SetSize(m.width, m.bodyHeight())
+		m.tree.SetSize(m.treeLayoutSize())
 		body = m.tree.View()
 	}
 
@@ -4252,16 +4289,10 @@ func (m Model) renderTreeSplitView() string {
 		detailStyle = FocusedPanelStyle
 	}
 
-	// Use the same inner width as the list panel for consistent sizing
-	treeInnerWidth := m.list.Width()
 	panelHeight := m.height - 2 // 1 for global header, 1 for footer
 
-	// Set tree size to fit inside the panel (border takes 2 lines)
-	// The header row is now rendered inside tree.View() via RenderHeader() (bd-s2k)
-	treeHeight := panelHeight - 2
-	if treeHeight < 1 {
-		treeHeight = 1
-	}
+	// The header row is rendered inside tree.View() via RenderHeader() (bd-s2k)
+	treeInnerWidth, treeHeight := m.treeLayoutSize()
 	m.tree.SetSize(treeInnerWidth, treeHeight)
 
 	// tree.View() includes the header row (bd-s2k)

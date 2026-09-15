@@ -460,10 +460,15 @@ func (t *TreeModel) SetSize(width, height int) {
 	if t.width != width {
 		t.invalidateColumnLayout()
 	}
+	heightChanged := t.height != height
 	t.width = width
 	t.height = height
 	t.viewport.Width = width
 	t.viewport.Height = height
+	// A new height moves the bottom edge, which can leave the cursor below it
+	if heightChanged {
+		t.ensureCursorVisible()
+	}
 }
 
 // Build constructs the tree from issues using parent-child dependencies.
@@ -1417,19 +1422,9 @@ func (t *TreeModel) View() string {
 		sb.WriteString("\n")
 	}
 
-	// Count extra header lines that consume body space (bd-tf1v)
-	extraLines := len(stickyLines)
-	if t.xrayRoot != nil && t.xrayRoot.Issue != nil {
-		extraLines++
-	}
-
-	// Get visible range - O(1) calculation based on viewportOffset and height
+	// visibleRange budgets rows for the sticky and XRay lines drawn above
+	// (bd-tf1v), so every node in it fits within the height.
 	start, end := t.visibleRange()
-
-	// Reduce visible nodes to compensate for sticky/xray lines (bd-tf1v)
-	if extraLines > 0 && end-start > extraLines {
-		end -= extraLines
-	}
 
 	// Render only visible nodes (bv-db02: windowed rendering)
 	for i := start; i < end; i++ {
@@ -2600,36 +2595,40 @@ func (t *TreeModel) PageUp() {
 }
 
 // visibleRange returns the start and end indices of nodes to render (bv-r4ng).
-// The range [start, end) covers nodes visible in the viewport.
-// This is an O(1) calculation based on viewportOffset and height.
-// Uses effectiveVisibleCount() which reserves space for the header row (bd-s2k)
-// and position indicator when scrolling is needed.
+// The range [start, end) holds rowsFrom(start) nodes, which leaves room for the
+// header row (bd-s2k), the position indicator, and the sticky ancestor and
+// XRay lines drawn above the nodes, so every index in it is actually drawn.
 func (t *TreeModel) visibleRange() (start, end int) {
-	if len(t.flatList) == 0 {
+	n := len(t.flatList)
+	if n == 0 {
 		return 0, 0
 	}
 
-	visibleCount := t.effectiveVisibleCount()
+	start = min(max(t.viewportOffset, 0), n-1)
 
-	// Start with the viewport offset, clamped to non-negative
-	start = t.viewportOffset
-	if start < 0 {
-		start = 0
-	}
-
-	// Calculate end based on clamped start
-	end = start + visibleCount
-
-	// If end exceeds list, clamp it and adjust start to maximize visible items
-	if end > len(t.flatList) {
-		end = len(t.flatList)
-		start = end - visibleCount
-		if start < 0 {
-			start = 0
+	// A window running past the last node moves back to the earliest start
+	// whose window still reaches it, keeping the viewport full.
+	if start+t.rowsFrom(start) > n {
+		for s := max(0, n-t.effectiveVisibleCount()); s < start; s++ {
+			if s+t.rowsFrom(s) >= n {
+				start = s
+				break
+			}
 		}
 	}
 
-	return start, end
+	return start, min(n, start+t.rowsFrom(start))
+}
+
+// rowsFrom returns how many nodes fit when the viewport starts at start. The
+// sticky ancestor lines and the XRay heading share the same height as the
+// nodes, and which ancestors are sticky depends on the first drawn node.
+func (t *TreeModel) rowsFrom(start int) int {
+	rows := t.effectiveVisibleCount() - len(t.stickyAncestors(start))
+	if t.xrayRoot != nil && t.xrayRoot.Issue != nil {
+		rows--
+	}
+	return max(rows, 1)
 }
 
 // SelectByID moves cursor to the node with the given issue ID.
@@ -2841,29 +2840,23 @@ func (t *TreeModel) ensureCursorVisible() {
 		return
 	}
 
-	visibleCount := t.effectiveVisibleCount()
+	offset := max(t.viewportOffset, 0)
 
 	// Cursor above viewport - scroll up to show cursor at top
-	if t.cursor < t.viewportOffset {
-		t.viewportOffset = t.cursor
+	if t.cursor < offset {
+		offset = t.cursor
 	}
 
-	// Cursor below viewport - scroll down to show cursor at bottom
-	if t.cursor >= t.viewportOffset+visibleCount {
-		t.viewportOffset = t.cursor - visibleCount + 1
+	// Cursor below viewport - scroll down to show cursor at bottom. Scrolling
+	// can bring a deeper node to the top whose sticky ancestors take rows back,
+	// so step until the cursor fits the window its offset produces. Every step
+	// raises offset, and a window starting at the cursor always holds it.
+	for rows := t.rowsFrom(offset); t.cursor >= offset+rows; rows = t.rowsFrom(offset) {
+		offset = t.cursor - rows + 1
 	}
 
-	// Clamp offset to valid range
-	maxOffset := len(t.flatList) - visibleCount
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
-	if t.viewportOffset > maxOffset {
-		t.viewportOffset = maxOffset
-	}
-	if t.viewportOffset < 0 {
-		t.viewportOffset = 0
-	}
+	t.viewportOffset = offset
+	t.viewportOffset, _ = t.visibleRange()
 }
 
 // revealCursorWithContext positions the selected row near the upper third of
@@ -2873,19 +2866,8 @@ func (t *TreeModel) revealCursorWithContext() {
 		return
 	}
 
-	visibleCount := t.effectiveVisibleCount()
-	t.viewportOffset = t.cursor - visibleCount/3
-
-	maxOffset := len(t.flatList) - visibleCount
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
-	if t.viewportOffset > maxOffset {
-		t.viewportOffset = maxOffset
-	}
-	if t.viewportOffset < 0 {
-		t.viewportOffset = 0
-	}
+	t.viewportOffset = max(t.cursor-t.effectiveVisibleCount()/3, 0)
+	t.ensureCursorVisible()
 }
 
 // GetViewportOffset returns the current viewport offset (for testing/debugging).
@@ -3259,14 +3241,19 @@ func (t *TreeModel) renderSearchBar() string {
 // they are in the hierarchy. Returns at most 2 lines. Returns nil in flat mode
 // or when no ancestors are off-screen.
 func (t *TreeModel) StickyScrollLines() []string {
-	if t.flatMode || len(t.flatList) == 0 {
-		return nil
-	}
-
 	start, _ := t.visibleRange()
+	var lines []string
+	for _, node := range t.stickyAncestors(start) {
+		lines = append(lines, t.renderStickyLine(node))
+	}
+	return lines
+}
 
-	// Get the first visible node
-	if start >= len(t.flatList) {
+// stickyAncestors returns the ancestors of the node at start that get a sticky
+// line, outermost first. An ancestor always precedes its descendants in
+// flatList, so every ancestor of the first drawn node is off-screen.
+func (t *TreeModel) stickyAncestors(start int) []*IssueTreeNode {
+	if t.flatMode || start < 0 || start >= len(t.flatList) {
 		return nil
 	}
 	firstVisible := t.flatList[start]
@@ -3274,45 +3261,23 @@ func (t *TreeModel) StickyScrollLines() []string {
 		return nil
 	}
 
-	// Collect ancestors that are off-screen (not in the visible range)
-	var offScreenAncestors []*IssueTreeNode
-	ancestor := firstVisible.Parent
-	for ancestor != nil {
-		// Check if ancestor is visible in the current viewport
-		isVisible := false
-		_, end := t.visibleRange()
-		for i := start; i < end; i++ {
-			if i < len(t.flatList) && t.flatList[i] == ancestor {
-				isVisible = true
-				break
-			}
+	var ancestors []*IssueTreeNode
+	for ancestor := firstVisible.Parent; ancestor != nil; ancestor = ancestor.Parent {
+		ancestors = append([]*IssueTreeNode{ancestor}, ancestors...)
+	}
+
+	// Only the parent and grandparent, so sticky lines never crowd out nodes
+	if len(ancestors) > 2 {
+		ancestors = ancestors[len(ancestors)-2:]
+	}
+
+	var sticky []*IssueTreeNode
+	for _, ancestor := range ancestors {
+		if ancestor.Issue != nil {
+			sticky = append(sticky, ancestor)
 		}
-		if !isVisible {
-			offScreenAncestors = append([]*IssueTreeNode{ancestor}, offScreenAncestors...)
-		}
-		ancestor = ancestor.Parent
 	}
-
-	if len(offScreenAncestors) == 0 {
-		return nil
-	}
-
-	// Limit to at most 2 lines
-	if len(offScreenAncestors) > 2 {
-		// Show the two closest ancestors (parent and grandparent of first visible)
-		offScreenAncestors = offScreenAncestors[len(offScreenAncestors)-2:]
-	}
-
-	var lines []string
-	for _, node := range offScreenAncestors {
-		if node.Issue == nil {
-			continue
-		}
-		line := t.renderStickyLine(node)
-		lines = append(lines, line)
-	}
-
-	return lines
+	return sticky
 }
 
 // renderStickyLine renders a single sticky scroll header line in muted style.
