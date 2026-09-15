@@ -182,6 +182,34 @@ func (t *TreeModel) applyState(state *TreeState) {
 	}
 }
 
+// expansionByID records the expand state of every node in the current tree,
+// keyed by issue ID, so a rebuild can lay it over the new nodes. The nodes on
+// screen are the only complete record: tree-state.json lags behind expansions
+// that are never saved (filter context) and does not exist at all when no
+// beads directory is known, as for a Dolt project without an issues.jsonl.
+func (t *TreeModel) expansionByID() map[string]bool {
+	if len(t.issueMap) == 0 {
+		return nil
+	}
+	state := make(map[string]bool, len(t.issueMap))
+	for id, node := range t.issueMap {
+		if node != nil {
+			state[id] = node.Expanded
+		}
+	}
+	return state
+}
+
+// restoreExpansion applies a state recorded by expansionByID. Issues that did
+// not exist when it was recorded keep their default or persisted state.
+func (t *TreeModel) restoreExpansion(state map[string]bool) {
+	for id, expanded := range state {
+		if node, ok := t.issueMap[id]; ok {
+			node.Expanded = expanded
+		}
+	}
+}
+
 // TreeViewMode determines what relationships are displayed
 type TreeViewMode int
 
@@ -450,6 +478,7 @@ func (t *TreeModel) Build(issues []model.Issue) {
 	}
 	prevCursor, prevOffset := t.cursor, t.viewportOffset
 	hadRows := len(t.flatList) > 0
+	prevExpanded := t.expansionByID()
 
 	// Reset state
 	t.invalidateColumnLayout()
@@ -486,6 +515,7 @@ func (t *TreeModel) Build(issues []model.Issue) {
 	// Step 7: Load persisted state (bv-afcm)
 	// This modifies node.Expanded values before we build the flat list
 	t.loadState()
+	t.restoreExpansion(prevExpanded)
 
 	// Step 8: Build the flat list for navigation
 	// This must come after loadState so expand states are applied
@@ -549,16 +579,19 @@ func (t *TreeModel) BuildFromSnapshot(snapshot *DataSnapshot) {
 		prevSelectedID = issue.ID
 	}
 
-	// Reset view state, but keep dimensions/theme/beadsDir.
-	t.roots = snapshot.TreeRoots
-	t.issueMap = snapshot.TreeNodeMap
-
 	// If the snapshot didn't include tree data, fall back to building it now.
-	if len(t.roots) == 0 || t.issueMap == nil {
+	// Build reads the expansion off the current nodes, so they must still be
+	// in place when it runs.
+	if len(snapshot.TreeRoots) == 0 || snapshot.TreeNodeMap == nil {
 		t.Build(snapshot.Issues)
 		t.lastHash = snapshot.DataHash
 		return
 	}
+
+	// Reset view state, but keep dimensions/theme/beadsDir.
+	prevExpanded := t.expansionByID()
+	t.roots = snapshot.TreeRoots
+	t.issueMap = snapshot.TreeNodeMap
 
 	// Re-sort using the model's configured sortField/sortDirection (bd-2ty).
 	// Snapshot tree roots were built with a hardcoded priority-based sort.
@@ -566,6 +599,7 @@ func (t *TreeModel) BuildFromSnapshot(snapshot *DataSnapshot) {
 
 	// Apply persisted expand/collapse state and rebuild visible list.
 	t.loadState()
+	t.restoreExpansion(prevExpanded)
 	t.rebuildFlatList()
 	t.built = true
 	t.lastHash = snapshot.DataHash

@@ -844,6 +844,8 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 - **Cycles**: Detected during traversal; cyclic nodes are rendered without recursing further
 - **Deep Hierarchies**: No depth limit—the tree faithfully represents arbitrarily nested structures
 
+**Refreshes:** A live reload or `Ctrl+R` rebuilds the tree from the new data but keeps every branch expanded or collapsed exactly as it was on screen, down to the deepest child. This holds for Dolt projects without an `issues.jsonl`, where there is no `tree-state.json` to fall back on. Issues that appear in the new data start with the default: top-level issues expanded, everything below collapsed.
+
 ### Tree Navigation
 
 | Key | Action |
