@@ -3,7 +3,6 @@ package datasource
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -63,16 +62,13 @@ func NewDoltReader(source DataSource) (*DoltReader, error) {
 	if user == "" {
 		user = "root"
 	}
-	password := os.Getenv("BEADS_DOLT_PASSWORD")
 
-	var dsn string
-	if password != "" {
-		dsn = fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true&timeout=5s&readTimeout=10s", user, password, addr, dbName)
-	} else {
-		dsn = fmt.Sprintf("%s@tcp(%s)/%s?parseTime=true&timeout=5s&readTimeout=10s", user, addr, dbName)
+	cfg, err := doltConnectionConfig(DataSource{Type: SourceTypeDolt, Path: addr, User: user}, dbName)
+	if err != nil {
+		return nil, err
 	}
 	debug.Log("dolt: connecting %s@%s/%s", user, addr, dbName)
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		return nil, fmt.Errorf("cannot open Dolt connection: %w", err)
 	}

@@ -23,10 +23,16 @@ func integrationSource() DataSource {
 	return DataSource{Type: SourceTypeDolt, Path: host + ":" + port, User: user}
 }
 
+func trustIntegrationSource(t *testing.T) {
+	t.Helper()
+	t.Setenv("B9S_TRUSTED_DOLT_ENDPOINTS", integrationSource().Path)
+}
+
 // Listing needs only read access, so it runs as a scoped project user: set
 // B9S_TEST_DOLT_CATALOG_DB to a Beads database that user can read.
 func TestDoltIntegration_ListProjectDatabasesIncludesReadableDatabase(t *testing.T) {
 	skipIfNoDoltIntegration(t)
+	trustIntegrationSource(t)
 	expected := os.Getenv("B9S_TEST_DOLT_CATALOG_DB")
 	if expected == "" {
 		t.Skip("set B9S_TEST_DOLT_CATALOG_DB to a Beads database the test user can read")
@@ -49,6 +55,7 @@ func TestDoltIntegration_ListProjectDatabasesIncludesReadableDatabase(t *testing
 
 func TestDoltIntegration_ListProjectDatabasesReportsDeniedForWrongPassword(t *testing.T) {
 	skipIfNoDoltIntegration(t)
+	trustIntegrationSource(t)
 	t.Setenv("BEADS_DOLT_PASSWORD", fmt.Sprintf("wrong-%d", time.Now().UnixNano()))
 
 	_, err := ListProjectDatabases(integrationSource())

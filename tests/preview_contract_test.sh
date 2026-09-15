@@ -33,6 +33,7 @@ contains "mobile terminal has a stable base path" "--base-path /b9s/terminal" "$
 contains "mobile key endpoint is installed in the CGI root" "/www/cgi-bin/b9s-key" "$entrypoint"
 contains "preview requires a read-only Dolt user" 'B9S_DOLT_READ_USER:?required' "$entrypoint"
 contains "preview requires a read-only Dolt password" 'B9S_DOLT_READ_PASSWORD:?required' "$entrypoint"
+contains "preview explicitly trusts its provisioned Dolt endpoint" 'B9S_TRUSTED_DOLT_ENDPOINTS="$B9S_DOLT_HOST:$B9S_DOLT_PORT"' "$entrypoint"
 contains "preview discovers only accessible databases" 'SHOW DATABASES' "$entrypoint"
 contains "preview verifies the Beads issues table" 'SELECT 1 FROM' "$entrypoint"
 contains "preview starts in the all-projects view" 'send-keys -t b9s 0' "$entrypoint"

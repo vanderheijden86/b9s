@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
@@ -52,8 +53,12 @@ func TestReachabilityReasonsAreDistinct(t *testing.T) {
 
 func TestServerDSN_KeepsSpecialCharactersInPassword(t *testing.T) {
 	t.Setenv("BEADS_DOLT_PASSWORD", "p@ss/w:rd?")
+	t.Setenv("B9S_TRUSTED_DOLT_ENDPOINTS", "")
 
-	dsn := serverDSN(DataSource{Type: SourceTypeDolt, Path: "127.0.0.1:3306", User: "bd_b9s"})
+	dsn, err := serverDSN(DataSource{Type: SourceTypeDolt, Path: "127.0.0.1:3306", User: "bd_b9s"})
+	if err != nil {
+		t.Fatalf("serverDSN: %v", err)
+	}
 
 	parsed, err := mysql.ParseDSN(dsn)
 	if err != nil {
@@ -61,6 +66,36 @@ func TestServerDSN_KeepsSpecialCharactersInPassword(t *testing.T) {
 	}
 	if parsed.User != "bd_b9s" || parsed.Passwd != "p@ss/w:rd?" || parsed.Addr != "127.0.0.1:3306" || parsed.DBName != "" {
 		t.Errorf("parsed DSN = user %q pass %q addr %q db %q", parsed.User, parsed.Passwd, parsed.Addr, parsed.DBName)
+	}
+}
+
+func TestServerDSN_RejectsPasswordForUntrustedEndpoint(t *testing.T) {
+	t.Setenv("BEADS_DOLT_PASSWORD", "project-secret")
+	t.Setenv("B9S_TRUSTED_DOLT_ENDPOINTS", "")
+
+	_, err := serverDSN(DataSource{Type: SourceTypeDolt, Path: "attacker.example:3306", User: "reader"})
+	if err == nil {
+		t.Fatal("expected untrusted endpoint to be rejected before authentication")
+	}
+	if !strings.Contains(err.Error(), "B9S_TRUSTED_DOLT_ENDPOINTS") {
+		t.Fatalf("error should explain the explicit trust control, got %v", err)
+	}
+}
+
+func TestServerDSN_AllowsExplicitlyTrustedEndpoint(t *testing.T) {
+	t.Setenv("BEADS_DOLT_PASSWORD", "project-secret")
+	t.Setenv("B9S_TRUSTED_DOLT_ENDPOINTS", "db.internal:3306, other.internal:3307")
+
+	dsn, err := serverDSN(DataSource{Type: SourceTypeDolt, Path: "db.internal:3306", User: "reader"})
+	if err != nil {
+		t.Fatalf("serverDSN: %v", err)
+	}
+	parsed, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		t.Fatalf("ParseDSN(%q): %v", dsn, err)
+	}
+	if parsed.Passwd != "project-secret" || parsed.Addr != "db.internal:3306" {
+		t.Fatalf("parsed DSN = pass %q addr %q", parsed.Passwd, parsed.Addr)
 	}
 }
 

@@ -39,6 +39,8 @@ const (
 
 const catalogQueryTimeout = 10 * time.Second
 
+const trustedDoltEndpointsEnv = "B9S_TRUSTED_DOLT_ENDPOINTS"
+
 func (r Reachability) String() string {
 	switch r {
 	case ReachReachable:
@@ -87,9 +89,11 @@ func ClassifyConnError(err error) Reachability {
 	return ReachUnknown
 }
 
-// serverDSN connects to the server without selecting a database. The driver
-// formats it, so passwords containing DSN separators survive intact.
-func serverDSN(source DataSource) string {
+// doltConnectionConfig builds a driver configuration after checking whether an
+// environment credential may be sent to the selected endpoint. Repository
+// metadata is untrusted, so remote endpoints require an explicit operator
+// allowlist before they can receive BEADS_DOLT_PASSWORD.
+func doltConnectionConfig(source DataSource, database string) (*mysql.Config, error) {
 	cfg := mysql.NewConfig()
 	cfg.Net = "tcp"
 	cfg.Addr = source.Path
@@ -101,17 +105,60 @@ func serverDSN(source DataSource) string {
 		cfg.User = "root"
 	}
 	cfg.Passwd = os.Getenv("BEADS_DOLT_PASSWORD")
+	if cfg.Passwd != "" && !isTrustedDoltEndpoint(cfg.Addr) {
+		return nil, fmt.Errorf("refusing to send BEADS_DOLT_PASSWORD to untrusted Dolt endpoint %q; add the exact host:port to %s", cfg.Addr, trustedDoltEndpointsEnv)
+	}
+	cfg.DBName = database
 	cfg.ParseTime = true
 	cfg.Timeout = 5 * time.Second
 	cfg.ReadTimeout = catalogQueryTimeout
-	return cfg.FormatDSN()
+	return cfg, nil
+}
+
+func isTrustedDoltEndpoint(addr string) bool {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		return true
+	}
+
+	want := net.JoinHostPort(strings.ToLower(host), port)
+	for _, endpoint := range strings.Split(os.Getenv(trustedDoltEndpointsEnv), ",") {
+		trustedHost, trustedPort, err := net.SplitHostPort(strings.TrimSpace(endpoint))
+		if err != nil {
+			continue
+		}
+		if net.JoinHostPort(strings.ToLower(trustedHost), trustedPort) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// serverDSN connects to the server without selecting a database. The driver
+// formats it, so passwords containing DSN separators survive intact.
+func serverDSN(source DataSource) (string, error) {
+	cfg, err := doltConnectionConfig(source, "")
+	if err != nil {
+		return "", err
+	}
+	return cfg.FormatDSN(), nil
 }
 
 // ListProjectDatabases returns the Beads databases the source's user can read,
 // identified by having an issues table. System schemas never have one, and the
 // server only lists schemas the user holds privileges on.
 func ListProjectDatabases(source DataSource) ([]string, error) {
-	db, err := sql.Open("mysql", serverDSN(source))
+	dsn, err := serverDSN(source)
+	if err != nil {
+		return nil, err
+	}
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open Dolt connection: %w", err)
 	}
