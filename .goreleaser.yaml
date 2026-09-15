@@ -4,6 +4,8 @@ project_name: b9s
 builds:
   - main: ./cmd/b9s
     binary: b9s
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/vanderheijden86/beadwork/pkg/version.Version=v{{.Version}}
@@ -42,7 +44,7 @@ brews:
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: https://github.com/vanderheijden86/beadwork
+    homepage: https://github.com/vanderheijden86/b9s
     description: "Fast, focused TUI viewer and editor for beads projects"
     license: "MIT"
     install: |

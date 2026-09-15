@@ -62,6 +62,8 @@ a.out
 target-*/
 .playwright-mcp/
 /b9s
+/bv_profile
+/bv_test
 .b9s/
 
 # Beads / Dolt files (added by bd init)

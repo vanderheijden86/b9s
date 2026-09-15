@@ -50,8 +50,8 @@ func TestCopyFile_PreservesContentAndMode(t *testing.T) {
 
 func TestExtractBinary_FromArchive(t *testing.T) {
 	tmpDir := t.TempDir()
-	archivePath := filepath.Join(tmpDir, "bv.tar.gz")
-	destPath := filepath.Join(tmpDir, "bv")
+	archivePath := filepath.Join(tmpDir, "b9s.tar.gz")
+	destPath := filepath.Join(tmpDir, "b9s")
 
 	var buf bytes.Buffer
 	gzw := gzip.NewWriter(&buf)
@@ -59,7 +59,7 @@ func TestExtractBinary_FromArchive(t *testing.T) {
 
 	payload := []byte("fake-binary")
 	hdr := &tar.Header{
-		Name: "bv",
+		Name: "b9s",
 		Mode: 0o755,
 		Size: int64(len(payload)),
 	}

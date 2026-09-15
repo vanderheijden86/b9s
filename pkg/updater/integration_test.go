@@ -22,7 +22,7 @@ import (
 
 func TestFullUpdateFlow_WithMockServer(t *testing.T) {
 	// Create a mock GitHub API and download server
-	binaryContent := []byte("#!/bin/sh\necho 'mock bv v99.0.0'")
+	binaryContent := []byte("#!/bin/sh\necho 'mock b9s v99.0.0'")
 
 	// Create tar.gz archive
 	var archiveBuf bytes.Buffer
@@ -30,7 +30,7 @@ func TestFullUpdateFlow_WithMockServer(t *testing.T) {
 	tw := tar.NewWriter(gzw)
 
 	hdr := &tar.Header{
-		Name: "bv",
+		Name: "b9s",
 		Mode: 0o755,
 		Size: int64(len(binaryContent)),
 	}
@@ -130,7 +130,7 @@ func TestCheckUpdateAvailable_NoUpdateNeeded(t *testing.T) {
 // ============================================================================
 
 func TestExtractBinary_NoBinaryInArchive(t *testing.T) {
-	// Create archive without bv binary
+	// Create archive without the b9s binary
 	var archiveBuf bytes.Buffer
 	gzw := gzip.NewWriter(&archiveBuf)
 	tw := tar.NewWriter(gzw)
@@ -147,7 +147,7 @@ func TestExtractBinary_NoBinaryInArchive(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "archive.tar.gz")
-	destPath := filepath.Join(tmpDir, "bv")
+	destPath := filepath.Join(tmpDir, "b9s")
 
 	if err := os.WriteFile(archivePath, archiveBuf.Bytes(), 0o644); err != nil {
 		t.Fatalf("write archive: %v", err)
@@ -164,14 +164,14 @@ func TestExtractBinary_NoBinaryInArchive(t *testing.T) {
 }
 
 func TestExtractBinary_NestedPath(t *testing.T) {
-	// Create archive with nested bv binary
+	// Create archive with a nested b9s binary
 	content := []byte("nested binary")
 	var archiveBuf bytes.Buffer
 	gzw := gzip.NewWriter(&archiveBuf)
 	tw := tar.NewWriter(gzw)
 
 	hdr := &tar.Header{
-		Name: "some/nested/path/bv",
+		Name: "some/nested/path/b9s",
 		Mode: 0o755,
 		Size: int64(len(content)),
 	}
@@ -182,13 +182,13 @@ func TestExtractBinary_NestedPath(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	archivePath := filepath.Join(tmpDir, "archive.tar.gz")
-	destPath := filepath.Join(tmpDir, "bv")
+	destPath := filepath.Join(tmpDir, "b9s")
 
 	if err := os.WriteFile(archivePath, archiveBuf.Bytes(), 0o644); err != nil {
 		t.Fatalf("write archive: %v", err)
 	}
 
-	// Should find bv even in nested path
+	// Should find b9s even in a nested path
 	err := extractBinary(archivePath, destPath)
 	if err != nil {
 		t.Fatalf("extractBinary failed: %v", err)
@@ -201,6 +201,94 @@ func TestExtractBinary_NestedPath(t *testing.T) {
 
 	if !bytes.Equal(got, content) {
 		t.Errorf("content mismatch: got %q, want %q", got, content)
+	}
+}
+
+func TestValidateBinaryArchiveEntryRejectsOversizedBinary(t *testing.T) {
+	header := &tar.Header{Name: "b9s", Typeflag: tar.TypeReg, Size: maxExtractedBinarySize + 1}
+	if err := validateBinaryArchiveEntry(header); err == nil {
+		t.Fatal("expected oversized release binary to be rejected")
+	}
+}
+
+func TestValidateBinaryArchiveEntryRejectsSymlink(t *testing.T) {
+	header := &tar.Header{Name: "b9s", Typeflag: tar.TypeSymlink, Linkname: "/tmp/payload"}
+	if err := validateBinaryArchiveEntry(header); err == nil {
+		t.Fatal("expected symlink release entry to be rejected")
+	}
+}
+
+func TestReleaseConfigurationPinsActionsAndEmitsProvenance(t *testing.T) {
+	workflow, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatalf("read release workflow: %v", err)
+	}
+	ciWorkflow, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatalf("read CI workflow: %v", err)
+	}
+	config, err := os.ReadFile(filepath.Join("..", "..", ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatalf("read GoReleaser config: %v", err)
+	}
+
+	workflowText := string(workflow) + string(ciWorkflow)
+	for _, mutableRef := range []string{"actions/checkout@v4", "actions/setup-go@v6", "goreleaser/goreleaser-action@v6"} {
+		if strings.Contains(workflowText, mutableRef) {
+			t.Fatalf("release workflow still uses mutable action ref %q", mutableRef)
+		}
+	}
+	for _, required := range []string{"actions/attest-build-provenance@", "attestations: write", "id-token: write", "subject-path:"} {
+		if !strings.Contains(workflowText, required) {
+			t.Fatalf("release workflow missing %q", required)
+		}
+	}
+
+	configText := string(config)
+	if !strings.Contains(configText, "-trimpath") {
+		t.Fatal("GoReleaser build does not remove local build paths")
+	}
+	if !strings.Contains(configText, "https://github.com/vanderheijden86/b9s") {
+		t.Fatal("GoReleaser metadata still points at the old repository identity")
+	}
+}
+
+func TestDebugExecutablesAreIgnored(t *testing.T) {
+	ignore, err := os.ReadFile(filepath.Join("..", "..", ".gitignore"))
+	if err != nil {
+		t.Fatalf("read .gitignore: %v", err)
+	}
+	text := string(ignore)
+	for _, artifact := range []string{"/bv_profile\n", "/bv_test\n"} {
+		if !strings.Contains(text, artifact) {
+			t.Fatalf(".gitignore does not prevent regenerated artifact %q", strings.TrimSpace(artifact))
+		}
+	}
+}
+
+func TestInstallersUseCurrentIdentityAndRequireChecksums(t *testing.T) {
+	installShell, err := os.ReadFile(filepath.Join("..", "..", "install.sh"))
+	if err != nil {
+		t.Fatalf("read install.sh: %v", err)
+	}
+	installPowerShell, err := os.ReadFile(filepath.Join("..", "..", "install.ps1"))
+	if err != nil {
+		t.Fatalf("read install.ps1: %v", err)
+	}
+
+	shellText := string(installShell)
+	for _, required := range []string{`REPO_OWNER="vanderheijden86"`, `BIN_NAME="b9s"`, "checksums.txt", "verify_checksum"} {
+		if !strings.Contains(shellText, required) {
+			t.Fatalf("install.sh missing %q", required)
+		}
+	}
+	for _, installer := range []string{shellText, string(installPowerShell)} {
+		if strings.Contains(installer, "Dicklesworthstone") {
+			t.Fatal("installer still points at the previous repository owner")
+		}
+	}
+	if !strings.Contains(string(installPowerShell), `$BIN_NAME = "b9s"`) {
+		t.Fatal("install.ps1 still installs the previous binary name")
 	}
 }
 
@@ -252,8 +340,8 @@ ghi789  file3.tar.gz`
 // TestGetAssetName_HandlesVersionWithoutV verifies version without v prefix
 func TestGetAssetName_HandlesVersionWithoutV(t *testing.T) {
 	name := getAssetName("2.0.0")
-	if !strings.HasPrefix(name, "bv_2.0.0_") {
-		t.Errorf("expected asset name to start with bv_2.0.0_, got %s", name)
+	if !strings.HasPrefix(name, "b9s_2.0.0_") {
+		t.Errorf("expected asset name to start with b9s_2.0.0_, got %s", name)
 	}
 }
 

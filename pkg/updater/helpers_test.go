@@ -14,7 +14,7 @@ func TestRelease_FindPlatformAsset(t *testing.T) {
 	target := getAssetName(rel.TagName)
 	rel.Assets = []Asset{
 		{Name: "other.tar.gz"},
-		{Name: target, BrowserDownloadURL: "http://example.com/bv.tgz"},
+		{Name: target, BrowserDownloadURL: "http://example.com/b9s.tgz"},
 	}
 
 	asset := rel.FindPlatformAsset()
@@ -29,7 +29,7 @@ func TestRelease_FindPlatformAsset(t *testing.T) {
 func TestRelease_FindChecksumAsset(t *testing.T) {
 	rel := &Release{
 		Assets: []Asset{
-			{Name: "bv_v1.0.0_darwin_arm64.tar.gz"},
+			{Name: "b9s_1.0.0_darwin_arm64.tar.gz"},
 			{Name: "checksums.txt", BrowserDownloadURL: "http://example.com/checksums"},
 		},
 	}
@@ -41,9 +41,16 @@ func TestRelease_FindChecksumAsset(t *testing.T) {
 
 func TestGetAssetName_UsesRuntimeAndTrimsV(t *testing.T) {
 	name := getAssetName("v9.8.7")
-	want := "bv_9.8.7_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
+	want := "b9s_9.8.7_" + runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
 	if name != want {
 		t.Fatalf("getAssetName mismatch: got %q want %q", name, want)
+	}
+}
+
+func TestRequireChecksumAssetRejectsMissingChecksums(t *testing.T) {
+	release := &Release{TagName: "v9.8.7", Assets: []Asset{{Name: getAssetName("v9.8.7")}}}
+	if _, err := requireChecksumAsset(release); err == nil {
+		t.Fatal("expected release without checksums.txt to be rejected")
 	}
 }
 
@@ -52,7 +59,7 @@ func TestParseChecksums(t *testing.T) {
 	path := filepath.Join(tmpDir, "checksums.txt")
 
 	content := "" +
-		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bv_1.0.0_darwin_arm64.tar.gz\n" +
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  b9s_1.0.0_darwin_arm64.tar.gz\n" +
 		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  checksums.txt\n" +
 		"\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -63,7 +70,7 @@ func TestParseChecksums(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseChecksums failed: %v", err)
 	}
-	if got := m["bv_1.0.0_darwin_arm64.tar.gz"]; got != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
+	if got := m["b9s_1.0.0_darwin_arm64.tar.gz"]; got != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 		t.Fatalf("unexpected checksum for archive: %q", got)
 	}
 	if got := m["checksums.txt"]; got != "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" {
@@ -76,7 +83,7 @@ func TestParseChecksums_FilenamesWithSpaces(t *testing.T) {
 	path := filepath.Join(tmpDir, "checksums.txt")
 
 	content := "" +
-		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bv 1.0.0 windows amd64.tar.gz\n" +
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  b9s 1.0.0 windows amd64.tar.gz\n" +
 		"\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write checksums: %v", err)
@@ -86,7 +93,7 @@ func TestParseChecksums_FilenamesWithSpaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseChecksums failed: %v", err)
 	}
-	if got := m["bv 1.0.0 windows amd64.tar.gz"]; got != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
+	if got := m["b9s 1.0.0 windows amd64.tar.gz"]; got != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 		t.Fatalf("unexpected checksum for spaced filename: %q", got)
 	}
 }

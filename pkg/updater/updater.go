@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	repoOwner = "vanderheijden86"
-	repoName  = "beadwork"
-	baseURL   = "https://api.github.com/repos/" + repoOwner + "/" + repoName
+	repoOwner              = "vanderheijden86"
+	repoName               = "b9s"
+	baseURL                = "https://api.github.com/repos/" + repoOwner + "/" + repoName
+	maxExtractedBinarySize = 256 << 20
 )
 
 // Release represents a GitHub release
@@ -57,7 +58,7 @@ func CheckForUpdates() (string, string, error) {
 	client := &http.Client{
 		Timeout: 2 * time.Second,
 	}
-	return checkForUpdates(client, "https://api.github.com/repos/Dicklesworthstone/beadwork/releases/latest")
+	return checkForUpdates(client, baseURL+"/releases/latest")
 }
 
 func checkForUpdates(client *http.Client, url string) (string, string, error) {
@@ -66,7 +67,7 @@ func checkForUpdates(client *http.Client, url string) (string, string, error) {
 		return "", "", err
 	}
 	// GitHub recommends sending a UA; some endpoints 403 without it.
-	req.Header.Set("User-Agent", "beadwork-update-check")
+	req.Header.Set("User-Agent", "b9s-update-check")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -316,7 +317,7 @@ func GetLatestRelease() (*Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "beadwork-updater")
+	req.Header.Set("User-Agent", "b9s-updater")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -341,7 +342,7 @@ func getAssetName(version string) string {
 	ver := strings.TrimPrefix(version, "v")
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
-	return fmt.Sprintf("bv_%s_%s_%s.tar.gz", ver, goos, goarch)
+	return fmt.Sprintf("b9s_%s_%s_%s.tar.gz", ver, goos, goarch)
 }
 
 // FindPlatformAsset finds the appropriate asset for the current OS/arch
@@ -365,6 +366,14 @@ func (r *Release) FindChecksumAsset() *Asset {
 	return nil
 }
 
+func requireChecksumAsset(release *Release) (*Asset, error) {
+	asset := release.FindChecksumAsset()
+	if asset == nil {
+		return nil, fmt.Errorf("release %s has no checksums.txt; refusing unverified update", release.TagName)
+	}
+	return asset, nil
+}
+
 // downloadFile downloads a file from URL to a local path.
 //
 // If expectedSize is > 0, the download is size-verified against the HTTP Content-Length
@@ -375,7 +384,7 @@ func downloadFile(url, destPath string, expectedSize int64) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "beadwork-updater")
+	req.Header.Set("User-Agent", "b9s-updater")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -465,7 +474,20 @@ func verifyChecksum(filePath, expectedHash string) error {
 	return nil
 }
 
-// extractBinary extracts the bv binary from a .tar.gz archive
+func validateBinaryArchiveEntry(header *tar.Header) error {
+	if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeRegA {
+		return fmt.Errorf("release binary entry %q is not a regular file", header.Name)
+	}
+	if header.Size <= 0 {
+		return fmt.Errorf("release binary entry %q is empty", header.Name)
+	}
+	if header.Size > maxExtractedBinarySize {
+		return fmt.Errorf("release binary entry %q exceeds %d bytes", header.Name, maxExtractedBinarySize)
+	}
+	return nil
+}
+
+// extractBinary extracts the b9s binary from a .tar.gz archive
 func extractBinary(archivePath, destPath string) error {
 	f, err := os.Open(archivePath)
 	if err != nil {
@@ -489,17 +511,24 @@ func extractBinary(archivePath, destPath string) error {
 			return fmt.Errorf("tar read error: %w", err)
 		}
 
-		// Look for the bv binary (might be ./bv, bv, or just bv)
+		// Archives may store the binary at the root or in a nested directory.
 		name := filepath.Base(header.Name)
-		if name == "bv" || name == "bv.exe" {
+		if name == "b9s" || name == "b9s.exe" {
+			if err := validateBinaryArchiveEntry(header); err != nil {
+				return err
+			}
 			out, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 			if err != nil {
 				return fmt.Errorf("failed to create binary: %w", err)
 			}
 			defer out.Close()
 
-			if _, err := io.Copy(out, tr); err != nil {
+			n, err := io.Copy(out, io.LimitReader(tr, maxExtractedBinarySize+1))
+			if err != nil {
 				return fmt.Errorf("failed to extract binary: %w", err)
+			}
+			if n != header.Size {
+				return fmt.Errorf("extracted binary size mismatch: expected %d, got %d", header.Size, n)
 			}
 			return nil
 		}
@@ -521,7 +550,7 @@ func GetBackupPath(binaryPath string) string {
 	return binaryPath + ".backup"
 }
 
-// PerformUpdate downloads and installs a new version of bv
+// PerformUpdate downloads and installs a new version of b9s
 // Returns an UpdateResult with details about the operation
 func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	result := &UpdateResult{
@@ -541,6 +570,10 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	if asset == nil {
 		return nil, fmt.Errorf("no binary available for %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
+	checksumAsset, err := requireChecksumAsset(release)
+	if err != nil {
+		return nil, err
+	}
 
 	// Get current binary path
 	binaryPath, err := GetCurrentBinaryPath()
@@ -550,7 +583,7 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 
 	// Check write permissions
 	binaryDir := filepath.Dir(binaryPath)
-	testFile := filepath.Join(binaryDir, ".bv-update-test")
+	testFile := filepath.Join(binaryDir, ".b9s-update-test")
 	if f, err := os.Create(testFile); err != nil {
 		result.RequireRoot = true
 		return nil, fmt.Errorf("no write permission to %s (try running with sudo)", binaryDir)
@@ -560,7 +593,7 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	}
 
 	// Create temp directory for download
-	tmpDir, err := os.MkdirTemp("", "bv-update-*")
+	tmpDir, err := os.MkdirTemp("", "b9s-update-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -574,31 +607,28 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	}
 
 	// Download and verify checksum
-	checksumAsset := release.FindChecksumAsset()
-	if checksumAsset != nil {
-		checksumPath := filepath.Join(tmpDir, "checksums.txt")
-		if err := downloadFile(checksumAsset.BrowserDownloadURL, checksumPath, checksumAsset.Size); err != nil {
-			return nil, fmt.Errorf("checksum download failed: %w", err)
-		}
+	checksumPath := filepath.Join(tmpDir, "checksums.txt")
+	if err := downloadFile(checksumAsset.BrowserDownloadURL, checksumPath, checksumAsset.Size); err != nil {
+		return nil, fmt.Errorf("checksum download failed: %w", err)
+	}
 
-		checksums, err := parseChecksums(checksumPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse checksums: %w", err)
-		}
+	checksums, err := parseChecksums(checksumPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse checksums: %w", err)
+	}
 
-		expectedHash, ok := checksums[asset.Name]
-		if !ok {
-			return nil, fmt.Errorf("no checksum found for %s", asset.Name)
-		}
+	expectedHash, ok := checksums[asset.Name]
+	if !ok {
+		return nil, fmt.Errorf("no checksum found for %s", asset.Name)
+	}
 
-		fmt.Println("Verifying checksum...")
-		if err := verifyChecksum(archivePath, expectedHash); err != nil {
-			return nil, fmt.Errorf("checksum verification failed: %w", err)
-		}
+	fmt.Println("Verifying checksum...")
+	if err := verifyChecksum(archivePath, expectedHash); err != nil {
+		return nil, fmt.Errorf("checksum verification failed: %w", err)
 	}
 
 	// Extract binary to temp location
-	newBinaryPath := filepath.Join(tmpDir, "bv-new")
+	newBinaryPath := filepath.Join(tmpDir, "b9s-new")
 	if runtime.GOOS == "windows" {
 		newBinaryPath += ".exe"
 	}

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_OWNER="Dicklesworthstone"
+REPO_OWNER="vanderheijden86"
 REPO_NAME="b9s"
-BIN_NAME="bv"
+BIN_NAME="b9s"
 
 TMP_DIRS=()
 
@@ -130,6 +130,35 @@ download_file() {
     elif command -v wget >/dev/null 2>&1; then
         wget -q "$url" -O "$dest" || return 1
     else
+        return 1
+    fi
+}
+
+verify_checksum() {
+    local file="$1"
+    local asset_name="$2"
+    local checksum_file="$3"
+    local expected actual
+
+    expected=$(awk -v name="$asset_name" '$2 == name { print $1; exit }' "$checksum_file")
+    if [[ ! "$expected" =~ ^[[:xdigit:]]{64}$ ]]; then
+        print_error "No valid SHA-256 checksum found for $asset_name"
+        return 1
+    fi
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual=$(sha256sum "$file" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual=$(shasum -a 256 "$file" | awk '{print $1}')
+    else
+        print_error "sha256sum or shasum is required to verify the release"
+        return 1
+    fi
+
+    actual=$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')
+    expected=$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')
+    if [ "$actual" != "$expected" ]; then
+        print_error "SHA-256 checksum verification failed for $asset_name"
         return 1
     fi
 }
@@ -319,12 +348,17 @@ def main():
 
     version = data.get("tag_name") or ""
     name, url = pick_asset(data, platform, bin_name)
+    checksum_url = next(
+        (asset.get("browser_download_url") or "" for asset in data.get("assets") or [] if asset.get("name") == "checksums.txt"),
+        "",
+    )
 
     print(version)
     print(url or "")
     print(name or "")
+    print(checksum_url)
 
-    return 0 if url else 1
+    return 0 if url and checksum_url else 1
 
 
 if __name__ == "__main__":
@@ -418,12 +452,13 @@ try_binary_install() {
     local release_json
     release_json=$(get_latest_release) || return 1
 
-    local parsed version download_url asset_name
+    local parsed version download_url asset_name checksum_url
     parsed=$(printf '%s' "$release_json" | select_release_asset "$platform") || true
 
     version=$(printf '%s' "$parsed" | sed -n '1p')
     download_url=$(printf '%s' "$parsed" | sed -n '2p')
     asset_name=$(printf '%s' "$parsed" | sed -n '3p')
+    checksum_url=$(printf '%s' "$parsed" | sed -n '4p')
 
     if [ -z "$download_url" ]; then
         print_warn "No pre-built binary found for $platform"
@@ -452,6 +487,15 @@ try_binary_install() {
 
     if ! download_file "$download_url" "$archive_path"; then
         print_warn "Download failed"
+        return 1
+    fi
+
+    local checksum_path="$tmp_dir/checksums.txt"
+    if ! download_file "$checksum_url" "$checksum_path"; then
+        print_error "Checksum download failed"
+        return 1
+    fi
+    if ! verify_checksum "$archive_path" "$asset_name" "$checksum_path"; then
         return 1
     fi
 
@@ -585,7 +629,7 @@ main() {
         print_info "Run '$BIN_NAME' in any beads project to view issues."
         echo ""
         echo "Tip: You can also install via Homebrew:"
-        echo "  brew install dicklesworthstone/tap/bv"
+        echo "  brew install vanderheijden86/tap/b9s"
         exit 0
     fi
 
@@ -597,7 +641,7 @@ main() {
     print_info "Run '$BIN_NAME' in any beads project to view issues."
     echo ""
     echo "Tip: You can also install via Homebrew:"
-    echo "  brew install dicklesworthstone/tap/bv"
+    echo "  brew install vanderheijden86/tap/b9s"
 }
 
 if [[ ${BASH_SOURCE+x} != x ]]; then
