@@ -238,6 +238,16 @@ func TestReleaseConfigurationPinsActionsAndEmitsProvenance(t *testing.T) {
 			t.Fatalf("release workflow still uses mutable action ref %q", mutableRef)
 		}
 	}
+	for _, currentPinnedRef := range []string{
+		"actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+		"actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0",
+		"goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3",
+		"actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2",
+	} {
+		if !strings.Contains(workflowText, currentPinnedRef) {
+			t.Fatalf("workflow missing current pinned action %q", currentPinnedRef)
+		}
+	}
 	for _, required := range []string{"actions/attest-build-provenance@", "attestations: write", "id-token: write", "subject-path:"} {
 		if !strings.Contains(workflowText, required) {
 			t.Fatalf("release workflow missing %q", required)
