@@ -457,7 +457,7 @@ func TestTreeViewSortPopupOpensOnS(t *testing.T) {
 	}
 }
 
-func TestTreeViewColumnPopupOpensOnC(t *testing.T) {
+func TestTreeViewColumnPopupOpensOnPipe(t *testing.T) {
 	issues := createTreeTestIssues()
 	m := ui.NewModel(issues, "")
 	m = enterTreeView(t, m)
@@ -466,9 +466,9 @@ func TestTreeViewColumnPopupOpensOnC(t *testing.T) {
 		t.Fatal("column popup should be closed initially")
 	}
 
-	m = sendKey(t, m, "C")
+	m = sendKey(t, m, "|")
 	if !m.TreeColumnPopupOpen() {
-		t.Error("column popup should be open after pressing C")
+		t.Error("column popup should be open after pressing |")
 	}
 }
 

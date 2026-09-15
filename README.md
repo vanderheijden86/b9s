@@ -265,7 +265,8 @@ If B9s cannot connect to the configured Dolt server, it falls back to the next a
 | `/` | Fuzzy search | `s` | Cycle sort mode |
 | `n` / `N` | Next / Prev match | `l` | Label picker |
 | `f` | Toggle highlighted tree branch filter | | |
-| `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All | `d` | Toggle detail panel |
+| `\|` | Choose optional tree columns | `c` | Copy tree row's ID and title |
+| `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All (tree view: `C` for Closed) | `d` | Toggle detail panel |
 | `Ctrl+R` / `F5` | Refresh data immediately | `?` | Show help |
 
 The mouse wheel moves through tasks and scrolls the detail pane. To select terminal text while mouse reporting is active, hold the terminal's override while dragging (`Option` in iTerm2, commonly `Shift` elsewhere).

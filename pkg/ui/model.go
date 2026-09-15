@@ -3087,7 +3087,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 			m.tree.ColumnPopupUp()
 		case " ", "space", "enter":
 			m.tree.CycleColumnPreference()
-		case "esc", "C":
+		case "esc", "|":
 			m.tree.CloseColumnPopup()
 		}
 		return m
@@ -3183,7 +3183,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "s":
 		// Open sort popup menu (bd-u81)
 		m.tree.OpenSortPopup()
-	case "C":
+	case "|":
 		m.tree.OpenColumnPopup()
 	case "/":
 		m.queryState.StartEditing()
@@ -3208,6 +3208,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		m.tree.ApplyFilter(m.currentFilter)
 		m.syncTreeToDetail()
 	case "c":
+		m.copyTreeIssueIDAndTitle()
+	case "C":
 		// Filter: closed issues (bd-5nw)
 		m.currentFilter = "closed"
 		m.applyFilter()
@@ -4446,9 +4448,10 @@ func (m *Model) renderHelpOverlay() string {
 		{"Tab", "Cycle node visibility"},
 		{"1-9", "Expand to level N"},
 		{"d", "Toggle detail panel"},
-		{"o/c/r/a", "Filter: open/closed/ready/all"},
+		{"c", "Copy ID and title"},
+		{"o/C/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
-		{"C", "Choose columns"},
+		{"|", "Choose columns"},
 		{"/", "Search tree"},
 		{"f", "Toggle highlighted branch"},
 		{"n/N", "Next/prev match"},
@@ -4662,7 +4665,8 @@ func (m *Model) renderFooter() string {
 			{"g", "deps"},
 			{"j/k", "nav"},
 			{"s", "sort"},
-			{"C", "columns"},
+			{"c", "copy"},
+			{"|", "columns"},
 			{"/", "search"},
 			{"f", "branch"},
 			{"e", "edit"},
@@ -5672,6 +5676,28 @@ func (m *Model) copyIssueToClipboard() {
 	}
 
 	m.statusMsg = fmt.Sprintf("📋 Copied %s to clipboard", issue.ID)
+	m.statusIsError = false
+}
+
+// copyTreeIssueIDAndTitle copies the highlighted tree row as "<id> <title>",
+// short enough to paste into a commit message or chat.
+func (m *Model) copyTreeIssueIDAndTitle() {
+	issue := m.tree.SelectedIssue()
+	if issue == nil {
+		m.statusMsg = "❌ No issue selected"
+		m.statusIsError = true
+		return
+	}
+	writeClipboard := m.clipboardWrite
+	if writeClipboard == nil {
+		writeClipboard = clipboard.WriteAll
+	}
+	if err := writeClipboard(issue.ID + " " + issue.Title); err != nil {
+		m.statusMsg = fmt.Sprintf("❌ Clipboard error: %v", err)
+		m.statusIsError = true
+		return
+	}
+	m.statusMsg = fmt.Sprintf("📋 Copied %s and title to clipboard", issue.ID)
 	m.statusIsError = false
 }
 

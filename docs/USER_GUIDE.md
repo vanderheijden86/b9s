@@ -872,7 +872,9 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `S` | Change the status of every marked issue, or the current node when none are marked |
 | **Integration** | |
 | `Tab` | Sync selection to detail panel (in split view) |
-| `C` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
+| `c` | Copy the current row's ID and title, as `<id> <title>` |
+| `C` | Filter: Closed issues (`o`, `r` and `a` work as in the list) |
+| `\|` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
 | `E` / `Esc` | Exit tree view, return to list |
 
 Marking follows k9s, with the Emacs dired keys `u` (unmark) and `U` (unmark all) alongside. macOS uses `Ctrl+Space` to switch input sources by default, so the terminal often never receives it; `V` marks the same range. `Ctrl+U` stays page up. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. `S` opens the status picker for the same set (its title shows the count, for example "Change Status (3 issues)") and applies the chosen status with one `bd update`. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
@@ -2581,6 +2583,9 @@ bw has a comprehensive built-in help system:
 | | `u` | Unmark row |
 | | `Ctrl+\` / `U` | Clear marks |
 | | `K` / `Delete` | Close / delete marked issues (else current) |
+| | `c` | Copy current row's ID and title |
+| | `C` | Show **Closed** Issues |
+| | `\|` | Choose optional columns (`Auto`, `Show`, or `Hide`) |
 | | `f` | Toggle the highlighted issue's top-level branch filter |
 | | `o` / `O` | Expand all / Collapse all |
 | | `g` / `G` | Jump to top / bottom |

@@ -173,7 +173,7 @@ func TestTreeViewColumnSelectorForcesLaneStageVisible(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, adaptiveColumnFixture(t))
 
-	out, err := runTreeTUI(t, tempDir, 1800, []keyStep{k("C"), k(" "), k("C")})
+	out, err := runTreeTUI(t, tempDir, 1800, []keyStep{k("|"), k(" "), k("|")})
 	if err != nil {
 		t.Fatalf("run tree TUI: %v", err)
 	}
@@ -592,7 +592,7 @@ func TestTreeViewFilterOpen(t *testing.T) {
 	containsAll(t, out, []string{"Open Task A", "Ready Task E"})
 }
 
-// TestTreeViewFilterClosed verifies pressing 'c' filters to show only closed issues.
+// TestTreeViewFilterClosed verifies pressing 'C' filters to show only closed issues.
 func TestTreeViewFilterClosed(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
@@ -600,7 +600,7 @@ func TestTreeViewFilterClosed(t *testing.T) {
 	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
 		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all first
-		k("c"), // Filter: closed only
+		k("C"), // Filter: closed only
 	})
 	if err != nil {
 		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
@@ -636,7 +636,7 @@ func TestTreeViewFilterAllResets(t *testing.T) {
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
 		// Tree view is the default on launch (bd-dxc)
 		k("X"), // Expand all
-		k("c"), // Filter: closed only
+		k("C"), // Filter: closed only
 		k("a"), // Reset filter: show all
 	})
 	if err != nil {
@@ -654,7 +654,7 @@ func TestTreeViewFilterEscClears(t *testing.T) {
 
 	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
 		// Tree view is the default on launch (bd-dxc)
-		k("c"),    // Filter: closed only
+		k("C"),    // Filter: closed only
 		k("\x1b"), // ESC: should clear filter (not exit tree view)
 	})
 	if err != nil {
