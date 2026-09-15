@@ -1007,7 +1007,8 @@ func defaultTutorialPages() []TutorialPage {
 |-----|--------|
 | **j/k** | Move down/up |
 | **h/l** | Move left/right |
-| **Home/G** | Top/bottom |
+| **Home/End** | Top/bottom |
+| **Ctrl+F/Ctrl+B** | Page down/up |
 | **Enter** | Select |
 
 ### Filtering

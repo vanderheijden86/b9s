@@ -2206,8 +2206,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle H to toggle picker panel visibility (bd-j764)
-		if msg.String() == "H" && m.list.FilterState() != list.Filtering {
+		// Handle H, or k9s's Ctrl-E, to toggle picker panel visibility (bd-j764)
+		if (msg.String() == "H" || msg.String() == "ctrl+e") && m.list.FilterState() != list.Filtering {
 			m.pickerVisible = !m.pickerVisible
 			// Resize tree/board after toggling to reclaim/yield space
 			m.tree.SetSize(m.treeLayoutSize())
@@ -2965,9 +2965,9 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.board.MoveToTop()
 	case "G", "end":
 		m.board.MoveToBottom()
-	case "ctrl+d":
+	case "ctrl+d", "ctrl+f", "pgdown":
 		m.board.PageDown(m.height / 3)
-	case "ctrl+u":
+	case "ctrl+u", "ctrl+b", "pgup":
 		m.board.PageUp(m.height / 3)
 
 	// Column jumping (bv-yg39)
@@ -3195,28 +3195,33 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "l":
 		m.tree.ExpandOrMoveToChild()
 		m.syncTreeToDetail()
-	case "left":
+	// Home, End, Ctrl-F/PgDn and Ctrl-B/PgUp page as in k9s tables; g stays
+	// the dependency graph and Ctrl-D/Ctrl-U stay half pages
+	case "left", "ctrl+b", "pgup":
 		m.tree.PageBackwardFull()
 		m.syncTreeToDetail()
-	case "right":
+	case "right", "ctrl+f", "pgdown":
 		m.tree.PageForwardFull()
 		m.syncTreeToDetail()
 	case "home":
 		m.tree.JumpToTop()
 		m.syncTreeToDetail()
-	case "G":
+	case "G", "end":
 		m.tree.JumpToBottom()
 		m.syncTreeToDetail()
 	case "X":
 		m.tree.ExpandAll()
 	case "Z":
 		m.tree.CollapseAll()
-	case "ctrl+d", "pgdown":
+	case "ctrl+d":
 		m.tree.PageDown()
 		m.syncTreeToDetail()
-	case "ctrl+u", "pgup":
+	case "ctrl+u":
 		m.tree.PageUp()
 		m.syncTreeToDetail()
+	case "ctrl+w":
+		// k9s Toggle Wide
+		m.tree.ToggleWide()
 	case "s":
 		// Open sort popup menu (bd-u81)
 		m.tree.OpenSortPopup()
@@ -3365,9 +3370,9 @@ func (m Model) handleGraphKeys(msg tea.KeyMsg) Model {
 		m.graph.JumpToTop()
 	case "G", "end":
 		m.graph.JumpToBottom()
-	case "ctrl+d", "pgdown":
+	case "ctrl+d", "ctrl+f", "pgdown":
 		m.graph.PageDown()
-	case "ctrl+u", "pgup":
+	case "ctrl+u", "ctrl+b", "pgup":
 		m.graph.PageUp()
 	case "enter":
 		m.updateViewportContent()
@@ -3589,9 +3594,9 @@ func (m Model) handleHelpKeys(msg tea.KeyMsg) Model {
 		if m.helpScroll > 0 {
 			m.helpScroll--
 		}
-	case "ctrl+d":
+	case "ctrl+d", "ctrl+f", "pgdown":
 		m.helpScroll += 10
-	case "ctrl+u":
+	case "ctrl+u", "ctrl+b", "pgup":
 		m.helpScroll -= 10
 		if m.helpScroll < 0 {
 			m.helpScroll = 0
@@ -4392,9 +4397,10 @@ func (m *Model) renderHelpOverlay() string {
 	navSection := []struct{ key, desc string }{
 		{"j / ↓", "Move down"},
 		{"k / ↑", "Move up"},
-		{"G/end", "Go to last"},
-		{"Ctrl+d", "Page down"},
-		{"Ctrl+u", "Page up"},
+		{"Home/End", "Go to first / last"},
+		{"Ctrl+f/PgDn", "Page down"},
+		{"Ctrl+b/PgUp", "Page up"},
+		{"Ctrl+d/u", "Half page down / up"},
 		{"Tab", "Switch focus"},
 		{"Enter", "View details"},
 		{"Esc", "Back / close"},
@@ -4416,6 +4422,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"?", "This help"},
 		{"Ctrl+S", "Search this help"},
 		{":", "Command prompt"},
+		{"Ctrl+e", "Toggle header"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},
 		{"'", "Recipes"},
@@ -4473,7 +4480,8 @@ func (m *Model) renderHelpOverlay() string {
 		{"l", "Expand / child"},
 		{"←/→", "Page back/forward"},
 		{"Enter", "Open detail"},
-		{"Home/G", "Top / bottom"},
+		{"Home/End/G", "Top / bottom"},
+		{"Ctrl+w", "Toggle wide columns"},
 		{"p", "Jump to parent"},
 		{"X/Z", "Expand / collapse all"},
 		{"Tab", "Cycle node visibility"},

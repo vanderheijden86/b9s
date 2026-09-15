@@ -113,13 +113,13 @@ const contextHelpTree = `## Tree View
   j/k       Move up/down
   h         Collapse or go to parent
   l         Expand or go to child
-  ←/→       Page backward/forward
+  ^b/^f     Page back/fwd (←/→ PgUp/PgDn; ^u/^d half)
   Enter/Spc Toggle expand/collapse
-  Home/G    Jump to top/bottom
+  Home/End  Jump to top/bottom (G also bottom)
   p         Jump to parent node
 
 **Structure**
-  X/Z       Expand/collapse all
+  X/Z       Expand/collapse all · ^w  Wide columns
   Tab       Cycle node visibility
   S-Tab     Cycle global visibility
   1-9       Expand to level N
@@ -143,8 +143,8 @@ const contextHelpGraph = `## Dependency Graph
 
 **Navigation**
   j/k       Select issue
-  Home/G    Jump to top/bottom
-  ^d/^u     Page down/up
+  Home/End  Jump to top/bottom (G also bottom)
+  ^f/^b     Page down/up (also ^d/^u, PgDn/PgUp)
   Enter     Open issue details
 
 **Relationships**

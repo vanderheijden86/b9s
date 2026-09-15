@@ -853,15 +853,17 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | **Movement** | |
 | `j` / `k` / `↓` / `↑` | Move cursor down / up |
 | Mouse wheel | Move through tasks or scroll the focused detail pane |
-| `g` / `G` | Jump to first / last node |
+| `Home` / `End` (or `G`) | Jump to first / last node |
+| `Ctrl+F` / `PgDn` / `→` | Page down (full viewport) |
+| `Ctrl+B` / `PgUp` / `←` | Page up (full viewport) |
 | `Ctrl+D` / `Ctrl+U` | Page down / up (half viewport) |
 | Selection override + drag | Select terminal text (`Option` in iTerm2, commonly `Shift` elsewhere) |
 | **Expand/Collapse** | |
 | `Enter` | Open the detail view for the current node |
-| `l` / `→` | Expand node, or move to first child if already expanded |
-| `h` / `←` | Collapse node, or jump to parent if already collapsed |
-| `o` | Expand all nodes in the tree |
-| `O` | Collapse all nodes in the tree |
+| `l` | Expand node, or move to first child if already expanded |
+| `h` | Collapse node, or jump to parent if already collapsed |
+| `X` | Expand all nodes in the tree |
+| `Z` | Collapse all nodes in the tree |
 | **Marking & bulk actions** | |
 | `Space` / `m` | Mark or unmark the current node |
 | `u` | Unmark the current node (never marks it) |
@@ -875,7 +877,11 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `c` | Copy the current row's ID and title, as `<id> <title>` |
 | `C` | Filter: Closed issues (`o`, `r` and `a` work as in the list) |
 | `\|` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
+| `Ctrl+W` | Show every optional column; press again to restore the previous choices |
+| `Ctrl+E` / `H` | Show or hide the project header |
 | `E` / `Esc` | Exit tree view, return to list |
+
+Navigation follows k9s tables, where `g` / `Home` go to the first row, `G` / `End` to the last, and `Ctrl+F` / `PgDn` and `Ctrl+B` / `PgUp` move a full page. In b9s `g` opens the dependency graph, so only `Home` goes to the top. The board, graph and help overlay accept the same page keys.
 
 Marking follows k9s, with the Emacs dired keys `u` (unmark) and `U` (unmark all) alongside. macOS uses `Ctrl+Space` to switch input sources by default, so the terminal often never receives it; `V` marks the same range. `Ctrl+U` stays page up. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. `S` opens the status picker for the same set (its title shows the count, for example "Change Status (3 issues)") and applies the chosen status with one `bd update`. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
 

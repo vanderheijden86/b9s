@@ -302,6 +302,7 @@ type TreeModel struct {
 	sortMode       SortMode                  // Current sort mode for tree siblings (bd-adf) — legacy, kept for CycleSortMode compat
 	sortField      SortField                 // Current sort field (bd-x3l)
 	sortDirection  SortDirection             // Current sort direction (bd-x3l)
+	narrowColumns  []ColumnPreference        // Preferences to restore when wide mode ends; nil when not wide
 
 	// Build state
 	built    bool   // Has tree been built?
@@ -1099,6 +1100,23 @@ func (t *TreeModel) ColumnPreference(column TreeColumn) ColumnPreference {
 		return ColumnAuto
 	}
 	return t.columnPreferences[column]
+}
+
+// ToggleWide shows every optional column, as k9s's Toggle Wide does, and on
+// the next call restores the preferences that were in effect before.
+func (t *TreeModel) ToggleWide() {
+	if t.narrowColumns != nil {
+		for c, preference := range t.narrowColumns {
+			t.SetColumnPreference(TreeColumn(c), preference)
+		}
+		t.narrowColumns = nil
+		return
+	}
+	t.narrowColumns = make([]ColumnPreference, treeColumnCount)
+	for c := TreeColumn(0); c < treeColumnCount; c++ {
+		t.narrowColumns[c] = t.ColumnPreference(c)
+		t.SetColumnPreference(c, ColumnShow)
+	}
 }
 
 // RenderColumnPopup renders the optional-column selector. Space or Enter cycles
