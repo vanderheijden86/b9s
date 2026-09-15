@@ -33,8 +33,16 @@ scripts/preview/preview-verify  TASK_ID COMMIT_SHA
 scripts/preview/preview-destroy TASK_ID COMMIT_SHA
 ```
 
-Every command requires a full lowercase commit SHA and refuses a different or
-dirty worktree. The default kubeconfig is
+Every command requires a full lowercase commit SHA and refuses a different HEAD
+or uncommitted source changes. The only worktree exceptions are untracked
+`.codex-tmp/` harness files, an unstaged modification of `.beads/.local_version`
+(Beads' local upgrade-notification state), and an untracked `.beads.gate.lock`
+(the local Beads coordination lock). These artifacts remain in place and are
+excluded from the preview image build context by `Dockerfile.dockerignore`.
+Staged changes, Beads issue/configuration edits, and other untracked files still
+block delivery. Do not reset, delete, or hide files to satisfy the guard.
+
+The default kubeconfig is
 `/mnt/secrets/preview/preview.kubeconfig`, the project-scoped b9s credential
 issued by osenco-infra. The default context is `preview`.
 
@@ -197,7 +205,9 @@ scripts/preview/preview-verify bd-b6jw "$sha"
 scripts/preview/preview-status bd-b6jw "$sha"
 ```
 
-The contract guard is safe and does not call the cluster:
+The contract tests use disposable local Git repositories and do not call an image
+builder or the cluster. They require Bash, Git, and GNU `timeout` (`gtimeout` is
+also accepted), with a five-second deadline for each boundary check:
 
 ```sh
 tests/preview_contract_test.sh

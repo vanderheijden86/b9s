@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 // treeFixtureDep is a dependency entry for tree test JSONL fixtures.
@@ -239,7 +241,7 @@ func runTreeTUI(t *testing.T, dir string, autoCloseMs int, keys []keyStep) ([]by
 
 	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
-		t.Skipf("skipping: timed out (likely TTY/OS mismatch); output:\n%s", out)
+		t.Fatalf("TUI exceeded 15-second deadline; output:\n%s", out)
 	}
 	return out, err
 }
@@ -467,23 +469,99 @@ func TestTreeViewCollapseAll(t *testing.T) {
 	}
 }
 
-// TestTreeViewToggleExpand verifies that Enter/Space toggles expand/collapse on a node.
-func TestTreeViewToggleExpand(t *testing.T) {
-	tempDir := t.TempDir()
-	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
-
-	// First collapse all, then navigate to epic-1 and expand it
-	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
-		// Tree view is the default on launch (bd-dxc)
-		k("Z"), // Collapse all
-		k(" "), // Toggle expand on first node (epic-1, which is selected by default)
-	})
-	if err != nil {
-		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+func TestTreeFinalFrameOverwritesEarlierChildren(t *testing.T) {
+	out := "\x1b[H\rEpic One\r\nTask One\r\nTask Two\x1b[3;1H" +
+		"\x1b[H\rEpic One\r\nStandalone Task\r\n\x1b[K\x1b[3;1H\x1b[?1049l"
+	frame := ansi.Strip(treeFinalFrame([]byte(out)))
+	if strings.Contains(frame, "Task One") || strings.Contains(frame, "Task Two") {
+		t.Fatalf("final frame retained earlier children: %q", frame)
 	}
+}
 
-	// After expanding epic-1, its children should become visible
-	containsAll(t, out, []string{"Epic One", "Task One", "Task Two"})
+func TestTreeFinalFrameRetainsUnchangedRows(t *testing.T) {
+	out := "\x1b[H\rEpic One\r\nTask One\r\nTask Two\x1b[3;1H" +
+		"\x1b[H\nTask Three\r\n\x1b[3;1H\x1b[?1049l"
+	frame := ansi.Strip(treeFinalFrame([]byte(out)))
+	if frame != "Epic One\nTask Three\nTask Two" {
+		t.Fatalf("unexpected final frame: %q", frame)
+	}
+}
+
+func treeFinalFrame(out []byte) string {
+	// Bubble Tea starts each alternate-screen update at home and emits whole
+	// changed rows. Bare newlines retain cached rows; erase-line clears them.
+	transcript, _, _ := strings.Cut(string(out), "\x1b[?1049l")
+	var rows []string
+	for _, update := range strings.Split(transcript, "\x1b[H")[1:] {
+		for i, raw := range strings.Split(update, "\n") {
+			line := strings.Trim(ansi.Strip(raw), "\r")
+			if line == "" && !strings.Contains(raw, "\x1b[K") {
+				continue
+			}
+			for len(rows) <= i {
+				rows = append(rows, "")
+			}
+			rows[i] = strings.Trim(raw, "\r")
+		}
+	}
+	return strings.Join(rows, "\n")
+}
+
+// TestTreeViewToggleExpand verifies Tab folds the selected root, as advertised
+// by the tree footer. Assertions cover the final screen, including selection.
+func TestTreeViewToggleExpand(t *testing.T) {
+	// The selected row is identified by its background, even in colorless CI.
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("CLICOLOR_FORCE", "1")
+	t.Setenv("COLORTERM", "truecolor")
+	for _, tc := range []struct {
+		name     string
+		toggles  int
+		expanded bool
+	}{
+		{name: "selected_collapsed_root"},
+		{name: "expanded", toggles: 1, expanded: true},
+		{name: "collapsed_again", toggles: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			issues := makeTreeHierarchy(t)
+			// Default ordering is Created descending. Unique fixed timestamps
+			// put epic-1 first without relying on priority or input order ties.
+			created := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+			for i := range issues {
+				issues[i].CreatedAt = created.Add(-time.Duration(i) * time.Hour).Format(time.RFC3339)
+			}
+			writeTreeFixture(t, tempDir, issues)
+			keys := []keyStep{k("Z"), k("g")}
+			for i := 0; i < tc.toggles; i++ {
+				keys = append(keys, k("\t"))
+			}
+			out, err := runTreeTUI(t, tempDir, 3500, keys)
+			if err != nil {
+				t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+			}
+			frame := treeFinalFrame(out)
+			selected := false
+			for _, row := range strings.Split(frame, "\n") {
+				if strings.Contains(ansi.Strip(row), "Epic One") && strings.Contains(row, "\x1b[48;") {
+					selected = true
+				}
+			}
+			if !selected {
+				t.Fatalf("expected Epic One to be highlighted as selected; final frame:\n%s", frame)
+			}
+			plain := ansi.Strip(frame)
+			for _, child := range []string{"Task One", "Task Two"} {
+				if strings.Contains(plain, child) != tc.expanded {
+					t.Errorf("final frame visibility of %q: want %t; frame:\n%s", child, tc.expanded, plain)
+				}
+			}
+			if strings.Contains(plain, "Subtask Alpha") || strings.Contains(plain, "Subtask Beta") {
+				t.Errorf("fold toggle should leave grandchildren hidden; final frame:\n%s", plain)
+			}
+		})
+	}
 }
 
 // ============================================================================
