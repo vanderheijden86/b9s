@@ -2755,6 +2755,16 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						m.focused = focusTree
 					}
+				} else if m.treeViewActive && (msg.String() == "n" || msg.String() == "p") {
+					// Step through sibling issues without leaving the detail view;
+					// the tree cursor is the selection the detail renders from.
+					if msg.String() == "n" {
+						m.tree.NextSibling()
+					} else {
+						m.tree.PrevSibling()
+					}
+					m.syncTreeToDetail()
+					m.viewport.GotoTop()
 				} else if m.treeViewActive && msg.String() == "d" {
 					// Toggle detail panel from detail focus in tree view (bd-80u)
 					m.treeDetailHidden = !m.treeDetailHidden
@@ -4487,6 +4497,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Tab", "Cycle node visibility"},
 		{"1-9", "Expand to level N"},
 		{"d", "Toggle detail panel"},
+		{"n/p", "Detail: next/prev sibling"},
 		{"c", "Copy ID and title"},
 		{"o/C/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
@@ -4745,6 +4756,7 @@ func (m *Model) renderFooter() string {
 			{"0-9", "project"},
 			{"^R", "refresh"},
 			{"esc", "back"},
+			{"n/p", "next/prev sibling"},
 			{"e", "edit"},
 			{"c", "copy"},
 			{"O", "open"},
