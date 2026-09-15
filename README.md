@@ -280,6 +280,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. To select termi
 | `Shift+K` | Close selected issue after confirmation |
 | `Delete` | Permanently delete selected issue after confirmation |
 | `?` | Keyboard shortcuts help |
+| `Ctrl+S` (in help) | Search shortcuts; Enter keeps the filter, Esc clears it |
 | `[` / `]` | Resize split pane |
 | `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table; Tab accepts the suggestion |
 

@@ -2587,6 +2587,7 @@ bw has a comprehensive built-in help system:
 | | `C` | Copy Issue to Clipboard |
 | | `O` | Open in Editor |
 | **Help & Learning** | `?` | Toggle Help Overlay (keyboard shortcuts) |
+| | `Ctrl+S` | Search the Help Overlay by key or description (Enter keeps the filter, Esc clears it) |
 | | `` ` `` | Open Interactive Tutorial (progress saved) |
 | **Global** | `;` | Toggle Shortcuts Sidebar |
 | | `!` | Toggle **Alerts Panel** (proactive warnings) |

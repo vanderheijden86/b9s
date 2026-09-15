@@ -499,6 +499,8 @@ type Model struct {
 	showDetails          bool
 	showHelp             bool
 	helpScroll           int // Scroll offset for help overlay
+	helpSearching        bool            // True while Ctrl+S search input in the help overlay takes keys
+	helpSearchInput      textinput.Model // Query filtering the help overlay's shortcut rows
 	showQuitConfirm      bool
 	issueConfirm         issueConfirmation
 	showDBHealth         bool           // True when database health popup is visible
@@ -1912,6 +1914,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMsg = ""
 		m.statusIsError = false
 
+		// The help search owns every key while editing, ahead of the global
+		// single-key bindings (?, :, `) that would otherwise close help.
+		if m.focused == focusHelp && m.helpSearching {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			return m.handleHelpSearchKey(msg)
+		}
+
 		// Handle status picker modal (bd-a83)
 		if m.showStatusPicker {
 			switch msg.String() {
@@ -2111,7 +2122,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showHelp {
 				m.focusBeforeHelp = m.focused // Store current focus before switching to help
 				m.focused = focusHelp
-				m.helpScroll = 0 // Reset scroll position when opening help
+				m.resetHelpSearch() // Opening help starts unscrolled and unfiltered
 			} else {
 				m.focused = m.restoreFocusFromHelp()
 			}
@@ -3544,7 +3555,24 @@ func (m Model) handleHelpKeys(msg tea.KeyMsg) Model {
 	case "G", "end":
 		// Will be clamped in render
 		m.helpScroll = 999
-	case "esc", "?", "f1":
+	case "ctrl+s":
+		if m.helpSearchInput.Value() == "" {
+			m.helpSearchInput = newHelpSearchInput()
+		}
+		m.helpSearching = true
+		m.helpSearchInput.Focus()
+		m.helpScroll = 0
+	case "esc":
+		// An active filter is cleared first, so Esc never loses the query and
+		// the overlay in one press.
+		if m.helpSearchInput.Value() != "" {
+			m.resetHelpSearch()
+			return m
+		}
+		m.showHelp = false
+		m.helpScroll = 0
+		m.focused = m.restoreFocusFromHelp()
+	case "?", "f1":
 		// Close help overlay and restore previous focus
 		m.showHelp = false
 		m.helpScroll = 0
@@ -3557,6 +3585,53 @@ func (m Model) handleHelpKeys(msg tea.KeyMsg) Model {
 		m.focused = m.restoreFocusFromHelp()
 	}
 	return m
+}
+
+// handleHelpSearchKey edits the help overlay's search query. Enter keeps the
+// filter and hands keys back to scrolling; Esc discards the query.
+func (m Model) handleHelpSearchKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.helpSearching = false
+		m.helpSearchInput.Blur()
+		return m, nil
+	case "esc":
+		m.resetHelpSearch()
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.helpSearchInput, cmd = m.helpSearchInput.Update(msg)
+	m.helpScroll = 0
+	return m, cmd
+}
+
+func (m *Model) resetHelpSearch() {
+	m.helpSearching = false
+	m.helpSearchInput = newHelpSearchInput()
+	m.helpScroll = 0
+}
+
+func newHelpSearchInput() textinput.Model {
+	ti := textinput.New()
+	ti.Prompt = "🔍 "
+	ti.Placeholder = "search shortcuts"
+	return ti
+}
+
+// filterHelpShortcuts keeps the rows whose key or description contains query,
+// case-insensitively. An empty query keeps every row.
+func filterHelpShortcuts(rows []struct{ key, desc string }, query string) []struct{ key, desc string } {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return rows
+	}
+	var kept []struct{ key, desc string }
+	for _, r := range rows {
+		if strings.Contains(strings.ToLower(r.key), query) || strings.Contains(strings.ToLower(r.desc), query) {
+			kept = append(kept, r)
+		}
+	}
+	return kept
 }
 
 func (m Model) renderLoadingScreen() string {
@@ -4299,6 +4374,7 @@ func (m *Model) renderHelpOverlay() string {
 
 	globalSection := []struct{ key, desc string }{
 		{"?", "This help"},
+		{"Ctrl+S", "Search this help"},
 		{":", "Command prompt"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},
@@ -4310,7 +4386,6 @@ func (m *Model) renderHelpOverlay() string {
 
 	filterSection := []struct{ key, desc string }{
 		{"/", "Fuzzy search"},
-		{"Ctrl+S", "Semantic search"},
 		{"H", "Hybrid ranking"},
 		{"Alt+H", "Hybrid preset"},
 		{"o", "Open issues"},
@@ -4399,17 +4474,30 @@ func (m *Model) renderHelpOverlay() string {
 	}
 
 	// Build panels in an order that stays balanced across responsive columns.
-	panels := []string{
-		renderPanel("Navigation", "🧭", 0, navSection),
-		renderPanel("Views", "👁", 1, viewsSection),
-		renderPanel("Global", "🌐", 2, globalSection),
-		renderPanel("History", "📜", 3, historySection),
-		renderPanel("Tree View", "🌳", 4, treeSection),
-		renderPanel("Insights", "💡", 0, insightsSection),
-		renderPanel("Status", "🩺", 2, statusSection),
-		renderPanel("Filters & Sort", "🔍", 3, filterSection),
-		renderPanel("Actions", "⚡", 1, actionsSection),
-		renderPanel("Editing", "✏️", 4, editingSection),
+	sections := []struct {
+		title, icon string
+		colorIdx    int
+		shortcuts   []struct{ key, desc string }
+	}{
+		{"Navigation", "🧭", 0, navSection},
+		{"Views", "👁", 1, viewsSection},
+		{"Global", "🌐", 2, globalSection},
+		{"History", "📜", 3, historySection},
+		{"Tree View", "🌳", 4, treeSection},
+		{"Insights", "💡", 0, insightsSection},
+		{"Status", "🩺", 2, statusSection},
+		{"Filters & Sort", "🔍", 3, filterSection},
+		{"Actions", "⚡", 1, actionsSection},
+		{"Editing", "✏️", 4, editingSection},
+	}
+	query := m.helpSearchInput.Value()
+	var panels []string
+	for _, s := range sections {
+		rows := filterHelpShortcuts(s.shortcuts, query)
+		if len(rows) == 0 {
+			continue
+		}
+		panels = append(panels, renderPanel(s.title, s.icon, s.colorIdx, rows))
 	}
 
 	// Arrange panels into columns
@@ -4443,9 +4531,22 @@ func (m *Model) renderHelpOverlay() string {
 		Foreground(t.Secondary).
 		Italic(true)
 
+	if len(panels) == 0 {
+		body = subtitleStyle.Render(fmt.Sprintf("No shortcuts match %q", strings.TrimSpace(query)))
+	}
+
 	title := titleStyle.Render("⌨️  Keyboard Shortcuts")
-	subtitle := subtitleStyle.Render("Space: Tutorial │ ? or Esc to close")
+	subtitle := subtitleStyle.Render("Ctrl+S: Search │ Space: Tutorial │ ? or Esc to close")
 	titleBar := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", subtitle)
+	if m.helpSearching || query != "" {
+		searchLine := m.helpSearchInput.View()
+		if m.helpSearching {
+			searchLine += subtitleStyle.Render("  Enter: keep filter │ Esc: clear")
+		} else {
+			searchLine += subtitleStyle.Render("  Ctrl+S: edit │ Esc: clear")
+		}
+		titleBar = lipgloss.JoinVertical(lipgloss.Center, titleBar, searchLine)
+	}
 
 	// Combine title and body
 	content := lipgloss.JoinVertical(lipgloss.Center, titleBar, "", body)
