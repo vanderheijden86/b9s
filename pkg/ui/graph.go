@@ -204,10 +204,11 @@ func (g *GraphModel) renderNodeList(width, height int) string {
 		g.theme.Renderer.NewStyle().Foreground(g.theme.Border).Render(strings.Repeat("─", width)),
 	}
 	for i := g.scrollOffset; i < end; i++ {
-		issue := g.issueMap[g.sortedIDs[i]]
-		if issue == nil {
+		rawIssue := g.issueMap[g.sortedIDs[i]]
+		if rawIssue == nil {
 			continue
 		}
+		issue := sanitizeIssueForTerminal(*rawIssue)
 		line := fmt.Sprintf("%s %s", GetStatusIcon(string(issue.Status)), issue.ID)
 		style := g.theme.Renderer.NewStyle().Width(width)
 		if i == g.selectedIdx {
@@ -228,6 +229,9 @@ func (g *GraphModel) renderNeighborhood(issue *model.Issue, width int) string {
 	if width < 1 {
 		width = 1
 	}
+	rawID := issue.ID
+	displayIssue := sanitizeIssueForTerminal(*issue)
+	issue = &displayIssue
 	var lines []string
 	heading := g.theme.Renderer.NewStyle().Bold(true).Foreground(g.theme.Primary)
 	muted := g.theme.Renderer.NewStyle().Foreground(g.theme.Secondary)
@@ -235,9 +239,9 @@ func (g *GraphModel) renderNeighborhood(issue *model.Issue, width int) string {
 	lines = append(lines, heading.Render("Dependency Graph"))
 	lines = append(lines, heading.Render(fmt.Sprintf("%s %s", GetStatusIcon(string(issue.Status)), issue.ID)))
 	lines = append(lines, muted.Render(truncateRunesHelper(issue.Title, max(1, width-2), "…")), "")
-	lines = append(lines, g.renderRelations("BLOCKED BY", g.blockers[issue.ID], width)...)
+	lines = append(lines, g.renderRelations("BLOCKED BY", g.blockers[rawID], width)...)
 	lines = append(lines, "")
-	lines = append(lines, g.renderRelations("BLOCKS", g.dependents[issue.ID], width)...)
+	lines = append(lines, g.renderRelations("BLOCKS", g.dependents[rawID], width)...)
 	lines = append(lines, "", muted.Render("j/k navigate  enter details  esc return"))
 	return strings.Join(lines, "\n")
 }
@@ -249,13 +253,14 @@ func (g *GraphModel) renderRelations(label string, ids []string, width int) []st
 		return append(lines, g.theme.Renderer.NewStyle().Foreground(g.theme.Muted).Render("  none"))
 	}
 	for _, id := range ids {
-		issue := g.issueMap[id]
-		if issue == nil {
+		rawIssue := g.issueMap[id]
+		if rawIssue == nil {
 			lines = append(lines, g.theme.Renderer.NewStyle().Foreground(g.theme.Muted).
-				Render(truncateRunesHelper("  ? "+id+" (not loaded)", width, "…")))
+				Render(truncateRunesHelper("  ? "+sanitizeTerminalLine(id)+" (not loaded)", width, "…")))
 			continue
 		}
-		line := fmt.Sprintf("  %s %s  %s", GetStatusIcon(string(issue.Status)), id, issue.Title)
+		issue := sanitizeIssueForTerminal(*rawIssue)
+		line := fmt.Sprintf("  %s %s  %s", GetStatusIcon(string(issue.Status)), issue.ID, issue.Title)
 		lines = append(lines, g.theme.Renderer.NewStyle().Foreground(g.theme.Secondary).
 			Render(truncateRunesHelper(line, width, "…")))
 	}

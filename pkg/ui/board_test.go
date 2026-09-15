@@ -23,6 +23,23 @@ func createTheme() ui.Theme {
 	return ui.DefaultTheme(lipgloss.NewRenderer(os.Stdout))
 }
 
+func TestBoardCardRemovesTerminalControlPayloads(t *testing.T) {
+	issue := model.Issue{
+		ID:        "bd-1\x1b[2J",
+		Title:     "safe\x1b]52;c;YXR0YWNr\x07title",
+		Status:    model.StatusOpen,
+		IssueType: model.TypeTask,
+		Labels:    []string{"ok\u009b31mbad"},
+	}
+	b := ui.NewBoardModel([]model.Issue{issue}, createTheme())
+	out := b.TestRenderCard(issue, 80, false)
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J", "[31m"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("board card retained terminal control payload %q: %q", forbidden, out)
+		}
+	}
+}
+
 // TestBoardModelBlackbox tests basic selection and update behavior
 func TestBoardModelBlackbox(t *testing.T) {
 	issues := []model.Issue{

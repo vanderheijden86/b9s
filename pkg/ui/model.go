@@ -498,7 +498,7 @@ type Model struct {
 	isGraphView          bool
 	showDetails          bool
 	showHelp             bool
-	helpScroll           int // Scroll offset for help overlay
+	helpScroll           int             // Scroll offset for help overlay
 	helpSearching        bool            // True while Ctrl+S search input in the help overlay takes keys
 	helpSearchInput      textinput.Model // Query filtering the help overlay's shortcut rows
 	showQuitConfirm      bool
@@ -673,7 +673,7 @@ func (m Model) renderGlobalHeader() string {
 	appName := lipgloss.NewStyle().Bold(true).Foreground(ColorWarning).Render("b9s")
 	sep := lipgloss.NewStyle().Foreground(ColorMuted).Render(" | ")
 
-	projectLabel := m.activeProjectName
+	projectLabel := sanitizeTerminalLine(m.activeProjectName)
 	if projectLabel == "" {
 		projectLabel = "untitled"
 	}
@@ -3911,11 +3911,11 @@ func (m Model) renderIssueConfirm() string {
 		}
 		subject = m.renderConfirmIDList(idStyle, textStyle)
 	} else {
-		title := m.issueConfirm.title
+		title := sanitizeTerminalLine(m.issueConfirm.title)
 		if len(title) > 50 {
 			title = title[:47] + "..."
 		}
-		subject = idStyle.Render(m.issueConfirm.id) + "\n" + textStyle.Render(title)
+		subject = idStyle.Render(sanitizeTerminalLine(m.issueConfirm.id)) + "\n" + textStyle.Render(title)
 	}
 
 	content := titleStyle.Render(heading) + "\n\n" +
@@ -4656,7 +4656,7 @@ func (m *Model) renderFooter() string {
 		} else {
 			statusStyle = lipgloss.NewStyle().Foreground(ColorInfo)
 		}
-		msgSection := " " + statusStyle.Render(prefix+m.statusMsg)
+		msgSection := " " + statusStyle.Render(prefix+sanitizeTerminalLine(m.statusMsg))
 		remaining := m.width - lipgloss.Width(msgSection)
 		if remaining < 0 {
 			remaining = 0
@@ -5279,6 +5279,8 @@ func (m *Model) updateViewportContent() {
 }
 
 func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) string {
+	rawID := item.ID
+	item = sanitizeIssueForTerminal(item)
 	var sb strings.Builder
 
 	// Title Block
@@ -5325,7 +5327,7 @@ func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) str
 
 	// Dependency Graph (Tree)
 	if len(item.Dependencies) > 0 {
-		rootNode := BuildDependencyTree(item.ID, issueMap, 3) // Max depth 3
+		rootNode := BuildDependencyTree(rawID, issueMap, 3) // Max depth 3
 		treeStr := RenderDependencyTree(rootNode)
 		sb.WriteString("```\n" + treeStr + "```\n\n")
 	}
@@ -6855,7 +6857,7 @@ func (m Model) renderAssigneeBar() string {
 	}
 
 	renderEntry := func(e AssigneeEntry) string {
-		name := e.Assignee
+		name := sanitizeTerminalLine(e.Assignee)
 		if len(name) > 18 {
 			name = name[:15] + "..."
 		}
@@ -7045,12 +7047,12 @@ func (m Model) renderConfirmIDList(idStyle, textStyle lipgloss.Style) string {
 		}
 		title := ""
 		if issue, ok := m.issueMap[id]; ok {
-			title = issue.Title
+			title = sanitizeTerminalLine(issue.Title)
 			if r := []rune(title); len(r) > 40 {
 				title = string(r[:37]) + "..."
 			}
 		}
-		lines = append(lines, idStyle.Render(id)+"  "+textStyle.Render(title))
+		lines = append(lines, idStyle.Render(sanitizeTerminalLine(id))+"  "+textStyle.Render(title))
 	}
 	return strings.Join(lines, "\n")
 }

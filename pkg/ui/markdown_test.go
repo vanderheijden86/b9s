@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
 func TestNewMarkdownRenderer(t *testing.T) {
@@ -52,6 +53,76 @@ func TestMarkdownRenderer_Render(t *testing.T) {
 	// Should contain "Hello" somewhere in the rendered output
 	if !strings.Contains(result, "Hello") {
 		t.Errorf("expected result to contain 'Hello', got: %s", result)
+	}
+}
+
+func TestMarkdownRenderer_RenderRemovesTerminalControlPayloads(t *testing.T) {
+	mr := NewMarkdownRenderer(80)
+	result, err := mr.Render("safe\x1b]52;c;YXR0YWNr\x07text\u009b31mred")
+	if err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[31m"} {
+		if strings.Contains(result, forbidden) {
+			t.Fatalf("Render retained terminal control payload %q: %q", forbidden, result)
+		}
+	}
+}
+
+func TestSanitizeTerminalText_StripsCSIAndOSC(t *testing.T) {
+	input := "safe\x1b[31mred\x1b[0m\x1b]52;c;YXR0YWNr\x07tail"
+	want := "saferedtail"
+	if got := sanitizeTerminalText(input); got != want {
+		t.Fatalf("sanitizeTerminalText() = %q, want %q", got, want)
+	}
+}
+
+func TestSanitizeTerminalText_StripsC0AndC1Controls(t *testing.T) {
+	input := "one\x00two\rthree\u0085four\u009b31mred"
+	want := "onetwothreefourred"
+	if got := sanitizeTerminalText(input); got != want {
+		t.Fatalf("sanitizeTerminalText() = %q, want %q", got, want)
+	}
+}
+
+func TestSanitizeTerminalText_StripsSingleByteC1Sequence(t *testing.T) {
+	input := string([]byte{'s', 'a', 'f', 'e', 0x9b, '3', '1', 'm', 'r', 'e', 'd'})
+	if got := sanitizeTerminalText(input); got != "safered" {
+		t.Fatalf("sanitizeTerminalText() = %q, want %q", got, "safered")
+	}
+}
+
+func TestSanitizeTerminalText_PreservesUnicodeAndLayout(t *testing.T) {
+	input := "日本語\nsecond\tcolumn"
+	if got := sanitizeTerminalText(input); got != input {
+		t.Fatalf("sanitizeTerminalText() = %q, want %q", got, input)
+	}
+}
+
+func TestSanitizeTerminalLine_RemovesInjectedRows(t *testing.T) {
+	input := "first\nsecond\tcolumn"
+	want := "first second column"
+	if got := sanitizeTerminalLine(input); got != want {
+		t.Fatalf("sanitizeTerminalLine() = %q, want %q", got, want)
+	}
+}
+
+func TestSanitizeIssueForTerminal_SanitizesDependencies(t *testing.T) {
+	issue := model.Issue{Dependencies: []*model.Dependency{{
+		IssueID:     "bd-1\x1b[2J",
+		DependsOnID: "bd-2\x1b]52;c;YXR0YWNr\x07",
+		Type:        model.DependencyType("blocks\u009b31m"),
+		CreatedBy:   "agent\nforged",
+	}}}
+
+	clean := sanitizeIssueForTerminal(issue)
+	dep := clean.Dependencies[0]
+	for _, value := range []string{dep.IssueID, dep.DependsOnID, string(dep.Type), dep.CreatedBy} {
+		for _, forbidden := range []string{"\x1b", "YXR0YWNr", "[31m", "\n"} {
+			if strings.Contains(value, forbidden) {
+				t.Fatalf("dependency retained terminal payload %q: %q", forbidden, value)
+			}
+		}
 	}
 }
 

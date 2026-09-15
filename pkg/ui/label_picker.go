@@ -296,7 +296,7 @@ func (m *LabelPickerModel) View() string {
 			if maxLabelLen < 10 {
 				maxLabelLen = 10
 			}
-			displayLabel := truncateRunesHelper(label, maxLabelLen, "...")
+			displayLabel := truncateRunesHelper(sanitizeTerminalLine(label), maxLabelLen, "...")
 			lines = append(lines, itemStyle.Render(prefix+displayLabel)+countStyle.Render(countStr))
 		}
 

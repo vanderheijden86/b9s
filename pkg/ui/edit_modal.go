@@ -8,8 +8,8 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/model"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/huh"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -66,16 +66,30 @@ type EditSuggestions struct {
 	Assignees []string
 }
 
+func sanitizeEditSuggestions(suggestions EditSuggestions) EditSuggestions {
+	clean := EditSuggestions{
+		Labels:    make([]string, len(suggestions.Labels)),
+		Assignees: make([]string, len(suggestions.Assignees)),
+	}
+	for i := range suggestions.Labels {
+		clean.Labels[i] = sanitizeTerminalLine(suggestions.Labels[i])
+	}
+	for i := range suggestions.Assignees {
+		clean.Assignees[i] = sanitizeTerminalLine(suggestions.Assignees[i])
+	}
+	return clean
+}
+
 // NewEditModal creates an edit modal pre-populated from an existing issue
 func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestions) EditModal {
-	title := issue.Title
-	status := string(issue.Status)
+	title := sanitizeTerminalLine(issue.Title)
+	status := sanitizeTerminalLine(string(issue.Status))
 	priority := formatPriority(issue.Priority)
-	issueType := string(issue.IssueType)
-	assignee := issue.Assignee
-	labels := strings.Join(issue.Labels, ", ")
-	description := issue.Description
-	notes := issue.Notes
+	issueType := sanitizeTerminalLine(string(issue.IssueType))
+	assignee := sanitizeTerminalLine(issue.Assignee)
+	labels := sanitizeTerminalLine(strings.Join(issue.Labels, ", "))
+	description := sanitizeTerminalText(issue.Description)
+	notes := sanitizeTerminalText(issue.Notes)
 
 	deferUntil := ""
 	m := EditModal{
@@ -92,7 +106,7 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 		deferUntil:  &deferUntil,
 	}
 	if len(suggestions) > 0 {
-		m.suggestions = suggestions[0]
+		m.suggestions = sanitizeEditSuggestions(suggestions[0])
 	}
 
 	m.originals = map[string]string{
@@ -135,7 +149,7 @@ func NewCreateModal(theme Theme, suggestions ...EditSuggestions) EditModal {
 		deferUntil:   &deferUntil,
 	}
 	if len(suggestions) > 0 {
-		m.suggestions = suggestions[0]
+		m.suggestions = sanitizeEditSuggestions(suggestions[0])
 	}
 
 	m.form = buildCreateForm(&m)
@@ -291,7 +305,7 @@ func (m EditModal) View() string {
 	if m.isCreateMode {
 		title = "Create Issue"
 	} else {
-		title = fmt.Sprintf("Edit Issue: %s", m.issueID)
+		title = fmt.Sprintf("Edit Issue: %s", sanitizeTerminalLine(m.issueID))
 	}
 
 	boxWidth := m.width - 10

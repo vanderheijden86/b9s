@@ -113,6 +113,25 @@ func TestIssueItemTitle(t *testing.T) {
 	}
 }
 
+func TestIssueItem_RemovesTerminalControlsFromDisplayFields(t *testing.T) {
+	item := ui.IssueItem{Issue: model.Issue{
+		ID:       "bd-1\x1b[2J",
+		Title:    "safe\x1b]52;c;YXR0YWNr\x07title",
+		Status:   model.StatusOpen,
+		Assignee: "dev\nforged",
+	}}
+
+	if got := item.Title(); got != "safetitle" {
+		t.Fatalf("Title() = %q, want %q", got, "safetitle")
+	}
+	description := item.Description()
+	for _, forbidden := range []string{"\x1b", "YXR0YWNr", "\n"} {
+		if strings.Contains(description, forbidden) {
+			t.Fatalf("Description() retained terminal control payload %q: %q", forbidden, description)
+		}
+	}
+}
+
 func TestIssueItemDescription(t *testing.T) {
 	tests := []struct {
 		name     string

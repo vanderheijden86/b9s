@@ -4,11 +4,152 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
+	"github.com/vanderheijden86/beadwork/pkg/model"
 )
+
+func sanitizeTerminalText(s string) string {
+	var clean strings.Builder
+	clean.Grow(len(s))
+
+	for i := 0; i < len(s); {
+		if s[i] == 0x1b {
+			i = skipEscapeSequence(s, i)
+			continue
+		}
+		if s[i] >= 0x80 && s[i] <= 0x9f {
+			switch s[i] {
+			case 0x9b:
+				i = skipCSISequence(s, i+1)
+			case 0x90, 0x98, 0x9d, 0x9e, 0x9f:
+				i = skipStringControl(s, i+1)
+			default:
+				i++
+			}
+			continue
+		}
+
+		r, size := utf8.DecodeRuneInString(s[i:])
+		switch {
+		case r == '\u009b':
+			i = skipCSISequence(s, i+size)
+			continue
+		case r == '\u0090' || r == '\u0098' || r == '\u009d' || r == '\u009e' || r == '\u009f':
+			i = skipStringControl(s, i+size)
+			continue
+		case r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f):
+			if r == '\n' || r == '\t' {
+				clean.WriteRune(r)
+			}
+			i += size
+			continue
+		default:
+			clean.WriteString(s[i : i+size])
+			i += size
+		}
+	}
+
+	return clean.String()
+}
+
+func sanitizeTerminalLine(s string) string {
+	clean := sanitizeTerminalText(s)
+	clean = strings.ReplaceAll(clean, "\n", " ")
+	return strings.ReplaceAll(clean, "\t", " ")
+}
+
+func sanitizeIssueForTerminal(issue model.Issue) model.Issue {
+	clean := issue.Clone()
+	clean.ID = sanitizeTerminalLine(clean.ID)
+	clean.Title = sanitizeTerminalLine(clean.Title)
+	clean.Description = sanitizeTerminalText(clean.Description)
+	clean.Design = sanitizeTerminalText(clean.Design)
+	clean.AcceptanceCriteria = sanitizeTerminalText(clean.AcceptanceCriteria)
+	clean.Notes = sanitizeTerminalText(clean.Notes)
+	clean.Status = model.Status(sanitizeTerminalLine(string(clean.Status)))
+	clean.IssueType = model.IssueType(sanitizeTerminalLine(string(clean.IssueType)))
+	clean.Assignee = sanitizeTerminalLine(clean.Assignee)
+	clean.SourceRepo = sanitizeTerminalLine(clean.SourceRepo)
+	if clean.ExternalRef != nil {
+		value := sanitizeTerminalLine(*clean.ExternalRef)
+		clean.ExternalRef = &value
+	}
+	for i := range clean.Labels {
+		clean.Labels[i] = sanitizeTerminalLine(clean.Labels[i])
+	}
+	for _, dependency := range clean.Dependencies {
+		if dependency == nil {
+			continue
+		}
+		dependency.IssueID = sanitizeTerminalLine(dependency.IssueID)
+		dependency.DependsOnID = sanitizeTerminalLine(dependency.DependsOnID)
+		dependency.Type = model.DependencyType(sanitizeTerminalLine(string(dependency.Type)))
+		dependency.CreatedBy = sanitizeTerminalLine(dependency.CreatedBy)
+	}
+	for _, comment := range clean.Comments {
+		if comment == nil {
+			continue
+		}
+		comment.ID = sanitizeTerminalLine(comment.ID)
+		comment.IssueID = sanitizeTerminalLine(comment.IssueID)
+		comment.Author = sanitizeTerminalLine(comment.Author)
+		comment.Text = sanitizeTerminalText(comment.Text)
+	}
+	return clean
+}
+
+func skipEscapeSequence(s string, start int) int {
+	i := start + 1
+	if i >= len(s) {
+		return i
+	}
+	switch s[i] {
+	case '[':
+		return skipCSISequence(s, i+1)
+	case ']', 'P', 'X', '^', '_':
+		return skipStringControl(s, i+1)
+	}
+	for i < len(s) {
+		c := s[i]
+		i++
+		if c >= 0x30 && c <= 0x7e {
+			break
+		}
+	}
+	return i
+}
+
+func skipCSISequence(s string, start int) int {
+	for i := start; i < len(s); i++ {
+		if s[i] >= 0x40 && s[i] <= 0x7e {
+			return i + 1
+		}
+	}
+	return len(s)
+}
+
+func skipStringControl(s string, start int) int {
+	for i := start; i < len(s); {
+		if s[i] == 0x07 {
+			return i + 1
+		}
+		if s[i] == 0x9c {
+			return i + 1
+		}
+		if s[i] == 0x1b && i+1 < len(s) && s[i+1] == '\\' {
+			return i + 2
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == '\u009c' {
+			return i + size
+		}
+		i += size
+	}
+	return len(s)
+}
 
 // FormatTimeRel returns a relative time string (e.g., "2h ago", "3d ago")
 func FormatTimeRel(t time.Time) string {
@@ -124,10 +265,10 @@ func buildTreeRecursive(id string, issueMap map[string]*model.Issue, depType str
 	defer func() { visited[id] = false }() // Allow revisiting in different branches
 
 	node := &DependencyNode{
-		ID:     issue.ID,
-		Title:  issue.Title,
-		Status: string(issue.Status),
-		Type:   depType,
+		ID:     sanitizeTerminalLine(issue.ID),
+		Title:  sanitizeTerminalLine(issue.Title),
+		Status: sanitizeTerminalLine(string(issue.Status)),
+		Type:   sanitizeTerminalLine(depType),
 	}
 
 	// Recursively add children (dependencies)
@@ -169,11 +310,14 @@ func renderTreeNode(sb *strings.Builder, node *DependencyNode, prefix string, is
 	}
 
 	// Get icons
-	statusIcon := GetStatusIcon(node.Status)
-	typeIcon := getDepTypeIcon(node.Type)
+	status := sanitizeTerminalLine(node.Status)
+	depType := sanitizeTerminalLine(node.Type)
+	id := sanitizeTerminalLine(node.ID)
+	statusIcon := GetStatusIcon(status)
+	typeIcon := getDepTypeIcon(depType)
 
 	// Truncate title if too long (UTF-8 safe)
-	title := truncateRunesHelper(node.Title, 40, "...")
+	title := truncateRunesHelper(sanitizeTerminalLine(node.Title), 40, "...")
 
 	// Render this node
 	sb.WriteString(fmt.Sprintf("%s%s%s %s %s %s (%s) [%s]\n",
@@ -181,10 +325,10 @@ func renderTreeNode(sb *strings.Builder, node *DependencyNode, prefix string, is
 		connector,
 		statusIcon,
 		typeIcon,
-		node.ID,
+		id,
 		title,
-		node.Status,
-		node.Type,
+		status,
+		depType,
 	))
 
 	// Calculate prefix for children

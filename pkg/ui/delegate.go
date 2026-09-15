@@ -51,9 +51,14 @@ func (d IssueDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	// ══════════════════════════════════════════════════════════════════════════
 
 	// Get all the data
-	icon, iconColor := t.GetTypeIcon(string(i.Issue.IssueType))
-	idStr := i.Issue.ID
-	title := i.Issue.Title
+	icon, iconColor := t.GetTypeIcon(sanitizeTerminalLine(string(i.Issue.IssueType)))
+	idStr := sanitizeTerminalLine(i.Issue.ID)
+	title := sanitizeTerminalLine(i.Issue.Title)
+	assignee := sanitizeTerminalLine(i.Issue.Assignee)
+	labels := make([]string, len(i.Issue.Labels))
+	for index := range i.Issue.Labels {
+		labels[index] = sanitizeTerminalLine(i.Issue.Labels[index])
+	}
 	ageStr := FormatTimeRel(i.Issue.CreatedAt)
 	commentCount := len(i.Issue.Comments)
 
@@ -82,15 +87,15 @@ func (d IssueDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	}
 
 	// Assignee (if present and we have room)
-	if width > 100 && i.Issue.Assignee != "" {
-		assignee := truncateRunesHelper(i.Issue.Assignee, 12, "…")
-		rightParts = append(rightParts, t.SecondaryText.Render(fmt.Sprintf("@%-12s", assignee)))
+	if width > 100 && assignee != "" {
+		displayAssignee := truncateRunesHelper(assignee, 12, "…")
+		rightParts = append(rightParts, t.SecondaryText.Render(fmt.Sprintf("@%-12s", displayAssignee)))
 		rightWidth += 14
 	}
 
 	// Labels (if present and we have room) - render as mini tags
-	if width > 140 && len(i.Issue.Labels) > 0 {
-		labelStr := truncateRunesHelper(strings.Join(i.Issue.Labels, ","), 20, "…")
+	if width > 140 && len(labels) > 0 {
+		labelStr := truncateRunesHelper(strings.Join(labels, ","), 20, "…")
 		labelStyle := t.Renderer.NewStyle().
 			Foreground(ColorPrimary).
 			Background(ColorBgSubtle).
@@ -108,9 +113,9 @@ func (d IssueDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	var repoBadge string
 	badgeLabel := ""
 	if d.WorkspaceMode && i.RepoPrefix != "" {
-		badgeLabel = i.RepoPrefix
+		badgeLabel = sanitizeTerminalLine(i.RepoPrefix)
 	} else if d.ActiveProjectName != "" {
-		badgeLabel = d.ActiveProjectName
+		badgeLabel = sanitizeTerminalLine(d.ActiveProjectName)
 	}
 	if badgeLabel != "" {
 		repoBadge = RenderRepoBadge(badgeLabel)
@@ -123,7 +128,7 @@ func (d IssueDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	leftFixedWidth += prioBadgeWidth + 1
 
 	// Status badge (polished)
-	statusBadge := RenderStatusBadge(string(i.Issue.Status))
+	statusBadge := RenderStatusBadge(sanitizeTerminalLine(string(i.Issue.Status)))
 	statusBadgeWidth := lipgloss.Width(statusBadge)
 	leftFixedWidth += statusBadgeWidth + 1
 

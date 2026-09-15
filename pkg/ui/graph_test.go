@@ -9,6 +9,39 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
+func TestGraphViewRemovesTerminalControlPayloads(t *testing.T) {
+	issues := []model.Issue{{
+		ID:        "bd-1\x1b[2J",
+		Title:     "safe\x1b]52;c;YXR0YWNr\x07title",
+		Status:    model.StatusOpen,
+		IssueType: model.TypeTask,
+	}}
+	graph := NewGraphModel(issues, newTreeTestTheme())
+	out := graph.View(100, 20)
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("graph retained terminal control payload %q: %q", forbidden, out)
+		}
+	}
+}
+
+func TestGraphRelationsRemoveTerminalControlPayloads(t *testing.T) {
+	blockerID := "bd-blocker\x1b]52;c;YXR0YWNr\x07"
+	issues := []model.Issue{
+		{ID: "bd-root", Title: "root", Status: model.StatusOpen, IssueType: model.TypeTask,
+			Dependencies: []*model.Dependency{{IssueID: "bd-root", DependsOnID: blockerID, Type: model.DepBlocks}}},
+		{ID: blockerID, Title: "blocker", Status: model.StatusOpen, IssueType: model.TypeTask},
+	}
+	graph := NewGraphModel(issues, newTreeTestTheme())
+	graph.SelectIssue("bd-root")
+	out := graph.View(100, 20)
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("graph relation retained terminal payload %q: %q", forbidden, out)
+		}
+	}
+}
+
 func TestGraphViewOpensFromTree(t *testing.T) {
 	issues := []model.Issue{
 		{

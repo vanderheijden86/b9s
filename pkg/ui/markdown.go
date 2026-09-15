@@ -78,6 +78,7 @@ func NewMarkdownRendererWithTheme(width int, theme Theme) *MarkdownRenderer {
 
 // Render converts markdown content to styled terminal output.
 func (mr *MarkdownRenderer) Render(markdown string) (string, error) {
+	markdown = sanitizeTerminalText(markdown)
 	if mr.renderer == nil {
 		return markdown, nil
 	}

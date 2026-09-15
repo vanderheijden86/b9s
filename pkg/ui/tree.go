@@ -1411,7 +1411,7 @@ func (t *TreeModel) View() string {
 		xrayStyle := t.theme.Renderer.NewStyle().
 			Foreground(t.theme.Highlight).
 			Bold(true)
-		sb.WriteString(xrayStyle.Render(fmt.Sprintf("[XRAY: %s]", t.xrayRoot.Issue.Title)))
+		sb.WriteString(xrayStyle.Render(fmt.Sprintf("[XRAY: %s]", sanitizeTerminalLine(t.xrayRoot.Issue.Title))))
 		sb.WriteString("\n")
 	}
 
@@ -1715,7 +1715,9 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 		return ""
 	}
 
-	issue := node.Issue
+	rawIssue := node.Issue
+	displayIssue := sanitizeIssueForTerminal(*rawIssue)
+	issue := &displayIssue
 	r := t.theme.Renderer
 	width := t.width
 	if width <= 0 {
@@ -1730,7 +1732,7 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	var leftSide strings.Builder
 
 	// ── Mark indicator (bd-cz0) ──
-	if t.IsMarked(issue.ID) {
+	if t.IsMarked(rawIssue.ID) {
 		markStyle := r.NewStyle().Foreground(t.theme.Highlight).Bold(true)
 		leftSide.WriteString(markStyle.Render("●"))
 	}
@@ -1757,7 +1759,7 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	leftSide.WriteString(" ")
 
 	blockerBadge := ""
-	if blockerCount := len(t.openBlockerIDs(issue)); blockerCount > 0 {
+	if blockerCount := len(t.openBlockerIDs(rawIssue)); blockerCount > 0 {
 		blockerBadge = fmt.Sprintf("◈%d", blockerCount)
 		blockerBadge = truncateRunesHelper(blockerBadge, computedBlockerBadgeWidth-1, "…")
 	}
@@ -1809,7 +1811,7 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	rightWidth = lipgloss.Width(strings.Join(rightParts, "  "))
 
 	// ── Bookmark indicator (bd-k4n) ──
-	isBookmarked := t.bookmarks[issue.ID]
+	isBookmarked := t.bookmarks[rawIssue.ID]
 	if isBookmarked {
 		bookmarkStyle := r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#F1FA8C"})
 		leftSide.WriteString(bookmarkStyle.Render("\u2605"))
@@ -3285,7 +3287,7 @@ func (t *TreeModel) renderStickyLine(node *IssueTreeNode) string {
 	if node == nil || node.Issue == nil {
 		return ""
 	}
-	issue := node.Issue
+	issue := sanitizeIssueForTerminal(*node.Issue)
 	r := t.theme.Renderer
 	mutedStyle := r.NewStyle().Foreground(t.theme.Muted).Faint(true)
 
@@ -3324,7 +3326,7 @@ func (t *TreeModel) Breadcrumb() string {
 		if n.Issue == nil {
 			continue
 		}
-		typeName := string(n.Issue.IssueType)
+		typeName := sanitizeTerminalLine(string(n.Issue.IssueType))
 		if typeName == "" {
 			typeName = "Issue"
 		}
@@ -3332,7 +3334,7 @@ func (t *TreeModel) Breadcrumb() string {
 		if len(typeName) > 0 {
 			typeName = strings.ToUpper(typeName[:1]) + typeName[1:]
 		}
-		parts = append(parts, fmt.Sprintf("%s: %s", typeName, n.Issue.Title))
+		parts = append(parts, fmt.Sprintf("%s: %s", typeName, sanitizeTerminalLine(n.Issue.Title)))
 	}
 
 	result := strings.Join(parts, " > ")

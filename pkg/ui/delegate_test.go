@@ -68,6 +68,26 @@ func TestIssueDelegate_RenderWorkspaceWithDiffBadge(t *testing.T) {
 	}
 }
 
+func TestIssueDelegate_RenderRemovesTerminalControlPayloads(t *testing.T) {
+	item := newTestIssueItem("bd-1\x1b[2J")
+	item.Issue.Title = "safe\x1b]52;c;YXR0YWNr\x07title"
+	item.Issue.Assignee = "dev\nforged"
+	item.Issue.Labels = []string{"ok\u009b31mbad"}
+	theme := DefaultTheme(lipgloss.NewRenderer(os.Stdout))
+	delegate := IssueDelegate{Theme: theme}
+	l := list.New([]list.Item{item}, delegate, 0, 0)
+	l.SetWidth(160)
+
+	var buf bytes.Buffer
+	delegate.Render(&buf, l, 0, item)
+	out := buf.String()
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J", "\nforged", "[31m"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("render retained terminal control payload %q: %q", forbidden, out)
+		}
+	}
+}
+
 func TestIssueDelegate_RenderFallsBackWidthAndNoPanic(t *testing.T) {
 	item := newTestIssueItem("TASK-1")
 	theme := DefaultTheme(lipgloss.NewRenderer(os.Stdout))

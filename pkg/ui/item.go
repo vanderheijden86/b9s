@@ -39,11 +39,15 @@ type IssueItem struct {
 }
 
 func (i IssueItem) Title() string {
-	return i.Issue.Title
+	return sanitizeTerminalLine(i.Issue.Title)
 }
 
 func (i IssueItem) Description() string {
-	return fmt.Sprintf("%s %s • %s", i.Issue.ID, i.Issue.Status, i.Issue.Assignee)
+	return fmt.Sprintf("%s %s • %s",
+		sanitizeTerminalLine(i.Issue.ID),
+		sanitizeTerminalLine(string(i.Issue.Status)),
+		sanitizeTerminalLine(i.Issue.Assignee),
+	)
 }
 
 func (i IssueItem) FilterValue() string {

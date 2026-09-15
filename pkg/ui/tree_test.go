@@ -30,6 +30,45 @@ func newTreeTestTheme() Theme {
 	return DefaultTheme(lipgloss.NewRenderer(nil))
 }
 
+func TestTreeViewRemovesTerminalControlPayloads(t *testing.T) {
+	issue := model.Issue{
+		ID:        "bd-1\x1b[2J",
+		Title:     "safe\x1b]52;c;YXR0YWNr\x07title",
+		Status:    model.StatusOpen,
+		IssueType: model.TypeTask,
+		Labels:    []string{"lane:stage:\u009b31mbad"},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetSize(120, 20)
+	tree.Build([]model.Issue{issue})
+	out := tree.View()
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J", "[31m"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("tree retained terminal control payload %q: %q", forbidden, out)
+		}
+	}
+}
+
+func TestTreeAncillaryViewsRemoveTerminalControlPayloads(t *testing.T) {
+	parent := model.Issue{ID: "bd-parent\x1b[2J", Title: "parent\x1b]52;c;YXR0YWNr\x07", Status: model.StatusOpen, IssueType: model.TypeEpic}
+	child := model.Issue{
+		ID: "bd-child", Title: "child", Status: model.StatusOpen, IssueType: model.TypeTask,
+		Dependencies: []*model.Dependency{{IssueID: "bd-child", DependsOnID: parent.ID, Type: model.DepParentChild}},
+	}
+	tree := NewTreeModel(newTreeTestTheme())
+	tree.SetSize(100, 3)
+	tree.Build([]model.Issue{parent, child})
+	tree.cursor = 1
+	tree.viewportOffset = 1
+
+	out := strings.Join(tree.StickyScrollLines(), "\n") + tree.Breadcrumb()
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("ancillary tree view retained terminal payload %q: %q", forbidden, out)
+		}
+	}
+}
+
 // TestTreeBuildEmpty verifies Build() handles empty issues slice
 func TestTreeBuildEmpty(t *testing.T) {
 	tree := NewTreeModel(newTreeTestTheme())

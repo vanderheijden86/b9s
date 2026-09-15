@@ -58,6 +58,24 @@ func TestNewEditModal_PopulatesFromIssue(t *testing.T) {
 	}
 }
 
+func TestEditModalViewRemovesTerminalControlPayloads(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	issue := &model.Issue{
+		ID: "test-123\x1b[2J", Title: "safe\x1b]52;c;YXR0YWNr\x07", Status: model.StatusOpen,
+		Priority: 2, IssueType: model.TypeTask,
+	}
+	modal := NewEditModal(issue, theme, EditSuggestions{
+		Labels: []string{"safe\x1b]52;c;YXR0YWNr\x07"}, Assignees: []string{"agent\x1b[2J"},
+	})
+	modal.SetSize(100, 30)
+	out := modal.View()
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("edit modal retained terminal payload %q: %q", forbidden, out)
+		}
+	}
+}
+
 func TestNewEditModal_StoresOriginals(t *testing.T) {
 	theme := DefaultTheme(lipgloss.DefaultRenderer())
 	issue := &model.Issue{

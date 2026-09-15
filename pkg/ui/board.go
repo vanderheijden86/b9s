@@ -1263,6 +1263,8 @@ func formatPriority(p int) string {
 // renderCard creates a visually rich card for an issue (bv-1daf: 4-line format)
 func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colIdx, rowIdx int) string {
 	t := b.theme
+	rawID := issue.ID
+	issue = sanitizeIssueForTerminal(issue)
 
 	// ══════════════════════════════════════════════════════════════════════════
 	// DETERMINE BLOCKING STATUS for color coding (bv-kklp)
@@ -1274,7 +1276,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 			break
 		}
 	}
-	blocksOthers := len(b.blocksIndex[issue.ID]) > 0
+	blocksOthers := len(b.blocksIndex[rawID]) > 0
 
 	// ══════════════════════════════════════════════════════════════════════════
 	// SEARCH MATCH HIGHLIGHTING (bv-yg39)
@@ -1351,6 +1353,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	// Project badge: use active project name in single-project mode, else fall back
 	// to the issue ID prefix (bd-whkz, bd-dy6r).
 	repoPrefix := b.activeProjectName
+	repoPrefix = sanitizeTerminalLine(repoPrefix)
 	if repoPrefix == "" {
 		repoPrefix = ExtractRepoPrefix(issue.ID)
 	}
@@ -1431,7 +1434,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 			// Try to get blocker title for better context
 			blockerBadge := "🚫←" + blockerID
 			if blocker, ok := b.issueMap[dep.DependsOnID]; ok && blocker != nil {
-				titleSnippet := truncateRunesHelper(blocker.Title, 12, "…")
+				titleSnippet := truncateRunesHelper(sanitizeTerminalLine(blocker.Title), 12, "…")
 				blockerBadge = fmt.Sprintf("🚫←%s (%s)", blockerID, titleSnippet)
 			}
 			if selected {
@@ -1445,7 +1448,7 @@ func (b BoardModel) renderCard(issue model.Issue, width int, selected bool, colI
 	}
 
 	// Blocks count: ⚡→N (this card blocks N others) - from reverse index
-	if blockedIDs, ok := b.blocksIndex[issue.ID]; ok && len(blockedIDs) > 0 {
+	if blockedIDs, ok := b.blocksIndex[rawID]; ok && len(blockedIDs) > 0 {
 		blocksText := fmt.Sprintf("⚡→%d", len(blockedIDs))
 		if selected {
 			meta = append(meta, blocksText)
@@ -1520,6 +1523,8 @@ func (b BoardModel) TestRenderCard(issue model.Issue, width int, selected bool) 
 // expanded card is always the selected card (no separate search highlighting needed)
 func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) string {
 	t := b.theme
+	rawID := issue.ID
+	issue = sanitizeIssueForTerminal(issue)
 
 	// ══════════════════════════════════════════════════════════════════════════
 	// DETERMINE BLOCKING STATUS for color coding (same as renderCard)
@@ -1531,7 +1536,7 @@ func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) s
 			break
 		}
 	}
-	blocksOthers := len(b.blocksIndex[issue.ID]) > 0
+	blocksOthers := len(b.blocksIndex[rawID]) > 0
 
 	// ══════════════════════════════════════════════════════════════════════════
 	// CARD STYLING - Expanded card is always selected (since we expand selected)
@@ -1630,19 +1635,24 @@ func (b BoardModel) renderExpandedCard(issue model.Issue, width int, _, _ int) s
 		for _, dep := range blockingDeps {
 			blockerText := fmt.Sprintf("  • %s", dep.DependsOnID)
 			if blocker, ok := b.issueMap[dep.DependsOnID]; ok && blocker != nil {
-				blockerText = fmt.Sprintf("  • %s: %s (%s)", dep.DependsOnID, blocker.Title, blocker.Status)
+				blockerText = fmt.Sprintf("  • %s: %s (%s)",
+					sanitizeTerminalLine(dep.DependsOnID),
+					sanitizeTerminalLine(blocker.Title),
+					sanitizeTerminalLine(string(blocker.Status)))
+			} else {
+				blockerText = fmt.Sprintf("  • %s", sanitizeTerminalLine(dep.DependsOnID))
 			}
 			depLines = append(depLines, t.Renderer.NewStyle().Foreground(t.Blocked).Render(blockerText))
 		}
 	}
 
 	// Show what this blocks
-	if blockedIDs, ok := b.blocksIndex[issue.ID]; ok && len(blockedIDs) > 0 {
+	if blockedIDs, ok := b.blocksIndex[rawID]; ok && len(blockedIDs) > 0 {
 		depLines = append(depLines, t.Renderer.NewStyle().Bold(true).Foreground(t.Feature).Render("Blocks:"))
 		for _, blockedID := range blockedIDs {
-			blockedText := fmt.Sprintf("  • %s", blockedID)
+			blockedText := fmt.Sprintf("  • %s", sanitizeTerminalLine(blockedID))
 			if blocked, ok := b.issueMap[blockedID]; ok && blocked != nil {
-				blockedText = fmt.Sprintf("  • %s: %s", blockedID, blocked.Title)
+				blockedText = fmt.Sprintf("  • %s: %s", sanitizeTerminalLine(blockedID), sanitizeTerminalLine(blocked.Title))
 			}
 			depLines = append(depLines, t.Renderer.NewStyle().Foreground(t.Feature).Render(blockedText))
 		}
@@ -1694,7 +1704,7 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 	t := b.theme
 
 	// Get the selected issue
-	issue := b.SelectedIssue()
+	rawIssue := b.SelectedIssue()
 
 	// Update viewport dimensions
 	vpWidth := width - 4 // Account for border
@@ -1709,7 +1719,7 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 	b.detailVP.Height = vpHeight
 
 	// Build content based on selection state
-	if issue == nil {
+	if rawIssue == nil {
 		// No issue selected - show help text (use special marker to detect "no selection" state)
 		if b.lastDetailID != "_none_" {
 			b.lastDetailID = "_none_"
@@ -1724,9 +1734,12 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 			b.detailVP.GotoTop()
 		}
 	} else {
+		rawID := rawIssue.ID
+		displayIssue := sanitizeIssueForTerminal(*rawIssue)
+		issue := &displayIssue
 		// Issue selected - only update content if the issue changed
-		if b.lastDetailID != issue.ID {
-			b.lastDetailID = issue.ID
+		if b.lastDetailID != rawID {
+			b.lastDetailID = rawID
 
 			var content strings.Builder
 
@@ -1766,22 +1779,24 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 					// Look up blocker info for richer display
 					if blocker, ok := b.issueMap[dep.DependsOnID]; ok && blocker != nil {
 						content.WriteString(fmt.Sprintf("- %s: %s (%s)\n",
-							dep.DependsOnID, blocker.Title, blocker.Status))
+							sanitizeTerminalLine(dep.DependsOnID),
+							sanitizeTerminalLine(blocker.Title),
+							sanitizeTerminalLine(string(blocker.Status))))
 					} else {
-						content.WriteString(fmt.Sprintf("- %s\n", dep.DependsOnID))
+						content.WriteString(fmt.Sprintf("- %s\n", sanitizeTerminalLine(dep.DependsOnID)))
 					}
 				}
 				content.WriteString("\n")
 			}
 
 			// Show what this issue blocks (bv-kklp)
-			if blockedIDs, ok := b.blocksIndex[issue.ID]; ok && len(blockedIDs) > 0 {
+			if blockedIDs, ok := b.blocksIndex[rawID]; ok && len(blockedIDs) > 0 {
 				content.WriteString("**Blocks:**\n")
 				for _, blockedID := range blockedIDs {
 					if blocked, ok := b.issueMap[blockedID]; ok && blocked != nil {
-						content.WriteString(fmt.Sprintf("- %s: %s\n", blockedID, blocked.Title))
+						content.WriteString(fmt.Sprintf("- %s: %s\n", sanitizeTerminalLine(blockedID), sanitizeTerminalLine(blocked.Title)))
 					} else {
-						content.WriteString(fmt.Sprintf("- %s\n", blockedID))
+						content.WriteString(fmt.Sprintf("- %s\n", sanitizeTerminalLine(blockedID)))
 					}
 				}
 				content.WriteString(fmt.Sprintf("\n💡 Completing this would unblock %d issue(s)\n\n", len(blockedIDs)))

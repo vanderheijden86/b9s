@@ -20,3 +20,19 @@ func TestTreeFooterShowsManualRefreshShortcut(t *testing.T) {
 		t.Fatalf("expected tree footer to expose manual refresh shortcut, got %q", footer)
 	}
 }
+
+func TestModelChromeRemovesTerminalControlPayloads(t *testing.T) {
+	m := NewModel(nil, "")
+	m.width = 120
+	m.height = 20
+	m.activeProjectName = "safe\x1b]52;c;YXR0YWNr\x07project"
+	m.statusMsg = "safe\x1b[2Jstatus"
+	m.issueConfirm = issueConfirmation{id: "bd-1\x1b[2J", title: "title\x1b]52;c;YXR0YWNr\x07"}
+
+	out := m.renderGlobalHeader() + m.renderFooter() + m.renderIssueConfirm()
+	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J"} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("model chrome retained terminal payload %q: %q", forbidden, out)
+		}
+	}
+}
