@@ -3250,10 +3250,17 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case " ", "space", "m":
 		// Space marks as in k9s; m remains from the dired-style bindings (bd-cz0)
 		m.tree.ToggleMark()
-	case "ctrl+@":
-		// Terminals send ctrl+space as NUL, which bubbletea names ctrl+@
+	case "u":
+		// Unmark rather than toggle, as in dired
+		if id := m.tree.GetSelectedID(); id != "" {
+			m.tree.Unmark(id)
+		}
+	case "ctrl+@", "V":
+		// Terminals send ctrl+space as NUL, which bubbletea names ctrl+@.
+		// macOS claims ctrl+space for input-source switching by default, so
+		// it often never arrives and V is the range key that always does.
 		m.tree.SpanMark()
-	case "ctrl+\\", "M":
+	case "ctrl+\\", "M", "U":
 		m.tree.UnmarkAll()
 	case "x":
 		// Toggle XRay drill-down mode (bd-0rc)
@@ -4449,8 +4456,9 @@ func (m *Model) renderHelpOverlay() string {
 		{"x", "XRay drill-down"},
 		{"b/B", "Bookmark / cycle"},
 		{"Space/m", "Mark / unmark"},
-		{"^Space", "Mark range"},
-		{"^\\ / M", "Clear marks"},
+		{"u", "Unmark row"},
+		{"^Space/V", "Mark range"},
+		{"^\\ / M / U", "Clear marks"},
 		{"S", "Change status"},
 	}
 

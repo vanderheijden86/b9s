@@ -862,8 +862,9 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `O` | Collapse all nodes in the tree |
 | **Marking & bulk actions** | |
 | `Space` / `m` | Mark or unmark the current node |
-| `Ctrl+Space` | Mark every row between the nearest mark and the cursor |
-| `Ctrl+\` / `M` | Clear all marks |
+| `u` | Unmark the current node (never marks it) |
+| `Ctrl+Space` / `V` | Mark every row between the nearest mark and the cursor |
+| `Ctrl+\` / `M` / `U` | Clear all marks |
 | `K` | Close every marked issue, or the current node when none are marked |
 | `Delete` | Delete every marked issue, or the current node when none are marked |
 | `S` | Change the status of every marked issue, or the current node when none are marked |
@@ -872,7 +873,7 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | `C` | Choose optional columns. Each can follow `Auto` or be forced to `Show` or `Hide` for the current session |
 | `E` / `Esc` | Exit tree view, return to list |
 
-Marking follows k9s. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. `S` opens the status picker for the same set (its title shows the count, for example "Change Status (3 issues)") and applies the chosen status with one `bd update`. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
+Marking follows k9s, with the Emacs dired keys `u` (unmark) and `U` (unmark all) alongside. macOS uses `Ctrl+Space` to switch input sources by default, so the terminal often never receives it; `V` marks the same range. `Ctrl+U` stays page up. Marked rows show a `●` and the footer leads with the number of marked issues. When anything is marked, `K` and `Delete` ask once for all of them ("Close 3 issues?", listing the IDs) and run a single `bd` command; confirming unmarks those issues. `S` opens the status picker for the same set (its title shows the count, for example "Change Status (3 issues)") and applies the chosen status with one `bd update`. Marks survive filters and searches, so an issue you marked and then filtered out of view is still included, and the confirmation's count tells you so. See [ADR 0011](adr/0011-bulk-actions-act-on-marks-else-cursor.md).
 
 ### Use Cases
 
@@ -2574,8 +2575,9 @@ bw has a comprehensive built-in help system:
 | | `h` / `l` | Collapse/parent or Expand/child |
 | | `Enter` | Open detail view |
 | | `S` | Change status of marked issues (else current) |
-| | `Space` / `Ctrl+Space` | Mark row / mark range |
-| | `Ctrl+\` | Clear marks |
+| | `Space` / `Ctrl+Space` or `V` | Mark row / mark range |
+| | `u` | Unmark row |
+| | `Ctrl+\` / `U` | Clear marks |
 | | `K` / `Delete` | Close / delete marked issues (else current) |
 | | `f` | Toggle the highlighted issue's top-level branch filter |
 | | `o` / `O` | Expand all / Collapse all |
