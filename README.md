@@ -104,7 +104,7 @@ b9s --filter 'type:bug !assignee:andre'
 b9s --filter 'release blocker'
 ```
 
-Predicates can target `id`, `title`, `status`, `priority`, `type`, `label`, `assignee`, or `project`. Separate fields compose with AND, repeated positive values for one field compose with OR, and `!` negates a predicate. Plain text fuzzily matches issue IDs, titles, and labels.
+Predicates can target `id`, `title`, `status`, `priority`, `type`, `label`, `assignee`, or `project`. Separate fields compose with AND, repeated positive values for one field compose with OR, and `!` negates a predicate. Plain text is split on spaces, and every word must fuzzily match an issue ID, title, or label.
 
 The flag is suitable for shell scripts and tmux bindings. For example:
 

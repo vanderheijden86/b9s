@@ -2619,7 +2619,7 @@ Press `/` in the tree, list, or board to reveal and focus one shared search fiel
 ╰──────────────────────────────────────────────────────────────╯
 ```
 
-Plain text searches IDs, titles, and labels. Short queries support fuzzy subsequence matching within one or two adjacent terms; longer queries require a contiguous text match. Descriptions, notes, comments, dependency text, and other hidden fields are excluded so every result is explained by primary issue data. Structured predicates target other supported metadata:
+Plain text searches IDs, titles, and labels. Each space-separated word must match on its own, in any of those fields, so `inh mapping` finds an issue by an ID fragment and a title word together. Short words support fuzzy subsequence matching within one or two adjacent terms; longer words require a contiguous text match. Descriptions, notes, comments, dependency text, and other hidden fields are excluded so every result is explained by primary issue data. Structured predicates target other supported metadata:
 
 | Predicate | Example |
 | :--- | :--- |

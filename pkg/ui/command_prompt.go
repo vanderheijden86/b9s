@@ -84,11 +84,24 @@ func (m Model) handleCommandPromptKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.commandPrompt.Backspace()
 		}
 	default:
-		if msg.Type == tea.KeyRunes && len(msg.Runes) > 0 {
-			m.commandPrompt.Append(msg.Runes...)
+		if runes := typedRunes(msg); len(runes) > 0 {
+			m.commandPrompt.Append(runes...)
 		}
 	}
 	return m, nil
+}
+
+// typedRunes returns the text a key press contributes to a text input.
+// Bubbletea reports the space bar as KeySpace rather than KeyRunes, so a
+// KeyRunes-only check silently drops every space.
+func typedRunes(msg tea.KeyMsg) []rune {
+	if msg.Alt {
+		return nil
+	}
+	if msg.Type == tea.KeyRunes || msg.Type == tea.KeySpace {
+		return msg.Runes
+	}
+	return nil
 }
 
 func (m Model) executeCommand(command Command) (Model, tea.Cmd) {

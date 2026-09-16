@@ -4978,8 +4978,8 @@ func (m Model) handleQueryKey(msg tea.KeyMsg) Model {
 	case "tab":
 		m.completeQuery()
 	default:
-		if msg.Type == tea.KeyRunes && len(msg.Runes) > 0 {
-			m.queryState.Append(msg.Runes...)
+		if runes := typedRunes(msg); len(runes) > 0 {
+			m.queryState.Append(runes...)
 			m.setQueryText(m.queryState.Text())
 		}
 	}

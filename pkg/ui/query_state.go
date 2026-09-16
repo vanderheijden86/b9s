@@ -207,9 +207,25 @@ func fuzzyTextMatch(candidate, query string) bool {
 	return false
 }
 
+// issueMatchesFuzzyText requires every whitespace-separated term to match on
+// its own, each in any primary field, so "inh mapping" finds an issue by an ID
+// fragment and a title word together.
 func issueMatchesFuzzyText(issue model.Issue, query string) bool {
+	terms := strings.Fields(query)
+	if len(terms) == 0 {
+		return false
+	}
+	for _, term := range terms {
+		if !issueMatchesFuzzyTerm(issue, term) {
+			return false
+		}
+	}
+	return true
+}
+
+func issueMatchesFuzzyTerm(issue model.Issue, term string) bool {
 	for _, candidate := range issuePlainSearchValues(issue) {
-		if fuzzyTextMatch(candidate, query) {
+		if fuzzyTextMatch(candidate, term) {
 			return true
 		}
 	}
