@@ -2765,6 +2765,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.syncTreeToDetail()
 					m.viewport.GotoTop()
+				} else if msg.String() == "home" {
+					// The viewport's own keymap binds neither Home nor End.
+					m.viewport.GotoTop()
+				} else if msg.String() == "end" {
+					m.viewport.GotoBottom()
 				} else if m.treeViewActive && msg.String() == "d" {
 					// Toggle detail panel from detail focus in tree view (bd-80u)
 					m.treeDetailHidden = !m.treeDetailHidden

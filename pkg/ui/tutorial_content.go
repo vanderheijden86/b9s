@@ -385,6 +385,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 					{Key: "O", Desc: "Open in external editor"},
 					{Key: "C", Desc: "Copy issue ID to clipboard"},
 					{Key: "j / k", Desc: "Scroll content"},
+					{Key: "Home / End", Desc: "Jump to top / bottom"},
 					{Key: "Esc", Desc: "Return to list"},
 				}},
 				Spacer{Lines: 1},

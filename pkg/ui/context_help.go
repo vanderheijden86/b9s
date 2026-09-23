@@ -190,6 +190,7 @@ const contextHelpDetail = `## Detail View
 
 **Navigation**
   j/k       Scroll content
+  Home/End  Jump to top/bottom of content
   n/p       Next/previous sibling issue (tree)
   Esc       Return to list
   Tab       Switch to split view
