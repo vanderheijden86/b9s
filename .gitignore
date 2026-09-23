@@ -71,3 +71,6 @@ target-*/
 *.db
 .beads-credential-key
 .envrc
+
+# Git worktrees (see agents-config baseline: <repo>/.worktrees/<branch-slug>)
+.worktrees/
