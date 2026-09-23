@@ -853,6 +853,7 @@ The tree construction uses a **parent-child only** filter with intelligent root 
 | **Movement** | |
 | `j` / `k` / `↓` / `↑` | Move cursor down / up |
 | Mouse wheel | Move through tasks or scroll the focused detail pane |
+| `:mouse` | Release the mouse so a drag selects text (also inside tmux); run again to restore wheel scrolling |
 | `Home` / `End` (or `G`) | Jump to first / last node |
 | `Ctrl+F` / `PgDn` / `→` | Page down (full viewport) |
 | `Ctrl+B` / `PgUp` / `←` | Page up (full viewport) |

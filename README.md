@@ -270,7 +270,7 @@ If B9s cannot connect to the configured Dolt server, it falls back to the next a
 | `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All (tree view: `C` for Closed) | `d` | Toggle detail panel |
 | `Ctrl+R` / `F5` | Refresh data immediately | `?` | Show help |
 
-The mouse wheel moves through tasks and scrolls the detail pane. To select terminal text while mouse reporting is active, hold the terminal's override while dragging (`Option` in iTerm2, commonly `Shift` elsewhere).
+The mouse wheel moves through tasks and scrolls the detail pane. b9s captures the mouse for this, so a drag does not select text, and inside tmux with `mouse on` tmux sends the drag to b9s instead of starting copy mode. Type `:mouse` to give the mouse back to the terminal (or tmux) so a drag selects text; type `:mouse` again to scroll with the wheel. Without it, hold the terminal's override while dragging (`Option` in iTerm2, commonly `Shift` elsewhere).
 
 | Key | Action |
 |-----|--------|
@@ -284,7 +284,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. To select termi
 | `?` | Keyboard shortcuts help |
 | `Ctrl+S` (in help) | Search shortcuts; Enter keeps the filter, Esc clears it |
 | `[` / `]` | Resize split pane |
-| `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table; Tab accepts the suggestion |
+| `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table, `:mouse` switches between wheel scrolling and text selection; Tab accepts the suggestion |
 
 ## Acknowledgments
 

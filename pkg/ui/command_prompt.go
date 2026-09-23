@@ -112,6 +112,25 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		m.setQueryText(withTypeFilter(m.queryState.Text(), ""))
 	case CommandProjects:
 		return m, func() tea.Msg { return OpenProjectTableMsg{} }
+	case CommandMouse:
+		return m.toggleMouseCapture()
 	}
 	return m, nil
+}
+
+// MouseCaptured reports whether b9s receives mouse events. The program starts
+// with cell-motion capture on, for wheel scrolling.
+func (m Model) MouseCaptured() bool { return !m.mouseReleased }
+
+// toggleMouseCapture hands the mouse to the terminal, or takes it back. While
+// b9s captures it, tmux with "mouse on" forwards drags to b9s instead of
+// starting copy mode, so text cannot be selected.
+func (m Model) toggleMouseCapture() (Model, tea.Cmd) {
+	m.mouseReleased = !m.mouseReleased
+	if m.mouseReleased {
+		m.statusMsg = "Mouse released: drag to select text, :mouse to restore wheel scroll"
+		return m, tea.DisableMouse
+	}
+	m.statusMsg = "Mouse captured: wheel scrolls b9s, :mouse to select text"
+	return m, tea.EnableMouseCellMotion
 }

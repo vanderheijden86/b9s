@@ -224,3 +224,43 @@ func TestCommandPromptRendersTypedText(t *testing.T) {
 		t.Errorf("title bar = %q, want :ep with suggestion ic", bar)
 	}
 }
+
+func runMouseCommand(t *testing.T, m Model) (Model, tea.Msg) {
+	t.Helper()
+	m = typeKeys(m, ":", "m", "o", "u", "s", "e")
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal(":mouse returned no command, want a mouse mode change")
+	}
+	return updated.(Model), cmd()
+}
+
+func TestMouseCommandReleasesMouseForTextSelection(t *testing.T) {
+	m := newSearchFilterModel(t, "")
+
+	m, msg := runMouseCommand(t, m)
+
+	if msg != tea.DisableMouse() {
+		t.Errorf(":mouse sent %T, want tea.DisableMouse so the terminal selects text", msg)
+	}
+	if m.MouseCaptured() {
+		t.Error("MouseCaptured() = true after :mouse, want false")
+	}
+	if !strings.Contains(m.statusMsg, "select") {
+		t.Errorf("status = %q, want it to say text selection is on", m.statusMsg)
+	}
+}
+
+func TestMouseCommandTwiceRestoresWheelScroll(t *testing.T) {
+	m := newSearchFilterModel(t, "")
+	m, _ = runMouseCommand(t, m)
+
+	m, msg := runMouseCommand(t, m)
+
+	if msg != tea.EnableMouseCellMotion() {
+		t.Errorf("second :mouse sent %T, want tea.EnableMouseCellMotion", msg)
+	}
+	if !m.MouseCaptured() {
+		t.Error("MouseCaptured() = false after second :mouse, want true")
+	}
+}

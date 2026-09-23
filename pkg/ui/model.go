@@ -582,6 +582,8 @@ type Model struct {
 	showEditModal bool
 	editModal     EditModal
 	commandPrompt CommandPrompt
+	// mouseReleased is true after :mouse hands the mouse to the terminal.
+	mouseReleased bool
 
 	// Project switching (bd-q5z, bd-ey3)
 	activeProjectName string           // Name of the currently loaded project
@@ -4437,6 +4439,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"?", "This help"},
 		{"Ctrl+S", "Search this help"},
 		{":", "Command prompt"},
+		{":mouse", "Mouse: select text / scroll"},
 		{"Ctrl+e", "Toggle header"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},
