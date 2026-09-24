@@ -33,9 +33,11 @@ func editFormKeyMap() *huh.KeyMap {
 
 // EditModal provides field-by-field issue editing using huh forms
 type EditModal struct {
-	form         *huh.Form
-	theme        Theme
-	issueID      string
+	form    *huh.Form
+	theme   Theme
+	issueID string
+	// creator is shown in the header only: the Creator never changes after creation.
+	creator      string
 	isCreateMode bool
 	width        int
 	height       int
@@ -104,6 +106,7 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 	m := EditModal{
 		theme:       theme,
 		issueID:     issue.ID,
+		creator:     sanitizeTerminalLine(issue.CreatedBy),
 		title:       &title,
 		status:      &status,
 		priority:    &priority,
@@ -136,11 +139,18 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 
 // NewCreateModal creates an edit modal with defaults for creating a new issue
 func NewCreateModal(theme Theme, suggestions ...EditSuggestions) EditModal {
+	return NewCreateModalFor(theme, "", suggestions...)
+}
+
+// NewCreateModalFor creates the issue as actor: the new issue's creator, and
+// its assignee until the user changes the field.
+func NewCreateModalFor(theme Theme, actor string, suggestions ...EditSuggestions) EditModal {
+	actor = sanitizeTerminalLine(actor)
 	title := ""
 	description := ""
 	priority := "P0"
 	issueType := "bug"
-	assignee := ""
+	assignee := actor
 	labels := ""
 	notes := ""
 	deferUntil := ""
@@ -148,6 +158,7 @@ func NewCreateModal(theme Theme, suggestions ...EditSuggestions) EditModal {
 	m := EditModal{
 		theme:        theme,
 		isCreateMode: true,
+		creator:      actor,
 		title:        &title,
 		description:  &description,
 		priority:     &priority,
@@ -313,8 +324,14 @@ func (m EditModal) View() string {
 	var title string
 	if m.isCreateMode {
 		title = "Create Issue"
+		if m.creator != "" {
+			title += fmt.Sprintf("  (as @%s)", m.creator)
+		}
 	} else {
 		title = fmt.Sprintf("Edit Issue: %s", sanitizeTerminalLine(m.issueID))
+		if m.creator != "" {
+			title += fmt.Sprintf("  (created by @%s)", m.creator)
+		}
 	}
 
 	boxWidth := m.width - 10
@@ -429,6 +446,9 @@ func (m EditModal) BuildCreateArgs() map[string]string {
 		"labels":      *m.labels,
 		"description": *m.description,
 		"notes":       *m.notes,
+		// The actor is the creator, fixed when the modal opened; it does not
+		// follow later edits to the assignee.
+		"actor": m.creator,
 	}
 
 	for key, val := range fields {

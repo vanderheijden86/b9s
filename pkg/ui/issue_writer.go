@@ -58,6 +58,14 @@ func (w *IssueWriter) IsAvailable() bool {
 	return w.available
 }
 
+// Dir is the checkout bd runs in, or "" when writes are refused.
+func (w *IssueWriter) Dir() string {
+	if w == nil {
+		return ""
+	}
+	return w.checkout.Dir()
+}
+
 // SetCheckout sets the checkout bd commands run in. The zero Checkout makes
 // the project read-only.
 func (w *IssueWriter) SetCheckout(checkout Checkout) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/beadwork/pkg/identity"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
@@ -255,6 +256,8 @@ const (
 	TreeColumnLaneStage TreeColumn = iota
 	TreeColumnUpdated
 	TreeColumnID
+	TreeColumnCreator
+	TreeColumnAssignee
 	treeColumnCount
 )
 
@@ -266,6 +269,10 @@ func (c TreeColumn) String() string {
 		return "Updated"
 	case TreeColumnID:
 		return "ID"
+	case TreeColumnCreator:
+		return "Creator"
+	case TreeColumnAssignee:
+		return "Assignee"
 	default:
 		return "Unknown"
 	}
@@ -273,6 +280,8 @@ func (c TreeColumn) String() string {
 
 type treeColumnLayout struct {
 	laneStage  bool
+	creator    bool
+	assignee   bool
 	updated    bool
 	id         bool
 	maxIDWidth int
@@ -315,6 +324,7 @@ type TreeModel struct {
 	currentFilter      string                  // "all", "open", "closed", "ready"
 	labelFilter        string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
 	assigneeFilter     string                  // "" = no assignee filter (bd-gs45.1)
+	identities         *identity.Registry      // resolves assignee aliases for the filter
 	issueQuery         IssueQuery              // Shared ID/title/facet query owned by Model
 	filterMatches      map[string]bool         // Issue IDs that match the filter
 	contextAncestors   map[string]bool         // Ancestor IDs shown for context (dimmed)
@@ -1147,6 +1157,14 @@ func (t *TreeModel) RenderColumnPopup() string {
 				if layout.id {
 					resolved = "shown"
 				}
+			case TreeColumnCreator:
+				if layout.creator {
+					resolved = "shown"
+				}
+			case TreeColumnAssignee:
+				if layout.assignee {
+					resolved = "shown"
+				}
 			}
 			preferenceLabel = fmt.Sprintf("Auto (%s)", resolved)
 		}
@@ -1347,10 +1365,8 @@ func (t *TreeModel) passesScopeFilters(issue *model.Issue) bool {
 	}
 
 	// Assignee filter (AND with status/label filter) (bd-gs45.1)
-	if t.assigneeFilter != "" {
-		if issue.Assignee != t.assigneeFilter {
-			return false
-		}
+	if t.assigneeFilter != "" && !t.identities.Matches(t.assigneeFilter, issue.Assignee) {
+		return false
 	}
 
 	switch t.currentFilter {
@@ -1666,9 +1682,15 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 
 	// Right side matches the row. The dispatcher-owned lane stage gets its own
 	// column on layouts wide enough to keep the issue title useful.
-	rightParts := make([]string, 0, 3)
+	rightParts := make([]string, 0, 5)
 	if layout.laneStage {
 		rightParts = append(rightParts, fmt.Sprintf("%12s", "LANE STATE"))
+	}
+	if layout.creator {
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "CREATOR"))
+	}
+	if layout.assignee {
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "ASSIGNEE"))
 	}
 	if layout.updated {
 		rightParts = append(rightParts, fmt.Sprintf("%-12s", sortBadge))
@@ -1806,6 +1828,16 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 		}
 		rightParts = append(rightParts, stageStyle.Render(fmt.Sprintf("%-12s", stage)))
 	}
+	personStyle := t.theme.SecondaryText
+	if isSelected {
+		personStyle = r.NewStyle().Foreground(darkFg)
+	}
+	if layout.creator {
+		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.CreatedBy)))
+	}
+	if layout.assignee {
+		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.Assignee)))
+	}
 
 	if layout.updated {
 		ageStr := FormatTimeRel(issue.UpdatedAt)
@@ -1913,6 +1945,9 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 	layout := treeColumnLayout{
 		updated: resolveColumnPreference(t.ColumnPreference(TreeColumnUpdated), effectiveWidth > 60),
 		id:      resolveColumnPreference(t.ColumnPreference(TreeColumnID), true),
+		// People columns cost title width on every row, so they appear only on request.
+		creator:  resolveColumnPreference(t.ColumnPreference(TreeColumnCreator), false),
+		assignee: resolveColumnPreference(t.ColumnPreference(TreeColumnAssignee), false),
 	}
 	if layout.id {
 		layout.maxIDWidth = t.displayedMaxIDWidth()
@@ -1929,6 +1964,17 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 
 func (t *TreeModel) invalidateColumnLayout() {
 	t.columnLayoutValid = false
+}
+
+// treePersonColumnWidth fits "@" plus an eleven-rune name; longer names end in "…".
+const treePersonColumnWidth = 12
+
+func formatPersonCell(name string) string {
+	if name == "" {
+		return strings.Repeat(" ", treePersonColumnWidth)
+	}
+	cell := truncateRunesHelper("@"+name, treePersonColumnWidth, "…")
+	return fmt.Sprintf("%-*s", treePersonColumnWidth, cell)
 }
 
 func resolveColumnPreference(preference ColumnPreference, autoVisible bool) bool {
@@ -1989,9 +2035,15 @@ func (t *TreeModel) titleWidthForLayout(node *IssueTreeNode, layout treeColumnLa
 		fixedWidth += 2
 	}
 
-	rightWidths := make([]int, 0, 3)
+	rightWidths := make([]int, 0, 5)
 	if layout.laneStage {
 		rightWidths = append(rightWidths, 12)
+	}
+	if layout.creator {
+		rightWidths = append(rightWidths, treePersonColumnWidth)
+	}
+	if layout.assignee {
+		rightWidths = append(rightWidths, treePersonColumnWidth)
 	}
 	if layout.updated {
 		rightWidths = append(rightWidths, 12)

@@ -29,6 +29,8 @@ type treeFixtureIssue struct {
 	CreatedAt    string            `json:"created_at"`
 	Labels       []string          `json:"labels,omitempty"`
 	Notes        string            `json:"notes,omitempty"`
+	Assignee     string            `json:"assignee,omitempty"`
+	CreatedBy    string            `json:"created_by,omitempty"`
 	Dependencies []*treeFixtureDep `json:"dependencies,omitempty"`
 }
 
@@ -184,6 +186,13 @@ func TestTreeViewColumnSelectorForcesLaneStageVisible(t *testing.T) {
 // Keys are sent with configurable delays. The TUI auto-closes after autoCloseMs.
 func runTreeTUI(t *testing.T, dir string, autoCloseMs int, keys []keyStep) ([]byte, error) {
 	t.Helper()
+	return runTreeTUIWithEnv(t, dir, autoCloseMs, keys)
+}
+
+// runTreeTUIWithEnv runs the TUI like runTreeTUI; env entries are appended
+// after the inherited environment, so they override it.
+func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep, env ...string) ([]byte, error) {
+	t.Helper()
 	skipIfNoScript(t)
 	bv := buildBvBinary(t)
 
@@ -200,6 +209,7 @@ func runTreeTUI(t *testing.T, dir string, autoCloseMs int, keys []keyStep) ([]by
 		"TERM=screen-256color",
 		fmt.Sprintf("B9S_TUI_AUTOCLOSE_MS=%d", autoCloseMs),
 	)
+	cmd.Env = append(cmd.Env, env...)
 
 	stdinR, stdinW := io.Pipe()
 	cmd.Stdin = stdinR

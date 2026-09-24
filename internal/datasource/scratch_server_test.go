@@ -88,12 +88,20 @@ func TestCheckScratchAddrAcceptsLocalDisposableServer(t *testing.T) {
 }
 
 // TestDatabaseCreatingTestsRequireScratchServer fails when a test function in
-// this package creates a database, with SQL or through `bd init --server`,
-// without first calling requireScratchServer.
+// this package or the E2E suite creates a database, with SQL or through
+// `bd init --server`, without first calling requireScratchServer. Each package
+// defines its own requireScratchServer with the same refusals.
 func TestDatabaseCreatingTestsRequireScratchServer(t *testing.T) {
-	files, err := filepath.Glob("*_test.go")
-	if err != nil {
-		t.Fatal(err)
+	var files []string
+	for _, pattern := range []string{"*_test.go", "../../tests/e2e/*_test.go"} {
+		matched, err := filepath.Glob(pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, matched...)
+	}
+	if len(files) == 0 {
+		t.Fatal("no test files found to check")
 	}
 	fset := token.NewFileSet()
 	for _, name := range files {

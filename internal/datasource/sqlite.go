@@ -185,6 +185,7 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 		return nil, fmt.Errorf("error iterating issues: %w", err)
 	}
 
+	applyCreators(r.db, issues)
 	return issues, nil
 }
 
@@ -239,6 +240,7 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 		return nil, fmt.Errorf("error iterating issues: %w", err)
 	}
 
+	applyCreators(r.db, issues)
 	return issues, nil
 }
 

@@ -728,3 +728,20 @@ func TestIssueUnmarshalReadsDeferUntil(t *testing.T) {
 		t.Errorf("DeferUntil = %s, want 2026-10-01", got)
 	}
 }
+
+func TestIssueUnmarshal_ReadsCreatorAndOwner(t *testing.T) {
+	var issue Issue
+	line := `{"id":"bd-1","title":"t","created_by":"vanderheijden86","owner":"v@example.com","assignee":"BrownBear"}`
+	if err := json.Unmarshal([]byte(line), &issue); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if issue.CreatedBy != "vanderheijden86" {
+		t.Errorf("CreatedBy = %q, want vanderheijden86", issue.CreatedBy)
+	}
+	if issue.Owner != "v@example.com" {
+		t.Errorf("Owner = %q, want v@example.com", issue.Owner)
+	}
+	if issue.Assignee != "BrownBear" {
+		t.Errorf("Assignee = %q, want BrownBear (creator and assignee stay separate)", issue.Assignee)
+	}
+}

@@ -154,6 +154,7 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 		return nil, err
 	}
 	allComments := r.loadAllComments()
+	applyCreators(r.db, issues)
 
 	var result []model.Issue
 	for i := range issues {
@@ -224,6 +225,7 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 		return nil, fmt.Errorf("error iterating issues: %w", err)
 	}
 
+	applyCreators(r.db, issues)
 	return issues, nil
 }
 

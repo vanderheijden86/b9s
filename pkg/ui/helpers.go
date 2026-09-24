@@ -72,6 +72,8 @@ func sanitizeIssueForTerminal(issue model.Issue) model.Issue {
 	clean.Status = model.Status(sanitizeTerminalLine(string(clean.Status)))
 	clean.IssueType = model.IssueType(sanitizeTerminalLine(string(clean.IssueType)))
 	clean.Assignee = sanitizeTerminalLine(clean.Assignee)
+	clean.CreatedBy = sanitizeTerminalLine(clean.CreatedBy)
+	clean.Owner = sanitizeTerminalLine(clean.Owner)
 	clean.SourceRepo = sanitizeTerminalLine(clean.SourceRepo)
 	if clean.ExternalRef != nil {
 		value := sanitizeTerminalLine(*clean.ExternalRef)

@@ -9,32 +9,36 @@ import (
 
 // Issue represents a trackable work item
 type Issue struct {
-	ID                 string        `json:"id"`
-	ContentHash        string        `json:"-"`
-	Title              string        `json:"title"`
-	Description        string        `json:"description"`
-	Design             string        `json:"design,omitempty"`
-	AcceptanceCriteria string        `json:"acceptance_criteria,omitempty"`
-	Notes              string        `json:"notes,omitempty"`
-	Status             Status        `json:"status"`
-	Priority           int           `json:"priority"`
-	IssueType          IssueType     `json:"issue_type"`
-	Assignee           string        `json:"assignee,omitempty"`
-	EstimatedMinutes   *int          `json:"estimated_minutes,omitempty"`
-	CreatedAt          time.Time     `json:"created_at"`
-	UpdatedAt          time.Time     `json:"updated_at"`
-	DueDate            *time.Time    `json:"due_date,omitempty"`
-	DeferUntil         *time.Time    `json:"defer_until,omitempty"`
-	ClosedAt           *time.Time    `json:"closed_at,omitempty"`
-	ExternalRef        *string       `json:"external_ref,omitempty"`
-	CompactionLevel    int           `json:"compaction_level,omitempty"`
-	CompactedAt        *time.Time    `json:"compacted_at,omitempty"`
-	CompactedAtCommit  *string       `json:"compacted_at_commit,omitempty"`
-	OriginalSize       int           `json:"original_size,omitempty"`
-	Labels             []string      `json:"labels,omitempty"`
-	Dependencies       []*Dependency `json:"dependencies,omitempty"`
-	Comments           []*Comment    `json:"comments,omitempty"`
-	SourceRepo         string        `json:"source_repo,omitempty"`
+	ID                 string    `json:"id"`
+	ContentHash        string    `json:"-"`
+	Title              string    `json:"title"`
+	Description        string    `json:"description"`
+	Design             string    `json:"design,omitempty"`
+	AcceptanceCriteria string    `json:"acceptance_criteria,omitempty"`
+	Notes              string    `json:"notes,omitempty"`
+	Status             Status    `json:"status"`
+	Priority           int       `json:"priority"`
+	IssueType          IssueType `json:"issue_type"`
+	Assignee           string    `json:"assignee,omitempty"`
+	// CreatedBy is the bd actor that created the issue and never changes;
+	// Assignee is whoever holds it now. Owner is the creator's git email.
+	CreatedBy         string        `json:"created_by,omitempty"`
+	Owner             string        `json:"owner,omitempty"`
+	EstimatedMinutes  *int          `json:"estimated_minutes,omitempty"`
+	CreatedAt         time.Time     `json:"created_at"`
+	UpdatedAt         time.Time     `json:"updated_at"`
+	DueDate           *time.Time    `json:"due_date,omitempty"`
+	DeferUntil        *time.Time    `json:"defer_until,omitempty"`
+	ClosedAt          *time.Time    `json:"closed_at,omitempty"`
+	ExternalRef       *string       `json:"external_ref,omitempty"`
+	CompactionLevel   int           `json:"compaction_level,omitempty"`
+	CompactedAt       *time.Time    `json:"compacted_at,omitempty"`
+	CompactedAtCommit *string       `json:"compacted_at_commit,omitempty"`
+	OriginalSize      int           `json:"original_size,omitempty"`
+	Labels            []string      `json:"labels,omitempty"`
+	Dependencies      []*Dependency `json:"dependencies,omitempty"`
+	Comments          []*Comment    `json:"comments,omitempty"`
+	SourceRepo        string        `json:"source_repo,omitempty"`
 }
 
 // issueAlias is used by UnmarshalJSON to avoid infinite recursion.

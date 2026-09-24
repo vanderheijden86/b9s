@@ -312,6 +312,22 @@ An incomplete structured token such as `label:` adds no constraint, so live resu
 
 ---
 
+## People and Identities
+
+Each issue carries a fixed **Creator** (`created_by`, with the git email in `owner`) and a changing **Assignee**. The readers fill `CreatedBy` and `Owner` in `internal/datasource/creators.go`, and fall back to empty values on schemas without those columns.
+
+The names in those fields are aliases. `pkg/identity` resolves them to identities from the bd config key `b9s.identities` (a JSON list of human, agent and pool entries) and bd's own `claim.pools`, comparing names the way bd's claim path does (`CanonicalActor`). The UI loads the registry off the update loop on open and on every reload (`pkg/ui/identities.go`), only for Dolt projects, and drops a load that finishes after a project switch.
+
+```
+config table ──▶ LoadIdentityConfig ──▶ identity.Parse ──▶ Registry
+                                                            │
+     assignee picker, filters, suggestions ◀────────────────┤
+     Ctrl+N actor (BEADS_ACTOR > BD_ACTOR > git > USER) ◀───┤
+     health popup: SQL login, You:, conflicts ◀─────────────┘
+```
+
+The Dolt SQL login is a workspace credential shared by every agent, so it is shown but never used as a person. See [ADR 0014](adr/0014-map-actors-to-identities-in-b9s-config.md).
+
 ## Mermaid Integration: Diagrams in the Terminal?
 
 A common question is: *"How do you render complex diagrams in a text-only terminal?"*

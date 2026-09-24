@@ -396,6 +396,7 @@ if os.Getenv("BW_NO_BROWSER") != "" || os.Getenv("BW_TEST_MODE") != "" {
 go test ./...                           # All tests
 go test ./pkg/analysis/... -v           # Verbose for specific package
 go test ./tests/e2e/... -v              # E2E tests
+B9S_TEST_DOLT_SCRATCH_ADDR=127.0.0.1:13306 go test ./tests/e2e/... -v  # adds the Dolt identity E2E; needs a disposable local dolt sql-server, never 3306
 go test ./... -race                     # With race detector
 go test ./... -cover                    # With coverage
 go test -run TestSpecificName ./pkg/... # Run specific test

@@ -1757,6 +1757,9 @@ func (b *BoardModel) renderDetailPanel(width, height int) string {
 				statusIcon, issue.Status, prioIcon, issue.Priority))
 
 			// Metadata section
+			if issue.CreatedBy != "" {
+				content.WriteString(fmt.Sprintf("**Creator:** @%s\n\n", issue.CreatedBy))
+			}
 			if issue.Assignee != "" {
 				content.WriteString(fmt.Sprintf("**Assignee:** @%s\n\n", issue.Assignee))
 			}

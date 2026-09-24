@@ -14,6 +14,7 @@ import (
 	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
+	"github.com/vanderheijden86/beadwork/pkg/identity"
 	"github.com/vanderheijden86/beadwork/pkg/loader"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 	"github.com/vanderheijden86/beadwork/pkg/updater"
@@ -89,7 +90,8 @@ type LabelEntry struct {
 
 // AssigneeEntry holds display data for one assignee in the top bar assignee mode (bd-gs45.1).
 type AssigneeEntry struct {
-	Assignee string
+	Assignee string        // display name; aliases of one identity share an entry
+	Kind     identity.Kind // groups the picker: humans, agents, pools
 	Count    int
 	Number   int  // 0-9 assignment (by count rank), 0 = no key assigned
 	IsActive bool // currently filtered to this assignee
@@ -426,6 +428,11 @@ type DatabaseHealth struct {
 	IssueCount  int           // non-tombstone issue count
 	Error       string        // error message when connection failed
 	DoltAttempt *DoltFailure  // non-nil when Dolt was configured but connection failed (fallback mode)
+
+	SQLLogin         string        // Dolt CURRENT_USER() without its host part (Dolt only)
+	Actor            string        // who b9s creates issues as, after identity mapping
+	ActorKind        identity.Kind // KindUnknown when the actor is not in b9s.identities
+	IdentityProblems []string      // identity config load error and alias conflicts
 }
 
 // Model is the main Bubble Tea model for b9s
@@ -440,9 +447,13 @@ type Model struct {
 	sourceType       datasource.SourceType   // What backend we loaded from
 	sourceInfo       string                  // Human-readable datasource description for title bar
 	doltSource       datasource.DataSource   // Dolt DataSource used for on-demand health checks
-	doltFailure      *DoltFailure            // Non-nil when Dolt was detected but connection failed
-	startupDoltUser  string                  // User the startup project connects as; projects without a checkout reuse it
-	startupDoltHost  string                  // Server the startup project connects to; :project lists its databases
+	identities       *identity.Registry      // alias registry from b9s.identities and claim.pools (ADR 0014)
+	identityConfig   datasource.IdentityConfig
+	identityErr      error // last identity load or parse error, shown in the health popup
+	actorLookup      actorLookup
+	doltFailure      *DoltFailure // Non-nil when Dolt was detected but connection failed
+	startupDoltUser  string       // User the startup project connects as; projects without a checkout reuse it
+	startupDoltHost  string       // Server the startup project connects to; :project lists its databases
 	showProjectTable bool
 	projectTable     ProjectTableModel
 
@@ -1159,6 +1170,9 @@ func (m Model) Init() tea.Cmd {
 	} else if m.watcher != nil {
 		cmds = append(cmds, WatchFileCmd(m.watcher))
 	}
+	if cmd := m.loadIdentitiesCmd(); cmd != nil {
+		cmds = append(cmds, cmd)
+	}
 	// Load picker counts outside the update loop, then schedule periodic refreshes.
 	if len(m.allProjects) > 1 {
 		cmds = append(cmds, loadProjectCountsCmd(m.allProjects, m.startupDoltUser))
@@ -1488,10 +1502,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Assignee filter (AND with status/label) (bd-u90z)
-			if m.assigneeFilter != "" {
-				if issue.Assignee != m.assigneeFilter {
-					continue
-				}
+			if !m.assigneeMatches(issue.Assignee) {
+				continue
 			}
 
 			include := false
@@ -1643,9 +1655,17 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case projectOpenDeadlineMsg:
 		return m.handleProjectOpenDeadline(msg), nil
 
+	case identitiesLoadedMsg:
+		return m.applyIdentities(msg), nil
+
 	case FileChangedMsg:
 		// File changed on disk - reload issues
 		debug.Log("FileChangedMsg: reload triggered (sourceType=%s beadsPath=%s)", m.sourceType, m.beadsPath)
+		// A config change moves the Dolt HEAD like any issue write, so the
+		// alias list reloads with the issues.
+		if cmd := m.loadIdentitiesCmd(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 		// In background mode the BackgroundWorker owns file watching and snapshot building.
 		if m.backgroundWorker != nil {
 			if m.doltWatcher != nil {
@@ -2644,7 +2664,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				// Create new issue (bd-a83)
-				m.editModal = NewCreateModal(m.theme, m.collectEditSuggestions())
+				m.editModal = NewCreateModalFor(m.theme, m.currentActor(), m.collectEditSuggestions())
 				m.editModal.SetSize(m.width, m.height)
 				m.showEditModal = true
 				return m, m.editModal.Init()
@@ -3991,6 +4011,26 @@ func (m Model) renderDBHealthModal() string {
 
 	addLine("Issues:", fmt.Sprintf("%d", h.IssueCount))
 
+	// Every SQL login is a workspace credential shared by all its agents, so
+	// the popup never presents it as the person creating issues (ADR 0014).
+	if h.SQLLogin != "" {
+		addLine("SQL login:", h.SQLLogin+" (shared credential)")
+	}
+	if h.Actor != "" {
+		kind := "not in b9s.identities"
+		if h.ActorKind != identity.KindUnknown {
+			kind = string(h.ActorKind)
+		}
+		addLine("You:", fmt.Sprintf("%s (%s)", h.Actor, kind))
+	}
+	for i, problem := range h.IdentityProblems {
+		label := ""
+		if i == 0 {
+			label = "Identities:"
+		}
+		addLine(label, problem)
+	}
+
 	// Show failed Dolt connection attempt when falling back to JSONL/SQLite
 	if h.DoltAttempt != nil {
 		warnStyle := t.Renderer.NewStyle().Foreground(lipgloss.Color("#FF8800"))
@@ -4061,6 +4101,7 @@ func (m Model) buildDatabaseHealth() DatabaseHealth {
 	h := DatabaseHealth{
 		IssueCount: len(m.issues),
 	}
+	m.fillIdentityHealth(&h)
 
 	switch m.sourceType {
 	case datasource.SourceTypeDolt:
@@ -4873,10 +4914,8 @@ func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
 	}
 
 	// Assignee filter (AND with status/label filter) (bd-gs45.1)
-	if m.assigneeFilter != "" {
-		if issue.Assignee != m.assigneeFilter {
-			return false
-		}
+	if !m.assigneeMatches(issue.Assignee) {
+		return false
 	}
 
 	switch m.currentFilter {
@@ -5346,6 +5385,15 @@ func (m *Model) updateViewportContent() {
 	}
 }
 
+// personMarkdown renders a creator or assignee cell; an empty name stays
+// empty rather than showing a bare "@".
+func personMarkdown(name string) string {
+	if name == "" {
+		return ""
+	}
+	return "@" + name
+}
+
 func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) string {
 	rawID := item.ID
 	item = sanitizeIssueForTerminal(item)
@@ -5355,14 +5403,18 @@ func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) str
 	sb.WriteString(fmt.Sprintf("# %s %s\n", GetTypeIconMD(string(item.IssueType)), item.Title))
 
 	// Meta Table
-	sb.WriteString("| ID | Status | Priority | Assignee | Created |\n|---|---|---|---|---|\n")
-	sb.WriteString(fmt.Sprintf("| **%s** | **%s** | %s | @%s | %s |\n\n",
+	sb.WriteString("| ID | Status | Priority | Creator | Assignee | Created |\n|---|---|---|---|---|---|\n")
+	sb.WriteString(fmt.Sprintf("| **%s** | **%s** | %s | %s | %s | %s |\n\n",
 		item.ID,
 		strings.ToUpper(string(item.Status)),
 		GetPriorityIcon(item.Priority),
-		item.Assignee,
+		personMarkdown(item.CreatedBy),
+		personMarkdown(item.Assignee),
 		item.CreatedAt.Format("2006-01-02"),
 	))
+	if item.Owner != "" {
+		sb.WriteString(fmt.Sprintf("**Creator email:** %s\n\n", item.Owner))
+	}
 
 	if item.DeferUntil != nil {
 		sb.WriteString(fmt.Sprintf("**Deferred until:** %s\n\n", item.DeferUntil.Format("2006-01-02 15:04")))
@@ -5583,7 +5635,7 @@ func (m *Model) collectEditSuggestions() EditSuggestions {
 			}
 		}
 		if issue.Assignee != "" {
-			assigneeSet[issue.Assignee] = true
+			assigneeSet[m.identities.DisplayName(issue.Assignee)] = true
 		}
 	}
 	labels := make([]string, 0, len(labelSet))
@@ -6422,7 +6474,7 @@ func (m *Model) rebuildLabelEntries() {
 	counts := make(map[string]int)
 	for _, issue := range m.issues {
 		// Cross-filter: skip issues not matching assignee filter
-		if m.assigneeFilter != "" && issue.Assignee != m.assigneeFilter {
+		if !m.assigneeMatches(issue.Assignee) {
 			continue
 		}
 		for _, lbl := range issue.Labels {
@@ -6490,22 +6542,26 @@ func (m *Model) rebuildAssigneeEntries() {
 			}
 		}
 		if issue.Assignee != "" {
-			counts[issue.Assignee]++
+			counts[m.identities.DisplayName(issue.Assignee)]++
 		}
 	}
 
 	entries := make([]AssigneeEntry, 0, len(counts))
 	for assignee, count := range counts {
-		isActive := m.assigneeFilter == assignee
+		isActive := m.identities.Matches(m.assigneeFilter, assignee)
 		entries = append(entries, AssigneeEntry{
 			Assignee: assignee,
+			Kind:     m.identities.Resolve(assignee).Kind,
 			Count:    count,
 			IsActive: isActive,
 		})
 	}
 
-	// Sort by count descending, then alphabetically
+	// Humans first, then agents, then pools; by count within each group.
 	sort.Slice(entries, func(i, j int) bool {
+		if gi, gj := kindGroup(entries[i].Kind), kindGroup(entries[j].Kind); gi != gj {
+			return gi < gj
+		}
 		if entries[i].Count != entries[j].Count {
 			return entries[i].Count > entries[j].Count
 		}
@@ -6930,6 +6986,9 @@ func (m Model) renderAssigneeBar() string {
 
 	renderEntry := func(e AssigneeEntry) string {
 		name := sanitizeTerminalLine(e.Assignee)
+		if e.Kind == identity.KindAgent || e.Kind == identity.KindPool {
+			name += " (" + string(e.Kind) + ")"
+		}
 		if len(name) > 18 {
 			name = name[:15] + "..."
 		}
@@ -7127,4 +7186,18 @@ func (m Model) renderConfirmIDList(idStyle, textStyle lipgloss.Style) string {
 		lines = append(lines, idStyle.Render(sanitizeTerminalLine(id))+"  "+textStyle.Render(title))
 	}
 	return strings.Join(lines, "\n")
+}
+
+// kindGroup orders assignee picker groups. Unconfigured names sort with
+// humans: without identity configuration every name is unknown, and the
+// picker keeps plain count order.
+func kindGroup(k identity.Kind) int {
+	switch k {
+	case identity.KindAgent:
+		return 1
+	case identity.KindPool:
+		return 2
+	default:
+		return 0
+	}
 }

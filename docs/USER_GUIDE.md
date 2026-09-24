@@ -827,6 +827,8 @@ The Tree View renders only parent-child relationships, creating a work breakdown
 | **Priority** | P0 (critical red), P1 (high), P2 (medium gray), P3+ (muted) |
 | **Status Dot** | ● Open (green), ◐ In Progress (yellow), ⚠ Blocked (red), ○ Closed (gray) |
 | **Lane State** | Dispatcher-owned `lane-stage` value. Auto hides when showing it would truncate more than half of the displayed task and feature titles; blank for issues outside a lane |
+| **Creator** | The bd actor that created the issue (`created_by`), as `@name`. Hidden unless set to `Show` |
+| **Assignee** | Whoever holds the issue now, as `@name`. Hidden unless set to `Show` |
 | **Age** | Time since the issue was last updated (`updated_at`), so a lane transition shows as recent activity |
 
 ### Tree Building Algorithm
@@ -910,6 +912,43 @@ Marking follows k9s, with the Emacs dired keys `u` (unmark) and `U` (unmark all)
 Both views complement each other: use Tree View to understand structure, Graph View to understand flow.
 
 ---
+
+## 👥 Creators, Assignees and Identities
+
+Every issue carries two people, and b9s shows them as separate fields:
+
+| Field | Source | Changes? |
+|-------|--------|----------|
+| **Creator** | `created_by`, the bd actor at creation time, with `owner` (the creator's git email) as detail | Never |
+| **Assignee** | `assignee`, whoever holds the issue now | On every reassignment |
+
+The detail view and the board detail show both. The edit modal shows the Creator in its title, read-only. In the tree, press `|` and set **Creator** or **Assignee** to `Show` to add them as columns.
+
+### Creating an issue
+
+`Ctrl+N` opens the create form with **Assignee** filled in with you, and its title reads `as @you`. b9s finds you as bd does: `BEADS_ACTOR`, then `BD_ACTOR`, then `git config user.name` in the project, then `USER`. The name then passes through `b9s.identities` below, so an alias shows as its identity name.
+
+b9s passes that name to `bd create --actor`, so it becomes the issue's Creator. Clearing or changing the Assignee field changes only the assignee: the creator stays the person who opened the form.
+
+### Mapping names to people
+
+The same person often appears under several names: a git user name, an email, a lane agent name. List them once in the bd config key `b9s.identities` and b9s shows one name for all of them:
+
+```bash
+bd config set b9s.identities '[
+  {"name": "vanderheijden86", "kind": "human", "aliases": ["vanderheijden86@gmail.com", "andre"]},
+  {"name": "lane-agents", "kind": "agent", "aliases": ["ubuntu", "BrownBear"]}
+]'
+```
+
+- `kind` is `human`, `agent` or `pool`. Every name in bd's own `claim.pools` key is a `pool` without further configuration.
+- Names match as bd's claim path compares them: `.`, `_` and `-` are one separator, so `gastown.mayor` and `gastown_mayor` are the same name.
+- A name without an entry shows as itself.
+- The assignee picker (`Shift+A`) and the edit form's suggestions list each identity once, under its name, with the counts of all its aliases. The picker lists humans first, then agents and pools, tagged `(agent)` and `(pool)`. Filtering on a name shows issues assigned to any of its aliases.
+- An alias listed under two names is a configuration error. The first entry wins and the health popup (`Shift+D`) reports the conflict.
+- The list lives in the project database, so every clone and lane sees the same one. It reloads with the issues. JSONL-only projects have no config table and show raw names.
+
+The Dolt SQL login (for example `bd_b9s`) is one credential per workspace, shared by every agent in it. The health popup (`Shift+D`) shows it as `SQL login: bd_b9s (shared credential)`, but b9s never uses it as a person. The popup's `You:` line shows who b9s creates issues as, with the identity kind or `not in b9s.identities`, and an `Identities:` line lists a config that failed to load and each alias conflict. See [ADR 0014](adr/0014-map-actors-to-identities-in-b9s-config.md).
 
 ## 🎯 Actionable Plan View: Parallel Execution Tracks
 
