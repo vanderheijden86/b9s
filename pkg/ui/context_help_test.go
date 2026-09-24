@@ -189,7 +189,7 @@ func TestContextHelpKeyboardShortcuts(t *testing.T) {
 		{ContextList, "Enter"},
 		{ContextBoard, "h/l"},
 		{ContextDetail, "Esc"},
-		{ContextSplit, "Tab"},
+		{ContextSplit, "Enter"},
 		{ContextFilter, "/"},
 		{ContextTree, "K  Close"},
 		{ContextTree, "Del  Delete"},

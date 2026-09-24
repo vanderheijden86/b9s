@@ -635,8 +635,7 @@ func (m Model) treeLayoutSize() (width, height int) {
 			top, _ := m.stackedPaneHeights()
 			return m.stackedPaneWidth(), top
 		}
-		// Inside a bordered panel between the global header and the footer
-		return m.list.Width(), max(m.height-4, 1)
+		return m.list.Width(), m.splitPanelInnerHeight()
 	}
 	return m.width, m.bodyHeight()
 }
@@ -4270,7 +4269,7 @@ func (m Model) renderSplitView() string {
 	// Combine header + list + page indicator
 	listContent := lipgloss.JoinVertical(lipgloss.Left, header, m.list.View(), pageLine)
 
-	return m.renderSplitPanes(listStyle, detailStyle, listInnerWidth, panelHeight, listContent)
+	return m.renderSplitPanes(listStyle, detailStyle, listInnerWidth, listContent)
 }
 
 // renderTreeSplitView renders the tree view in a split layout with a detail panel on the right,
@@ -4286,14 +4285,12 @@ func (m Model) renderTreeSplitView() string {
 		detailStyle = FocusedPanelStyle
 	}
 
-	panelHeight := m.height - 2 // 1 for global header, 1 for footer
-
 	// The header row is rendered inside tree.View() via RenderHeader() (bd-s2k)
 	treeInnerWidth, treeHeight := m.treeLayoutSize()
 	m.tree.SetSize(treeInnerWidth, treeHeight)
 
 	// tree.View() includes the header row (bd-s2k)
-	return m.renderSplitPanes(treeStyle, detailStyle, treeInnerWidth, panelHeight, m.tree.View())
+	return m.renderSplitPanes(treeStyle, detailStyle, treeInnerWidth, m.tree.View())
 }
 
 func (m *Model) renderHelpOverlay() string {
@@ -4662,6 +4659,11 @@ func (m *Model) renderFooter() string {
 	var hints []hint
 
 	viewName := m.currentViewName()
+	// Enter moves focus into the detail pane without leaving the tree, board
+	// or graph view, so the hints follow focus rather than the view.
+	if m.focused == focusDetail {
+		viewName = "detail"
+	}
 	switch viewName {
 	case "graph":
 		hints = []hint{
@@ -4720,10 +4722,18 @@ func (m *Model) renderFooter() string {
 			{"esc", "back"},
 		}
 	case "detail":
+		returnTo := "tree"
+		if m.isBoardView {
+			returnTo = "board"
+		} else if m.isGraphView {
+			returnTo = "graph"
+		}
 		hints = []hint{
+			{"enter", "back to " + returnTo},
+			{"j/k", "scroll"},
+			{"home/end", "top/bottom"},
 			{"0-9", "project"},
 			{"^R", "refresh"},
-			{"esc", "back"},
 			{"n/p", "next/prev sibling"},
 			{"e", "edit"},
 			{"c", "copy"},
@@ -4779,7 +4789,9 @@ func (m *Model) renderFooter() string {
 			hintParts = append([]string{keyStyle.Render(fmt.Sprintf("%d marked", n))}, hintParts...)
 		}
 	}
-	shortcutBar := " " + strings.Join(hintParts, "  ")
+	// The final view wraps anything wider than the terminal, and a second
+	// footer line pushes the whole screen down by one row.
+	shortcutBar := lipgloss.NewStyle().MaxWidth(m.width).Render(" " + strings.Join(hintParts, "  "))
 
 	// Render the full-width footer line
 	barWidth := lipgloss.Width(shortcutBar)
@@ -5255,10 +5267,16 @@ func (m Model) stackedPaneHeights() (top, bottom int) {
 	return top, max(inner-top, 1)
 }
 
+// splitPanelInnerHeight is the inner height of both panes side by side: the
+// body less each pane's top and bottom border.
+func (m Model) splitPanelInnerHeight() int {
+	return max(m.bodyHeight()-2, 1)
+}
+
 // renderSplitPanes joins the list or tree panel with the detail panel, side
-// by side or stacked. Side by side, both are drawn at panelHeight; stacked,
-// each takes its share of the body.
-func (m Model) renderSplitPanes(listStyle, detailStyle lipgloss.Style, listWidth, panelHeight int, listContent string) string {
+// by side or stacked. Side by side, both fill the body; stacked, each takes
+// its share of it.
+func (m Model) renderSplitPanes(listStyle, detailStyle lipgloss.Style, listWidth int, listContent string) string {
 	if m.splitStacked {
 		top, bottom := m.stackedPaneHeights()
 		width := m.stackedPaneWidth() + 2
@@ -5268,16 +5286,17 @@ func (m Model) renderSplitPanes(listStyle, detailStyle lipgloss.Style, listWidth
 	}
 
 	// Panel Width: Inner + 2 (Padding). Border adds another 2.
-	// Use MaxHeight to ensure content doesn't overflow
+	// MaxHeight keeps overlong content from pushing the footer off screen
+	inner := m.splitPanelInnerHeight()
 	listView := listStyle.
 		Width(listWidth + 2).
-		Height(panelHeight).
-		MaxHeight(panelHeight).
+		Height(inner).
+		MaxHeight(inner + 2).
 		Render(listContent)
 	detailView := detailStyle.
 		Width(m.viewport.Width + 2).
-		Height(panelHeight).
-		MaxHeight(panelHeight).
+		Height(inner).
+		MaxHeight(inner + 2).
 		Render(m.viewport.View())
 	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }

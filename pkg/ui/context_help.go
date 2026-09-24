@@ -207,7 +207,7 @@ const contextHelpDetail = `## Detail View
 const contextHelpSplit = `## Split View
 
 **Focus**
-  Tab       Switch panes
+  Enter     Move focus between list and detail
   <         Shrink list pane
   >         Expand list pane
   \ :layout  Stack detail below the list
@@ -222,7 +222,8 @@ const contextHelpSplit = `## Split View
   Esc       Return to list view
   Enter     Open full detail
 
-Tip: Detail updates as you navigate`
+Tip: The focused pane has the bright border, and
+the footer lists the keys for that pane`
 
 const contextHelpFilter = `## Filter Mode
 

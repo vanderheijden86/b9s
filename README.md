@@ -284,6 +284,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. b9s captures th
 | `?` | Keyboard shortcuts help |
 | `Ctrl+S` (in help) | Search shortcuts; Enter keeps the filter, Esc clears it |
 | `[` / `]` | Resize split pane |
+| `Enter` (split view) | Move focus between the list and the detail pane; the focused pane has the bright border and the footer shows its keys |
 | `\` | Stack the detail pane below the list, or put it back to the right (same as `:layout`) |
 | `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table, `:mouse` switches between wheel scrolling and text selection, `:layout` stacks the detail pane below the list or puts it back to the right; Tab accepts the suggestion |
 
