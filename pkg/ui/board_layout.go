@@ -7,72 +7,12 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
-// BoardLayoutKind selects how the board presents its columns. Both layouts
-// render the same BoardModel state (columns, selection, search, swimlanes), so
-// switching never loses the selected issue. See docs/adr/0016.
-type BoardLayoutKind int
-
-const (
-	// BoardLayoutAdaptive is concept A: the focused column takes most of the
-	// width, rows carry two lines of metadata, empty and closed columns fold
-	// into rails.
-	BoardLayoutAdaptive BoardLayoutKind = iota
-	// BoardLayoutInspector is concept E: one-line rows beside a persistent
-	// inspector for the selected issue.
-	BoardLayoutInspector
-)
-
-func (k BoardLayoutKind) String() string {
-	if k == BoardLayoutInspector {
-		return "inspector"
-	}
-	return "adaptive"
-}
-
-// Label is the name the board bar and status line show.
-func (k BoardLayoutKind) Label() string {
-	if k == BoardLayoutInspector {
-		return "E focus + inspector"
-	}
-	return "A adaptive focus"
-}
-
-func (k BoardLayoutKind) letter() string {
-	if k == BoardLayoutInspector {
-		return "E"
-	}
-	return "A"
-}
-
-func (k BoardLayoutKind) other() BoardLayoutKind {
-	if k == BoardLayoutInspector {
-		return BoardLayoutAdaptive
-	}
-	return BoardLayoutInspector
-}
-
-// ParseBoardLayout reads a ui.board_layout config value. The mockup letters
-// are accepted beside the names because reviewers refer to the layouts by them.
-func ParseBoardLayout(s string) (BoardLayoutKind, bool) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "adaptive", "a":
-		return BoardLayoutAdaptive, true
-	case "inspector", "e":
-		return BoardLayoutInspector, true
-	}
-	return BoardLayoutAdaptive, false
-}
-
 // boardBreakpoints gives the minimum width at which 4, 3 and 2 columns are
 // shown in full. Below the last one only the focused column is full.
 type boardBreakpoints [3]int
 
-var (
-	// Spec widths from docs/board-redesign-spec.md "Responsive layout".
-	adaptiveBreakpoints = boardBreakpoints{160, 110, 80}
-	// One-line rows need less width, and the inspector already takes a share.
-	inspectorBreakpoints = boardBreakpoints{110, 80, 56}
-)
+// Spec widths from docs/board-redesign-spec.md "Responsive layout".
+var adaptiveBreakpoints = boardBreakpoints{160, 110, 80}
 
 const (
 	boardRailWidth    = 14

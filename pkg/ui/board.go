@@ -32,11 +32,14 @@ type BoardModel struct {
 	// Issue lookup map: ID -> *Issue for getting blocker titles (bv-kklp)
 	issueMap map[string]*model.Issue
 
-	// Presentation layout and the layout E inspector (docs/adr/0016).
-	layout           BoardLayoutKind
-	inspectorFocused bool
-	inspectorID      string // issue the scroll offset belongs to
-	inspectorScroll  int
+	// Epic presentation (docs/adr/0017). rawColumns holds the grouped columns
+	// before the design arranges them into columns.
+	epicView     BoardEpicView
+	rawColumns   [4][]model.Issue
+	epicUniverse []model.Issue // whole project; nil means allIssues
+	epicOf       map[string]string
+	epics        map[string]*boardEpic
+	foldedEpics  map[string]bool
 
 	// Search state (bv-yg39)
 	searchMode    bool
@@ -387,9 +390,9 @@ func (b *BoardModel) CycleSwimLaneMode() {
 // regroupIssues rebuilds columns based on current swimlane mode (bv-wjs0)
 func (b *BoardModel) regroupIssues() {
 	if b.boardState != nil {
-		b.columns = b.boardState.ColumnsForMode(b.swimLaneMode)
+		b.setColumns(b.boardState.ColumnsForMode(b.swimLaneMode))
 	} else {
-		b.columns = groupIssuesByMode(b.allIssues, b.swimLaneMode)
+		b.setColumns(groupIssuesByMode(b.allIssues, b.swimLaneMode))
 	}
 
 	// Reset selection to avoid out-of-bounds
@@ -439,6 +442,7 @@ func NewBoardModel(issues []model.Issue, theme Theme) BoardModel {
 		blocksIndex:  buildBlocksIndex(issues),
 		issueMap:     issueMap,
 	}
+	b.setColumns(cols)
 	b.updateActiveColumns()
 	return b
 }
@@ -450,7 +454,7 @@ func (b *BoardModel) SetIssues(issues []model.Issue) {
 	b.boardState = nil
 
 	// Group by current swimlane mode (bv-wjs0)
-	b.columns = groupIssuesByMode(issues, b.swimLaneMode)
+	b.setColumns(groupIssuesByMode(issues, b.swimLaneMode))
 
 	b.blocksIndex = buildBlocksIndex(issues) // Rebuild reverse dependency index (bv-1daf)
 
@@ -489,9 +493,9 @@ func (b *BoardModel) SetSnapshot(s *DataSnapshot) {
 	b.boardState = s.BoardState
 
 	if b.boardState != nil {
-		b.columns = b.boardState.ColumnsForMode(b.swimLaneMode)
+		b.setColumns(b.boardState.ColumnsForMode(b.swimLaneMode))
 	} else {
-		b.columns = groupIssuesByMode(s.Issues, b.swimLaneMode)
+		b.setColumns(groupIssuesByMode(s.Issues, b.swimLaneMode))
 	}
 
 	// Build reverse-dependency index from issues.

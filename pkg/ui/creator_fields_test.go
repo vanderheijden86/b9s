@@ -46,15 +46,6 @@ func TestSanitizeIssueForTerminal_CleansCreatorFields(t *testing.T) {
 	}
 }
 
-func TestBoardDetail_ShowsCreator(t *testing.T) {
-	board := NewBoardModel([]model.Issue{creatorFixture()}, DefaultTheme(lipgloss.DefaultRenderer()))
-	board.SetLayout(BoardLayoutInspector)
-	view := stripANSI(board.View(180, 40))
-	if !strings.Contains(view, "Creator") || !strings.Contains(view, "@alice") {
-		t.Fatalf("board detail omits the creator:\n%s", view)
-	}
-}
-
 func TestEditModal_ShowsCreatorReadOnly(t *testing.T) {
 	issue := creatorFixture()
 	modal := NewEditModal(&issue, DefaultTheme(lipgloss.DefaultRenderer()))

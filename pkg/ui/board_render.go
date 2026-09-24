@@ -9,68 +9,9 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
-// Board layout methods.
-
-// Layout returns the active board layout.
-func (b *BoardModel) Layout() BoardLayoutKind { return b.layout }
-
-// SetLayout selects a board layout. Leaving the inspector layout returns
-// focus to the columns, since layout A has no inspector to hold it.
-func (b *BoardModel) SetLayout(k BoardLayoutKind) {
-	b.layout = k
-	if k != BoardLayoutInspector {
-		b.inspectorFocused = false
-	}
-}
-
-// ToggleLayout switches between layout A and layout E.
-func (b *BoardModel) ToggleLayout() { b.SetLayout(b.layout.other()) }
-
-// IsInspectorFocused reports whether keys scroll the inspector instead of
-// moving the selection.
-func (b *BoardModel) IsInspectorFocused() bool {
-	return b.layout == BoardLayoutInspector && b.inspectorFocused
-}
-
-// ToggleInspectorFocus moves focus between the columns and the inspector.
-// It does nothing in layout A.
-func (b *BoardModel) ToggleInspectorFocus() {
-	if b.layout == BoardLayoutInspector {
-		b.inspectorFocused = !b.inspectorFocused
-	}
-}
-
-// ScrollInspector moves the inspector by delta lines for a board rendered at
-// width x height, stopping at the first and last line.
-func (b *BoardModel) ScrollInspector(delta, width, height int) {
-	sel := b.SelectedIssue()
-	if sel == nil {
-		return
-	}
-	offset := b.inspectorOffset() + delta
-	_, inspW, bodyH := inspectorGeometry(width, height)
-	if maxOff := len(b.inspectorLines(*sel, inspW-2)) - bodyH; offset > maxOff {
-		offset = maxOff
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	b.inspectorID = sel.ID
-	b.inspectorScroll = offset
-}
-
-// inspectorOffset is the scroll position for the selected issue. A new
-// selection starts at the top.
-func (b *BoardModel) inspectorOffset() int {
-	if sel := b.SelectedIssue(); sel != nil && sel.ID == b.inspectorID {
-		return b.inspectorScroll
-	}
-	return 0
-}
-
 // FocusPopulatedColumn moves the focus off an empty column onto the first
-// column that holds issues. Both layouts give the focused column the most
-// width, so an empty focus spends the board on nothing.
+// column that holds issues. The focused column gets the most width, so an
+// empty focus spends the board on nothing.
 func (b *BoardModel) FocusPopulatedColumn() {
 	if len(b.columns[b.actualFocusedCol()]) > 0 {
 		return
@@ -83,54 +24,15 @@ func (b *BoardModel) FocusPopulatedColumn() {
 	}
 }
 
-// View renders the board in the active layout. Every line is at most width
-// cells and the result is at most height lines.
+// View renders the board in the active epic design. Every line is at most
+// width cells and the result is at most height lines.
 func (b BoardModel) View(width, height int) string {
 	if width < 20 || height < 4 {
 		return ""
 	}
-	bodyH := height - 2 // board bar above, key hints below
-	var body []string
-	if b.layout == BoardLayoutInspector {
-		body = b.inspectorBody(width, height)
-	} else {
-		body = b.columnsBody(width, bodyH, false)
-	}
-	lines := append([]string{b.renderBoardBar(width)}, body...)
+	lines := append([]string{b.renderBoardBar(width)}, b.columnsBody(width, height-2)...)
 	lines = append(lines, b.renderKeyHints(width))
 	return strings.Join(lines, "\n")
-}
-
-// inspectorGeometry splits the width between the compact board and the
-// inspector, with one separator column between them.
-func inspectorGeometry(width, height int) (boardW, inspW, bodyH int) {
-	inspW = width * 38 / 100
-	if inspW < 34 {
-		inspW = 34
-	}
-	if inspW > 64 {
-		inspW = 64
-	}
-	if inspW > width/2 {
-		inspW = width / 2
-	}
-	return width - inspW - 1, inspW, height - 2
-}
-
-func (b BoardModel) inspectorBody(width, height int) []string {
-	boardW, inspW, bodyH := inspectorGeometry(width, height)
-	left := b.columnsBody(boardW, bodyH, true)
-	right := b.renderInspector(inspW, bodyH)
-	sepColor := b.theme.Border
-	if b.inspectorFocused {
-		sepColor = b.theme.Primary
-	}
-	sep := b.theme.Renderer.NewStyle().Foreground(sepColor).Render("│")
-	out := make([]string, bodyH)
-	for i := range out {
-		out[i] = left[i] + sep + right[i]
-	}
-	return out
 }
 
 func (b BoardModel) renderBoardBar(width int) string {
@@ -138,34 +40,39 @@ func (b BoardModel) renderBoardBar(width int) string {
 	bold := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
 	muted := t.Renderer.NewStyle().Foreground(t.Secondary)
 
+	// Counts come from the grouped columns, so a folded epic band never makes
+	// its issues look gone.
 	headers := b.getColumnHeaders()
 	var counts []string
+	total, shown := 0, b.TotalCount()
 	for col := 0; col < 4; col++ {
-		counts = append(counts, fmt.Sprintf("%s %d", strings.ToLower(headers[col]), len(b.columns[col])))
+		counts = append(counts, fmt.Sprintf("%s %d", strings.ToLower(headers[col]), len(b.rawColumns[col])))
+		total += len(b.rawColumns[col])
 	}
-	left := bold.Render("BOARD") + "  " + bold.Render(b.layout.Label()) + "  " +
-		muted.Render(fmt.Sprintf("by %s · %d issues", strings.ToLower(b.GetSwimLaneModeName()), b.TotalCount()))
+	summary := fmt.Sprintf("by %s · %d issues", strings.ToLower(b.GetSwimLaneModeName()), total)
+	if folded := total - shown; folded > 0 {
+		summary += fmt.Sprintf(" · %d folded", folded)
+	}
+	left := bold.Render("BOARD") + "  " + bold.Render(fmt.Sprintf("%s %d/%d", b.epicView.Label(), int(b.epicView)+1, boardEpicViewCount)) + "  " +
+		muted.Render(summary)
 	right := strings.Join(counts, " · ")
 	if hidden := b.HiddenColumnCount(); hidden > 0 {
 		right += fmt.Sprintf(" · +%d hidden", hidden)
-	}
-	if b.IsInspectorFocused() {
-		right = "inspector focused · " + right
 	}
 	return joinLeftRight(left, muted.Render(right), width)
 }
 
 func (b BoardModel) renderKeyHints(width int) string {
-	hints := "h/l column  j/k item  enter detail  s swimlane  / search  v layout " + b.layout.other().letter()
-	if b.layout == BoardLayoutInspector {
-		hints = "h/l column  j/k item  tab board/inspector  ctrl+j/k scroll  enter detail  v layout A"
+	hints := "h/l column  j/k item  enter detail  s swimlane  / search  v epic design"
+	if b.epicView == BoardEpicLanes {
+		hints = "h/l column  j/k item  tab fold epic  shift+tab fold all  enter detail  s swimlane  v epic design"
 	}
 	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Render(truncateRunesHelper(hints, width, "…")), width)
 }
 
 // columnsBody renders the status regions side by side as exactly height lines
 // of exactly width cells.
-func (b BoardModel) columnsBody(width, height int, compact bool) []string {
+func (b BoardModel) columnsBody(width, height int) []string {
 	var inputs []boardRegionInput
 	for _, col := range b.activeColIdx {
 		inputs = append(inputs, boardRegionInput{
@@ -174,18 +81,22 @@ func (b BoardModel) columnsBody(width, height int, compact bool) []string {
 			preferRail: b.swimLaneMode == SwimByStatus && col == ColClosed,
 		})
 	}
-	bp := adaptiveBreakpoints
-	if compact {
-		bp = inspectorBreakpoints
-	}
-	regions := planBoardRegions(width, inputs, b.actualFocusedCol(), bp)
+	regions := planBoardRegions(width, inputs, b.actualFocusedCol(), adaptiveBreakpoints)
 
-	blocks := make([][]string, len(regions))
-	for i, r := range regions {
-		if r.collapsed {
-			blocks[i] = b.renderRail(r.col, r.width, height)
-		} else {
-			blocks[i] = b.renderColumn(r.col, r.width, height, compact)
+	var blocks [][]string
+	if b.epicView == BoardEpicLanes && b.hasEpicBands() {
+		blocks = b.lanesBody(width, height, regions)
+	} else {
+		blocks = make([][]string, len(regions))
+		for i, r := range regions {
+			switch {
+			case r.collapsed:
+				blocks[i] = b.renderRail(r.col, r.width, height)
+			case b.epicView == BoardEpicGroups && b.hasEpicBands():
+				blocks[i] = b.renderGroupedColumn(r.col, r.width, height)
+			default:
+				blocks[i] = b.renderColumn(r.col, r.width, height)
+			}
 		}
 	}
 	sep := b.theme.Renderer.NewStyle().Foreground(b.theme.Border).Render("│")
@@ -200,27 +111,25 @@ func (b BoardModel) columnsBody(width, height int, compact bool) []string {
 	return out
 }
 
-func (b BoardModel) columnHeader(col, width int, compact bool) string {
+func (b BoardModel) columnHeader(col, width int) string {
 	t := b.theme
-	focused := col == b.actualFocusedCol() && !b.IsInspectorFocused()
+	focused := col == b.actualFocusedCol()
 	title := b.getColumnHeaders()[col]
 	issues := b.columns[col]
 	stats := computeColumnStats(issues, b.issueMap)
 
 	meta := []string{fmt.Sprintf("%d", len(issues))}
-	if !compact {
-		if stats.P0Count > 0 {
-			meta = append(meta, fmt.Sprintf("P0 %d", stats.P0Count))
-		}
-		if stats.P1Count > 0 {
-			meta = append(meta, fmt.Sprintf("P1 %d", stats.P1Count))
-		}
-		if stats.BlockedCount > 0 && !(b.swimLaneMode == SwimByStatus && col == ColClosed) {
-			meta = append(meta, fmt.Sprintf("waiting %d", stats.BlockedCount))
-		}
-		if stats.OldestAge > 0 && len(issues) > 0 {
-			meta = append(meta, "oldest "+formatOldestAge(stats.OldestAge))
-		}
+	if stats.P0Count > 0 {
+		meta = append(meta, fmt.Sprintf("P0 %d", stats.P0Count))
+	}
+	if stats.P1Count > 0 {
+		meta = append(meta, fmt.Sprintf("P1 %d", stats.P1Count))
+	}
+	if stats.BlockedCount > 0 && !(b.swimLaneMode == SwimByStatus && col == ColClosed) {
+		meta = append(meta, fmt.Sprintf("waiting %d", stats.BlockedCount))
+	}
+	if stats.OldestAge > 0 && len(issues) > 0 {
+		meta = append(meta, "oldest "+formatOldestAge(stats.OldestAge))
 	}
 
 	marker := "  "
@@ -259,9 +168,9 @@ func (b BoardModel) columnColor(col int) lipgloss.TerminalColor {
 
 // renderColumn draws a full region: header, rule, then rows scrolled so the
 // selection stays visible.
-func (b BoardModel) renderColumn(col, width, height int, compact bool) []string {
+func (b BoardModel) renderColumn(col, width, height int) []string {
 	t := b.theme
-	out := []string{b.columnHeader(col, width, compact), padCells(t.Renderer.NewStyle().Foreground(t.Border).Render(strings.Repeat("─", width)), width)}
+	out := b.columnHead(col, width)
 	issues := b.columns[col]
 	avail := height - len(out)
 
@@ -271,9 +180,6 @@ func (b BoardModel) renderColumn(col, width, height int, compact bool) []string 
 	}
 
 	rowH := 3 // two content lines and a separator
-	if compact {
-		rowH = 1
-	}
 	visible := avail / rowH
 	if len(issues) > visible {
 		visible = (avail - 1) / rowH // keep a line for the "more" hint
@@ -293,10 +199,6 @@ func (b BoardModel) renderColumn(col, width, height int, compact bool) []string 
 	focusedCol := col == b.actualFocusedCol()
 	for row := start; row < end; row++ {
 		selected := focusedCol && row == sel
-		if compact {
-			out = append(out, b.renderCompactRow(issues[row], width, selected, col, row))
-			continue
-		}
 		out = append(out, b.renderRowLines(issues[row], width, selected, col, row)...)
 		if row < end-1 {
 			out = append(out, padCells(t.Renderer.NewStyle().Foreground(t.Border).Render(strings.Repeat("┄", width)), width))
@@ -424,10 +326,13 @@ func (b BoardModel) priorityStyle(issue model.Issue, selected bool) lipgloss.Sty
 	return b.fg(selected, b.theme.Secondary)
 }
 
-// renderRowLines draws the two lines of a layout A row:
+// renderRowLines draws the two lines of a board row:
 //
 //	[eg0.4.2]  Wire the flow subscription transport        P1  2d
 //	task  blocked by eg0.4.1  lane: blocked  blocks 3
+//
+// The chips design starts both lines with a bar in the epic's color and puts
+// the epic chip right after the type, before the facts that may be dropped.
 func (b BoardModel) renderRowLines(issue model.Issue, width int, selected bool, col, row int) []string {
 	t := b.theme
 	card := b.cardView(issue)
@@ -447,7 +352,15 @@ func (b BoardModel) renderRowLines(issue model.Issue, width int, selected bool, 
 	if gap < 1 {
 		gap = 1
 	}
-	line1 := " " + b.fg(selected, idColor).Bold(true).Render(id) + "  " +
+	lead := " "
+	var chip string
+	var chipColor lipgloss.TerminalColor
+	if b.epicView == BoardEpicChips {
+		if chip, chipColor = b.epicChip(issue, 24); chip != "" {
+			lead = b.fg(selected, chipColor).Render("▌")
+		}
+	}
+	line1 := lead + b.fg(selected, idColor).Bold(true).Render(id) + "  " +
 		b.fg(selected, t.Base.GetForeground()).Bold(selected).Render(title) + strings.Repeat(" ", gap) +
 		b.priorityStyle(issue, selected).Render(card.Priority) + "  " +
 		b.fg(selected, getAgeColor(issue.UpdatedAt)).Render(card.Age)
@@ -462,6 +375,9 @@ func (b BoardModel) renderRowLines(issue model.Issue, width int, selected bool, 
 		parts = append(parts, b.fg(selected, c).Render(text))
 		used += 2 + lipgloss.Width(text)
 	}
+	if chip != "" {
+		add(chip, chipColor)
+	}
 	if card.BlockedBy != "" {
 		add("blocked by "+card.BlockedBy, t.Blocked)
 	}
@@ -471,167 +387,10 @@ func (b BoardModel) renderRowLines(issue model.Issue, width int, selected bool, 
 	if card.BlocksCount > 0 {
 		add(fmt.Sprintf("blocks %d", card.BlocksCount), t.Feature)
 	}
-	line2 := " " + strings.Join(parts, "  ")
+	line2 := lead + strings.Join(parts, "  ")
 
 	bg := b.rowSurface(selected, col, row)
 	return []string{surface(line1, width, bg), surface(line2, width, bg)}
-}
-
-// renderCompactRow draws the one-line layout E row: short ID, title, priority.
-func (b BoardModel) renderCompactRow(issue model.Issue, width int, selected bool, col, row int) string {
-	t := b.theme
-	card := b.cardView(issue)
-	idColor := lipgloss.TerminalColor(t.Primary)
-	if b.IsSearchMatch(col, row) {
-		idColor = lipgloss.AdaptiveColor{Light: "#1565c0", Dark: "#64b5f6"}
-	}
-	marker := " "
-	if card.BlockedBy != "" {
-		marker = "⧗"
-	}
-	id := truncateRunesHelper(card.ShortID, width/3, "…")
-	titleW := width - lipgloss.Width(id) - lipgloss.Width(card.Priority) - 6
-	title := truncateRunesHelper(card.Title, titleW, "…")
-	gap := width - 2 - lipgloss.Width(id) - 1 - lipgloss.Width(title) - lipgloss.Width(card.Priority) - 1
-	if gap < 1 {
-		gap = 1
-	}
-	line := b.fg(selected, t.Blocked).Render(marker) + " " + b.fg(selected, idColor).Bold(true).Render(id) + " " +
-		b.fg(selected, t.Base.GetForeground()).Bold(selected).Render(title) + strings.Repeat(" ", gap) +
-		b.priorityStyle(issue, selected).Render(card.Priority)
-	return surface(line, width, b.rowSurface(selected, col, row))
-}
-
-// renderInspector draws the persistent detail panel of layout E.
-func (b BoardModel) renderInspector(width, height int) []string {
-	t := b.theme
-	sel := b.SelectedIssue()
-	if sel == nil {
-		return fillLines([]string{padCells(" "+t.Renderer.NewStyle().Foreground(t.Secondary).Render("No issue selected"), width)}, width, height)
-	}
-	lines := b.inspectorLines(*sel, width-2)
-	offset := b.inspectorOffset()
-	if maxOff := len(lines) - height; offset > maxOff {
-		offset = maxOff
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	var out []string
-	for i := offset; i < len(lines) && len(out) < height; i++ {
-		out = append(out, padCells(" "+lines[i], width))
-	}
-	if offset+height < len(lines) && len(out) > 0 {
-		out[len(out)-1] = padCells(" "+t.Renderer.NewStyle().Foreground(t.Secondary).Italic(true).
-			Render(fmt.Sprintf("↓ %d more lines · ctrl+j", len(lines)-offset-height)), width)
-	}
-	return fillLines(out, width, height)
-}
-
-// inspectorLines builds the inspector content wrapped to width. The first
-// lines mirror the mockup: type and priority, the ID, the title, then the
-// status/lane/ready/impact facts the spec keeps apart.
-func (b BoardModel) inspectorLines(raw model.Issue, width int) []string {
-	t := b.theme
-	if width < 10 {
-		width = 10
-	}
-	issue := sanitizeIssueForTerminal(raw)
-	card := b.cardView(raw)
-	label := t.Renderer.NewStyle().Foreground(t.Secondary)
-	value := t.Renderer.NewStyle().Foreground(t.Base.GetForeground())
-	heading := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
-
-	var lines []string
-	wrap := func(text string, style lipgloss.Style) {
-		for _, l := range strings.Split(t.Renderer.NewStyle().Width(width).Render(text), "\n") {
-			lines = append(lines, style.Render(strings.TrimRight(l, " ")))
-		}
-	}
-	field := func(name, v string) {
-		const labelW = 10
-		prefix := label.Render(fmt.Sprintf("%-*s", labelW, name))
-		for i, l := range strings.Split(t.Renderer.NewStyle().Width(width-labelW).Render(v), "\n") {
-			if i > 0 {
-				prefix = strings.Repeat(" ", labelW)
-			}
-			lines = append(lines, prefix+value.Render(strings.TrimRight(l, " ")))
-		}
-	}
-
-	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
-	head := t.Renderer.NewStyle().Foreground(iconColor).Bold(true).Render(icon+" "+strings.ToUpper(card.Type)) +
-		label.Render(" · ") + b.priorityStyle(raw, false).Render(card.Priority)
-	lines = append(lines, head, heading.Render("["+card.ShortID+"]"))
-	wrap(card.Title, value.Bold(true))
-	lines = append(lines, "")
-
-	field("Status", strings.ToUpper(string(issue.Status)))
-	lane := card.LaneStage
-	if lane == "" {
-		field("Lane", "none")
-	} else {
-		field("Lane", strings.ToUpper(lane))
-	}
-	switch {
-	case isClosedLikeStatus(issue.Status):
-		field("Ready", "closed")
-	case card.BlockedBy != "":
-		field("Ready", "no, blocked by "+card.BlockedBy)
-	default:
-		field("Ready", "yes")
-	}
-	blocks := b.blocksIndex[raw.ID]
-	if len(blocks) == 0 {
-		field("Impact", "blocks nothing")
-	} else {
-		var ids []string
-		for _, id := range blocks {
-			ids = append(ids, b.displayID(sanitizeTerminalLine(id)))
-		}
-		field("Impact", "blocks "+strings.Join(ids, ", "))
-	}
-	if issue.Assignee != "" {
-		field("Assignee", "@"+issue.Assignee)
-	}
-	if issue.CreatedBy != "" {
-		field("Creator", "@"+issue.CreatedBy)
-	}
-
-	if strings.TrimSpace(issue.Description) != "" {
-		lines = append(lines, "")
-		for _, para := range strings.Split(strings.TrimSpace(issue.Description), "\n") {
-			wrap(para, value)
-		}
-	}
-
-	lines = append(lines, "", heading.Render("Dependencies"))
-	var deps int
-	for _, dep := range issue.Dependencies {
-		if dep == nil || !dep.Type.IsBlocking() {
-			continue
-		}
-		deps++
-		text := b.displayID(sanitizeTerminalLine(dep.DependsOnID))
-		if blocker, ok := b.issueMap[dep.DependsOnID]; ok && blocker != nil {
-			text += " " + strings.ToLower(string(blocker.Status)) + " · " + sanitizeTerminalLine(blocker.Title)
-		}
-		wrap("← "+text, value)
-	}
-	if deps == 0 {
-		lines = append(lines, label.Render("none"))
-	}
-
-	lines = append(lines, "", heading.Render("Labels"))
-	if len(issue.Labels) == 0 {
-		lines = append(lines, label.Render("none"))
-	} else {
-		wrap(strings.Join(issue.Labels, " · "), value)
-	}
-	lines = append(lines, "")
-	field("Created", FormatTimeRel(issue.CreatedAt))
-	field("Updated", FormatTimeRel(issue.UpdatedAt))
-	return lines
 }
 
 // surface pads a styled line to width and, when bg is set, paints the whole

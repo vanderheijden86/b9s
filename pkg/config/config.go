@@ -30,7 +30,7 @@ type Project struct {
 // UIConfig holds UI preference settings.
 type UIConfig struct {
 	DefaultView string     `yaml:"default_view,omitempty"` // list, tree, board, split
-	BoardLayout string     `yaml:"board_layout,omitempty"` // adaptive (A) or inspector (E); v switches at runtime
+	BoardEpics  string     `yaml:"board_epics,omitempty"`  // lanes, chips or groups; v switches at runtime
 	SplitRatio  float64    `yaml:"split_ratio,omitempty"`  // Default split pane ratio (0.2-0.8)
 	Headless    bool       `yaml:"headless,omitempty"`     // Compact header mode
 	Sort        SortConfig `yaml:"sort,omitempty"`         // Tree sort applied at startup

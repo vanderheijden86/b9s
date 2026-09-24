@@ -207,10 +207,10 @@ func assertFits(t *testing.T, name, view string, width, height int) {
 }
 
 func TestBoardLayouts_FitEveryWidth(t *testing.T) {
-	for _, layout := range []BoardLayoutKind{BoardLayoutAdaptive, BoardLayoutInspector} {
+	for _, layout := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
 		for _, width := range []int{60, 80, 110, 160, 220} {
 			b := newSparseBoard()
-			b.SetLayout(layout)
+			b.SetEpicView(layout)
 			for col := 0; col < 4; col++ {
 				b.JumpToColumn(col)
 				name := fmt.Sprintf("%s/%d/col%d", layout, width, col)
@@ -226,12 +226,12 @@ func TestBoardAdaptiveView_ShowsCompactRowsAndRails(t *testing.T) {
 	view := stripANSI(b.View(220, 40))
 
 	for _, want := range []string{
-		"A adaptive focus",
+		"Epic lanes 1/3",
 		"[eg0.4.2]", "Wire the flow subscription transport", "blocked by eg0.4.1",
 		"[eg0.4.1]", "lane: reviewing", "blocks 1",
 		"lane: implementing",
 		"CLOSED", "20", "today",
-		"v layout E",
+		"v epic design",
 	} {
 		if !strings.Contains(view, want) {
 			t.Errorf("adaptive board is missing %q:\n%s", want, view)
@@ -247,75 +247,6 @@ func TestBoardAdaptiveView_ShowsCompactRowsAndRails(t *testing.T) {
 	}
 }
 
-func TestBoardInspectorView_ShowsSelectedIssueDetail(t *testing.T) {
-	b := newSparseBoard()
-	b.SetLayout(BoardLayoutInspector)
-	b.SelectIssueByID("spectroscope-eg0.4.2")
-	view := stripANSI(b.View(200, 40))
-
-	for _, want := range []string{
-		"E focus + inspector",
-		"Wire the flow subscription transport",
-		"Status", "OPEN",
-		"Ready", "no, blocked by eg0.4.1",
-		"Stream packets to subscribers",
-		"v layout A",
-	} {
-		if !strings.Contains(view, want) {
-			t.Errorf("inspector board is missing %q:\n%s", want, view)
-		}
-	}
-}
-
-func TestBoardInspector_TabFocusAndScroll(t *testing.T) {
-	b := newSparseBoard()
-	b.SetLayout(BoardLayoutInspector)
-	b.SelectIssueByID("spectroscope-eg0.4.2")
-	if b.IsInspectorFocused() {
-		t.Fatal("the board starts with the columns focused")
-	}
-	b.ToggleInspectorFocus()
-	if !b.IsInspectorFocused() {
-		t.Fatal("tab must focus the inspector")
-	}
-	b.ScrollInspector(50, 200, 12)
-	scrolled := stripANSI(b.View(200, 12))
-	if strings.Contains(scrolled, "E focus + inspector") == false {
-		t.Fatalf("the board bar stays visible while the inspector scrolls:\n%s", scrolled)
-	}
-	b.MoveDown()
-	b.ScrollInspector(-100, 200, 12)
-	if b.inspectorOffset() != 0 {
-		t.Fatalf("scrolling up past the top must stop at 0, got %d", b.inspectorOffset())
-	}
-}
-
-func TestBoardLayout_ToggleAndParse(t *testing.T) {
-	b := newSparseBoard()
-	if b.Layout() != BoardLayoutAdaptive {
-		t.Fatal("layout A is the default")
-	}
-	b.ToggleLayout()
-	if b.Layout() != BoardLayoutInspector {
-		t.Fatal("v switches to layout E")
-	}
-	b.ToggleLayout()
-	if b.Layout() != BoardLayoutAdaptive {
-		t.Fatal("v switches back to layout A")
-	}
-	for in, want := range map[string]BoardLayoutKind{
-		"adaptive": BoardLayoutAdaptive, "A": BoardLayoutAdaptive,
-		"inspector": BoardLayoutInspector, "e": BoardLayoutInspector,
-	} {
-		if got, ok := ParseBoardLayout(in); !ok || got != want {
-			t.Errorf("ParseBoardLayout(%q) = %v, %v", in, got, ok)
-		}
-	}
-	if _, ok := ParseBoardLayout("ledger"); ok {
-		t.Error("unknown layout names must be rejected")
-	}
-}
-
 func TestBoardView_RemovesTerminalControlPayloads(t *testing.T) {
 	issue := model.Issue{
 		ID:          "bd-1\x1b[2J",
@@ -325,9 +256,9 @@ func TestBoardView_RemovesTerminalControlPayloads(t *testing.T) {
 		IssueType:   model.TypeTask,
 		Labels:      []string{"lane-stage=ok\u009b31mbad"},
 	}
-	for _, layout := range []BoardLayoutKind{BoardLayoutAdaptive, BoardLayoutInspector} {
+	for _, layout := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
 		b := NewBoardModel([]model.Issue{issue}, DefaultTheme(lipgloss.DefaultRenderer()))
-		b.SetLayout(layout)
+		b.SetEpicView(layout)
 		out := b.View(160, 30)
 		for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J", "[31m"} {
 			if strings.Contains(out, forbidden) {
@@ -341,10 +272,10 @@ func TestBoardView_SelectedRowKeepsBackgroundAfterInnerResets(t *testing.T) {
 	renderer := lipgloss.NewRenderer(io.Discard)
 	renderer.SetColorProfile(termenv.TrueColor)
 	theme := DefaultTheme(renderer)
-	for _, layout := range []BoardLayoutKind{BoardLayoutAdaptive, BoardLayoutInspector} {
+	for _, layout := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
 		b := NewBoardModel(sparseBoardIssues(), theme)
 		b.SetActiveProjectName("spectroscope")
-		b.SetLayout(layout)
+		b.SetEpicView(layout)
 		b.SelectIssueByID("spectroscope-eg0.4.2")
 		bg := bgSeqFromColor(theme.Highlight, renderer)
 		if bg == "" {

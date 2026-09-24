@@ -1101,8 +1101,8 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	checkout, _ := NewCheckout(projectPath)
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(projectName)
-	if layout, ok := ParseBoardLayout(cfg.UI.BoardLayout); ok {
-		m.board.SetLayout(layout)
+	if view, ok := ParseBoardEpicView(cfg.UI.BoardEpics); ok {
+		m.board.SetEpicView(view)
 	}
 	m.updateListDelegate()
 	m.allProjects = headerProjects(cfg.RecentProjects, projectName, projectPath)
@@ -1559,6 +1559,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.board.SetIssues(filteredIssues)
 		}
+		m.board.SetEpicUniverse(m.issues)
 
 		// Restore selection if possible
 		if selectedID != "" {
@@ -2908,10 +2909,6 @@ func (m Model) handleMouseWheel(msg tea.MouseMsg) Model {
 		case focusGraph:
 			m.graph.MoveUp()
 		case focusBoard:
-			if m.board.IsInspectorFocused() {
-				m.board.ScrollInspector(-3, m.width, m.bodyHeight())
-				break
-			}
 			m.board.MoveUp()
 			m.syncBoardToDetail()
 		case focusList:
@@ -2930,10 +2927,6 @@ func (m Model) handleMouseWheel(msg tea.MouseMsg) Model {
 		case focusGraph:
 			m.graph.MoveDown()
 		case focusBoard:
-			if m.board.IsInspectorFocused() {
-				m.board.ScrollInspector(3, m.width, m.bodyHeight())
-				break
-			}
 			m.board.MoveDown()
 			m.syncBoardToDetail()
 		case focusList:
@@ -2992,23 +2985,6 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 	// ═══════════════════════════════════════════════════════════════════════════
 	// Normal key handling (bv-yg39 enhanced)
 	// ═══════════════════════════════════════════════════════════════════════════
-	if m.board.IsInspectorFocused() {
-		switch key {
-		case "j", "down":
-			m.board.ScrollInspector(1, m.width, m.bodyHeight())
-			return m
-		case "k", "up":
-			m.board.ScrollInspector(-1, m.width, m.bodyHeight())
-			return m
-		case "ctrl+d", "pgdown":
-			m.board.ScrollInspector(m.bodyHeight()/2, m.width, m.bodyHeight())
-			return m
-		case "ctrl+u", "pgup":
-			m.board.ScrollInspector(-m.bodyHeight()/2, m.width, m.bodyHeight())
-			return m
-		}
-	}
-
 	switch key {
 	// Basic navigation (existing)
 	case "h", "left":
@@ -3109,25 +3085,33 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		}
 		m.statusIsError = false
 
-	// Layout switch between concepts A and E (docs/adr/0016).
+	// v cycles the three epic designs (docs/adr/0017).
 	case "v":
-		m.board.ToggleLayout()
-		m.statusMsg = "Board layout: " + m.board.Layout().Label()
+		m.board.CycleEpicView()
+		m.statusMsg = "Board: " + m.board.EpicView().Label()
 		m.statusIsError = false
+		m.syncBoardToDetail()
 
-	// Tab moves focus between the columns and the layout E inspector.
+	// Tab folds the selected epic's band in the lanes design.
 	case "tab":
-		if m.board.Layout() != BoardLayoutInspector {
-			m.statusMsg = "Tab focuses the inspector in layout E; press v to switch"
+		if m.board.EpicView() != BoardEpicLanes {
+			m.statusMsg = "Tab folds an epic in the lanes design; press v to switch"
 			m.statusIsError = false
 			break
 		}
-		m.board.ToggleInspectorFocus()
-
-	case "ctrl+j":
-		m.board.ScrollInspector(3, m.width, m.bodyHeight())
-	case "ctrl+k":
-		m.board.ScrollInspector(-3, m.width, m.bodyHeight())
+		if !m.board.ToggleEpicFold() {
+			m.statusMsg = "This issue belongs to no epic"
+			m.statusIsError = false
+		}
+		m.syncBoardToDetail()
+	case "shift+tab":
+		if m.board.EpicView() != BoardEpicLanes {
+			m.statusMsg = "Shift+Tab folds all epics in the lanes design; press v to switch"
+			m.statusIsError = false
+			break
+		}
+		m.board.ToggleAllEpicFolds()
+		m.syncBoardToDetail()
 
 	// Enter toggles detail view (bd-yo4: full detail like tree view)
 	case "enter":
@@ -4774,8 +4758,8 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"0-9", "project"},
 			{"^R", "refresh"},
-			{"v", "layout"},
-			{"tab", "inspector"},
+			{"v", "epics"},
+			{"tab", "fold"},
 			{"enter", "detail"},
 			{"j/k", "card"},
 			{"m", "move"},
@@ -5173,6 +5157,7 @@ func (m *Model) refreshBoardAndGraphForCurrentFilter() {
 		m.board.SetIssues(filteredIssues)
 	}
 	m.board.SetIssueQuery(m.queryState.Query())
+	m.board.SetEpicUniverse(m.issues)
 }
 
 func (m *Model) applyFilter() {
@@ -5201,6 +5186,7 @@ func (m *Model) applyFilter() {
 		m.board.SetIssues(filteredIssues)
 	}
 	m.board.SetIssueQuery(m.queryState.Query())
+	m.board.SetEpicUniverse(m.issues)
 
 	// Keep selection in bounds
 	if len(filteredItems) > 0 && m.list.Index() >= len(filteredItems) {

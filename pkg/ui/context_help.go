@@ -166,10 +166,10 @@ const contextHelpBoard = `## Board View
   /  n/N    Search, next/prev match
   s  e      Swimlanes, empty columns
 
-**Layouts**
-  v         Switch A (adaptive focus) / E (inspector)
-  Tab       E: focus the inspector, j/k scroll it
-  Ctrl+j/k  E: scroll the inspector
+**Epics**
+  v         Cycle lanes / chips / groups
+  Tab       Lanes: fold the selected epic
+  S-Tab     Lanes: fold or unfold all
 
 **Row facts**
   blocked by X   An open blocker

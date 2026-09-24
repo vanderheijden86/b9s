@@ -2,8 +2,9 @@
 type: ADR
 id: "0016"
 title: "Keep two board layouts until one is chosen"
-status: active
+status: superseded
 date: 2026-09-24
+superseded_by: "0017"
 ---
 
 ## Context

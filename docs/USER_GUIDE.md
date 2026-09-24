@@ -264,22 +264,27 @@ The Dolt SQL login, for example `bd_b9s`, is one credential shared by every agen
 | Priority | P0 Critical, P1 High, P2 Medium, P3+ Other |
 | Type | Bug, Feature, Task, Epic |
 
-The board has two layouts while one is chosen ([ADR 0016](adr/0016-keep-two-board-layouts-until-one-is-chosen.md)). `v` switches between them and keeps the selection. `ui.board_layout` in the config sets the layout at start.
+The focused column takes most of the width. Each issue has two lines: ID, title, priority and age, then type, `blocked by X`, `lane: stage` and `blocks N`. Empty columns and the closed column fold into narrow rails; `h` or `l` onto a rail opens it.
 
-| Layout | What it shows |
+An issue belongs to its nearest epic ancestor through parent-child links. The board has three ways to show that ([ADR 0017](adr/0017-choose-board-layout-a-and-show-epics-three-ways.md)). `v` cycles them and keeps the selection, and `ui.board_epics` in the config sets the one used at start.
+
+| Design | What it shows |
 |--------|---------------|
-| A, adaptive focus | The focused column takes most of the width. Each issue has two lines: ID, title, priority and age, then type, `blocked by X`, `lane: stage` and `blocks N`. Empty columns and the closed column fold into narrow rails; `h` or `l` onto a rail opens it. |
-| E, focus + inspector | One-line rows (`⧗` marks a blocked issue) beside an inspector with status, lane, readiness, impact, people, description, dependencies and labels of the selected issue. |
+| Lanes (default) | Horizontal bands, one per epic, aligned across the columns. The first column's band header shows the epic, its title and a completion bar with done/total; the other columns show how many of the band's issues they hold. Issues without an epic sit in a last `No epic` band. `Tab` folds the selected epic's band to the epic's own row, `Shift-Tab` folds all bands or unfolds them. |
+| Chips | The plain column order. A bar in the epic's color starts each row, and the second line names the epic. An epic's own row shows `epic · done/total done`. |
+| Groups | Each column groups its issues by epic under a subheader with the completion bar. Columns scroll on their own. |
+
+Completion counts every issue under the epic in the project, closed ones included, so a filter never changes it. Bands come in order of the most urgent open issue in them. A project without epics shows the plain board in every design.
 
 A row separates four facts: the column is the stored status, `blocked by X` names an open blocker, `lane: stage` comes from the `lane-stage=` label, and `blocks N` counts the issues that wait on this one. In single-project mode IDs drop the project prefix.
 
 | Keys | Action |
 |------|--------|
 | `h` `l`, `Left` `Right` | Change the column |
-| `j` `k`, `Up` `Down` | Move between issues, or scroll the inspector when it has focus |
-| `v` | Switch between layout A and layout E |
-| `Tab` | Layout E: move focus between the columns and the inspector |
-| `Ctrl-J` `Ctrl-K` | Layout E: scroll the inspector |
+| `j` `k`, `Up` `Down` | Move between issues |
+| `v` | Cycle the epic designs: lanes, chips, groups |
+| `Tab` | Lanes: fold or unfold the selected issue's epic |
+| `Shift-Tab` | Lanes: fold all epics, or unfold them all when one is folded |
 | `0`, `$`, `gg`, `G` | First card, last card, top, bottom |
 | `Enter` | Open the card in the detail pane |
 | `o`, `c`, `r` | Show open, closed or ready issues |
@@ -355,7 +360,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
-  board_layout: adaptive  # adaptive (layout A) or inspector (layout E); v switches
+  board_epics: lanes      # lanes, chips or groups; v cycles
   sort:
     field: created      # priority, created, updated, title, status, type or deps
     direction: desc     # asc or desc; leave out for the field's natural order
