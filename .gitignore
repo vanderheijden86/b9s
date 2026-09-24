@@ -74,3 +74,9 @@ target-*/
 
 # Git worktrees (see agents-config baseline: <repo>/.worktrees/<branch-slug>)
 .worktrees/
+
+# Local runtime output
+.beads.gate.lock
+.beads/dolt-config.log
+.playwright-cli/
+*.err
