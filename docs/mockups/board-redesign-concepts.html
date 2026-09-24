@@ -476,6 +476,27 @@
 
     renderBoardOptions();
 
+    // Opened on its own, no host page supplies tab behaviour for the pills.
+    const tabs = [...root.querySelectorAll('[role="tab"]')];
+    function selectTab(tab) {
+      for (const t of tabs) {
+        const selected = t === tab;
+        t.classList.toggle('active', selected);
+        t.setAttribute('aria-selected', String(selected));
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !selected;
+      }
+    }
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => selectTab(tab));
+      tab.addEventListener('keydown', (e) => {
+        const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+        if (!step) return;
+        const next = tabs[(i + step + tabs.length) % tabs.length];
+        selectTab(next);
+        next.focus();
+      });
+    });
+
     if (globalThis.Tweak) {
       const tweak = new Tweak({ container: root, onChange: renderBoardOptions });
       tweak.addSelect(state, 'density', { label: 'Row density', options: ['comfortable', 'compact'], reference: 'board.density' });
