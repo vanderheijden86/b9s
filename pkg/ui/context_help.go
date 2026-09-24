@@ -210,7 +210,7 @@ const contextHelpSplit = `## Split View
   Tab       Switch panes
   <         Shrink list pane
   >         Expand list pane
-  :layout   Stack detail below the list
+  \ :layout  Stack detail below the list
 
 **Left Pane (List)**
   j/k       Navigate issues

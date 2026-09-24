@@ -119,3 +119,23 @@ func TestStackedLayoutKeepsDetailWhenSideBySideWouldBeTooNarrow(t *testing.T) {
 		t.Error("detail pane hidden in stacked layout, want it kept at full width")
 	}
 }
+
+func TestBackslashStacksDetailBelowTree(t *testing.T) {
+	m := newTreeSplitModel(t)
+
+	m = typeKeys(m, `\`)
+
+	if rows := panelTopRows(m.View()); len(rows) != 2 || rows[0] != 1 || rows[1] != 1 {
+		t.Errorf(`panel tops per line after \ = %v, want [1 1] (detail below tree)`, rows)
+	}
+}
+
+func TestBackslashTwiceRestoresSideBySide(t *testing.T) {
+	m := newTreeSplitModel(t)
+
+	m = typeKeys(m, `\`, `\`)
+
+	if rows := panelTopRows(m.View()); len(rows) != 1 || rows[0] != 2 {
+		t.Errorf(`panel tops per line after \\ = %v, want [2] (side by side)`, rows)
+	}
+}

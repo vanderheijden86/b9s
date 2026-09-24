@@ -147,9 +147,9 @@ func (m Model) toggleSplitLayout() Model {
 		m.syncTreeToDetail()
 	}
 	if m.splitStacked {
-		m.statusMsg = "Layout stacked: detail below the list, :layout for side by side"
+		m.statusMsg = "Layout stacked: detail below the list, \\ for side by side"
 	} else {
-		m.statusMsg = "Layout side by side: detail right of the list, :layout to stack"
+		m.statusMsg = "Layout side by side: detail right of the list, \\ to stack"
 	}
 	m.statusIsError = false
 	return m
