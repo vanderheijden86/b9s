@@ -1,382 +1,96 @@
-# Testing Guide for bv Contributors
+# Testing b9s
 
-This guide explains how to write and run tests for the bv codebase. All contributions should include appropriate tests.
+b9s has three test layers. Unit tests cover packages, integration tests cover the Dolt reader against a real server, and end-to-end tests drive the built binary in a pseudo-terminal. This document says how to run each, what the rules are, and how to write a new test.
 
-## Testing Philosophy
+## Contents
 
-### No Mocks/Fakes
+- [Running the tests](#running-the-tests)
+- [Layers](#layers)
+- [Dolt rules](#dolt-rules)
+- [End-to-end tests](#end-to-end-tests)
+- [Writing tests](#writing-tests)
+- [Continuous integration](#continuous-integration)
 
-We prefer **concrete test data** over mocks or fakes. This approach:
-- Makes tests easier to understand and debug
-- Avoids the complexity of maintaining mock implementations
-- Ensures tests exercise real code paths
-- Produces more reliable tests
-
-Instead of mocking:
-```go
-// DON'T do this
-mockAnalyzer := &MockAnalyzer{}
-mockAnalyzer.On("Analyze").Return(fakeStats)
-
-// DO this
-issues := testutil.QuickChain(5)  // Real issues with real dependencies
-analyzer := analysis.NewAnalyzer(issues)
-stats := analyzer.Analyze()  // Real analysis
-```
-
-### Table-Driven Tests
-
-Use table-driven tests for comprehensive coverage:
-
-```go
-func TestMyFunction(t *testing.T) {
-    tests := []struct {
-        name     string
-        input    string
-        expected int
-        wantErr  bool
-    }{
-        {"empty input", "", 0, false},
-        {"single item", "one", 1, false},
-        {"invalid", "bad", 0, true},
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            got, err := MyFunction(tt.input)
-            if (err != nil) != tt.wantErr {
-                t.Errorf("MyFunction() error = %v, wantErr %v", err, tt.wantErr)
-                return
-            }
-            if got != tt.expected {
-                t.Errorf("MyFunction() = %v, want %v", got, tt.expected)
-            }
-        })
-    }
-}
-```
-
-### Golden Files
-
-For complex outputs (JSON, rendered views, SVG), use golden file testing:
-
-```go
-func TestComplexOutput(t *testing.T) {
-    golden := testutil.NewGoldenFile(t, "testdata/golden", "output.json")
-
-    result := GenerateComplexOutput()
-    golden.AssertJSON(result)
-}
-```
-
-Update golden files when intentionally changing output:
-```bash
-GENERATE_GOLDEN=1 go test ./pkg/...
-```
-
-### Deterministic Output
-
-Tests must produce deterministic results:
-- Use fixed random seeds (`testutil.DefaultConfig()` uses seed 42)
-- Use fixed timestamps (`time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)`)
-- Sort slices before comparison if order doesn't matter
-
-## Test Organization
-
-### File Naming
-
-- Unit tests: `*_test.go` in the same directory as the code
-- Package tests: `package_test` (black-box) or `package` (white-box)
-- E2E tests: `tests/e2e/*_test.go`
-
-### Test Function Naming
-
-```go
-// Unit tests: TestFunctionName_Scenario
-func TestExtractKeywords_FiltersStopWords(t *testing.T) { ... }
-func TestExtractKeywords_HandlesEmptyInput(t *testing.T) { ... }
-
-// Integration tests: TestIntegration_Feature
-func TestIntegration_RobotTriageCommand(t *testing.T) { ... }
-
-// E2E tests: TestEndToEnd_Workflow
-func TestEndToEnd_RobotPlanCommand(t *testing.T) { ... }
-```
-
-### Subtests
-
-Group related tests with `t.Run()`:
-
-```go
-func TestAnalyzer(t *testing.T) {
-    t.Run("Empty", func(t *testing.T) {
-        // test empty input
-    })
-    t.Run("SingleNode", func(t *testing.T) {
-        // test single node
-    })
-    t.Run("Chain", func(t *testing.T) {
-        // test chain topology
-    })
-}
-```
-
-## Test Helpers (`pkg/testutil`)
-
-### Fixture Generators
-
-The `testutil` package provides graph topology generators:
-
-```go
-// Quick convenience functions
-issues := testutil.QuickChain(10)      // Linear chain: n0 <- n1 <- ... <- n9
-issues := testutil.QuickStar(5)        // Hub with 5 spokes
-issues := testutil.QuickDiamond(3)     // Diamond with 3 middle nodes
-issues := testutil.QuickCycle(4)       // Circular dependency (invalid DAG)
-issues := testutil.QuickTree(3, 2)     // Tree: depth=3, breadth=2
-issues := testutil.QuickRandom(20, 0.3) // Random DAG: 20 nodes, 30% edge density
-
-// Edge cases
-issues := testutil.Empty()             // Empty slice
-issues := testutil.Single()            // Single node, no deps
-```
-
-For custom configuration:
-
-```go
-gen := testutil.New(testutil.GeneratorConfig{
-    Seed:          42,
-    IDPrefix:      "TEST",
-    IncludeLabels: true,
-    StatusMix:     []model.Status{model.StatusOpen, model.StatusInProgress},
-})
-
-fixture := gen.Chain(10)
-issues := gen.ToIssues(fixture)
-```
-
-### Assertions
-
-```go
-testutil.AssertIssueCount(t, issues, 10)
-testutil.AssertNoDuplicateIDs(t, issues)
-testutil.AssertAllValid(t, issues)
-testutil.AssertDependencyExists(t, issues, "from-id", "to-id")
-testutil.AssertNoCycles(t, issues)
-testutil.AssertHasCycle(t, issues)
-testutil.AssertStatusCounts(t, issues, open, inProgress, blocked, closed)
-testutil.AssertJSONEqual(t, expected, actual)
-```
-
-### Temporary Directories
-
-```go
-// Create temp dir with .beads subdirectory
-dir := testutil.TempBeadsDir(t)  // Cleaned up automatically
-
-// Write issues to .beads/beads.jsonl
-path := testutil.WriteBeadsFile(t, dir, issues)
-```
-
-### Issue Helpers
-
-```go
-// Build lookup map
-issueMap := testutil.BuildIssueMap(issues)
-issue := issueMap["issue-id"]
-
-// Find single issue
-issue := testutil.FindIssue(issues, "issue-id")
-
-// Get statistics
-counts := testutil.CountByStatus(issues)
-ids := testutil.GetIDs(issues)
-```
-
-## Running Tests
-
-### Basic Commands
+## Running the tests
 
 ```bash
-# Run all tests
-go test ./...
-
-# Run with verbose output
-go test -v ./...
-
-# Run specific package
-go test ./pkg/analysis/...
-
-# Run specific test
-go test -v -run TestExtractKeywords ./pkg/analysis/...
-
-# Run with race detector
-go test -race ./...
+go build ./...
+go test ./... -skip DoltIntegration          # everything that needs no Dolt server
+go test ./pkg/ui/ -run TestTreeView -v       # one package, one pattern
+go test ./... -race -skip DoltIntegration    # with the race detector
+go test ./tests/e2e/ -v -timeout 300s        # end-to-end, slow
+go test ./... -short -skip DoltIntegration   # skips the slow cases
 ```
 
-### Coverage
+`make test` runs the default set. Every run must have a bounded timeout. A test that hangs is a bug in the test or the code, never a reason to raise the timeout.
+
+## Layers
+
+| Layer | Where | Needs |
+|-------|-------|-------|
+| Unit | `*_test.go` beside the code in `pkg/` and `internal/` | Nothing |
+| Dolt integration | `internal/datasource/*_test.go`, names contain `DoltIntegration` | A Dolt server, see below |
+| End-to-end | `tests/e2e/` | The `script` command and a terminal |
+| Shell | `tests/preview_contract_test.sh`, `tests/mobile_*_e2e.sh` | A deployed preview, see [preview-contract.md](preview-contract.md) |
+
+Unit tests in `pkg/ui` build a `Model` with fixture issues and send it key messages. Accessors such as `TreeSelectedID()` and `TreeNodeCount()` in `pkg/ui/model.go` expose the state a test needs without rendering.
+
+## Dolt rules
+
+**Never write to the shared Dolt server from a test.** It holds every project's Beads data. Package-wide runs pass `-skip DoltIntegration`, and CI does not run those tests at all.
+
+Read-only live tests connect through the tunnel, list databases and open projects. Name them explicitly:
 
 ```bash
-# Using the coverage script (recommended)
-./scripts/coverage.sh          # Summary
-./scripts/coverage.sh html     # Open HTML report
-./scripts/coverage.sh check    # Check thresholds
-./scripts/coverage.sh pkg      # Per-package breakdown
-
-# By default the script runs coverage for ./pkg/... (fast). Override if needed:
-COVER_PACKAGES='./cmd/... ./pkg/...' ./scripts/coverage.sh check
-
-# Manual commands
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
-go tool cover -func=coverage.out
+B9S_TEST_DOLT_HOST=127.0.0.1 B9S_TEST_DOLT_USER=bd_b9s \
+B9S_TEST_DOLT_CATALOG_DB=b9s B9S_TEST_DOLT_OTHER_DB=LP_Team \
+  go test ./internal/datasource/ -run 'DoltIntegration_(ListProjectDatabases|OpenProject)' -v
 ```
 
-### Benchmarks
+Tests that create, fill and drop databases run only against a disposable local server named in `B9S_TEST_DOLT_SCRATCH_ADDR`, and skip without it. The address must be loopback and must not use port 3306, which is the tunnel to the shared server. `TestDatabaseCreatingTestsRequireScratchServer` fails any test that creates a database without that check.
 
 ```bash
-# Run all benchmarks
-./scripts/benchmark.sh
-
-# Run specific benchmark
-go test -bench=BenchmarkFullAnalysis -benchmem ./pkg/analysis/...
-
-# Compare against baseline
-./scripts/benchmark.sh baseline  # Save current as baseline
-./scripts/benchmark.sh compare   # Run and compare
+mkdir -p /tmp/b9s-scratch-dolt && (cd /tmp/b9s-scratch-dolt && dolt init && dolt sql-server --port 13306) &
+B9S_TEST_DOLT_SCRATCH_ADDR=127.0.0.1:13306 go test ./internal/datasource/ -run DoltIntegration -v
+B9S_TEST_DOLT_SCRATCH_ADDR=127.0.0.1:13306 go test ./tests/e2e/ -run AssigneePickerMergesAliases -v
 ```
 
-### Performance Tests
+The second command runs the E2E test for identity aliases in `tests/e2e/identity_dolt_e2e_test.go`, which also skips without the scratch server.
 
-Performance-sensitive tests are gated behind `PERF_TEST=1`:
+| Variable | Meaning |
+|----------|---------|
+| `B9S_TEST_DOLT_HOST`, `B9S_TEST_DOLT_PORT`, `B9S_TEST_DOLT_USER` | The shared server, read-only tests |
+| `B9S_TEST_DOLT_CATALOG_DB`, `B9S_TEST_DOLT_OTHER_DB` | Two databases the user can read |
+| `B9S_TEST_DOLT_SCRATCH_ADDR`, `B9S_TEST_DOLT_SCRATCH_USER` | The disposable server for tests that create databases |
+| `BEADS_DOLT_PASSWORD` | The password for both |
 
-```bash
-PERF_TEST=1 go test -v ./pkg/analysis/... -run TestE2EStartup
-```
+## End-to-end tests
 
-## E2E Tests
+The tests in `tests/e2e` build the binary once, then run it under the Unix `script` command so it sees a real terminal. Keys go in through a pipe on stdin, and the screen comes back as the captured output.
 
-E2E tests verify the complete `bv` binary behavior:
+- `TestMain` builds the binary and sets `B9S_TEST_MODE`, `B9S_NO_BROWSER` and an isolated `XDG_CONFIG_HOME`, so a test never reads or writes your own configuration.
+- `B9S_TUI_AUTOCLOSE_MS` makes the program exit by itself after a delay, so a test that sends no quit key still ends.
+- `sizedScriptTUICommand` fixes the terminal size, so the rendered screen is deterministic.
+- `runCmdToFile` bounds the run with a context and fails on timeout rather than hanging.
+- Arrow keys are sent as escape sequences: `\x1b[A` up, `\x1b[B` down, `\x1b[C` right, `\x1b[D` left.
+- `skipIfNoScript` skips on systems without a usable `script`, and `testing.Short()` skips the slow cases.
 
-### Running
+The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.jsonl` are the common ones. A test that needs a Dolt server uses the same rules as the integration tests.
 
-The E2E suite includes a few large-scale/stress scenarios guarded by `testing.Short()`.
+The mobile and preview shell scripts in `tests/` are not Go tests. They check a deployed preview through the URL a reviewer uses and take the base URL, task ID and commit SHA as arguments, so a run against the wrong build fails instead of passing on a sibling.
 
-```bash
-# Fast/CI-friendly run (skips stress cases)
-go test -short ./tests/e2e
+## Writing tests
 
-# Full run
-go test ./tests/e2e
-```
+b9s follows test-driven development: write the failing test first, make it pass, then clean up. A bug fix includes a regression test that fails before the fix.
 
-### Pattern
+- **Use real data, not mocks.** Build issues with `pkg/testutil` generators or small literals, and run the real code. The generators are deterministic, so a failure reproduces.
+- **One behaviour per test.** A name with "and" in it is two tests.
+- **Table-driven tests** for several inputs of one function, with `t.Run` per case.
+- **Golden files** through `testutil.NewGoldenFile`. Set `GENERATE_GOLDEN=1` to rewrite them, and review the diff before committing.
+- **Bound every wait.** A poll loop has a deadline, and a test that waits on a channel uses a timeout.
+- **Never open a browser or an editor.** Code that would do so checks `B9S_TEST_MODE` first.
+- **Assert the decided behaviour.** When the code and an [ADR](adr/) disagree, the ADR wins, and the difference is a bug to report, not an expectation to loosen.
 
-```go
-func TestEndToEnd_Feature(t *testing.T) {
-    // 1. Use the shared bv binary (built once in TestMain)
-    bv := buildBvBinary(t)
+## Continuous integration
 
-    // 2. Create test environment
-    envDir := t.TempDir()
-    os.MkdirAll(filepath.Join(envDir, ".beads"), 0755)
-    os.WriteFile(filepath.Join(envDir, ".beads", "beads.jsonl"), []byte(jsonl), 0644)
-
-    // 3. Execute command
-    runCmd := exec.Command(bv, "--robot-triage")
-    runCmd.Dir = envDir
-    out, err := runCmd.CombinedOutput()
-    if err != nil {
-        t.Fatalf("Command failed: %v\n%s", err, out)
-    }
-
-    // 4. Verify output
-    var result map[string]interface{}
-    if err := json.Unmarshal(out, &result); err != nil {
-        t.Fatalf("Invalid JSON: %v", err)
-    }
-
-    // Assert expected fields exist
-    if _, ok := result["triage"]; !ok {
-        t.Error("missing 'triage' field")
-    }
-}
-```
-
-### Robot Command Testing
-
-Test all `--robot-*` flags produce valid JSON:
-
-```go
-// Verify JSON output
-var result map[string]interface{}
-json.Unmarshal(out, &result)
-
-// Check required fields
-if _, ok := result["generated_at"]; !ok {
-    t.Error("missing 'generated_at'")
-}
-```
-
-## CI Integration
-
-Tests run automatically on CI for every push and PR:
-
-1. **Unit tests** with coverage (`go test -coverprofile`)
-2. **Coverage threshold** check (pkg/* ≥ 75%, plus per-package thresholds)
-3. **Quick benchmarks** for performance regression detection
-
-Coverage is uploaded to Codecov for tracking trends and PR diffs.
-
-For local stress-testing, consider running the race detector:
-
-```bash
-go test -race ./...
-```
-
-### Coverage Thresholds
-
-| Package | Minimum |
-|---------|---------|
-| `pkg/analysis` | 75% |
-| `pkg/export` | 80% |
-| `pkg/recipe` | 90% |
-| `pkg/ui` | 55% |
-| `pkg/loader` | 80% |
-| `pkg/updater` | 55% |
-| `pkg/watcher` | 80% |
-| `pkg/workspace` | 85% |
-
-## Best Practices
-
-1. **Test behavior, not implementation** - Focus on what functions do, not how
-2. **One assertion per test case** - Makes failures easier to diagnose
-3. **Use `t.Helper()`** - Mark helper functions for better error locations
-4. **Clean up resources** - Use `t.TempDir()` and `t.Cleanup()`
-5. **Avoid sleeping** - Use channels or polling instead of `time.Sleep()`
-6. **Test edge cases** - Empty inputs, nil values, boundary conditions
-7. **Document test intent** - Comment what each test case validates
-
-## Troubleshooting
-
-### Flaky Tests
-
-If tests fail intermittently:
-- Check for non-deterministic ordering (use `sort.Slice`)
-- Look for time-dependent logic (use fixed timestamps)
-- Check for race conditions (`go test -race`)
-- Verify cleanup between tests
-
-### Slow Tests
-
-- Use `-short` flag to skip slow tests: `if testing.Short() { t.Skip() }`
-- Gate performance tests behind `PERF_TEST=1`
-- Profile with `go test -cpuprofile=cpu.out`
-
-### Coverage Gaps
-
-Run coverage locally to identify untested paths:
-```bash
-./scripts/coverage.sh html  # Opens browser with coverage highlighting
-./scripts/coverage.sh uncovered  # Lists uncovered lines
-```
+`.github/workflows/ci.yml` builds the binary, runs the unit tests for `./pkg/...` and `./cmd/b9s` with coverage, and runs the end-to-end tests with a ten-minute timeout. It has no Dolt server, so the integration tests are not run there. A change to the Go version in `go.mod` must be mirrored in that workflow.

@@ -1,140 +1,144 @@
-# B9s
+# b9s
 
 ![Go Version](https://img.shields.io/github/go-mod/go-version/vanderheijden86/b9s?style=for-the-badge&color=6272a4)
 ![License](https://img.shields.io/badge/License-MIT-50fa7b?style=for-the-badge)
 
-> A fast, focused TUI viewer and editor for [Beads](https://github.com/steveyegge/beads) issue tracking projects. Inspired by [k9s](https://k9scli.io/).
+A keyboard-driven terminal UI for reading and editing [Beads](https://github.com/steveyegge/beads) issues, modelled on [k9s](https://k9scli.io/). If you know k9s, you already know most of b9s.
+
+b9s shows a Beads project as a tree of issues under their parents, with a Markdown detail pane. It reads from a Dolt server, SQLite or JSONL, reloads when the data changes, and makes every change through the `bd` CLI, so b9s and `bd` always agree on what is stored.
+
+![b9s showing a project's issues beside the detail pane](docs/screenshot.png)
 
 ## Contents
 
-- [What is this?](#what-is-this)
-  - [Why strip it down?](#why-strip-it-down)
-- [Features](#features)
-  - [Relationship to the original](#relationship-to-the-original)
-- [Installation](#installation)
-  - [Homebrew (macOS/Linux)](#homebrew-macoslinux)
-  - [From source](#from-source)
-- [Quick Start](#quick-start)
-- [Data Backends](#data-backends)
-  - [Source Priority](#source-priority)
-  - [Dolt Server Mode](#dolt-server-mode)
-  - [Embedded Dolt Mode](#embedded-dolt-mode)
-  - [JSONL and SQLite (Legacy)](#jsonl-and-sqlite-legacy)
-  - [Fallback Behavior](#fallback-behavior)
-- [Keyboard Quick Reference](#keyboard-quick-reference)
+- [Inspired by k9s](#inspired-by-k9s)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Keys](#keys)
+- [Creators and assignees](#creators-and-assignees)
+- [Search](#search)
+- [Projects](#projects)
+- [Data sources](#data-sources)
+- [Configuration](#configuration)
+- [Mouse and tmux](#mouse-and-tmux)
+- [Command-line options](#command-line-options)
+- [Development](#development)
+- [Documentation](#documentation)
 - [Acknowledgments](#acknowledgments)
 - [License](#license)
 
-## What is this?
+## Inspired by k9s
 
-B9s is a terminal-based interface for browsing, editing, and managing Beads issues. It supports multiple data backends natively (Dolt, SQLite, JSONL) and renders your issue data as an interactive TUI with list, tree, kanban board, and dependency graph views, a detail panel with Markdown rendering, and inline editing.
+b9s takes its interaction model from k9s, the Kubernetes terminal UI. Where k9s lists the pods in a namespace, b9s lists the issues in a project. These parts work as they do in k9s:
 
-The UI takes heavy inspiration from [k9s](https://k9scli.io/) (the Kubernetes CLI), borrowing its project picker header, keyboard-driven navigation, and information-dense terminal layout.
+- **Header.** A header with the logo, the project shortcuts and a title bar that names the project and its data source. `Ctrl-E` or `H` hides and shows it.
+- **Project shortcuts.** Recent projects sit on `1`-`9`, like favourite namespaces, and follow the same rules: a new project goes to the front, a known one keeps its number, and `lock_recent` freezes the list. `0` shows every project at once, as `0` shows every namespace.
+- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project` and `:layout`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
+- **Filter.** `/` opens the query. `Enter` hides the field and keeps the filter, and `Esc` clears it.
+- **Marking.** `Space` marks an issue, `V` or `Ctrl-Space` marks a range and `Ctrl-\` clears the marks. Close, delete and status changes apply to every marked issue, or to the cursor row when nothing is marked.
+- **Table navigation.** `Ctrl-F` and `Ctrl-B` page, and `Ctrl-W` toggles wide columns. When the issue under the cursor is closed or deleted, the next issue takes its row.
+- **Look.** A bright cyan full-row cursor, one line for status and key hints, and plain-text tokens instead of emoji.
 
-Originally forked from [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), B9s has been **stripped to its core**: the TUI viewer. Added features include a full-fledged treeview, a k9s-style project picker, and editing capabilities. The upstream project's graph analysis engine, robot protocol, export wizards, semantic search, drift detection, recipe system, and other advanced features have been removed to keep the tool small, fast, and focused on the primary use case: reading and updating issues from the terminal.
+## Install
 
-### Why strip it down?
-
-The upstream beads_viewer is an impressive piece of software with a graph analysis engine (PageRank, betweenness, HITS, critical path), AI agent protocols, static site export, time-travel diffs, sprint analytics, and more. That breadth is its strength, but it also means ~90k lines of Go source code, ~108k lines of tests, heavy dependencies like `gonum`, and complexity that isn't needed if all you want is a terminal viewer/editor.
-
-B9s takes the opposite approach: **do fewer things well**. By stripping the codebase down to ~27k lines of source and ~26k lines of tests, and removing heavy vendor dependencies like `gonum`, B9s starts faster, compiles faster, and is easier to understand, maintain, and contribute to.
-
-## Features
-
-- **Tree view** with parent/child hierarchy, computed `◈N` open-blocker indicators, split-pane detail, search with occurrence filtering, bookmarking, XRay drill-down, and k9s-style marking (`Space`, `ctrl+space` or `V` range, `ctrl+\` clear, plus dired's `u` unmark and `U` unmark all) so `K` (close), `Delete` and `S` (status) act on every marked issue at once. Press `g` on a row to inspect the blocker identities. Created-date sorting orders top-level items by date and descendants within epics by ascending natural title (1, 2, 3, …, 10), including numbered title prefixes and nested epics. Optional columns adapt to title space; press `C` to set Lane state, Creator, Assignee, Updated, or ID to `Auto`, `Show`, or `Hide` for the current session.
-- **Global fuzzy search** across issue IDs, titles, and labels, shared by tree, list, and board
-- **List view** with sorting (created, priority, updated) and status/label filtering
-- **Kanban board** with three swimlane modes: by status, by priority, and by type
-- **Dependency graph** with a focused view of what blocks the selected issue and what waits on it
-- **Detail panel** with full Markdown rendering (via Glamour), scrollable and toggleable
-- **Creator and Assignee** as separate fields: the Creator (`created_by`, with the creator's git email) never changes, the Assignee is whoever holds the issue now
-- **Project picker** (k9s-style header) listing the current and recently opened projects on number keys 1-9, with issue count columns (Open, In Progress, Ready)
-- **Inline editing** of title, status, priority, type, assignee, labels, description, and notes (via huh forms)
-- **Issue creation** directly from the TUI (`Ctrl+n`)
-- **Label filtering** with count display
-- **Live reload** for JSONL file changes and Dolt working-set changes, with `Ctrl+R` / `F5` manual refresh
-- **Self-updating** (`--update`, `--check-update`, `--rollback`)
-- **Repository prefix filtering** (`--repo`)
-- **Startup filters** (`--filter`) using the same composable query language as the TUI
-- **Large dataset handling** with tiered loading and issue pooling for 1k-20k+ issues
-- **Interactive tutorial** (`` ` `` backtick) for guided feature walkthrough
-
-### Relationship to the original
-
-Full credit goes to [@Dicklesworthstone](https://github.com/Dicklesworthstone) for the original architecture and implementation of [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer). The Bubbletea model structure, the background worker pattern, the file watcher integration, and the foundational UI components are all his work. B9s simply removes the features we don't use and makes different UX choices where our workflows diverge.
-
-Per the upstream project's [contribution guidelines](https://github.com/Dicklesworthstone/beads_viewer/blob/main/CONTRIBUTING.md), beads_viewer does not accept external pull requests. B9s exists as a separate fork for users who want a leaner tool and the ability to contribute.
-
-## Installation
-
-### Homebrew (macOS/Linux)
+With Homebrew on macOS or Linux:
 
 ```bash
 brew install vanderheijden86/tap/b9s
 ```
 
-### From source
-
-Requires [Go 1.22+](https://go.dev/dl/).
+From source, with [Go 1.25 or later](https://go.dev/dl/):
 
 ```bash
 git clone https://github.com/vanderheijden86/b9s.git
 cd b9s
-make install
+make install   # installs b9s to $GOPATH/bin
 ```
 
-This installs the `b9s` binary to your `$GOPATH/bin`. Make sure that directory is on your `PATH`.
+## Quick start
 
-For best display, use a terminal with a [Nerd Font](https://www.nerdfonts.com/).
-
-## Quick Start
-
-Navigate to any project initialized with `bd init` and run:
+Run `b9s` in a folder that has a `.beads` directory:
 
 ```bash
 b9s
 ```
 
-Press `?` for keyboard shortcuts or `` ` `` (backtick) for the interactive tutorial.
+The tree shows every issue under its parent. Move with `j` and `k`, open an issue with `Enter`, search with `/` and run a command with `:`. `Ctrl-C` quits.
 
-Start B9s with the same filter syntax accepted by the in-app `/` query field:
+## Keys
 
-```bash
-b9s --filter 'status:open label:backend'
-b9s --filter 'type:bug !assignee:andre'
-b9s --filter 'release blocker'
+b9s always shows the issue tree. `b` opens the board, `g` opens the dependency graph of the issue under the cursor, and `Esc` goes back to the tree. Keys are case-sensitive, so `D` means `Shift-D`.
+
+In the tree:
+
+| Keys | Action |
+|------|--------|
+| `j` `k`, `Up` `Down` | Move the cursor |
+| `h` `l` | Collapse or expand the issue, or go to its parent or child |
+| `Tab`, `Shift-Tab` | Fold or unfold the issue, or the whole tree |
+| `X`, `Z`, `Ctrl-A` | Expand all, collapse all, switch between the two |
+| `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
+| `Ctrl-F` `Ctrl-B`, `Ctrl-D` `Ctrl-U` | Page down and up, half a page down and up |
+| `Home`, `End` | Go to the top, the bottom |
+| `Enter`, `d` | Move focus to the detail pane and back, show or hide the side pane |
+| `\`, `<` `>` | Stack the detail pane below the tree or put it beside it, resize the panes |
+| `/`, `n` `N`, `O` | [Search](#search), go to the next or previous match, show only the matches |
+| `o` `C` `r` `a` | Show open, closed, ready or all issues |
+| `f`, `x` | Show only the cursor's top-level branch, or its subtree. Press again to undo |
+| `F` | Follow: when another agent changes an issue, move the cursor to it |
+| `s`, `\|`, `Ctrl-W` | Sort, pick columns, toggle wide columns |
+| `Space`, `V`, `u`, `Ctrl-\` | Mark the issue, mark a range, unmark the issue, clear the marks |
+| `e`, `S`, `K`, `Delete` | Edit, set the status, close, delete |
+| `Ctrl-N`, `c` | Create an issue, copy the ID and title |
+
+Everywhere:
+
+| Keys | Action |
+|------|--------|
+| `1`-`9`, `0` | Open a recent project, show all projects |
+| `L`, `A`, `P` | Put labels, assignees or projects on `1`-`9` |
+| `Ctrl-E` `H`, `D` | Hide or show the header, show the data source health |
+| `Ctrl-R`, `F5` | Reload |
+| `?` | Help |
+| `Ctrl-C` | Quit |
+
+In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a new line in Description and Notes, `→` completes an assignee or label, `Ctrl-E` opens Description or Notes in `$EDITOR`, `Ctrl-S` saves and `Esc` cancels.
+
+In the detail pane, `j` and `k` scroll, `Home` and `End` jump to the top and bottom, `n` and `p` go to the next and previous sibling, and `c` copies the issue as Markdown.
+
+On the board, `h` and `l` change the column, `j` and `k` move between cards, `o`, `c` and `r` show open, closed or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID.
+
+## Creators and assignees
+
+Every issue shows two people. The Creator is the `bd` actor that created the issue and never changes. The Assignee is whoever holds the issue now. `|` adds either one as a tree column. `Ctrl-N` fills in the Assignee with you and creates the issue as you, found as `bd` finds its actor.
+
+One person often appears under several names, such as a git user name, an email and a lane agent name. List them once in the `bd` config key `b9s.identities`, and b9s shows one name for all of them. The [user guide](docs/USER_GUIDE.md#creators-assignees-and-identities) gives the format.
+
+## Search
+
+Press `/` to query the loaded issues. Results update as you type. `Enter` hides the field and keeps the query, `/` edits it again, and `Esc` clears it. `Tab` completes field names, values, labels and words found in the loaded issues.
+
+Plain words match issue IDs, titles and labels fuzzily, and every word must match. Predicates narrow by field: `id`, `title`, `status`, `priority`, `type`, `label`, `assignee` and `project`. Different fields combine with AND, repeated values for one field combine with OR, and `!` excludes a match:
+
+```text
+status:open label:backend
+type:bug !assignee:andre
+release blocker
 ```
 
-Predicates can target `id`, `title`, `status`, `priority`, `type`, `label`, `assignee`, or `project`. Separate fields compose with AND, repeated positive values for one field compose with OR, and `!` negates a predicate. Plain text is split on spaces, and every word must fuzzily match an issue ID, title, or label.
-
-The flag is suitable for shell scripts and tmux bindings. For example:
+`--filter` starts b9s with a query applied, which suits shell scripts and tmux bindings:
 
 ```tmux
 bind-key B new-window -c '#{pane_current_path}' "b9s --filter 'status:open label:backend'"
 ```
 
-## Data Backends
+## Projects
 
-B9s discovers and reads from multiple data backends automatically. On startup, it scans the `.beads/` directory for all available sources and selects the most authoritative one based on a fixed priority order.
+The header lists the project b9s started in and up to nine projects you opened recently, on the keys `1`-`9`. A project b9s has not seen yet is added as `1`, and a project already in the list keeps its number, so switching never renumbers the header. `0` combines the issues of every Dolt project in the list into one read-only view. b9s does not scan folders for projects. A recent project whose server or tunnel is down stays in the header and shows `✗` in place of its issue counts. A recent project whose database refuses the startup project's Dolt user stays out of the header for that session. It stays in `recent_projects` and comes back when b9s starts as a user with access to that database. The counts come from the checkout's configured source, never from a JSONL export beside a Dolt checkout.
 
-The project picker lists the project b9s was started in and the projects you opened recently (`recent_projects` in `~/.config/b9s/config.yaml`, at most nine). It does not scan folders for other projects. Any supported backend can be a recent project. A server-mode project only needs valid Dolt configuration in `.beads/metadata.json`; it does not need a JSONL export. A recent project whose server or tunnel is unavailable stays in the picker and is marked `✗` in place of its issue counts. A recent project whose database refuses the startup project's Dolt user is left out of the picker for that session: it stays in `recent_projects` and shows again when b9s starts as a user granted on that database. A checkout's counts and reachability come from its configured source; a JSONL export beside a Dolt checkout is never read in its place.
+Type `:project` to list the Beads databases that the startup project's Dolt user can read, then press `Enter` to open one. A project without a local checkout opens read-only, because writes run `bd` inside a checkout.
 
-A project b9s has not seen yet is prepended as `<1>`; a project already in the list keeps its number, so switching never renumbers the header. Set `lock_recent: true` to freeze the list. There is no in-app way to remove an entry; edit the file:
-
-```yaml
-recent_projects:
-  - name: b9s
-    database: b9s
-    host: 127.0.0.1:3306
-    path: /Users/me/Documents/b9s   # empty for a database without a local checkout
-lock_recent: false
-```
-
-Type `:project` to list the Beads databases the startup project's Dolt user can read. Enter adds the selected database to the recent list and opens it. A project without a local checkout opens read-only, because writes run `bd` inside a checkout. The older `discovery.scan_paths`, `projects:` and `favorites:` settings are no longer read; favorites are copied into `recent_projects` once.
-
-#### Projects that cannot be opened
-
-Switching loads the new project before it replaces the one on screen. While it loads, the status line shows `Opening <name>…`, the current project stays browsable, and edits wait; press `Esc` to cancel. If the project cannot be opened, you stay where you were and a popup names the reason and what to try:
+b9s loads a project before it replaces the one on screen. While it loads, the status line shows `Opening <name>…` and `Esc` cancels. If the project cannot be opened, you stay where you were and a popup names the reason:
 
 | Reason | Example |
 |--------|---------|
@@ -145,157 +149,94 @@ Switching loads the new project before it replaces the one on screen. While it l
 | Unreadable | no issues file or Dolt configuration could be read |
 | Timed out | the project did not open within 10 seconds |
 
-Press `r` in the popup to retry. A project joins `recent_projects` and records `opened_at` only after its issues load, so a project that fails never takes a number key.
+Press `r` in the popup to retry. When the folder b9s starts in cannot be opened, b9s opens the recent project that last opened successfully and shows the same popup. With `--no-fallback`, or without a terminal, it exits with status 1 instead, so a script never acts on the wrong project.
 
-When the folder b9s is started in cannot be opened, b9s prints the reason and next steps. In a terminal it then opens the recent project that most recently opened successfully and shows the same popup. Without a terminal, or with `--no-fallback`, it exits with status 1 instead, so scripts never act on a different project. An empty project opens normally.
+## Data sources
 
-### Source Priority
+b9s reads the `.beads` directory of the current folder, or the one in `BEADS_DIR`. When it finds more than one source, it uses the first of these:
 
-When multiple backends are present, B9s picks the highest-priority source:
+| Source | Found through |
+|--------|---------------|
+| Dolt server | `.beads/metadata.json` with `"dolt_mode": "server"` |
+| SQLite | `.beads/beads.db`, from older `bd` versions |
+| JSONL | `.beads/issues.jsonl`, also in linked git worktrees |
 
-| Priority | Backend | Source | Description |
-|----------|---------|--------|-------------|
-| **110** | Dolt (server mode) | `metadata.json` with `dolt_mode: "server"` | MySQL-compatible Dolt database via TCP. Supports concurrent writers and live change detection via `DOLT_HASHOF_DB()` working-set polling. |
-| **100** | SQLite | `.beads/beads.db` | Legacy SQLite database from older `bd` versions. Read-only in B9s. |
-| **80** | JSONL (worktree) | `.beads/issues.jsonl` in git worktrees | JSONL files discovered in linked git worktrees. |
-| **50** | JSONL (local) | `.beads/issues.jsonl` | Flat-file JSONL. The original Beads storage format. |
+A configured Dolt server always wins, even over a newer JSONL file. If b9s cannot connect to it, b9s falls back to SQLite and then JSONL, and `D` shows the active source and the connection error while the header is visible. b9s cannot read embedded Dolt (`bd init` without `--server`), because there is no server to connect to.
 
-Selection is **priority-first**, not freshness-first. When Dolt is configured, it always wins over JSONL, even if the JSONL file was modified more recently. This is correct because the Dolt database is the authoritative source when configured.
+b9s takes the Dolt host, port, user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. It sends that password only to a loopback address or to an exact `host:port` listed in `B9S_TRUSTED_DOLT_ENDPOINTS` (comma-separated), so a cloned repository cannot choose where your password goes. See [ADR 0013](docs/adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
 
-### Dolt Server Mode
+b9s checks the Dolt database hash every 500 ms by default, so changes from `bd` or another agent appear by themselves, uncommitted ones included. JSONL files reload when they change on disk. `Ctrl-R` or `F5` reloads at once.
 
-The primary backend. Connects to a Dolt SQL server (self-hosted or [DoltHub](https://www.dolthub.com/)) via the MySQL wire protocol. Supports concurrent multi-agent access, push/pull replication, and live reload.
+## Configuration
 
-B9s polls the Dolt working-set hash, so uncommitted issue changes made by `bd` or another agent appear automatically. This deliberately avoids a database change stream or WebSocket layer. The default interval is 500 milliseconds and can be changed in `~/.config/b9s/config.yaml`:
-
-```yaml
-refresh:
-  poll_interval: 2s
-```
-
-The minimum interval is 100 milliseconds. Restart B9s after changing the setting. Press `Ctrl+R` or `F5` at any time to refresh immediately.
-
-### Tree Sort
-
-The tree starts sorted newest first by creation date. Set a different default in `~/.config/b9s/config.yaml`:
+b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Every key is optional:
 
 ```yaml
 ui:
   sort:
-    field: updated   # priority, created, updated, title, status, type, deps, pagerank
-    direction: desc  # asc or desc; omit to use the field's natural direction
+    field: created      # priority, created, updated, title, status, type or deps
+    direction: desc     # asc or desc; leave out for the field's natural order
+refresh:
+  poll_interval: 500ms  # at least 100ms; restart b9s after a change
+lock_recent: false      # true freezes the list below
+recent_projects:        # b9s maintains this list; edit it to remove an entry
+  - name: b9s
+    database: b9s
+    host: 127.0.0.1:3306
+    path: /Users/me/src/b9s   # empty for a database without a local checkout
 ```
 
-Press `s` to pick another sort for the current session. That choice survives live refreshes but is never saved, so every start returns to the configured sort. An unknown field or direction makes the config fail to load.
+`s` picks another sort for the current session only. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it.
+
+## Mouse and tmux
+
+The mouse wheel moves through issues and scrolls the detail pane. Because b9s captures the mouse for this, a drag does not select text, and in tmux with `mouse on` the drag goes to b9s instead of starting copy mode.
+
+Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:mouse` again to scroll with the wheel. Without it, hold the terminal's override key while you drag: `Option` in iTerm2, `Shift` in most other terminals.
+
+## Command-line options
+
+| Option | Effect |
+|--------|--------|
+| `--filter '<query>'` | Start with a [query](#search) applied |
+| `--repo <prefix>` | Show only issues whose ID starts with the prefix, for example `api` |
+| `--no-fallback` | Exit with status 1 when the current folder cannot be opened |
+| `--debug` | Write a debug log to `.b9s/debug.log` |
+| `--check-update` | Report whether a newer release exists |
+| `--update` | Install the latest release; `--yes` skips the prompt |
+| `--rollback` | Go back to the version before the last update |
+| `--version` | Print the version |
+
+## Development
 
 ```bash
-# Initialize a new project with a remote Dolt server
-bd init --server \
-  --server-host=your-server.example.com \
-  --server-port=3306 \
-  --server-user=root \
-  --database=myproject
-
-# Import existing JSONL issues into a new Dolt database
-bd init --from-jsonl --server \
-  --server-host=your-server.example.com \
-  --server-port=3306 \
-  --server-user=root \
-  --database=myproject
+make build                            # builds ./b9s
+go test ./... -skip DoltIntegration   # everything that needs no Dolt server
 ```
 
-Set the password via environment variable (never stored in config files):
+Tests named `DoltIntegration` need a Dolt server. The ones that create databases run only against a disposable local server:
 
 ```bash
-export BEADS_DOLT_PASSWORD="your-password"
+mkdir -p /tmp/b9s-dolt && (cd /tmp/b9s-dolt && dolt init && dolt sql-server --port 13306) &
+B9S_TEST_DOLT_SCRATCH_ADDR=127.0.0.1:13306 go test ./internal/datasource/ -run DoltIntegration
 ```
 
-**Configuration** lives in `.beads/metadata.json` (written by `bd init`):
+[docs/testing.md](docs/testing.md) describes the test layers and the Dolt rules in full.
 
-```json
-{
-  "dolt_mode": "server",
-  "dolt_server_host": "your-server.example.com",
-  "dolt_server_user": "root",
-  "dolt_database": "myproject"
-}
-```
+## Documentation
 
-**Environment variables** override config values:
-
-| Variable | Purpose |
-|----------|---------|
-| `BEADS_DOLT_PASSWORD` | Server password (never in config files) |
-| `BEADS_DOLT_SERVER_HOST` | Dolt server hostname |
-| `BEADS_DOLT_SERVER_PORT` | Dolt server port |
-| `BEADS_DOLT_SERVER_USER` | MySQL user for Dolt server |
-
-**Remote sync** (push/pull replication):
-
-```bash
-bd dolt remote add origin https://dolthub.com/user/database
-bd dolt push                 # Push local commits to remote
-bd dolt pull                 # Pull remote commits
-bd dolt show                 # Show connection status and details
-```
-
-### Embedded Dolt Mode
-
-When you run `bd init` without `--server`, Beads creates a local embedded Dolt engine inside `.beads/dolt/`. No external server is needed.
-
-```bash
-bd init
-```
-
-B9s cannot read from embedded Dolt directly (there is no TCP socket to connect to). Use server mode for B9s integration.
-
-### JSONL and SQLite (Legacy)
-
-B9s reads `.beads/issues.jsonl` and `.beads/beads.db` for backward compatibility with older `bd` versions. These are read-only fallbacks; all writes go through `bd` CLI regardless of backend.
-
-### Fallback Behavior
-
-If B9s cannot connect to the configured Dolt server, it falls back to the next available source (SQLite, then JSONL). Press `Shift+D` in the TUI to open the health popup, which shows the active datasource and any connection failure details. When no source can be read at all, the project does not open; see [Projects that cannot be opened](#projects-that-cannot-be-opened).
-
-## Keyboard Quick Reference
-
-| Key | Action | Key | Action |
-|-----|--------|-----|--------|
-| `j` / `k` | Next / Previous | `q` / `Esc` | Quit / Back |
-| `Home` / `End` (or `G`) | Top / Bottom | `Tab` | Switch pane focus |
-| `Ctrl+F` / `Ctrl+B` (or `PgDn` / `PgUp`) | Page down / up | `Ctrl+W` | Toggle wide tree columns |
-| `/` | Fuzzy search | `s` | Cycle sort mode |
-| `n` / `N` | Next / Prev match | `l` | Label picker |
-| `f` | Toggle highlighted tree branch filter | | |
-| `\|` | Choose optional tree columns | `c` | Copy tree row's ID and title |
-| `o` / `c` / `r` / `a` | Filter: Open / Closed / Ready / All (tree view: `C` for Closed) | `d` | Toggle detail panel |
-| `Ctrl+R` / `F5` | Refresh data immediately | `?` | Show help |
-
-The mouse wheel moves through tasks and scrolls the detail pane. b9s captures the mouse for this, so a drag does not select text, and inside tmux with `mouse on` tmux sends the drag to b9s instead of starting copy mode. Type `:mouse` to give the mouse back to the terminal (or tmux) so a drag selects text; type `:mouse` again to scroll with the wheel. Without it, hold the terminal's override while dragging (`Option` in iTerm2, commonly `Shift` elsewhere).
-
-| Key | Action |
-|-----|--------|
-| `b` | Kanban board |
-| `g` | Dependency graph |
-| `E` | Tree view |
-| `e` | Edit issue: `Tab`/`Shift+Tab` move between fields, `Enter` inserts a line break in Description and Notes, `→` completes an assignee or label, `Ctrl+E` opens Description or Notes in `$EDITOR` and reads it back on exit, `Ctrl+S` saves, `Esc` cancels |
-| `Ctrl+n` | Create new issue |
-| `Shift+K` | Close selected issue after confirmation |
-| `Delete` | Permanently delete selected issue after confirmation |
-| `?` | Keyboard shortcuts help |
-| `Ctrl+S` (in help) | Search shortcuts; Enter keeps the filter, Esc clears it |
-| `[` / `]` | Resize split pane |
-| `Enter` (split view) | Move focus between the list and the detail pane; the focused pane has the bright border and the footer shows its keys |
-| `\` | Stack the detail pane below the list, or put it back to the right (same as `:layout`) |
-| `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table, `:mouse` switches between wheel scrolling and text selection, `:layout` stacks the detail pane below the list or puts it back to the right; Tab accepts the suggestion |
+- [User guide](docs/USER_GUIDE.md): every view, key, query and setting.
+- [Architecture](docs/ARCHITECTURE.md): the packages, the data flow and the write path through `bd`.
+- [Testing](docs/testing.md): unit, integration and end-to-end tests.
+- [Migrating embedded Dolt to a server](docs/embedded-to-server-migration.md): what to do when `D` reports embedded Dolt.
+- [Decision records](docs/adr/): why b9s works the way it does.
 
 ## Acknowledgments
 
-- **Steve Yegge** for the vision behind [Beads](https://github.com/steveyegge/beads), a refreshingly simple approach to issue tracking that respects developers' workflows.
-- **[@Dicklesworthstone](https://github.com/Dicklesworthstone)** for the original [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), whose architecture and implementation form the foundation of this project.
-- **[k9s](https://k9scli.io/)** for the UI inspiration: the header-style project picker, keyboard-first navigation, and information-dense terminal layout.
-- The **[Charm](https://charm.sh)** team for [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Lip Gloss](https://github.com/charmbracelet/lipgloss), [Bubbles](https://github.com/charmbracelet/bubbles), [Huh](https://github.com/charmbracelet/huh), and [Glamour](https://github.com/charmbracelet/glamour), the terminal UI libraries that make building beautiful CLI tools a joy.
+- Steve Yegge for [Beads](https://github.com/steveyegge/beads).
+- The [k9s](https://k9scli.io/) project for the interaction model b9s follows.
+- The [Charm](https://charm.sh) team for [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Lip Gloss](https://github.com/charmbracelet/lipgloss), [Bubbles](https://github.com/charmbracelet/bubbles), [Huh](https://github.com/charmbracelet/huh) and [Glamour](https://github.com/charmbracelet/glamour).
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](LICENSE).
