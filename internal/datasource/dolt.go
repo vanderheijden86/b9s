@@ -114,13 +114,13 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 			assignee, estimated_minutes, created_at, updated_at,
 			due_at, closed_at, external_ref, compaction_level,
 			compacted_at, compacted_at_commit, original_size,
-			design, acceptance_criteria, notes, source_repo
+			design, acceptance_criteria, notes, source_repo, defer_until
 		FROM issues
 		WHERE status != 'tombstone'
 		ORDER BY updated_at DESC
 	`
 
-	debug.Log("dolt: QUERY issues (full schema, 21 cols) addr=%s", r.addr)
+	debug.Log("dolt: QUERY issues (full schema, 22 cols) addr=%s", r.addr)
 	debug.Log("dolt: SQL: %s", strings.TrimSpace(query))
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -232,7 +232,7 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 func scanIssue(rows *sql.Rows) (model.Issue, error) {
 	var issue model.Issue
 	var estimatedMinutes, compactionLevel, originalSize sql.NullInt64
-	var createdAt, updatedAt, dueAt, closedAt, compactedAt sql.NullTime
+	var createdAt, updatedAt, dueAt, closedAt, compactedAt, deferUntil sql.NullTime
 	var description, assignee, externalRef, design, acceptanceCriteria, notes, sourceRepo, compactedAtCommit sql.NullString
 	var issueType string
 
@@ -241,7 +241,7 @@ func scanIssue(rows *sql.Rows) (model.Issue, error) {
 		&assignee, &estimatedMinutes, &createdAt, &updatedAt,
 		&dueAt, &closedAt, &externalRef, &compactionLevel,
 		&compactedAt, &compactedAtCommit, &originalSize,
-		&design, &acceptanceCriteria, &notes, &sourceRepo,
+		&design, &acceptanceCriteria, &notes, &sourceRepo, &deferUntil,
 	)
 	if err != nil {
 		return model.Issue{}, err
@@ -271,6 +271,10 @@ func scanIssue(rows *sql.Rows) (model.Issue, error) {
 	if closedAt.Valid {
 		t := closedAt.Time
 		issue.ClosedAt = &t
+	}
+	if deferUntil.Valid {
+		t := deferUntil.Time
+		issue.DeferUntil = &t
 	}
 	if externalRef.Valid {
 		s := externalRef.String

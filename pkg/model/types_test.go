@@ -714,3 +714,17 @@ func TestIssue_Clone_NilFields(t *testing.T) {
 		t.Errorf("Comments should be nil")
 	}
 }
+
+func TestIssueUnmarshalReadsDeferUntil(t *testing.T) {
+	var issue Issue
+	data := []byte(`{"id":"x-1","title":"t","status":"deferred","defer_until":"2026-10-01T00:00:00Z"}`)
+	if err := json.Unmarshal(data, &issue); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if issue.DeferUntil == nil {
+		t.Fatal("DeferUntil is nil, want 2026-10-01")
+	}
+	if got := issue.DeferUntil.Format("2006-01-02"); got != "2026-10-01" {
+		t.Errorf("DeferUntil = %s, want 2026-10-01", got)
+	}
+}

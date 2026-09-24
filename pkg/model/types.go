@@ -24,6 +24,7 @@ type Issue struct {
 	CreatedAt          time.Time     `json:"created_at"`
 	UpdatedAt          time.Time     `json:"updated_at"`
 	DueDate            *time.Time    `json:"due_date,omitempty"`
+	DeferUntil         *time.Time    `json:"defer_until,omitempty"`
 	ClosedAt           *time.Time    `json:"closed_at,omitempty"`
 	ExternalRef        *string       `json:"external_ref,omitempty"`
 	CompactionLevel    int           `json:"compaction_level,omitempty"`
@@ -82,6 +83,10 @@ func (i Issue) Clone() Issue {
 	if i.DueDate != nil {
 		v := *i.DueDate
 		clone.DueDate = &v
+	}
+	if i.DeferUntil != nil {
+		v := *i.DeferUntil
+		clone.DeferUntil = &v
 	}
 	if i.ExternalRef != nil {
 		v := *i.ExternalRef

@@ -181,7 +181,8 @@ func testDB(t *testing.T) (dbName string, addr string, cleanup func()) {
 			design TEXT NOT NULL DEFAULT '',
 			acceptance_criteria TEXT NOT NULL DEFAULT '',
 			notes TEXT NOT NULL DEFAULT '',
-			source_repo VARCHAR(512) DEFAULT ''
+			source_repo VARCHAR(512) DEFAULT '',
+			defer_until DATETIME
 		)`,
 		`CREATE TABLE labels (
 			issue_id VARCHAR(255) NOT NULL,

@@ -2511,6 +2511,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Tab is always fold (CycleNodeVisibility) — handled by view-specific keys (bd-lt1l)
 				// Falls through to handleTreeKeys / handleBoardKeys / handleListKeys
 
+			case "\\":
+				if m.isSplitView {
+					m = m.toggleSplitLayout()
+				}
+
 			case "<":
 				// Shrink list pane (move divider left)
 				if m.isSplitView {
@@ -4707,6 +4712,7 @@ func (m *Model) renderFooter() string {
 			{"^R", "refresh"},
 			{"tab", "fold"},
 			{"</>", "resize"},
+			{"\\", "layout"},
 			{"t", "tree"},
 			{"b", "board"},
 			{"e", "edit"},
@@ -5338,6 +5344,10 @@ func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) str
 		item.Assignee,
 		item.CreatedAt.Format("2006-01-02"),
 	))
+
+	if item.DeferUntil != nil {
+		sb.WriteString(fmt.Sprintf("**Deferred until:** %s\n\n", item.DeferUntil.Format("2006-01-02 15:04")))
+	}
 
 	// Labels (bv-f103 fix: display labels in detail view)
 	if len(item.Labels) > 0 {
