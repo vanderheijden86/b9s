@@ -49,10 +49,29 @@ func (m Model) activeProject() config.Project {
 	return config.Project{Name: m.activeProjectName, Path: m.activeProjectPath}
 }
 
+// visibleProjects is the header's rows: the recent projects without those the
+// startup user is not allowed to read. A denied project is a credential
+// boundary, not an outage, so it is left out rather than marked, and it comes
+// back when b9s starts as a user granted on its database. The active project
+// always stays, whatever its reachability, so its number key never disappears.
+// Other unreachable states keep their row with a ✗ mark (ADR 0008).
+func (m Model) visibleProjects() []config.Project {
+	visible := make([]config.Project, 0, len(m.allProjects))
+	for _, p := range m.allProjects {
+		denied := m.projectReach[projectKey(p)] == datasource.ReachDenied
+		active := p.Name == m.activeProjectName && p.ResolvedPath() == m.activeProjectPath
+		if denied && !active {
+			continue
+		}
+		visible = append(visible, p)
+	}
+	return visible
+}
+
 // activeProjectSlot is the active project's number key in the header, or 0
 // when the active project is not one of the numbered rows.
 func (m Model) activeProjectSlot() int {
-	for i, p := range m.allProjects {
+	for i, p := range m.visibleProjects() {
 		if i >= config.MaxRecentProjects {
 			break
 		}

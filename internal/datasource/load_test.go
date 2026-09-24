@@ -73,3 +73,30 @@ func TestLoadSmartIgnoresNewerAuxiliaryJSONL(t *testing.T) {
 		t.Fatalf("unexpected issues: %#v", issues)
 	}
 }
+
+// A checkout whose Dolt server refuses the connection must report that
+// failure. Stale JSONL beside it is not the project, and reading it would
+// present the database as reachable.
+func TestLoadIssuesFromCanonicalSourceReportsDoltFailureInsteadOfJSONL(t *testing.T) {
+	beadsDir := filepath.Join(t.TempDir(), ".beads")
+	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	metadata := `{"database":"dolt","dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":1,"dolt_server_user":"reader","dolt_database":"shared"}`
+	if err := os.WriteFile(filepath.Join(beadsDir, "metadata.json"), []byte(metadata), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stale := `{"id":"old-1","title":"Stale export","status":"open","issue_type":"task","priority":2}` + "\n"
+	if err := os.WriteFile(filepath.Join(beadsDir, "issues.jsonl"), []byte(stale), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	issues, err := LoadIssuesFromCanonicalSource(beadsDir)
+
+	if err == nil {
+		t.Fatalf("got %d issues and no error; the refused Dolt connection must be reported, not hidden by the JSONL export", len(issues))
+	}
+	if got := ClassifyConnError(err); got != ReachServerDown {
+		t.Errorf("ClassifyConnError = %v, want server down", got)
+	}
+}

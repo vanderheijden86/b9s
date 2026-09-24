@@ -303,7 +303,9 @@ func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd
 			go func(project config.Project) {
 				key := projectKey(project)
 				if beadsDir, ok := projectBeadsDir(project.ResolvedPath()); ok {
-					issues, err := datasource.LoadIssuesFromDir(beadsDir)
+					// The checkout's own source decides its reachability; its
+					// JSONL export must not answer for a database it cannot read.
+					issues, err := datasource.LoadIssuesFromCanonicalSource(beadsDir)
 					results <- result{key: key, counts: summarizeProjectIssues(issues), err: err}
 					return
 				}
@@ -734,8 +736,9 @@ func (m Model) renderGlobalHeader() string {
 
 // buildProjectEntries constructs the project picker display data from config.
 func (m Model) buildProjectEntries() []ProjectEntry {
-	entries := make([]ProjectEntry, 0, len(m.allProjects))
-	for _, p := range m.allProjects {
+	projects := m.visibleProjects()
+	entries := make([]ProjectEntry, 0, len(projects))
+	for _, p := range projects {
 		entry := ProjectEntry{
 			Project:      p,
 			IsActive:     p.Name == m.activeProjectName,
@@ -2330,7 +2333,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// [ / ] scroll the project picker list when more than 10 projects
 		// exist and the overflow is not reachable via number keys alone (bd-y41x).
-		if m.pickerVisible && len(m.allProjects) > maxVisibleProjects {
+		if m.pickerVisible && len(m.visibleProjects()) > maxVisibleProjects {
 			switch msg.String() {
 			case "]":
 				m.projectPicker, _ = m.projectPicker.Update(tea.KeyMsg{

@@ -53,6 +53,14 @@ func LoadIssuesFromDir(beadsDir string) ([]model.Issue, error) {
 	return loader.LoadIssuesFromFile(jsonlPath)
 }
 
+// LoadIssuesFromCanonicalSource reads a checkout from its best source and
+// reports that source's error as it is. A JSONL export beside a Dolt checkout
+// is a copy, not the project: reading it when the server refuses the
+// connection would present a database the user cannot read as reachable.
+func LoadIssuesFromCanonicalSource(beadsDir string) ([]model.Issue, error) {
+	return loadSmart(beadsDir, "")
+}
+
 // loadDiscoveryOptions avoids a separate validation pass because LoadFromSource
 // opens and queries the selected source immediately afterward. This matters for
 // remote Dolt servers, where validation otherwise adds another connection and

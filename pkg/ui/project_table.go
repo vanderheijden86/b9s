@@ -202,10 +202,10 @@ func (m Model) handleProjectTableLoaded(msg projectTableLoadedMsg) Model {
 	return m
 }
 
-// projectTableSlots maps each database already in the header to its number key.
+// projectTableSlots maps each database shown in the header to its number key.
 func (m Model) projectTableSlots() map[string]int {
 	slots := make(map[string]int)
-	for i, p := range m.allProjects {
+	for i, p := range m.visibleProjects() {
 		if i >= config.MaxRecentProjects {
 			break
 		}

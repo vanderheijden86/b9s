@@ -214,7 +214,8 @@ checkout from its own `.beads` directory, and a project without a checkout
 through one Dolt connection as the startup project's user.
 
 The header updates only when every project has answered. A server that refuses
-the connection fails at once and its row shows `✗`. A server that does not
+the connection fails at once: a project whose database denies the startup user
+is left out of the header, and any other refusal shows `✗` on its row. A server that does not
 answer at all holds every row's counts back for up to the 5-second connect
 timeout on each refresh. b9s has no command to forget a recent project; delete
 its entry from `recent_projects` in `~/.config/b9s/config.yaml` when its host is
