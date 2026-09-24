@@ -3272,6 +3272,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		m.tree.ExpandAll()
 	case "Z":
 		m.tree.CollapseAll()
+	case "v":
+		m = m.toggleTitleWrap()
 	case "ctrl+d":
 		m.tree.PageDown()
 		m.syncTreeToDetail()
@@ -4532,6 +4534,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Ctrl+w", "Toggle wide columns"},
 		{"p", "Jump to parent"},
 		{"X/Z", "Expand / collapse all"},
+		{"v", "Wrap long titles"},
 		{"Tab", "Cycle node visibility"},
 		{"1-9", "Expand to level N"},
 		{"d", "Toggle detail panel"},

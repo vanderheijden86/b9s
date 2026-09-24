@@ -312,6 +312,7 @@ type TreeModel struct {
 	sortField      SortField                 // Current sort field (bd-x3l)
 	sortDirection  SortDirection             // Current sort direction (bd-x3l)
 	narrowColumns  []ColumnPreference        // Preferences to restore when wide mode ends; nil when not wide
+	wrapTitles     bool                      // Long titles continue on extra lines instead of ending in "…"
 
 	// Build state
 	built    bool   // Has tree been built?
@@ -1875,7 +1876,12 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 		titleWidth = 5
 	}
 
+	var continuation []string
 	title := truncateRunesHelper(issue.Title, titleWidth, "…")
+	if t.wrapTitles {
+		lines := wrapTitleLines(issue.Title, titleWidth)
+		title, continuation = lines[0], lines[1:]
+	}
 	// Pad title to fill space
 	currentTitleWidth := lipgloss.Width(title)
 	if currentTitleWidth < titleWidth {
@@ -1925,13 +1931,58 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	}
 
 	leftSide.WriteString(titlePortion)
-	row := leftSide.String()
 
 	// Apply row width clamping
 	rowStyle := r.NewStyle().Width(width).MaxWidth(width)
-	row = rowStyle.Render(row)
+	rows := []string{rowStyle.Render(leftSide.String())}
 
-	return row
+	// Continuation lines start under the title so the columns to the left
+	// stay readable as one block per issue.
+	for _, line := range continuation {
+		portion := titleStyle.Render(line)
+		if isSelected {
+			if pad := width - leftLen - lipgloss.Width(portion); pad > 0 {
+				portion += strings.Repeat(" ", pad)
+			}
+			if bgSeq := bgSeqFromColor(t.theme.Highlight, r); bgSeq != "" {
+				portion = injectBackground(portion, bgSeq)
+			}
+		}
+		rows = append(rows, rowStyle.Render(strings.Repeat(" ", leftLen)+portion))
+	}
+
+	return strings.Join(rows, "\n")
+}
+
+// wrapTitleLines breaks title at word boundaries into lines of at most width
+// cells. A word longer than width is split, so every line fits.
+func wrapTitleLines(title string, width int) []string {
+	var lines []string
+	line := ""
+	for _, word := range strings.Fields(title) {
+		for lipgloss.Width(word) > width {
+			if line != "" {
+				lines = append(lines, line)
+				line = ""
+			}
+			head := truncateRunesHelper(word, width, "")
+			lines = append(lines, head)
+			word = word[len(head):]
+		}
+		switch {
+		case line == "":
+			line = word
+		case lipgloss.Width(line)+1+lipgloss.Width(word) <= width:
+			line += " " + word
+		default:
+			lines = append(lines, line)
+			line = word
+		}
+	}
+	if line != "" || len(lines) == 0 {
+		lines = append(lines, line)
+	}
+	return lines
 }
 
 func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
@@ -2700,7 +2751,44 @@ func (t *TreeModel) rowsFrom(start int) int {
 	if t.xrayRoot != nil && t.xrayRoot.Issue != nil {
 		rows--
 	}
-	return max(rows, 1)
+	if !t.wrapTitles {
+		return max(rows, 1)
+	}
+	// Wrapped nodes take several lines, so count nodes until their lines
+	// fill the budget. The first node always counts, even when it alone
+	// is taller than the pane.
+	nodes := 0
+	for i := start; i < len(t.flatList) && rows > 0; i++ {
+		h := t.nodeLineCount(i)
+		if nodes > 0 && h > rows {
+			break
+		}
+		rows -= h
+		nodes++
+	}
+	return max(nodes, 1)
+}
+
+// nodeLineCount returns how many screen lines the node at index i renders to.
+func (t *TreeModel) nodeLineCount(i int) int {
+	if !t.wrapTitles || i < 0 || i >= len(t.flatList) {
+		return 1
+	}
+	node := t.flatList[i]
+	if node == nil || node.Issue == nil {
+		return 1
+	}
+	return strings.Count(t.renderNodeWithLayout(node, false, t.resolveColumnLayout()), "\n") + 1
+}
+
+// WrapTitles reports whether long titles wrap onto extra lines.
+func (t TreeModel) WrapTitles() bool { return t.wrapTitles }
+
+// ToggleWrapTitles switches between wrapped and truncated titles and keeps
+// the cursor on screen under the new row heights.
+func (t *TreeModel) ToggleWrapTitles() {
+	t.wrapTitles = !t.wrapTitles
+	t.ensureCursorVisible()
 }
 
 // SelectByID moves cursor to the node with the given issue ID.

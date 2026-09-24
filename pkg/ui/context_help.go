@@ -119,7 +119,7 @@ const contextHelpTree = `## Tree View
   p         Jump to parent node
 
 **Structure**
-  X/Z       Expand/collapse all · ^w  Wide columns
+  X/Z       Expand/collapse all · ^w Wide · v Wrap titles
   Tab       Cycle node visibility
   S-Tab     Cycle global visibility
   1-9       Expand to level N

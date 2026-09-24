@@ -16,6 +16,7 @@ const (
 	CommandProjects
 	CommandMouse
 	CommandLayout
+	CommandWrap
 )
 
 // Command is a resolved ':' command.
@@ -30,7 +31,7 @@ func typeFilterCommand(t model.IssueType) Command {
 
 // commandNames are the canonical spellings offered as suggestions. The alias
 // table below must resolve every one of them.
-var commandNames = []string{"bug", "chore", "epic", "feature", "issues", "layout", "mouse", "project", "task"}
+var commandNames = []string{"bug", "chore", "epic", "feature", "issues", "layout", "mouse", "project", "task", "wrap"}
 
 // commandAliases is a closed table in code rather than config: the set of
 // entity views is fixed by the Beads schema, and tests can check it is total.
@@ -44,6 +45,7 @@ var commandAliases = map[string]Command{
 	"issues": {Kind: CommandClearType}, "all": {Kind: CommandClearType},
 	"mouse":   {Kind: CommandMouse},
 	"layout":  {Kind: CommandLayout},
+	"wrap":    {Kind: CommandWrap},
 	"project": {Kind: CommandProjects}, "projects": {Kind: CommandProjects}, "proj": {Kind: CommandProjects},
 }
 

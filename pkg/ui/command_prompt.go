@@ -116,6 +116,8 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		return m.toggleMouseCapture()
 	case CommandLayout:
 		return m.toggleSplitLayout(), nil
+	case CommandWrap:
+		return m.toggleTitleWrap(), nil
 	}
 	return m, nil
 }
@@ -150,6 +152,19 @@ func (m Model) toggleSplitLayout() Model {
 		m.statusMsg = "Layout stacked: detail below the list, \\ for side by side"
 	} else {
 		m.statusMsg = "Layout side by side: detail right of the list, \\ to stack"
+	}
+	m.statusIsError = false
+	return m
+}
+
+// toggleTitleWrap switches tree titles between one truncated line and the
+// full title wrapped under the title column.
+func (m Model) toggleTitleWrap() Model {
+	m.tree.ToggleWrapTitles()
+	if m.tree.WrapTitles() {
+		m.statusMsg = "Titles wrapped: v or :wrap for one line per issue"
+	} else {
+		m.statusMsg = "Titles truncated: v or :wrap to show full titles"
 	}
 	m.statusIsError = false
 	return m
