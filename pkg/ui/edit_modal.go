@@ -13,12 +13,21 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// editFormKeyMap returns a keymap where tab accepts suggestions instead of
-// moving to the next field. Enter moves to the next field (bd-wa5p).
+// editFormKeyMap makes tab the field-navigation key everywhere, so enter is
+// free to insert line breaks in the multi-line Description and Notes fields.
+// Tab therefore cannot also accept a suggestion: right arrow (at the end of the
+// typed text) or ctrl+e completes instead. Saving is ctrl+s, handled by
+// EditModal.Update, so no key submits the form from the last field.
 func editFormKeyMap() *huh.KeyMap {
 	km := huh.NewDefaultKeyMap()
-	km.Input.AcceptSuggestion = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "complete"))
-	km.Input.Next = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "next"))
+	km.Input.AcceptSuggestion = key.NewBinding(key.WithKeys("right", "ctrl+e"), key.WithHelp("→", "complete"))
+	km.Input.Next = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next"))
+	km.Input.Submit = key.NewBinding(key.WithHelp("ctrl+s", "save"))
+	km.Text.Next = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next"))
+	km.Text.Submit = key.NewBinding(key.WithHelp("ctrl+s", "save"))
+	km.Text.NewLine = key.NewBinding(key.WithKeys("enter", "alt+enter", "ctrl+j"), key.WithHelp("enter", "new line"))
+	km.Select.Next = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next"))
+	km.Select.Submit = key.NewBinding(key.WithHelp("ctrl+s", "save"))
 	return km
 }
 

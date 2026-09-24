@@ -277,13 +277,14 @@ The mouse wheel moves through tasks and scrolls the detail pane. b9s captures th
 | `b` | Kanban board |
 | `g` | Dependency graph |
 | `E` | Tree view |
-| `e` | Edit issue |
+| `e` | Edit issue: `Tab`/`Shift+Tab` move between fields, `Enter` inserts a line break in Description and Notes, `→` completes an assignee or label, `Ctrl+S` saves, `Esc` cancels |
 | `Ctrl+n` | Create new issue |
 | `Shift+K` | Close selected issue after confirmation |
 | `Delete` | Permanently delete selected issue after confirmation |
 | `?` | Keyboard shortcuts help |
 | `Ctrl+S` (in help) | Search shortcuts; Enter keeps the filter, Esc clears it |
 | `[` / `]` | Resize split pane |
+| `\` | Stack the detail pane below the list, or put it back to the right (same as `:layout`) |
 | `:` | Command prompt: `:epic`, `:feature`, `:task`, `:bug`, `:chore` filter by type, `:issues` clears it, `:project` opens the project table, `:mouse` switches between wheel scrolling and text selection, `:layout` stacks the detail pane below the list or puts it back to the right; Tab accepts the suggestion |
 
 ## Acknowledgments

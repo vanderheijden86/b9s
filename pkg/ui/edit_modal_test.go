@@ -3,6 +3,7 @@ package ui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vanderheijden86/beadwork/pkg/model"
 
@@ -409,5 +410,133 @@ func TestEditModal_BuildUpdateArgs_NoChanges(t *testing.T) {
 
 	if len(args) != 0 {
 		t.Errorf("Expected no changed fields, got %d: %v", len(args), args)
+	}
+}
+
+// sendEditKey feeds a key to the modal and then feeds back every message its
+// command produces, so field navigation (NextField/PrevField) takes effect.
+func sendEditKey(t *testing.T, modal EditModal, msg tea.KeyMsg) EditModal {
+	t.Helper()
+	modal, cmd := modal.Update(msg)
+	for _, m := range drainEditCmd(cmd) {
+		modal, _ = modal.Update(m)
+	}
+	return modal
+}
+
+func drainEditCmd(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	// Cursor-blink commands sleep before returning; only immediate messages
+	// such as field navigation matter here.
+	ch := make(chan tea.Msg, 1)
+	go func() { ch <- cmd() }()
+	var msg tea.Msg
+	select {
+	case msg = <-ch:
+	case <-time.After(20 * time.Millisecond):
+		return nil
+	}
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		var out []tea.Msg
+		for _, c := range batch {
+			out = append(out, drainEditCmd(c)...)
+		}
+		return out
+	}
+	if msg == nil {
+		return nil
+	}
+	return []tea.Msg{msg}
+}
+
+func typeEdit(t *testing.T, modal EditModal, s string) EditModal {
+	t.Helper()
+	for _, r := range s {
+		modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	return modal
+}
+
+func TestCreateModal_EnterInsertsNewlineInDescription(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme)
+	modal.SetSize(100, 40)
+
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab}) // Title -> Description
+	modal = typeEdit(t, modal, "first")
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyEnter})
+	modal = typeEdit(t, modal, "second")
+
+	if got := *modal.description; got != "first\nsecond" {
+		t.Errorf("description = %q, want %q", got, "first\nsecond")
+	}
+}
+
+func TestCreateModal_TabLeavesDescription(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme)
+	modal.SetSize(100, 40)
+
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab}) // Title -> Description
+	modal = typeEdit(t, modal, "desc")
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab}) // Description -> Priority
+	modal = typeEdit(t, modal, "x")
+
+	if got := *modal.description; got != "desc" {
+		t.Errorf("description = %q, want %q (tab should have moved focus away)", got, "desc")
+	}
+}
+
+func TestCreateModal_EnterInsertsNewlineInLastTextField(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme)
+	modal.SetSize(100, 40)
+
+	for i := 0; i < 6; i++ { // Title -> ... -> Notes
+		modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab})
+	}
+	modal = typeEdit(t, modal, "a")
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyEnter})
+	modal = typeEdit(t, modal, "b")
+
+	if modal.IsSaveRequested() {
+		t.Error("Enter in Notes must not submit the form")
+	}
+	if got := *modal.notes; got != "a\nb" {
+		t.Errorf("notes = %q, want %q", got, "a\nb")
+	}
+}
+
+func TestCreateModal_TabLeavesAssigneeWithoutAcceptingSuggestion(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme, EditSuggestions{Assignees: []string{"alice"}})
+	modal.SetSize(100, 40)
+
+	for i := 0; i < 4; i++ { // Title -> ... -> Assignee
+		modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab})
+	}
+	modal = typeEdit(t, modal, "a")
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab}) // Assignee -> Labels
+
+	if got := *modal.assignee; got != "a" {
+		t.Errorf("assignee = %q, want %q (tab must navigate, not complete)", got, "a")
+	}
+}
+
+func TestCreateModal_RightArrowAcceptsAssigneeSuggestion(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewCreateModal(theme, EditSuggestions{Assignees: []string{"alice"}})
+	modal.SetSize(100, 40)
+
+	for i := 0; i < 4; i++ { // Title -> ... -> Assignee
+		modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab})
+	}
+	modal = typeEdit(t, modal, "a")
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyRight})
+
+	if got := *modal.assignee; got != "alice" {
+		t.Errorf("assignee = %q, want %q", got, "alice")
 	}
 }
