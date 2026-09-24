@@ -114,6 +114,8 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		return m, func() tea.Msg { return OpenProjectTableMsg{} }
 	case CommandMouse:
 		return m.toggleMouseCapture()
+	case CommandLayout:
+		return m.toggleSplitLayout(), nil
 	}
 	return m, nil
 }
@@ -133,4 +135,22 @@ func (m Model) toggleMouseCapture() (Model, tea.Cmd) {
 	}
 	m.statusMsg = "Mouse captured: wheel scrolls b9s, :mouse to select text"
 	return m, tea.EnableMouseCellMotion
+}
+
+// toggleSplitLayout switches the split between the detail pane to the right
+// of the list and the detail pane below it.
+func (m Model) toggleSplitLayout() Model {
+	m.splitStacked = !m.splitStacked
+	m.recalculateSplitPaneSizes()
+	m.syncTreeSize()
+	if m.treeViewActive && !m.treeDetailHidden {
+		m.syncTreeToDetail()
+	}
+	if m.splitStacked {
+		m.statusMsg = "Layout stacked: detail below the list, :layout for side by side"
+	} else {
+		m.statusMsg = "Layout side by side: detail right of the list, :layout to stack"
+	}
+	m.statusIsError = false
+	return m
 }

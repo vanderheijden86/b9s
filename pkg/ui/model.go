@@ -493,7 +493,8 @@ type Model struct {
 	treeDetailHidden     bool  // True when detail panel is hidden in tree view (bd-80u)
 	detailHiddenByNarrow bool  // True when detail was auto-hidden due to narrow window (bd-6eg)
 	isSplitView          bool
-	splitPaneRatio       float64 // Ratio of list pane width (0.2-0.8), default 0.4
+	splitPaneRatio       float64 // List pane's share of the split (0.2-0.8), default 0.4: width side by side, height stacked
+	splitStacked         bool    // Split puts the detail pane below the list instead of to its right
 	isBoardView          bool
 	isGraphView          bool
 	showDetails          bool
@@ -630,6 +631,10 @@ func (m Model) bodyHeight() int {
 // here; otherwise the cursor scrolls against a height that is not on screen.
 func (m Model) treeLayoutSize() (width, height int) {
 	if m.isSplitView && !m.treeDetailHidden {
+		if m.splitStacked {
+			top, _ := m.stackedPaneHeights()
+			return m.stackedPaneWidth(), top
+		}
 		// Inside a bordered panel between the global header and the footer
 		return m.list.Width(), max(m.height-4, 1)
 	}
@@ -2803,27 +2808,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.isSplitView {
-			// Calculate dimensions accounting for 2 panels with borders(2)+padding(2) = 4 overhead each
-			// Total overhead = 8
-			availWidth := msg.Width - 8
-			if availWidth < 10 {
-				availWidth = 10
-			}
-
-			// Use configurable split ratio (default 0.4, adjustable via [ and ])
-			listInnerWidth := int(float64(availWidth) * m.splitPaneRatio)
-			detailInnerWidth := availWidth - listInnerWidth
-
-			// listHeight fits header (1) + page line (1) inside a panel with Border (2)
-			listHeight := bodyHeight - 4
-			if listHeight < 3 {
-				listHeight = 3
-			}
-
-			m.list.SetSize(listInnerWidth, listHeight)
-			m.viewport = viewport.New(detailInnerWidth, bodyHeight-2) // Account for border
-
-			m.renderer.SetWidthWithTheme(detailInnerWidth, m.theme)
+			m.sizeSplitPanes()
 		} else {
 			listHeight := bodyHeight - 2
 			if listHeight < 3 {
@@ -4280,22 +4265,7 @@ func (m Model) renderSplitView() string {
 	// Combine header + list + page indicator
 	listContent := lipgloss.JoinVertical(lipgloss.Left, header, m.list.View(), pageLine)
 
-	// List Panel Width: Inner + 2 (Padding). Border adds another 2.
-	// Use MaxHeight to ensure content doesn't overflow
-	listView := listStyle.
-		Width(listInnerWidth + 2).
-		Height(panelHeight).
-		MaxHeight(panelHeight).
-		Render(listContent)
-
-	// Detail Panel Width: Inner + 2 (Padding). Border adds another 2.
-	detailView := detailStyle.
-		Width(m.viewport.Width + 2).
-		Height(panelHeight).
-		MaxHeight(panelHeight).
-		Render(m.viewport.View())
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
+	return m.renderSplitPanes(listStyle, detailStyle, listInnerWidth, panelHeight, listContent)
 }
 
 // renderTreeSplitView renders the tree view in a split layout with a detail panel on the right,
@@ -4318,23 +4288,7 @@ func (m Model) renderTreeSplitView() string {
 	m.tree.SetSize(treeInnerWidth, treeHeight)
 
 	// tree.View() includes the header row (bd-s2k)
-	treeContent := m.tree.View()
-
-	// Tree Panel Width: Inner + 2 (Padding). Border adds another 2.
-	treeView := treeStyle.
-		Width(treeInnerWidth + 2).
-		Height(panelHeight).
-		MaxHeight(panelHeight).
-		Render(treeContent)
-
-	// Detail Panel Width: Inner + 2 (Padding). Border adds another 2.
-	detailView := detailStyle.
-		Width(m.viewport.Width + 2).
-		Height(panelHeight).
-		MaxHeight(panelHeight).
-		Render(m.viewport.View())
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, treeView, detailView)
+	return m.renderSplitPanes(treeStyle, detailStyle, treeInnerWidth, panelHeight, m.tree.View())
 }
 
 func (m *Model) renderHelpOverlay() string {
@@ -5238,10 +5192,25 @@ func (m *Model) recalculateSplitPaneSizes() {
 	if !m.isSplitView {
 		return
 	}
+	m.sizeSplitPanes()
+	m.updateViewportContent()
+}
 
+// sizeSplitPanes sizes the list and the detail viewport for the split layout.
+func (m *Model) sizeSplitPanes() {
 	bodyHeight := m.bodyHeight() // accounts for picker header + footer (bd-ins4)
 	if bodyHeight < 5 {
 		bodyHeight = 5
+	}
+
+	if m.splitStacked {
+		top, bottom := m.stackedPaneHeights()
+		width := m.stackedPaneWidth()
+		// The list pane also holds a header row and a page line
+		m.list.SetSize(width, max(top-2, 1))
+		m.viewport = viewport.New(width, bottom)
+		m.renderer.SetWidthWithTheme(width, m.theme)
+		return
 	}
 
 	// Calculate dimensions accounting for 2 panels with borders(2)+padding(2) = 4 overhead each
@@ -5250,24 +5219,70 @@ func (m *Model) recalculateSplitPaneSizes() {
 		availWidth = 10
 	}
 
+	// Use configurable split ratio (default 0.4, adjustable via < and >)
 	listInnerWidth := int(float64(availWidth) * m.splitPaneRatio)
 	detailInnerWidth := availWidth - listInnerWidth
 
+	// listHeight fits header (1) + page line (1) inside a panel with Border (2)
 	listHeight := bodyHeight - 4
 	if listHeight < 3 {
 		listHeight = 3
 	}
 
 	m.list.SetSize(listInnerWidth, listHeight)
-	m.viewport = viewport.New(detailInnerWidth, bodyHeight-2)
+	m.viewport = viewport.New(detailInnerWidth, bodyHeight-2) // Account for border
 	m.renderer.SetWidthWithTheme(detailInnerWidth, m.theme)
-	m.updateViewportContent()
+}
+
+// stackedPaneWidth is the inner width of both panes when the split is
+// stacked: the terminal width less each pane's border and padding.
+func (m Model) stackedPaneWidth() int {
+	return max(m.width-4, 10)
+}
+
+// stackedPaneHeights returns the inner heights of the top (list or tree) and
+// bottom (detail) panes when the split is stacked. Each pane spends a row on
+// its top and bottom border; splitPaneRatio is the top pane's share of the rest.
+func (m Model) stackedPaneHeights() (top, bottom int) {
+	inner := max(m.bodyHeight()-4, 2)
+	top = max(int(float64(inner)*m.splitPaneRatio), 1)
+	return top, max(inner-top, 1)
+}
+
+// renderSplitPanes joins the list or tree panel with the detail panel, side
+// by side or stacked. Side by side, both are drawn at panelHeight; stacked,
+// each takes its share of the body.
+func (m Model) renderSplitPanes(listStyle, detailStyle lipgloss.Style, listWidth, panelHeight int, listContent string) string {
+	if m.splitStacked {
+		top, bottom := m.stackedPaneHeights()
+		width := m.stackedPaneWidth() + 2
+		listView := listStyle.Width(width).Height(top).MaxHeight(top + 2).Render(listContent)
+		detailView := detailStyle.Width(width).Height(bottom).MaxHeight(bottom + 2).Render(m.viewport.View())
+		return lipgloss.JoinVertical(lipgloss.Left, listView, detailView)
+	}
+
+	// Panel Width: Inner + 2 (Padding). Border adds another 2.
+	// Use MaxHeight to ensure content doesn't overflow
+	listView := listStyle.
+		Width(listWidth + 2).
+		Height(panelHeight).
+		MaxHeight(panelHeight).
+		Render(listContent)
+	detailView := detailStyle.
+		Width(m.viewport.Width + 2).
+		Height(panelHeight).
+		MaxHeight(panelHeight).
+		Render(m.viewport.View())
+	return lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 }
 
 // detailPaneWidth returns the inner width the detail pane would have at the
 // current terminal width and split ratio. Used to decide whether the pane is
 // too narrow to be readable (bd-dy7).
 func (m *Model) detailPaneWidth() int {
+	if m.splitStacked {
+		return m.stackedPaneWidth()
+	}
 	availWidth := m.width - 8
 	if availWidth < 10 {
 		availWidth = 10
