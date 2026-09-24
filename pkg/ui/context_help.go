@@ -157,34 +157,30 @@ const contextHelpGraph = `## Dependency Graph
 const contextHelpBoard = `## Board View
 
 **Navigation**
-  h/l       Move between columns
-  j/k       Move within column
-  1-4       Jump to column by number
-  H/L       Jump to first/last column
-  gg/G      Go to top/bottom of column
+  h/l  j/k  Column, issue
+  1-4  H/L  Jump to column, first/last
+  gg/G      Top/bottom of column
 
-**Filtering**
-  o/c/r     Filter: open/closed/ready
+**Filter, search, group**
+  o/c/r     Open/closed/ready
+  /  n/N    Search, next/prev match
+  s  e      Swimlanes, empty columns
 
-**Search**
-  /         Start search
-  n/N       Next/prev match
+**Layouts**
+  v         Switch A (adaptive focus) / E (inspector)
+  Tab       E: focus the inspector, j/k scroll it
+  Ctrl+j/k  E: scroll the inspector
 
-**Grouping**
-  s         Cycle: Status/Priority/Type
-
-**Visual Indicators** (card borders)
-  🔴 Red     Has blockers
-  🟡 Yellow  High-impact (blocks others)
-  🟢 Green   Ready to work
+**Row facts**
+  blocked by X   An open blocker
+  lane: stage    Dispatcher lane stage
+  blocks N       Issues waiting on this one
 
 **Actions**
-  Tab       Toggle detail panel
-  Ctrl+j/k  Scroll detail panel
   y         Copy issue ID
   K / Del   Close / delete (confirm)
   Enter     View issue details
-  Esc       Return to List view`
+  Esc       Back to the tree`
 
 const contextHelpDetail = `## Detail View
 

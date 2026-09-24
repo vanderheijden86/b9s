@@ -1,6 +1,6 @@
 # Board TUI redesign exploration
 
-Status: proposed
+Status: implemented as layouts A and E (ADR 0016); one layout still to be chosen
 
 Beads epic: `bd-e5u3`
 

@@ -432,7 +432,8 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "h / l", Desc: "Move between columns"},
 					{Key: "j / k", Desc: "Move within column"},
-					{Key: "Tab", Desc: "Toggle detail panel"},
+					{Key: "v", Desc: "Switch layout A / E"},
+					{Key: "Tab", Desc: "Focus the inspector (layout E)"},
 					{Key: "Enter", Desc: "View issue details"},
 				}},
 				Spacer{Lines: 1},
@@ -440,14 +441,13 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "s", Desc: "Cycle: Status -> Priority -> Type"},
 					{Key: "e", Desc: "Toggle empty columns"},
-					{Key: "d", Desc: "Inline card expansion"},
 				}},
 				Spacer{Lines: 1},
-				Section{Title: "Card Border Colors"},
+				Section{Title: "Row Facts"},
 				KeyTable{Bindings: []KeyBinding{
-					{Key: "Red", Desc: "Has blockers"},
-					{Key: "Yellow", Desc: "High-impact (blocks others)"},
-					{Key: "Green", Desc: "Ready to work"},
+					{Key: "blocked by X", Desc: "An open blocker"},
+					{Key: "lane: stage", Desc: "Dispatcher lane stage"},
+					{Key: "blocks N", Desc: "Issues waiting on this one"},
 				}},
 			},
 		},

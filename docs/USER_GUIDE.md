@@ -264,10 +264,22 @@ The Dolt SQL login, for example `bd_b9s`, is one credential shared by every agen
 | Priority | P0 Critical, P1 High, P2 Medium, P3+ Other |
 | Type | Bug, Feature, Task, Epic |
 
+The board has two layouts while one is chosen ([ADR 0016](adr/0016-keep-two-board-layouts-until-one-is-chosen.md)). `v` switches between them and keeps the selection. `ui.board_layout` in the config sets the layout at start.
+
+| Layout | What it shows |
+|--------|---------------|
+| A, adaptive focus | The focused column takes most of the width. Each issue has two lines: ID, title, priority and age, then type, `blocked by X`, `lane: stage` and `blocks N`. Empty columns and the closed column fold into narrow rails; `h` or `l` onto a rail opens it. |
+| E, focus + inspector | One-line rows (`⧗` marks a blocked issue) beside an inspector with status, lane, readiness, impact, people, description, dependencies and labels of the selected issue. |
+
+A row separates four facts: the column is the stored status, `blocked by X` names an open blocker, `lane: stage` comes from the `lane-stage=` label, and `blocks N` counts the issues that wait on this one. In single-project mode IDs drop the project prefix.
+
 | Keys | Action |
 |------|--------|
 | `h` `l`, `Left` `Right` | Change the column |
-| `j` `k`, `Up` `Down` | Move between cards |
+| `j` `k`, `Up` `Down` | Move between issues, or scroll the inspector when it has focus |
+| `v` | Switch between layout A and layout E |
+| `Tab` | Layout E: move focus between the columns and the inspector |
+| `Ctrl-J` `Ctrl-K` | Layout E: scroll the inspector |
 | `0`, `$`, `gg`, `G` | First card, last card, top, bottom |
 | `Enter` | Open the card in the detail pane |
 | `o`, `c`, `r` | Show open, closed or ready issues |
@@ -343,6 +355,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
+  board_layout: adaptive  # adaptive (layout A) or inspector (layout E); v switches
   sort:
     field: created      # priority, created, updated, title, status, type or deps
     direction: desc     # asc or desc; leave out for the field's natural order

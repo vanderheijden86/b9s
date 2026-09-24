@@ -106,7 +106,7 @@ In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a ne
 
 In the detail pane, `j` and `k` scroll, `Home` and `End` jump to the top and bottom, `n` and `p` go to the next and previous sibling, and `c` copies the issue as Markdown.
 
-On the board, `h` and `l` change the column, `j` and `k` move between cards, `o`, `c` and `r` show open, closed or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID.
+On the board, `h` and `l` change the column, `j` and `k` move between issues, `o`, `c` and `r` show open, closed or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID. `v` switches between two board layouts: A gives the focused column most of the width, and E shows one-line rows beside an inspector for the selected issue. In E, `Tab` moves focus to the inspector and `j` and `k` scroll it.
 
 ## Creators and assignees
 
@@ -173,6 +173,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
+  board_layout: adaptive  # adaptive (layout A) or inspector (layout E); v switches
   sort:
     field: created      # priority, created, updated, title, status, type or deps
     direction: desc     # asc or desc; leave out for the field's natural order

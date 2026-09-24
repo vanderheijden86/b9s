@@ -1101,6 +1101,9 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	checkout, _ := NewCheckout(projectPath)
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(projectName)
+	if layout, ok := ParseBoardLayout(cfg.UI.BoardLayout); ok {
+		m.board.SetLayout(layout)
+	}
 	m.updateListDelegate()
 	m.allProjects = headerProjects(cfg.RecentProjects, projectName, projectPath)
 	entries := m.buildProjectEntries()
@@ -2579,6 +2582,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.isBoardView {
 					m.focused = focusBoard
 					m.refreshBoardAndGraphForCurrentFilter()
+					m.board.FocusPopulatedColumn()
 				} else {
 					m.focused = focusTree
 				}
@@ -2713,8 +2717,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "l":
-				if m.focused == focusTree {
-					break // Let handleTreeKeys handle 'l' for expand/child (bd-mwi)
+				if m.focused == focusTree || m.focused == focusBoard {
+					break // Tree expands (bd-mwi), board moves right a column
 				}
 				// Open label picker for quick filter (bv-126)
 				if len(m.issues) == 0 {
@@ -2904,6 +2908,10 @@ func (m Model) handleMouseWheel(msg tea.MouseMsg) Model {
 		case focusGraph:
 			m.graph.MoveUp()
 		case focusBoard:
+			if m.board.IsInspectorFocused() {
+				m.board.ScrollInspector(-3, m.width, m.bodyHeight())
+				break
+			}
 			m.board.MoveUp()
 			m.syncBoardToDetail()
 		case focusList:
@@ -2922,6 +2930,10 @@ func (m Model) handleMouseWheel(msg tea.MouseMsg) Model {
 		case focusGraph:
 			m.graph.MoveDown()
 		case focusBoard:
+			if m.board.IsInspectorFocused() {
+				m.board.ScrollInspector(3, m.width, m.bodyHeight())
+				break
+			}
 			m.board.MoveDown()
 			m.syncBoardToDetail()
 		case focusList:
@@ -2980,6 +2992,23 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 	// ═══════════════════════════════════════════════════════════════════════════
 	// Normal key handling (bv-yg39 enhanced)
 	// ═══════════════════════════════════════════════════════════════════════════
+	if m.board.IsInspectorFocused() {
+		switch key {
+		case "j", "down":
+			m.board.ScrollInspector(1, m.width, m.bodyHeight())
+			return m
+		case "k", "up":
+			m.board.ScrollInspector(-1, m.width, m.bodyHeight())
+			return m
+		case "ctrl+d", "pgdown":
+			m.board.ScrollInspector(m.bodyHeight()/2, m.width, m.bodyHeight())
+			return m
+		case "ctrl+u", "pgup":
+			m.board.ScrollInspector(-m.bodyHeight()/2, m.width, m.bodyHeight())
+			return m
+		}
+	}
+
 	switch key {
 	// Basic navigation (existing)
 	case "h", "left":
@@ -3080,24 +3109,25 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		}
 		m.statusIsError = false
 
-	// Inline card expansion (bd-1of: Tab replaces d for card cycling)
-	case "tab":
-		m.board.ToggleExpand()
-		if m.board.HasExpandedCard() {
-			m.statusMsg = "📋 Card expanded (tab=collapse, j/k=auto-collapse)"
-		} else {
-			m.statusMsg = "📋 Card collapsed"
-		}
+	// Layout switch between concepts A and E (docs/adr/0016).
+	case "v":
+		m.board.ToggleLayout()
+		m.statusMsg = "Board layout: " + m.board.Layout().Label()
 		m.statusIsError = false
 
+	// Tab moves focus between the columns and the layout E inspector.
+	case "tab":
+		if m.board.Layout() != BoardLayoutInspector {
+			m.statusMsg = "Tab focuses the inspector in layout E; press v to switch"
+			m.statusIsError = false
+			break
+		}
+		m.board.ToggleInspectorFocus()
+
 	case "ctrl+j":
-		if m.board.IsDetailShown() {
-			m.board.DetailScrollDown(3)
-		}
+		m.board.ScrollInspector(3, m.width, m.bodyHeight())
 	case "ctrl+k":
-		if m.board.IsDetailShown() {
-			m.board.DetailScrollUp(3)
-		}
+		m.board.ScrollInspector(-3, m.width, m.bodyHeight())
 
 	// Enter toggles detail view (bd-yo4: full detail like tree view)
 	case "enter":
@@ -4741,8 +4771,8 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"0-9", "project"},
 			{"^R", "refresh"},
-			{"tab", "fold"},
-			{"⇧tab", "fold all"},
+			{"v", "layout"},
+			{"tab", "inspector"},
 			{"enter", "detail"},
 			{"j/k", "card"},
 			{"m", "move"},

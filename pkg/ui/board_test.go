@@ -2,7 +2,6 @@ package ui_test
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"testing"
@@ -12,7 +11,6 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/ui"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 )
 
 func createTime(hoursAgo int) time.Time {
@@ -21,23 +19,6 @@ func createTime(hoursAgo int) time.Time {
 
 func createTheme() ui.Theme {
 	return ui.DefaultTheme(lipgloss.NewRenderer(os.Stdout))
-}
-
-func TestBoardCardRemovesTerminalControlPayloads(t *testing.T) {
-	issue := model.Issue{
-		ID:        "bd-1\x1b[2J",
-		Title:     "safe\x1b]52;c;YXR0YWNr\x07title",
-		Status:    model.StatusOpen,
-		IssueType: model.TypeTask,
-		Labels:    []string{"ok\u009b31mbad"},
-	}
-	b := ui.NewBoardModel([]model.Issue{issue}, createTheme())
-	out := b.TestRenderCard(issue, 80, false)
-	for _, forbidden := range []string{"\x1b]52", "YXR0YWNr", "[2J", "[31m"} {
-		if strings.Contains(out, forbidden) {
-			t.Fatalf("board card retained terminal control payload %q: %q", forbidden, out)
-		}
-	}
 }
 
 // TestBoardModelBlackbox tests basic selection and update behavior
@@ -954,90 +935,6 @@ func TestSearchCaseInsensitive(t *testing.T) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Detail Panel Tests (bv-r6kh)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// TestDetailPanelToggle verifies detail panel visibility
-func TestDetailPanelToggle(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{{ID: "1", Status: model.StatusOpen}}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Initially hidden
-	if b.IsDetailShown() {
-		t.Error("Detail panel should be hidden initially")
-	}
-
-	// Show
-	b.ShowDetail()
-	if !b.IsDetailShown() {
-		t.Error("Detail panel should be shown after ShowDetail")
-	}
-
-	// Toggle off
-	b.ToggleDetail()
-	if b.IsDetailShown() {
-		t.Error("Detail panel should be hidden after toggle")
-	}
-
-	// Toggle on
-	b.ToggleDetail()
-	if !b.IsDetailShown() {
-		t.Error("Detail panel should be shown after second toggle")
-	}
-
-	// Hide
-	b.HideDetail()
-	if b.IsDetailShown() {
-		t.Error("Detail panel should be hidden after HideDetail")
-	}
-}
-
-// TestDetailPanelScroll verifies detail panel scrolling doesn't panic
-func TestDetailPanelScroll(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{{
-		ID:          "1",
-		Title:       "Test Issue",
-		Description: "Long description that spans multiple lines...",
-		Status:      model.StatusOpen,
-	}}
-	b := ui.NewBoardModel(issues, theme)
-
-	b.ShowDetail()
-
-	// Force render to populate viewport
-	_ = b.View(160, 40)
-
-	// Scroll operations should not panic
-	b.DetailScrollDown(3)
-	b.DetailScrollUp(3)
-	b.DetailScrollDown(100) // Over-scroll should be safe
-	b.DetailScrollUp(100)
-}
-
-// TestDetailPanelRenderWithWidth verifies detail panel appears at sufficient width
-func TestDetailPanelRenderWithWidth(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{{ID: "1", Status: model.StatusOpen}}
-	b := ui.NewBoardModel(issues, theme)
-
-	b.ShowDetail()
-
-	// At narrow width (80), detail panel shouldn't show
-	output80 := b.View(80, 30)
-
-	// At wide width (160), detail panel should show
-	output160 := b.View(160, 30)
-
-	// Wide output should be longer (includes detail panel)
-	// This is a heuristic - the exact behavior depends on implementation
-	if len(output160) < len(output80) {
-		t.Log("Note: Detail panel may not show at 160 width depending on implementation threshold")
-	}
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // Layout Tests at Various Widths (bv-4agf)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1516,7 +1413,7 @@ func TestEmptyColumnHandlingStatusMode(t *testing.T) {
 	}
 
 	// Verify title bar shows Status mode
-	if !strings.Contains(output, "[by: Status]") {
+	if !strings.Contains(output, "by status") {
 		t.Error("Should show Status mode in title bar")
 	}
 
@@ -1547,10 +1444,10 @@ func TestEmptyColumnHandlingPriorityMode(t *testing.T) {
 
 	// Verify title bar shows hidden count
 	output := b.View(160, 30)
-	if !strings.Contains(output, "[by: Priority]") {
+	if !strings.Contains(output, "by priority") {
 		t.Error("Should show Priority mode in title bar")
 	}
-	if !strings.Contains(output, "[+3 hidden]") {
+	if !strings.Contains(output, "+3 hidden") {
 		t.Error("Should show hidden column count in title bar")
 	}
 }
@@ -1660,270 +1557,13 @@ func TestEmptyColumnTitleBarRendering(t *testing.T) {
 	}
 	b := ui.NewBoardModel(issues, theme)
 
-	// Status mode - should show "BOARD [by: Status]"
+	// Status mode - should show "BOARD" and "by status"
 	output := b.View(160, 30)
 	if !strings.Contains(output, "BOARD") {
 		t.Error("Title bar should contain 'BOARD'")
 	}
-	if !strings.Contains(output, "[by: Status]") {
+	if !strings.Contains(output, "by status") {
 		t.Error("Title bar should show swimlane mode")
-	}
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Inline Card Expansion Tests (bv-i3ii)
-// ═══════════════════════════════════════════════════════════════════════════
-
-// TestInlineCardExpansion_Toggle verifies basic expand/collapse behavior
-func TestInlineCardExpansion_Toggle(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{
-		{ID: "test-1", Title: "First Issue", Status: model.StatusOpen},
-		{ID: "test-2", Title: "Second Issue", Status: model.StatusOpen},
-	}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Initially no card is expanded
-	if b.HasExpandedCard() {
-		t.Error("No card should be expanded initially")
-	}
-	if b.GetExpandedID() != "" {
-		t.Error("GetExpandedID should return empty string when no card expanded")
-	}
-
-	// Toggle expand on first card
-	b.ToggleExpand()
-	if !b.HasExpandedCard() {
-		t.Error("Card should be expanded after ToggleExpand")
-	}
-	if b.GetExpandedID() != "test-1" {
-		t.Errorf("Expected expanded card test-1, got %s", b.GetExpandedID())
-	}
-	if !b.IsCardExpanded("test-1") {
-		t.Error("IsCardExpanded should return true for test-1")
-	}
-
-	// Toggle again should collapse
-	b.ToggleExpand()
-	if b.HasExpandedCard() {
-		t.Error("Card should be collapsed after second ToggleExpand")
-	}
-}
-
-// TestInlineCardExpansion_AutoCollapseOnNavigation verifies cards collapse when navigating
-func TestInlineCardExpansion_AutoCollapseOnNavigation(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{
-		{ID: "test-1", Title: "First Issue", Status: model.StatusOpen},
-		{ID: "test-2", Title: "Second Issue", Status: model.StatusOpen},
-		{ID: "test-3", Title: "Third Issue", Status: model.StatusInProgress},
-	}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Expand first card
-	b.ToggleExpand()
-	if !b.IsCardExpanded("test-1") {
-		t.Error("test-1 should be expanded")
-	}
-
-	// Move down should collapse
-	b.MoveDown()
-	if b.HasExpandedCard() {
-		t.Error("Card should collapse on MoveDown")
-	}
-
-	// Expand again and test MoveUp
-	b.ToggleExpand()
-	b.MoveUp()
-	if b.HasExpandedCard() {
-		t.Error("Card should collapse on MoveUp")
-	}
-
-	// Test MoveLeft/MoveRight
-	b.MoveRight() // Move to different column
-	b.ToggleExpand()
-	expandedBefore := b.GetExpandedID()
-	b.MoveLeft()
-	if b.HasExpandedCard() {
-		t.Errorf("Card %s should collapse on MoveLeft", expandedBefore)
-	}
-}
-
-// TestInlineCardExpansion_OnlyOneExpanded verifies only one card can be expanded
-func TestInlineCardExpansion_OnlyOneExpanded(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{
-		{ID: "test-1", Title: "First Issue", Status: model.StatusOpen},
-		{ID: "test-2", Title: "Second Issue", Status: model.StatusOpen},
-	}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Expand first card
-	b.ToggleExpand()
-	if b.GetExpandedID() != "test-1" {
-		t.Error("test-1 should be expanded")
-	}
-
-	// Navigate without MoveUp/MoveDown to keep expansion
-	// Actually, we auto-collapse on navigation, so this test verifies
-	// that expanding a new card replaces the old one
-	b.CollapseExpanded()
-	b.MoveDown() // This will already have collapsed, but let's set up the state
-	b.ToggleExpand()
-
-	// Now test-2 should be expanded (not test-1)
-	if b.GetExpandedID() != "test-2" {
-		t.Errorf("Expected test-2 to be expanded, got %s", b.GetExpandedID())
-	}
-	if b.IsCardExpanded("test-1") {
-		t.Error("test-1 should not be expanded anymore")
-	}
-}
-
-// TestInlineCardExpansion_CollapseMethod verifies CollapseExpanded works
-func TestInlineCardExpansion_CollapseMethod(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{
-		{ID: "test-1", Title: "Test Issue", Status: model.StatusOpen},
-	}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Expand and then explicitly collapse
-	b.ToggleExpand()
-	if !b.HasExpandedCard() {
-		t.Error("Card should be expanded")
-	}
-
-	b.CollapseExpanded()
-	if b.HasExpandedCard() {
-		t.Error("Card should be collapsed after CollapseExpanded")
-	}
-
-	// CollapseExpanded on already collapsed should be safe
-	b.CollapseExpanded()
-	if b.HasExpandedCard() {
-		t.Error("Should still be collapsed")
-	}
-}
-
-// TestInlineCardExpansion_NoIssueSelected verifies ToggleExpand is safe with no selection
-func TestInlineCardExpansion_NoIssueSelected(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{} // Empty board
-	b := ui.NewBoardModel(issues, theme)
-
-	// ToggleExpand should not panic
-	b.ToggleExpand()
-	if b.HasExpandedCard() {
-		t.Error("Should not expand anything when no issues exist")
-	}
-}
-
-// TestInlineCardExpansion_RendersWithDoubleBorder verifies expanded card uses double border
-func TestInlineCardExpansion_RendersWithDoubleBorder(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{
-		{ID: "test-1", Title: "Test Issue", Status: model.StatusOpen, Description: "A test description"},
-	}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Expand the card
-	b.ToggleExpand()
-
-	// Render the board
-	output := b.View(120, 40)
-
-	// Expanded card should show the expand indicator (▼) in header
-	if !strings.Contains(output, "▼") {
-		t.Error("Expanded card should show ▼ indicator")
-	}
-}
-
-// TestInlineCardExpansion_ShowsDescription verifies expanded card shows description
-func TestInlineCardExpansion_ShowsDescription(t *testing.T) {
-	theme := createTheme()
-	// Use text that survives markdown rendering
-	description := "UNIQUE_DESC_CONTENT here."
-	issues := []model.Issue{
-		{ID: "test-1", Title: "Test Issue", Status: model.StatusOpen, Description: description},
-	}
-	b := ui.NewBoardModel(issues, theme)
-
-	// Expand the card
-	b.ToggleExpand()
-
-	// Render the board
-	output := b.View(120, 40)
-
-	// Should contain the unique description text
-	if !strings.Contains(output, "UNIQUE_DESC_CONTENT") {
-		t.Error("Expanded card should show description content")
-	}
-}
-
-// TestBoardCardInViewRendering verifies cards inside the full View() render
-// as proper rectangles without re-wrapping by the column container.
-func TestBoardCardInViewRendering(t *testing.T) {
-	theme := createTheme()
-	issues := []model.Issue{
-		{
-			ID:        "bd-qal",
-			Title:     "Set HOMEBREW_TAP_GITHUB_TOKEN in CI workflow",
-			Status:    model.StatusOpen,
-			Priority:  1,
-			IssueType: model.TypeTask,
-			CreatedAt: createTime(48),
-			UpdatedAt: createTime(24),
-		},
-	}
-
-	// Simulate narrow split pane: total width ~90, height 30
-	for _, totalWidth := range []int{60, 80, 100, 120} {
-		t.Run(fmt.Sprintf("total_%d", totalWidth), func(t *testing.T) {
-			b := ui.NewBoardModel(issues, theme)
-			output := b.View(totalWidth, 30)
-
-			lines := strings.Split(output, "\n")
-			t.Logf("total_width=%d, total_lines=%d", totalWidth, len(lines))
-
-			// Find lines containing ThickBorder top ┏ and bottom ┗
-			var cardTopLines, cardBottomLines []int
-			for i, line := range lines {
-				stripped := stripAnsiCodes(line)
-				if strings.Contains(stripped, "┏") && strings.Contains(stripped, "┓") {
-					cardTopLines = append(cardTopLines, i)
-				}
-				if strings.Contains(stripped, "┗") && strings.Contains(stripped, "┛") {
-					cardBottomLines = append(cardBottomLines, i)
-				}
-			}
-
-			t.Logf("card top borders at lines: %v", cardTopLines)
-			t.Logf("card bottom borders at lines: %v", cardBottomLines)
-
-			// For each card, check it's exactly 5 lines tall (top + 3 content + bottom)
-			for idx, topLine := range cardTopLines {
-				if idx >= len(cardBottomLines) {
-					t.Errorf("card %d: found top border at line %d but no matching bottom border", idx, topLine)
-					continue
-				}
-				bottomLine := cardBottomLines[idx]
-				cardHeight := bottomLine - topLine + 1
-				if cardHeight != 5 {
-					t.Errorf("card %d: expected 5 lines (border+3+border), got %d (lines %d-%d)",
-						idx, cardHeight, topLine, bottomLine)
-					// Dump the card lines for debugging
-					for li := topLine; li <= bottomLine && li < len(lines); li++ {
-						t.Logf("  card_line[%d]: %q", li-topLine, stripAnsiCodes(lines[li]))
-					}
-				}
-			}
-
-			// Dump first 20 lines for visual inspection
-			for i := 0; i < len(lines) && i < 20; i++ {
-				t.Logf("  view[%02d]: %q", i, stripAnsiCodes(lines[i]))
-			}
-		})
 	}
 }
 
@@ -1948,107 +1588,4 @@ func stripAnsiCodes(s string) string {
 		}
 	}
 	return result.String()
-}
-
-// TestBoardCardRectangleRendering verifies cards render as fixed-size rectangles
-// with thick borders at various widths, including narrow split-pane widths.
-func TestBoardCardRectangleRendering(t *testing.T) {
-	theme := createTheme()
-
-	issues := []model.Issue{
-		{
-			ID:        "bd-qal",
-			Title:     "Set HOMEBREW_TAP_GITHUB_TOKEN in CI workflow",
-			Status:    model.StatusOpen,
-			Priority:  1,
-			IssueType: model.TypeTask,
-			CreatedAt: createTime(48),
-			UpdatedAt: createTime(24),
-		},
-	}
-
-	b := ui.NewBoardModel(issues, theme)
-
-	// Test at various widths including very narrow (split pane)
-	widths := []int{16, 20, 24, 28, 32, 40, 60}
-
-	for _, textW := range widths {
-		t.Run(fmt.Sprintf("width_%d", textW), func(t *testing.T) {
-			card := b.TestRenderCard(issues[0], textW, false)
-
-			// Split into lines (strip the trailing margin line)
-			lines := strings.Split(card, "\n")
-			// Remove trailing empty lines from MarginBottom
-			for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
-				lines = lines[:len(lines)-1]
-			}
-
-			// Log actual output for debugging
-			t.Logf("textW=%d, lines=%d", textW, len(lines))
-			for i, line := range lines {
-				stripped := stripAnsiCodes(line)
-				t.Logf("  line[%d] len=%d: %q", i, len([]rune(stripped)), stripped)
-			}
-
-			// MUST be exactly 5 lines: top border + 3 content + bottom border
-			if len(lines) != 5 {
-				t.Errorf("card should be exactly 5 lines (border+3content+border), got %d", len(lines))
-				return
-			}
-
-			// Check border characters
-			firstStripped := stripAnsiCodes(lines[0])
-			lastStripped := stripAnsiCodes(lines[len(lines)-1])
-
-			if !strings.HasPrefix(firstStripped, "┏") || !strings.HasSuffix(firstStripped, "┓") {
-				t.Errorf("top border should be ┏━━━┓, got %q", firstStripped)
-			}
-			if !strings.HasPrefix(lastStripped, "┗") || !strings.HasSuffix(lastStripped, "┛") {
-				t.Errorf("bottom border should be ┗━━━┛, got %q", lastStripped)
-			}
-
-			// All lines should be the same visible width
-			expectedWidth := len([]rune(firstStripped))
-			for i, line := range lines {
-				w := len([]rune(stripAnsiCodes(line)))
-				if w != expectedWidth {
-					t.Errorf("line[%d] width=%d, expected %d (same as border)", i, w, expectedWidth)
-				}
-			}
-
-			// Content lines should have ┃ on left and right
-			for i := 1; i <= 3; i++ {
-				stripped := stripAnsiCodes(lines[i])
-				if !strings.HasPrefix(stripped, "┃") || !strings.HasSuffix(stripped, "┃") {
-					t.Errorf("content line[%d] should have ┃ borders, got %q", i, stripped)
-				}
-			}
-		})
-	}
-}
-
-func TestBoardSelectedCardReappliesBackgroundAfterInnerResets(t *testing.T) {
-	renderer := lipgloss.NewRenderer(io.Discard)
-	renderer.SetColorProfile(termenv.TrueColor)
-	theme := ui.DefaultTheme(renderer)
-	issue := model.Issue{
-		ID:        "bd-yqrq",
-		Title:     "Selected card fills its full area",
-		Status:    model.StatusOpen,
-		Priority:  1,
-		IssueType: model.TypeBug,
-		CreatedAt: createTime(48),
-		UpdatedAt: createTime(24),
-	}
-
-	card := ui.NewBoardModel([]model.Issue{issue}, theme).TestRenderCard(issue, 40, true)
-	backgroundSample := renderer.NewStyle().Background(theme.Highlight).Render(" ")
-	spaceIndex := strings.Index(backgroundSample, " ")
-	if spaceIndex <= 0 {
-		t.Fatalf("expected ANSI background sequence, sample = %q", backgroundSample)
-	}
-	backgroundSequence := backgroundSample[:spaceIndex]
-	if !strings.Contains(card, "\x1b[0m"+backgroundSequence) {
-		t.Fatalf("selected card must restore its background after inner style resets: %q", card)
-	}
 }
