@@ -277,7 +277,7 @@ The mouse wheel moves through tasks and scrolls the detail pane. b9s captures th
 | `b` | Kanban board |
 | `g` | Dependency graph |
 | `E` | Tree view |
-| `e` | Edit issue: `Tab`/`Shift+Tab` move between fields, `Enter` inserts a line break in Description and Notes, `→` completes an assignee or label, `Ctrl+S` saves, `Esc` cancels |
+| `e` | Edit issue: `Tab`/`Shift+Tab` move between fields, `Enter` inserts a line break in Description and Notes, `→` completes an assignee or label, `Ctrl+E` opens Description or Notes in `$EDITOR` and reads it back on exit, `Ctrl+S` saves, `Esc` cancels |
 | `Ctrl+n` | Create new issue |
 | `Shift+K` | Close selected issue after confirmation |
 | `Delete` | Permanently delete selected issue after confirmation |
