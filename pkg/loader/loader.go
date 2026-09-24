@@ -48,9 +48,20 @@ func GetBeadsDir(repoPath string) (string, error) {
 		}
 	}
 
-	// Check for .beads in the given path first
 	beadsDir := filepath.Join(repoPath, ".beads")
 	if _, err := os.Stat(beadsDir); err == nil {
+		// A linked worktree (whose .git is a file) checks out the branch's
+		// committed .beads/ config, but the project it belongs to is the main
+		// checkout's. Naming it after the worktree folder would list one
+		// project twice.
+		if gitInfo, err := os.Stat(filepath.Join(repoPath, ".git")); err == nil && !gitInfo.IsDir() {
+			if mainRepoRoot, err := getMainRepoRoot(repoPath); err == nil && mainRepoRoot != "" {
+				mainBeadsDir := filepath.Join(mainRepoRoot, ".beads")
+				if _, err := os.Stat(mainBeadsDir); err == nil {
+					return mainBeadsDir, nil
+				}
+			}
+		}
 		return beadsDir, nil
 	}
 

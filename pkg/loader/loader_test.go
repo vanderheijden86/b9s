@@ -3,6 +3,7 @@ package loader_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1094,5 +1095,46 @@ func TestGetBeadsDir_FindsBeadsInGitRepo(t *testing.T) {
 	// Verify the path ends with .beads
 	if filepath.Base(result) != ".beads" {
 		t.Errorf("Returned path should end with .beads: got %s", result)
+	}
+}
+
+// A worktree checks out the committed .beads/ config of its branch, but the
+// issues live in the main checkout's project, so the worktree must resolve to it.
+func TestGetBeadsDir_WorktreeWithOwnBeadsResolvesToMainRepo(t *testing.T) {
+	t.Setenv(loader.BeadsDirEnvVar, "")
+
+	mainRepo := t.TempDir()
+	git := func(dir string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	git(mainRepo, "init", "-q", "-b", "main")
+	if err := os.MkdirAll(filepath.Join(mainRepo, ".beads"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mainRepo, ".beads", "metadata.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(mainRepo, "add", ".beads")
+	git(mainRepo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init")
+	worktree := filepath.Join(mainRepo, ".worktrees", "feat-x")
+	git(mainRepo, "worktree", "add", "-q", "-b", "feat/x", worktree)
+
+	if _, err := os.Stat(filepath.Join(worktree, ".beads")); err != nil {
+		t.Fatalf("worktree should carry its own .beads: %v", err)
+	}
+
+	result, err := loader.GetBeadsDir(worktree)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	wantRoot, _ := filepath.EvalSymlinks(mainRepo)
+	gotRoot, _ := filepath.EvalSymlinks(filepath.Dir(result))
+	if gotRoot != wantRoot {
+		t.Errorf("GetBeadsDir(worktree) = %s, want main repo .beads under %s", result, wantRoot)
 	}
 }
