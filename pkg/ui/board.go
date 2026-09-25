@@ -72,6 +72,10 @@ type BoardModel struct {
 	// history, not a queue, so the column stays hidden until c (docs/adr/0018).
 	showClosed bool
 
+	// foldedCols are columns z folded into a rail. A folded column leaves
+	// activeColIdx, so no move can focus it, but still renders as a rail.
+	foldedCols [4]bool
+
 	// Active project name for the prefix badge on cards (bd-dy6r)
 	// Empty string means all-projects mode: fall back to ExtractRepoPrefix.
 	activeProjectName string
@@ -230,7 +234,7 @@ func (b *BoardModel) updateActiveColumns() {
 
 	b.activeColIdx = nil
 	for i := 0; i < 4; i++ {
-		if b.columnHidden(i) {
+		if b.columnHidden(i) || b.foldedCols[i] {
 			continue
 		}
 		if len(b.columns[i]) > 0 || showEmpty {
@@ -240,7 +244,7 @@ func (b *BoardModel) updateActiveColumns() {
 	// If all columns are empty (and we're hiding empty), include all columns anyway
 	if len(b.activeColIdx) == 0 {
 		for i := 0; i < 4; i++ {
-			if !b.columnHidden(i) {
+			if !b.columnHidden(i) && !b.foldedCols[i] {
 				b.activeColIdx = append(b.activeColIdx, i)
 			}
 		}
@@ -275,6 +279,88 @@ func (b *BoardModel) ToggleClosedColumn() {
 	b.updateActiveColumns()
 	if selID == "" || !b.SelectIssueByID(selID) {
 		b.FocusPopulatedColumn()
+	}
+}
+
+// ColumnFolded reports whether z has folded col into a rail.
+func (b *BoardModel) ColumnFolded(col int) bool {
+	return col >= 0 && col < 4 && b.foldedCols[col]
+}
+
+// FoldedColumnCount is the number of columns z has folded.
+func (b *BoardModel) FoldedColumnCount() int {
+	n := 0
+	for _, f := range b.foldedCols {
+		if f {
+			n++
+		}
+	}
+	return n
+}
+
+// FoldFocusedColumn folds the focused column into a rail and moves the focus
+// to the nearest column still shown. It returns the folded column's header,
+// or "" when nothing folds: on the epic column, or when the focused column
+// is the last one shown, since the focused column always renders in full.
+func (b *BoardModel) FoldFocusedColumn() string {
+	if b.onEpicColumn || len(b.activeColIdx) < 2 {
+		return ""
+	}
+	col := b.actualFocusedCol()
+	lane := b.selectedLane()
+	b.foldedCols[col] = true
+	b.updateActiveColumns()
+	b.focusAfterFold(col, lane)
+	return b.getColumnHeaders()[col]
+}
+
+// focusAfterFold puts the focus on the first shown column right of the
+// folded one, else left of it, preferring a card in the same epic lane.
+func (b *BoardModel) focusAfterFold(folded int, lane string) {
+	order := make([]int, 0, len(b.activeColIdx))
+	for i, col := range b.activeColIdx {
+		if col > folded {
+			order = append(order, i)
+		}
+	}
+	for i := len(b.activeColIdx) - 1; i >= 0; i-- {
+		if b.activeColIdx[i] < folded {
+			order = append(order, i)
+		}
+	}
+	if b.hasEpicLanes() {
+		for _, i := range order {
+			if row := b.laneCardRow(b.activeColIdx[i], lane); row >= 0 {
+				b.focusedCol = i
+				b.selectedRow[b.activeColIdx[i]] = row
+				return
+			}
+		}
+	}
+	for _, i := range order {
+		if len(b.columns[b.activeColIdx[i]]) > 0 {
+			b.focusedCol = i
+			return
+		}
+	}
+	if len(order) > 0 {
+		b.focusedCol = order[0]
+	}
+}
+
+// UnfoldColumns unfolds every column z folded and keeps the selection.
+func (b *BoardModel) UnfoldColumns() {
+	if b.FoldedColumnCount() == 0 {
+		return
+	}
+	var selID string
+	if sel := b.SelectedIssue(); sel != nil && !b.onEpicColumn {
+		selID = sel.ID
+	}
+	b.foldedCols = [4]bool{}
+	b.updateActiveColumns()
+	if selID != "" {
+		b.SelectIssueByID(selID)
 	}
 }
 
@@ -440,6 +526,8 @@ func (b *BoardModel) GetSwimLaneMode() SwimLaneMode {
 // CycleSwimLaneMode cycles to the next swimlane mode and regroups issues (bv-wjs0)
 func (b *BoardModel) CycleSwimLaneMode() {
 	b.swimLaneMode = SwimLaneMode((int(b.swimLaneMode) + 1) % SwimLaneModeCount)
+	// A fold names a column position, which means another group in the new mode.
+	b.foldedCols = [4]bool{}
 	b.regroupIssues()
 }
 

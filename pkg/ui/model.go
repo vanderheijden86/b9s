@@ -3083,6 +3083,25 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.statusMsg = fmt.Sprintf("🔀 Swimlane: %s", modeName)
 		m.statusIsError = false
 
+	// z folds the focused column into a rail, Z unfolds every folded one.
+	case "z":
+		if name := m.board.FoldFocusedColumn(); name != "" {
+			m.statusMsg = fmt.Sprintf("Folded %s · Z unfolds", strings.ToLower(name))
+		} else {
+			m.statusMsg = "z folds a status column, and one column stays shown"
+		}
+		m.statusIsError = false
+		m.syncBoardToDetail()
+	case "Z":
+		if m.board.FoldedColumnCount() > 0 {
+			m.board.UnfoldColumns()
+			m.statusMsg = "Columns unfolded"
+		} else {
+			m.statusMsg = "No folded columns"
+		}
+		m.statusIsError = false
+		m.syncBoardToDetail()
+
 	// Empty column visibility toggle (bv-tf6j)
 	case "e":
 		m.board.ToggleEmptyColumns()

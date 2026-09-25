@@ -295,6 +295,7 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `Enter` | Open the card in the detail pane |
 | `o`, `i`, `C` | Toggle `status:open`, `status:in_progress` or `status:closed` in the query bar. Keys combine, so `o` then `i` shows both. `C` also shows the closed column. `Esc` clears the filter |
 | `r` | Show ready issues |
+| `z`, `Z` | `z` folds the focused column into a rail, so its cards leave the board and the other columns get the width. The focus moves to the next column, and moves skip the rail. `Z` unfolds every folded column. One column always stays shown |
 | `/`, `n` `N` | Search, next and previous match |
 | `e` | Hide or show empty columns |
 | `y` | Copy the issue ID |

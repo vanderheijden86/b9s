@@ -459,11 +459,13 @@ func (b *BoardModel) stepEpicColumn(step int) {
 	}
 }
 
-// shownLanes lists the lanes with an issue in a shown column, in lane order.
+// shownLanes lists the lanes with an issue in a shown or folded column, in
+// lane order. A lane whose cards all sit in a folded rail keeps its row.
 func (b *BoardModel) shownLanes() []string {
-	regions := make([]boardRegion, 0, len(b.activeColIdx))
-	for _, col := range b.activeColIdx {
-		regions = append(regions, boardRegion{col: col})
+	inputs := b.regionInputs()
+	regions := make([]boardRegion, 0, len(inputs))
+	for _, in := range inputs {
+		regions = append(regions, boardRegion{col: in.col})
 	}
 	return b.laneOrder(regions)
 }

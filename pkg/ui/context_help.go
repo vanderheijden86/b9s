@@ -165,6 +165,7 @@ const contextHelpBoard = `## Board View
   o i C     Toggle open, in progress, closed
   r         Ready
   c         Show or hide closed column
+  z / Z     Fold column into a rail / unfold all
   /  n/N    Search, next/prev match
   s  e      Swimlanes, empty columns
 

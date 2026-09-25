@@ -73,14 +73,23 @@ func (b *BoardModel) renderBoardBar(width int) string {
 }
 
 func (b *BoardModel) renderKeyHints(width int) string {
-	hints := "←→ column  ↑↓ in lane  { } epic  f branch  tab fold  S-tab all  c closed  enter detail  / search  s swimlane  v design"
+	hints := "←→ column  ↑↓ in lane  { } epic  f branch  tab fold  S-tab all  z fold column  c closed  enter detail  / search  s swimlane  v design"
 	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Render(truncateRunesHelper(hints, width, "…")), width)
 }
 
+// regionInputs lists the columns to lay out in column order: the shown
+// columns, and the folded ones, which render as rails in their place.
 func (b *BoardModel) regionInputs() []boardRegionInput {
 	var inputs []boardRegionInput
-	for _, col := range b.activeColIdx {
-		inputs = append(inputs, boardRegionInput{col: col, count: len(b.columns[col])})
+	next := 0
+	for col := range 4 {
+		switch {
+		case next < len(b.activeColIdx) && b.activeColIdx[next] == col:
+			inputs = append(inputs, boardRegionInput{col: col, count: len(b.columns[col])})
+			next++
+		case b.foldedCols[col] && !b.columnHidden(col):
+			inputs = append(inputs, boardRegionInput{col: col, count: len(b.columns[col]), folded: true})
+		}
 	}
 	return inputs
 }
@@ -258,8 +267,12 @@ func (b *BoardModel) renderRail(col, width, height int) []string {
 		}
 	}
 	if len(out) < height {
+		hint := "h/l opens"
+		if b.foldedCols[col] {
+			hint = "Z unfolds"
+		}
 		out = fillLines(out, width, height-1)
-		out = append(out, padCells(" "+muted.Italic(true).Render(truncateRunesHelper("h/l opens", width-1, "")), width))
+		out = append(out, padCells(" "+muted.Italic(true).Render(truncateRunesHelper(hint, width-1, "")), width))
 	}
 	return fillLines(out, width, height)
 }

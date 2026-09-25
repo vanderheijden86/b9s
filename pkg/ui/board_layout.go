@@ -23,6 +23,8 @@ const (
 type boardRegionInput struct {
 	col   int
 	count int
+	// folded forces a rail whatever the width: z folded the column.
+	folded bool
 }
 
 type boardRegion struct {
@@ -58,7 +60,7 @@ func planBoardRegions(width int, inputs []boardRegionInput, focusedCol int, bp b
 	// Candidates for a full region, nearest to the focus first.
 	var candidates []int
 	for i, in := range inputs {
-		if i != focusPos && in.count > 0 {
+		if i != focusPos && in.count > 0 && !in.folded {
 			candidates = append(candidates, i)
 		}
 	}

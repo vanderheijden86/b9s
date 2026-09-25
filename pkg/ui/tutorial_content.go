@@ -444,6 +444,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "o / i / C", Desc: "Toggle open, in progress, closed (they combine)"},
 					{Key: "Esc", Desc: "Clear the filter"},
+					{Key: "z / Z", Desc: "Fold the column into a rail / unfold all"},
 				}},
 				Spacer{Lines: 1},
 				Section{Title: "Grouping Modes"},
