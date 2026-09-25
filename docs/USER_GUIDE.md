@@ -270,7 +270,7 @@ An issue belongs to its nearest epic ancestor through parent-child links. The bo
 
 | Design | What it shows |
 |--------|---------------|
-| Epic rail (default) | A column on the left holds each lane's epic: its ID, title, a completion bar with done/total and the issue count. The epic stays in view while its lane scrolls. |
+| Epic rail (default) | A column on the left holds each lane's epic as a box as tall as the lane: its ID, title, a completion bar with done/total and the issue count. The epic stays in view while its lane scrolls. A selected epic gets the same highlighted border and fill as a selected card. |
 | Epic rows | A header row above each lane with the epic's ID, title, issue count and completion bar. |
 
 Issues without an epic sit in a last `No epic` lane. `Tab` folds the selected issue's epic: its cards leave the board and each column shows how many it hides. `Shift-Tab` folds every epic, or unfolds them all when one is folded. The epic's own issue is the lane header, not a card; selecting it highlights the lane.

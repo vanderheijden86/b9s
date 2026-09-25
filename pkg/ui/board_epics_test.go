@@ -124,17 +124,17 @@ func TestBoardEpics_OrderEachColumnByEpicLane(t *testing.T) {
 func TestBoardEpicRail_EpicSitsInALeftRail(t *testing.T) {
 	b := newEpicBoard(BoardEpicRail)
 	view := stripANSI(b.View(200, 40))
-	for _, want := range []string{"EPIC", "▾ ◆ eg0", "Stream capture pipeline", "1/4", "▾ ◆ k3s", "0/1", "No epic", "Epic rail 1/2", "issues"} {
+	for _, want := range []string{"EPIC", "▾ ◆ eg0", "Stream capture", "1/4", "▾ ◆ k3s", "0/1", "No epic", "Epic rail 1/2", "issues"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("rail view misses %q:\n%s", want, view)
 		}
 	}
-	if strings.Index(view, "Local cluster fixtures") > strings.Index(view, "Stream capture pipeline") {
+	if strings.Index(view, "Local cluster fixtures") > strings.Index(view, "Stream capture") {
 		t.Fatalf("the P0 epic lane must come first:\n%s", view)
 	}
 	// The rail holds the epic, so its title starts each lane at the left edge.
 	for _, line := range strings.Split(view, "\n") {
-		if strings.Contains(line, "◆ eg0") && !strings.HasPrefix(strings.TrimLeft(line, " ▌"), "▾ ◆ eg0") {
+		if strings.Contains(line, "◆ eg0") && !strings.HasPrefix(strings.TrimLeft(line, " ┃"), "▾ ◆ eg0") {
 			t.Fatalf("the epic must sit in the left rail, got %q", line)
 		}
 	}
@@ -409,5 +409,84 @@ func TestBoardEpics_BarCountsFoldedIssues(t *testing.T) {
 	view := stripANSI(b.View(200, 30))
 	if !strings.Contains(view, "7 issues") || !strings.Contains(view, "4 folded") {
 		t.Fatalf("the bar must count every shown issue and name the folded ones:\n%s", view)
+	}
+}
+
+// railCells returns the rail part of each rendered line of a rail view.
+func railCells(view string, width int) []string {
+	var out []string
+	for _, line := range strings.Split(stripANSI(view), "\n") {
+		r := []rune(line)
+		out = append(out, string(r[:min(width, len(r))]))
+	}
+	return out
+}
+
+func TestBoardEpicRail_EpicCellIsABoxSpanningItsLane(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
+	view := b.View(200, 40)
+	railW := b.railWidth(200)
+	rail := railCells(view, railW)
+	lines := strings.Split(stripANSI(view), "\n")
+
+	head := -1
+	for i, r := range rail {
+		if strings.Contains(r, "◆ eg0") {
+			head = i
+			break
+		}
+	}
+	if head < 1 || !strings.HasPrefix(rail[head-1], "╭") {
+		t.Fatalf("the eg0 cell must open with a box top above its ID:\n%s", strings.Join(rail, "\n"))
+	}
+	rule := -1
+	for i := head; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "─") {
+			rule = i
+			break
+		}
+	}
+	if rule < 0 {
+		t.Fatalf("no rule after the eg0 lane:\n%s", stripANSI(view))
+	}
+	if !strings.HasPrefix(rail[rule-1], "╰") {
+		t.Fatalf("the eg0 cell must close on the line above the lane rule, got %q:\n%s", rail[rule-1], strings.Join(rail, "\n"))
+	}
+	for i := head; i < rule-1; i++ {
+		if !strings.ContainsAny(string([]rune(rail[i])[:1]), "┃│") || !strings.HasSuffix(strings.TrimRight(rail[i], " "), "│") {
+			t.Fatalf("line %d of the eg0 cell must have both box sides, got %q", i, rail[i])
+		}
+	}
+	if rule-head < 6 {
+		t.Fatalf("the eg0 lane holds two stacked cards, so its cell must be taller than its text:\n%s", strings.Join(rail, "\n"))
+	}
+}
+
+func TestBoardEpicRail_SelectedEpicHasAHighlightedBorder(t *testing.T) {
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.TrueColor)
+	theme := DefaultTheme(renderer)
+	probe := renderer.NewStyle().Foreground(theme.Primary).Render("x")
+	primary := probe[:strings.Index(probe, "x")]
+
+	topOfEg0 := func(b BoardModel) string {
+		lines := strings.Split(b.View(200, 40), "\n")
+		for i, line := range lines {
+			if strings.Contains(stripANSI(line), "◆ eg0") {
+				return lines[i-1]
+			}
+		}
+		t.Fatal("no eg0 cell")
+		return ""
+	}
+	b := NewBoardModel(epicBoardIssues(), theme)
+	b.SetActiveProjectName("spectroscope")
+	b.SelectIssueByID("spectroscope-eg0")
+	if top := topOfEg0(b); !strings.HasPrefix(top, primary) {
+		t.Fatalf("the selected epic's box must use the primary border color, got %q", top)
+	}
+	b.SelectIssueByID("spectroscope-x1")
+	if top := topOfEg0(b); strings.HasPrefix(top, primary) {
+		t.Fatalf("an unselected epic's box must not use the primary border color, got %q", top)
 	}
 }
