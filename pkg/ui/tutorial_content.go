@@ -440,6 +440,12 @@ func structuredTutorialPages() []StructuredTutorialPage {
 					{Key: "Enter", Desc: "View issue details"},
 				}},
 				Spacer{Lines: 1},
+				Section{Title: "Status Filters"},
+				KeyTable{Bindings: []KeyBinding{
+					{Key: "o / i / C", Desc: "Toggle open, in progress, closed (they combine)"},
+					{Key: "Esc", Desc: "Clear the filter"},
+				}},
+				Spacer{Lines: 1},
 				Section{Title: "Grouping Modes"},
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "s", Desc: "Cycle: Status -> Priority -> Type"},

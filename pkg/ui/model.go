@@ -3049,12 +3049,14 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 			}
 		}
 
-	// Global filter keys (bv-naov) - consistent with list view
+	// o, i and C toggle a status term in the shared query bar, so the
+	// filter stays visible and Esc clears it.
 	case "o":
-		m.currentFilter = "open"
-		m.applyFilter()
-		m.statusMsg = "Filter: Open issues"
-		m.statusIsError = false
+		m.toggleBoardStatusFilter(model.StatusOpen)
+	case "i":
+		m.toggleBoardStatusFilter(model.StatusInProgress)
+	case "C":
+		m.toggleBoardStatusFilter(model.StatusClosed)
 	case "c":
 		if m.board.GetSwimLaneMode() != SwimByStatus {
 			m.statusMsg = "c shows the closed column when the board groups by status"
@@ -3145,6 +3147,25 @@ func (m *Model) syncTreeToDetail() {
 		}
 	}
 	m.updateViewportContent()
+}
+
+// toggleBoardStatusFilter toggles status:<status> in the query bar. A closed
+// filter also shows the closed column, which the board hides by default and
+// which would leave the filtered board empty.
+func (m *Model) toggleBoardStatusFilter(status model.Status) {
+	text, added := toggleStatusTerm(m.queryState.Text(), string(status))
+	m.currentFilter = "all"
+	m.setQueryText(text)
+	if added && status == model.StatusClosed && !m.board.ShowsClosedColumn() &&
+		m.board.GetSwimLaneMode() == SwimByStatus {
+		m.board.ToggleClosedColumn()
+	}
+	m.statusMsg = "Filter: " + m.queryState.Text()
+	if m.queryState.Text() == "" {
+		m.statusMsg = "Filter cleared"
+	}
+	m.statusIsError = false
+	m.syncBoardToDetail()
 }
 
 // syncBoardToDetail synchronizes the detail panel with the currently selected board card (bd-yo4).

@@ -292,7 +292,8 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `c` | Show or hide the closed column (status swimlanes) |
 | `0`, `$`, `gg`, `G` | First card, last card, top, bottom |
 | `Enter` | Open the card in the detail pane |
-| `o`, `r` | Show open or ready issues |
+| `o`, `i`, `C` | Toggle `status:open`, `status:in_progress` or `status:closed` in the query bar. Keys combine, so `o` then `i` shows both. `C` also shows the closed column. `Esc` clears the filter |
+| `r` | Show ready issues |
 | `/`, `n` `N` | Search, next and previous match |
 | `e` | Hide or show empty columns |
 | `y` | Copy the issue ID |

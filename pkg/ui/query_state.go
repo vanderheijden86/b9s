@@ -301,3 +301,24 @@ func (m Model) WithInitialQuery(query string) Model {
 	m.queryState.Accept()
 	return m
 }
+
+// toggleStatusTerm adds status:<status> to the query text, or takes it out
+// when it is already there, and reports whether it added the term. Other terms stay in place, and status terms
+// combine as alternatives, so two keys show both statuses.
+func toggleStatusTerm(text, status string) (string, bool) {
+	term := string(QueryFieldStatus) + ":" + status
+	tokens := strings.Fields(text)
+	kept := make([]string, 0, len(tokens)+1)
+	removed := false
+	for _, token := range tokens {
+		if strings.EqualFold(token, term) {
+			removed = true
+			continue
+		}
+		kept = append(kept, token)
+	}
+	if !removed {
+		kept = append(kept, term)
+	}
+	return strings.Join(kept, " "), !removed
+}

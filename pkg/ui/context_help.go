@@ -162,7 +162,8 @@ const contextHelpBoard = `## Board View
   gg/G      Top/bottom of column
 
 **Filter, search, group**
-  o/r       Open/ready
+  o i C     Toggle open, in progress, closed
+  r         Ready
   c         Show or hide closed column
   /  n/N    Search, next/prev match
   s  e      Swimlanes, empty columns
