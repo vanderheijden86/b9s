@@ -614,3 +614,43 @@ func TestBoardEpics_BracesJumpBetweenEpics(t *testing.T) {
 		}
 	}
 }
+
+// j and k move over cards only. An epic is a lane header, reached with { and },
+// so whether its status matches the column never makes it a stop.
+func TestBoardEpics_UpDownSkipLaneHeaders(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newEpicBoard(view)
+		b.SelectIssueByID("spectroscope-k3s.1")
+		for _, want := range []string{"eg0.1", "eg0.2.1", "x1", "x1"} {
+			b.MoveDown()
+			if got := selectedID(b); got != want {
+				t.Fatalf("%s: j wants %q, got %q", view, want, got)
+			}
+		}
+		for _, want := range []string{"eg0.2.1", "eg0.1", "k3s.1", "k3s.1"} {
+			b.MoveUp()
+			if got := selectedID(b); got != want {
+				t.Fatalf("%s: k wants %q, got %q", view, want, got)
+			}
+		}
+		b.SelectIssueByID("spectroscope-eg0")
+		b.MoveDown()
+		if got := selectedID(b); got != "eg0.1" {
+			t.Fatalf("%s: j from an epic goes to the next card, got %q", view, got)
+		}
+		b.SelectIssueByID("spectroscope-eg0")
+		b.MoveUp()
+		if got := selectedID(b); got != "k3s.1" {
+			t.Fatalf("%s: k from an epic goes to the card above, got %q", view, got)
+		}
+		b.SelectIssueByID("spectroscope-eg0.2")
+		b.MoveToTop()
+		if got := selectedID(b); got != "eg0.2" {
+			t.Fatalf("%s: top of in progress is its first card, not the k3s epic, got %q", view, got)
+		}
+		b.PageUp(40)
+		if got := selectedID(b); got != "eg0.2" {
+			t.Fatalf("%s: page up must not land on an epic, got %q", view, got)
+		}
+	}
+}

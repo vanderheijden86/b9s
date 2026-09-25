@@ -573,21 +573,40 @@ func (b *BoardModel) actualFocusedCol() int {
 }
 
 // Navigation methods
+//
+// With epic lanes, j, k and the jumps below move over cards only. An epic's
+// own issue sits in the column of its status but is drawn as the lane
+// header, so as a stop it would appear in some columns and not in others.
+// { and } reach the epics.
+
+// isCardRow reports whether row of col is a card rather than a lane header.
+func (b *BoardModel) isCardRow(col, row int) bool {
+	is := b.columns[col][row]
+	return !b.hasEpicLanes() || b.epicOf[is.ID] != is.ID
+}
+
+// cardRowFrom returns the first card row from row in direction step (+1 or
+// -1), or -1 when there is none.
+func (b *BoardModel) cardRowFrom(col, row, step int) int {
+	for r := row; r >= 0 && r < len(b.columns[col]); r += step {
+		if b.isCardRow(col, r) {
+			return r
+		}
+	}
+	return -1
+}
+
 func (b *BoardModel) MoveDown() {
 	col := b.actualFocusedCol()
-	count := len(b.columns[col])
-	if count == 0 {
-		return
-	}
-	if b.selectedRow[col] < count-1 {
-		b.selectedRow[col]++
+	if r := b.cardRowFrom(col, b.selectedRow[col]+1, 1); r >= 0 {
+		b.selectedRow[col] = r
 	}
 }
 
 func (b *BoardModel) MoveUp() {
 	col := b.actualFocusedCol()
-	if b.selectedRow[col] > 0 {
-		b.selectedRow[col]--
+	if r := b.cardRowFrom(col, b.selectedRow[col]-1, -1); r >= 0 {
+		b.selectedRow[col] = r
 	}
 }
 
@@ -605,37 +624,46 @@ func (b *BoardModel) MoveLeft() {
 
 func (b *BoardModel) MoveToTop() {
 	col := b.actualFocusedCol()
-	b.selectedRow[col] = 0
+	if r := b.cardRowFrom(col, 0, 1); r >= 0 {
+		b.selectedRow[col] = r
+	}
 }
 
 func (b *BoardModel) MoveToBottom() {
 	col := b.actualFocusedCol()
-	count := len(b.columns[col])
-	if count > 0 {
-		b.selectedRow[col] = count - 1
+	if r := b.cardRowFrom(col, len(b.columns[col])-1, -1); r >= 0 {
+		b.selectedRow[col] = r
 	}
 }
 
 func (b *BoardModel) PageDown(visibleRows int) {
+	b.pageTo(visibleRows / 2)
+}
+
+func (b *BoardModel) PageUp(visibleRows int) {
+	b.pageTo(-visibleRows / 2)
+}
+
+// pageTo moves delta rows, clamped to the column, and settles on the nearest
+// card: onward in the paging direction first, then back.
+func (b *BoardModel) pageTo(delta int) {
 	col := b.actualFocusedCol()
 	count := len(b.columns[col])
 	if count == 0 {
 		return
 	}
-	newRow := b.selectedRow[col] + visibleRows/2
-	if newRow >= count {
-		newRow = count - 1
+	target := max(min(b.selectedRow[col]+delta, count-1), 0)
+	step := 1
+	if delta < 0 {
+		step = -1
 	}
-	b.selectedRow[col] = newRow
-}
-
-func (b *BoardModel) PageUp(visibleRows int) {
-	col := b.actualFocusedCol()
-	newRow := b.selectedRow[col] - visibleRows/2
-	if newRow < 0 {
-		newRow = 0
+	r := b.cardRowFrom(col, target, step)
+	if r < 0 {
+		r = b.cardRowFrom(col, target, -step)
 	}
-	b.selectedRow[col] = newRow
+	if r >= 0 {
+		b.selectedRow[col] = r
+	}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
