@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-// The board opens in the epic lanes design and v cycles through chips and
-// groups in a real PTY. Each design renders text the others do not (the
-// band's completion, the chip on the epic row, the design name), so the
-// output proves every switch reached the renderer, not just the model.
+// The board opens in the epic rail design and v switches to epic rows and
+// back in a real PTY. Each design renders text the other does not (the rail's
+// EPIC column, the design name), so the output proves every switch reached
+// the renderer, not just the model.
 func TestBoardEpicDesignsCycleWithV(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
@@ -22,15 +22,14 @@ func TestBoardEpicDesignsCycleWithV(t *testing.T) {
 		t.Fatalf("run board TUI: %v", err)
 	}
 	containsAll(t, out, []string{
-		"Epic lanes 1/3", "No epic", "1/3",
-		"Epic chips 2/3", "epic · 1/3 done",
-		"Epic groups 3/3",
+		"Epic rail 1/2", "EPIC", "No epic", "╭",
+		"Epic rows 2/2",
 	})
 }
 
-// Tab folds the selected epic's band in the lanes design: its children leave
-// the board and the band header shows the folded marker.
-func TestBoardEpicLanesTabFolds(t *testing.T) {
+// Tab folds the selected epic's lane: its cards leave the board and the lane
+// shows the folded marker.
+func TestBoardEpicTabFolds(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 
@@ -42,4 +41,19 @@ func TestBoardEpicLanesTabFolds(t *testing.T) {
 		t.Fatalf("run board TUI: %v", err)
 	}
 	containsAll(t, out, []string{"▸ ◆"})
+}
+
+// The closed column stays hidden until c shows it.
+func TestBoardClosedColumnToggleWithC(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeFilterFixture(t))
+
+	out, err := runTreeTUI(t, tempDir, 2600, []keyStep{
+		kd("b", 600*time.Millisecond),
+		kd("c", 600*time.Millisecond),
+	})
+	if err != nil {
+		t.Fatalf("run board TUI: %v", err)
+	}
+	containsAll(t, out, []string{"hidden · c", "Closed column shown", "CLOSED"})
 }

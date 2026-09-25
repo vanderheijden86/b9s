@@ -2,7 +2,8 @@
 type: ADR
 id: "0017"
 title: "Choose board layout A and show epics three ways behind v"
-status: active
+status: superseded
+superseded_by: "0018"
 date: 2026-09-24
 ---
 

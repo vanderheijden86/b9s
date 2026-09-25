@@ -162,14 +162,15 @@ const contextHelpBoard = `## Board View
   gg/G      Top/bottom of column
 
 **Filter, search, group**
-  o/c/r     Open/closed/ready
+  o/r       Open/ready
+  c         Show or hide closed column
   /  n/N    Search, next/prev match
   s  e      Swimlanes, empty columns
 
 **Epics**
-  v         Cycle lanes / chips / groups
-  Tab       Lanes: fold the selected epic
-  S-Tab     Lanes: fold or unfold all
+  v         Epic rail / epic rows
+  Tab       Fold the selected epic
+  S-Tab     Fold or unfold all
 
 **Row facts**
   blocked by X   An open blocker

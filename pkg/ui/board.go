@@ -56,6 +56,10 @@ type BoardModel struct {
 	// false = always hide empty columns
 	showEmptyColumns *bool
 
+	// showClosed shows the closed column in status mode. Closed work is
+	// history, not a queue, so the column stays hidden until c (docs/adr/0018).
+	showClosed bool
+
 	// Active project name for the prefix badge on cards (bd-dy6r)
 	// Empty string means all-projects mode: fall back to ExtractRepoPrefix.
 	activeProjectName string
@@ -214,13 +218,20 @@ func (b *BoardModel) updateActiveColumns() {
 
 	b.activeColIdx = nil
 	for i := 0; i < 4; i++ {
+		if b.columnHidden(i) {
+			continue
+		}
 		if len(b.columns[i]) > 0 || showEmpty {
 			b.activeColIdx = append(b.activeColIdx, i)
 		}
 	}
 	// If all columns are empty (and we're hiding empty), include all columns anyway
 	if len(b.activeColIdx) == 0 {
-		b.activeColIdx = []int{ColOpen, ColInProgress, ColBlocked, ColClosed}
+		for i := 0; i < 4; i++ {
+			if !b.columnHidden(i) {
+				b.activeColIdx = append(b.activeColIdx, i)
+			}
+		}
 	}
 	// Ensure focused column is within valid range
 	if b.focusedCol >= len(b.activeColIdx) {
@@ -229,6 +240,38 @@ func (b *BoardModel) updateActiveColumns() {
 	if b.focusedCol < 0 {
 		b.focusedCol = 0
 	}
+}
+
+// columnHidden reports whether a column is left off the board whatever it
+// holds: the closed column in status mode until c shows it.
+func (b *BoardModel) columnHidden(col int) bool {
+	return col == ColClosed && b.swimLaneMode == SwimByStatus && !b.showClosed
+}
+
+// ShowsClosedColumn reports whether c has shown the closed column.
+func (b *BoardModel) ShowsClosedColumn() bool { return b.showClosed }
+
+// ToggleClosedColumn shows or hides the closed column and keeps the selection
+// unless it sat in the column being hidden.
+func (b *BoardModel) ToggleClosedColumn() {
+	var selID string
+	if sel := b.SelectedIssue(); sel != nil {
+		selID = sel.ID
+	}
+	b.showClosed = !b.showClosed
+	b.updateActiveColumns()
+	if selID == "" || !b.SelectIssueByID(selID) {
+		b.FocusPopulatedColumn()
+	}
+}
+
+// ClosedHiddenCount is the number of issues the hidden closed column holds,
+// or 0 when the column is shown.
+func (b *BoardModel) ClosedHiddenCount() int {
+	if !b.columnHidden(ColClosed) {
+		return 0
+	}
+	return len(b.rawColumns[ColClosed])
 }
 
 // shouldShowEmptyColumns returns whether empty columns should be visible (bv-tf6j)
@@ -271,7 +314,7 @@ func (b *BoardModel) GetEmptyColumnVisibilityMode() string {
 func (b *BoardModel) HiddenColumnCount() int {
 	hidden := 0
 	for i := 0; i < 4; i++ {
-		if len(b.columns[i]) == 0 {
+		if len(b.columns[i]) == 0 && !b.columnHidden(i) {
 			// Check if this column is in activeColIdx
 			found := false
 			for _, idx := range b.activeColIdx {
@@ -809,8 +852,11 @@ func (b *BoardModel) SelectIssueByID(id string) bool {
 		return false
 	}
 
-	// Search all columns; if found, set both focused column and selected row.
+	// Search the shown columns; if found, set both focused column and selected row.
 	for col := 0; col < 4; col++ {
+		if b.columnHidden(col) {
+			continue
+		}
 		for row := range b.columns[col] {
 			if b.columns[col][row].ID != id {
 				continue

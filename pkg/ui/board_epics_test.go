@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"io"
 	"strings"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 
 	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/model"
@@ -56,7 +58,7 @@ func columnIDs(b BoardModel, col int) []string {
 }
 
 func TestBoardEpics_NearestEpicAncestorAndCompletion(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
+	b := newEpicBoard(BoardEpicRail)
 	for id, want := range map[string]string{
 		"spectroscope-eg0.2.1": "spectroscope-eg0",
 		"spectroscope-eg0":     "spectroscope-eg0",
@@ -88,74 +90,132 @@ func TestBoardEpics_CompletionCountsChildrenOutsideTheFilter(t *testing.T) {
 }
 
 func TestBoardEpicView_CycleAndParse(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
-	for _, want := range []BoardEpicView{BoardEpicChips, BoardEpicGroups, BoardEpicLanes} {
+	b := newEpicBoard(BoardEpicRail)
+	for _, want := range []BoardEpicView{BoardEpicRows, BoardEpicRail} {
 		b.CycleEpicView()
 		if b.EpicView() != want {
 			t.Fatalf("cycle reached %s, want %s", b.EpicView(), want)
 		}
 	}
-	for in, want := range map[string]BoardEpicView{"lanes": BoardEpicLanes, "chips": BoardEpicChips, "Groups": BoardEpicGroups, "2": BoardEpicChips} {
+	for in, want := range map[string]BoardEpicView{"rail": BoardEpicRail, "Rows": BoardEpicRows, "1": BoardEpicRail, "2": BoardEpicRows} {
 		if got, ok := ParseBoardEpicView(in); !ok || got != want {
 			t.Errorf("ParseBoardEpicView(%q) = %s, %v", in, got, ok)
 		}
 	}
-	if _, ok := ParseBoardEpicView("inspector"); ok {
-		t.Error("layout E is gone and must not parse")
+	for _, gone := range []string{"lanes", "chips", "groups", "inspector"} {
+		if got, ok := ParseBoardEpicView(gone); ok || got != BoardEpicRail {
+			t.Errorf("%q is no longer a design and must fall back to the rail, got %s, %v", gone, got, ok)
+		}
 	}
 }
 
-func TestBoardEpicLanes_OrderEachColumnByEpicBand(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
-	// k3s holds the only P0, so its band comes first; issues without an epic come last.
-	got := strings.Join(columnIDs(b, ColOpen), " ")
-	want := "k3s.1 eg0 eg0.1 eg0.2.1 x1"
-	if got != want {
-		t.Fatalf("open column order = %q, want %q", got, want)
+func TestBoardEpics_OrderEachColumnByEpicLane(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newEpicBoard(view)
+		// k3s holds the only P0, so its lane comes first; issues without an epic come last.
+		got := strings.Join(columnIDs(b, ColOpen), " ")
+		want := "k3s.1 eg0 eg0.1 eg0.2.1 x1"
+		if got != want {
+			t.Fatalf("%s: open column order = %q, want %q", view, got, want)
+		}
 	}
 }
 
-func TestBoardEpicLanes_ViewShowsBandsWithCompletion(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
+func TestBoardEpicRail_EpicSitsInALeftRail(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
 	view := stripANSI(b.View(200, 40))
-	for _, want := range []string{"Stream capture pipeline", "1/4", "Local cluster fixtures", "0/1", "No epic", "Epic lanes"} {
+	for _, want := range []string{"EPIC", "▾ ◆ eg0", "Stream capture pipeline", "1/4", "▾ ◆ k3s", "0/1", "No epic", "Epic rail 1/2", "issues"} {
 		if !strings.Contains(view, want) {
-			t.Fatalf("lanes view misses %q:\n%s", want, view)
+			t.Fatalf("rail view misses %q:\n%s", want, view)
 		}
 	}
 	if strings.Index(view, "Local cluster fixtures") > strings.Index(view, "Stream capture pipeline") {
-		t.Fatalf("the P0 epic band must come first:\n%s", view)
+		t.Fatalf("the P0 epic lane must come first:\n%s", view)
+	}
+	// The rail holds the epic, so its title starts each lane at the left edge.
+	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "◆ eg0") && !strings.HasPrefix(strings.TrimLeft(line, " ▌"), "▾ ◆ eg0") {
+			t.Fatalf("the epic must sit in the left rail, got %q", line)
+		}
 	}
 }
 
-func TestBoardEpicLanes_NoBandsWithoutEpics(t *testing.T) {
-	b := newSparseBoard()
-	if view := stripANSI(b.View(200, 30)); strings.Contains(view, "No epic") {
-		t.Fatalf("a board without epics must not draw a lone No epic band:\n%s", view)
+func TestBoardEpicRail_CardsAreBoxes(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
+	view := stripANSI(b.View(200, 40))
+	for _, want := range []string{"╭", "╰", "Parse capture headers", "eg0.1", "P2"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("rail view misses %q:\n%s", want, view)
+		}
 	}
 }
 
-func TestBoardEpicLanes_TabFoldsTheSelectedEpic(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
+func TestBoardEpicRows_HeaderRowAboveTheCards(t *testing.T) {
+	b := newEpicBoard(BoardEpicRows)
+	view := stripANSI(b.View(200, 40))
+	head := strings.Index(view, "▾ ◆ eg0 Stream capture pipeline")
+	card := strings.Index(view, "Parse capture headers")
+	if head < 0 || card < 0 || head > card {
+		t.Fatalf("the epic row must come before its cards (head %d, card %d):\n%s", head, card, view)
+	}
+	for _, want := range []string{"Epic rows 2/2", "issues", "1/4", "╭"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("rows view misses %q:\n%s", want, view)
+		}
+	}
+	if strings.Contains(view, "EPIC") {
+		t.Fatalf("the rows design has no rail column:\n%s", view)
+	}
+}
+
+func TestBoardEpics_NoLanesWithoutEpics(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newSparseBoard()
+		b.SetEpicView(view)
+		if out := stripANSI(b.View(200, 30)); strings.Contains(out, "No epic") || strings.Contains(out, "EPIC") {
+			t.Fatalf("%s: a board without epics must not draw lanes:\n%s", view, out)
+		}
+	}
+}
+
+func TestBoardEpics_TabFoldsTheSelectedEpicInBothDesigns(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newEpicBoard(view)
+		b.SelectIssueByID("spectroscope-eg0.1")
+		if !b.ToggleEpicFold() {
+			t.Fatalf("%s: tab must fold the epic", view)
+		}
+		if ids := strings.Join(columnIDs(b, ColOpen), " "); strings.Contains(ids, "eg0.1") || !strings.Contains(ids, "eg0") {
+			t.Fatalf("%s: folding hides the children and keeps the epic, got %q", view, ids)
+		}
+		if sel := b.SelectedIssue(); sel == nil || sel.ID != "spectroscope-eg0" {
+			t.Fatalf("%s: folding moves the selection to the epic, got %+v", view, sel)
+		}
+		out := stripANSI(b.View(200, 40))
+		if !strings.Contains(out, "▸ ◆ eg0") {
+			t.Fatalf("%s: a folded lane shows a closed marker:\n%s", view, out)
+		}
+		if strings.Contains(out, "Parse capture headers") {
+			t.Fatalf("%s: a folded lane hides its cards:\n%s", view, out)
+		}
+		b.ToggleEpicFold()
+		if ids := strings.Join(columnIDs(b, ColOpen), " "); !strings.Contains(ids, "eg0.1") {
+			t.Fatalf("%s: a second fold expands the lane again, got %q", view, ids)
+		}
+	}
+}
+
+func TestBoardEpicRail_FoldedLaneCountsItsHiddenCards(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
 	b.SelectIssueByID("spectroscope-eg0.1")
 	b.ToggleEpicFold()
-	if ids := strings.Join(columnIDs(b, ColOpen), " "); strings.Contains(ids, "eg0.1") || !strings.Contains(ids, "eg0") {
-		t.Fatalf("folding hides the children and keeps the epic row, got %q", ids)
-	}
-	if sel := b.SelectedIssue(); sel == nil || sel.ID != "spectroscope-eg0" {
-		t.Fatalf("folding moves the selection to the epic, got %+v", sel)
-	}
-	if view := stripANSI(b.View(200, 40)); !strings.Contains(view, "▸ ◆ eg0") {
-		t.Fatalf("a folded band shows a closed marker:\n%s", view)
-	}
-	b.ToggleEpicFold()
-	if ids := strings.Join(columnIDs(b, ColOpen), " "); !strings.Contains(ids, "eg0.1") {
-		t.Fatalf("a second fold expands the band again, got %q", ids)
+	if out := stripANSI(b.View(200, 40)); !strings.Contains(out, "2 hidden") {
+		t.Fatalf("the folded lane must count the open cards it hides:\n%s", out)
 	}
 }
 
-func TestBoardEpicLanes_FoldAllAndExpandAll(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
+func TestBoardEpics_FoldAllAndExpandAll(t *testing.T) {
+	b := newEpicBoard(BoardEpicRows)
 	b.ToggleAllEpicFolds()
 	if got := strings.Join(columnIDs(b, ColOpen), " "); got != "eg0 x1" {
 		t.Fatalf("fold all leaves epics and issues without an epic, got %q", got)
@@ -166,45 +226,64 @@ func TestBoardEpicLanes_FoldAllAndExpandAll(t *testing.T) {
 	}
 }
 
-func TestBoardEpicChips_RowCarriesEpicTag(t *testing.T) {
-	b := newEpicBoard(BoardEpicChips)
-	view := stripANSI(b.View(200, 40))
-	for _, want := range []string{"◆ eg0 Stream capture", "◆ k3s Local cluster", "Epic chips"} {
-		if !strings.Contains(view, want) {
-			t.Fatalf("chips view misses %q:\n%s", want, view)
+func TestBoardEpics_FoldNeedsTheEpicOnTheBoard(t *testing.T) {
+	var noEpicRow []model.Issue
+	for _, is := range epicBoardIssues() {
+		if is.ID != "spectroscope-eg0" {
+			noEpicRow = append(noEpicRow, is)
 		}
 	}
-	if strings.Contains(view, "No epic") {
-		t.Fatalf("chips draw no bands:\n%s", view)
+	b := NewBoardModel(noEpicRow, DefaultTheme(lipgloss.DefaultRenderer()))
+	b.SetEpicUniverse(epicBoardIssues())
+	b.SelectIssueByID("spectroscope-eg0.1")
+	if b.ToggleEpicFold() {
+		t.Fatal("a lane whose epic is filtered out has nothing left to select once folded")
+	}
+	if ids := strings.Join(columnIDs(b, ColOpen), " "); !strings.Contains(ids, "eg0.1") {
+		t.Fatalf("the refused fold must keep the cards, got %q", ids)
 	}
 }
 
-func TestBoardEpicGroups_SubheaderPrecedesItsRows(t *testing.T) {
-	b := newEpicBoard(BoardEpicGroups)
-	view := stripANSI(b.View(200, 40))
-	head := strings.Index(view, "◆ eg0 Stream capture pipeline")
-	row := strings.Index(view, "[eg0.1]")
-	if head < 0 || row < 0 || head > row {
-		t.Fatalf("group subheader must come before its rows (head %d, row %d):\n%s", head, row, view)
-	}
-	if !strings.Contains(view, "Epic groups") {
-		t.Fatalf("board bar must name the design:\n%s", view)
+func TestBoardEpics_SelectingTheEpicHighlightsItsLane(t *testing.T) {
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.TrueColor)
+	theme := DefaultTheme(renderer)
+	bg := bgSeqFromColor(theme.Highlight, renderer)
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := NewBoardModel(epicBoardIssues(), theme)
+		b.SetActiveProjectName("spectroscope")
+		b.SetEpicView(view)
+		b.SelectIssueByID("spectroscope-eg0")
+		found := false
+		for _, line := range strings.Split(b.View(200, 40), "\n") {
+			if strings.Contains(stripANSI(line), "◆ eg0") && strings.Contains(line, bg) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("%s: the selected epic must highlight its lane header", view)
+		}
 	}
 }
 
 func TestBoardEpicViews_FitEveryWidth(t *testing.T) {
-	for _, view := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
-		for _, width := range []int{60, 80, 110, 160, 220} {
-			for _, height := range []int{8, 30} {
-				b := newEpicBoard(view)
-				b.SelectIssueByID("spectroscope-eg0.2.1")
-				lines := strings.Split(b.View(width, height), "\n")
-				if len(lines) != height {
-					t.Fatalf("%s %dx%d: %d lines", view, width, height, len(lines))
-				}
-				for i, line := range lines {
-					if w := lipgloss.Width(line); w > width {
-						t.Fatalf("%s %dx%d: line %d is %d wide", view, width, height, i, w)
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		for _, width := range []int{40, 60, 80, 110, 160, 220} {
+			for _, height := range []int{6, 8, 30} {
+				for _, closed := range []bool{false, true} {
+					b := newEpicBoard(view)
+					if closed {
+						b.ToggleClosedColumn()
+					}
+					b.SelectIssueByID("spectroscope-eg0.2.1")
+					lines := strings.Split(b.View(width, height), "\n")
+					if len(lines) != height {
+						t.Fatalf("%s %dx%d: %d lines", view, width, height, len(lines))
+					}
+					for i, line := range lines {
+						if w := lipgloss.Width(line); w != width {
+							t.Fatalf("%s %dx%d: line %d is %d wide: %q", view, width, height, i, w, stripANSI(line))
+						}
 					}
 				}
 			}
@@ -212,12 +291,52 @@ func TestBoardEpicViews_FitEveryWidth(t *testing.T) {
 	}
 }
 
-func TestBoardEpicLanes_SelectionStaysVisibleWhenScrolled(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
-	b.SelectIssueByID("spectroscope-x1")
-	view := stripANSI(b.View(200, 12))
-	if !strings.Contains(view, "[x1]") {
-		t.Fatalf("the selected row must be in view:\n%s", view)
+func TestBoardEpics_SelectionStaysVisibleWhenScrolled(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		for _, id := range []string{"spectroscope-x1", "spectroscope-eg0.2.1", "spectroscope-k3s.1"} {
+			b := newEpicBoard(view)
+			b.SelectIssueByID(id)
+			sel := b.SelectedIssue()
+			out := stripANSI(b.View(120, 12))
+			if !strings.Contains(out, sel.Title[:12]) {
+				t.Fatalf("%s: the selected card %s must be in view:\n%s", view, id, out)
+			}
+		}
+	}
+}
+
+func TestBoardClosedColumn_HiddenUntilToggled(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
+	for _, col := range b.activeColIdx {
+		if col == ColClosed {
+			t.Fatal("the closed column must be hidden by default")
+		}
+	}
+	out := stripANSI(b.View(200, 40))
+	if strings.Contains(out, "Pick the capture format") || !strings.Contains(out, "closed 1 hidden") {
+		t.Fatalf("the bar names the hidden closed column and its cards stay off the board:\n%s", out)
+	}
+	b.ToggleClosedColumn()
+	out = stripANSI(b.View(200, 40))
+	if !strings.Contains(out, "CLOSED") || !strings.Contains(out, "Pick the capture format") {
+		t.Fatalf("c shows the closed column:\n%s", out)
+	}
+	b.ToggleClosedColumn()
+	if strings.Contains(stripANSI(b.View(200, 40)), "Pick the capture format") {
+		t.Fatal("a second c hides it again")
+	}
+}
+
+func TestBoardClosedColumn_SelectionLeavesAHiddenColumn(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
+	b.ToggleClosedColumn()
+	b.SelectIssueByID("spectroscope-eg0.3")
+	b.ToggleClosedColumn()
+	if b.actualFocusedCol() == ColClosed {
+		t.Fatal("hiding the closed column must move the focus off it")
+	}
+	if b.SelectIssueByID("spectroscope-eg0.3") {
+		t.Fatal("a card in the hidden closed column cannot be selected")
 	}
 }
 
@@ -233,42 +352,62 @@ func epicKeyModel(t *testing.T) Model {
 func TestBoardKeyV_CyclesEpicDesigns(t *testing.T) {
 	m := epicKeyModel(t)
 	m = pressBoard(t, m, runeKey("v"))
-	if m.board.EpicView() != BoardEpicChips || !strings.Contains(m.statusMsg, "Epic chips") {
-		t.Fatalf("v must switch to the chips design, got %s %q", m.board.EpicView(), m.statusMsg)
+	if m.board.EpicView() != BoardEpicRows || !strings.Contains(m.statusMsg, "Epic rows") {
+		t.Fatalf("v must switch to the rows design, got %s %q", m.board.EpicView(), m.statusMsg)
 	}
 	if sel := m.board.SelectedIssue(); sel == nil || sel.ID != "spectroscope-eg0.1" {
 		t.Fatalf("switching design keeps the selection, got %+v", sel)
 	}
+	m = pressBoard(t, m, runeKey("v"))
+	if m.board.EpicView() != BoardEpicRail {
+		t.Fatalf("v cycles back to the rail, got %s", m.board.EpicView())
+	}
 }
 
-func TestBoardKeyTab_FoldsEpicInLanes(t *testing.T) {
+func TestBoardKeyC_TogglesTheClosedColumn(t *testing.T) {
 	m := epicKeyModel(t)
-	m = pressBoard(t, m, tea.KeyMsg{Type: tea.KeyTab})
-	if sel := m.board.SelectedIssue(); sel == nil || sel.ID != "spectroscope-eg0" {
-		t.Fatalf("tab folds the epic and selects it, got %+v", sel)
+	filter := m.currentFilter
+	m = pressBoard(t, m, runeKey("c"))
+	if !m.board.ShowsClosedColumn() {
+		t.Fatal("c must show the closed column")
 	}
-	m = pressBoard(t, m, tea.KeyMsg{Type: tea.KeyShiftTab})
-	if !m.board.AnyEpicFolded() {
-		// eg0 was folded, so shift+tab expands everything.
-		return
+	if m.currentFilter != filter {
+		t.Fatalf("c on the board must not change the filter, got %q", m.currentFilter)
 	}
-	t.Fatal("shift+tab with a folded epic must expand all")
+	m = pressBoard(t, m, runeKey("c"))
+	if m.board.ShowsClosedColumn() {
+		t.Fatal("a second c must hide the closed column")
+	}
+}
+
+func TestBoardKeyTab_FoldsEpicInBothDesigns(t *testing.T) {
+	for _, keys := range [][]tea.KeyMsg{nil, {runeKey("v")}} {
+		m := pressBoard(t, epicKeyModel(t), keys...)
+		m = pressBoard(t, m, tea.KeyMsg{Type: tea.KeyTab})
+		if sel := m.board.SelectedIssue(); sel == nil || sel.ID != "spectroscope-eg0" {
+			t.Fatalf("%s: tab folds the epic and selects it, got %+v", m.board.EpicView(), sel)
+		}
+		m = pressBoard(t, m, tea.KeyMsg{Type: tea.KeyShiftTab})
+		if m.board.AnyEpicFolded() {
+			t.Fatalf("%s: shift+tab with a folded epic must expand all", m.board.EpicView())
+		}
+	}
 }
 
 func TestBoardEpicConfig_SetsStartupDesign(t *testing.T) {
 	cfg := config.Config{}
-	cfg.UI.BoardEpics = "groups"
+	cfg.UI.BoardEpics = "rows"
 	m := NewModel(epicBoardIssues(), "").WithConfig(cfg, "spectroscope", "")
-	if m.board.EpicView() != BoardEpicGroups {
-		t.Fatalf("ui.board_epics groups must start the groups design, got %s", m.board.EpicView())
+	if m.board.EpicView() != BoardEpicRows {
+		t.Fatalf("ui.board_epics rows must start the rows design, got %s", m.board.EpicView())
 	}
 }
 
-func TestBoardEpicLanes_BarCountsFoldedIssues(t *testing.T) {
-	b := newEpicBoard(BoardEpicLanes)
+func TestBoardEpics_BarCountsFoldedIssues(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
 	b.ToggleAllEpicFolds()
 	view := stripANSI(b.View(200, 30))
-	if !strings.Contains(view, "8 issues") || !strings.Contains(view, "5 folded") {
-		t.Fatalf("the bar must count every issue and name the folded ones:\n%s", view)
+	if !strings.Contains(view, "7 issues") || !strings.Contains(view, "4 folded") {
+		t.Fatalf("the bar must count every shown issue and name the folded ones:\n%s", view)
 	}
 }

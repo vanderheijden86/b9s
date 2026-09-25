@@ -107,7 +107,7 @@ In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a ne
 
 In the detail pane, `j` and `k` scroll, `Home` and `End` jump to the top and bottom, `n` and `p` go to the next and previous sibling, and `c` copies the issue as Markdown.
 
-On the board, `h` and `l` change the column, `j` and `k` move between issues, `o`, `c` and `r` show open, closed or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID. The focused column takes most of the width, and empty and closed columns fold into rails. `v` cycles three ways to show epics: lanes cut the board into one band per epic with its completion, chips tag each row with its epic, and groups put an epic subheader inside each column. In lanes, `Tab` folds the selected epic to its own row and `Shift-Tab` folds or unfolds all of them.
+On the board, `h` and `l` change the column, `j` and `k` move between issues, `o` and `r` show open or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID. Each issue is a boxed card, and empty columns fold into rails. The closed column stays hidden until `c` shows it. Issues sit in one horizontal lane per epic. `v` switches between two designs: the epic rail shows each epic with its completion in a column on the left, and epic rows put that as a header row above the lane. `Tab` folds the selected epic's lane and `Shift-Tab` folds or unfolds all of them.
 
 ## Creators and assignees
 
@@ -174,7 +174,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
-  board_epics: lanes      # lanes, chips or groups; v cycles
+  board_epics: rail       # rail or rows; v switches
   sort:
     field: created      # priority, created, updated, title, status, type or deps
     direction: desc     # asc or desc; leave out for the field's natural order

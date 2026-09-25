@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"hash/fnv"
 	"sort"
 	"strings"
@@ -11,56 +10,47 @@ import (
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
-// BoardEpicView selects how the board shows which epic each issue belongs to.
-// All three keep the status columns of layout A; v cycles them (docs/adr/0017).
+// BoardEpicView selects how the board lays out its epic lanes. Both keep the
+// status columns and cut them into one horizontal lane per epic; v switches
+// between them (docs/adr/0018).
 type BoardEpicView int
 
 const (
-	// BoardEpicLanes cuts the columns into horizontal bands, one per epic,
-	// aligned across the columns. Tab folds a band down to its epic row.
-	BoardEpicLanes BoardEpicView = iota
-	// BoardEpicChips keeps the plain column order and tags each row with a
-	// colored bar and an epic chip.
-	BoardEpicChips
-	// BoardEpicGroups groups each column by epic under its own subheader.
-	BoardEpicGroups
+	// BoardEpicRail puts each epic in a rail left of the columns: its title
+	// wrapped, its completion and its size, beside its cards.
+	BoardEpicRail BoardEpicView = iota
+	// BoardEpicRows gives each epic a full-width row above its cards.
+	BoardEpicRows
 
-	boardEpicViewCount = 3
+	boardEpicViewCount = 2
 )
 
 func (v BoardEpicView) String() string {
-	switch v {
-	case BoardEpicChips:
-		return "chips"
-	case BoardEpicGroups:
-		return "groups"
+	if v == BoardEpicRows {
+		return "rows"
 	}
-	return "lanes"
+	return "rail"
 }
 
 // Label is the name the board bar and the status line show.
 func (v BoardEpicView) Label() string {
-	switch v {
-	case BoardEpicChips:
-		return "Epic chips"
-	case BoardEpicGroups:
-		return "Epic groups"
+	if v == BoardEpicRows {
+		return "Epic rows"
 	}
-	return "Epic lanes"
+	return "Epic rail"
 }
 
 // ParseBoardEpicView reads a ui.board_epics config value. The design numbers
-// are accepted beside the names because the board bar shows them.
+// are accepted beside the names because the board bar shows them. Anything
+// else, the retired lanes, chips and groups included, falls back to the rail.
 func ParseBoardEpicView(s string) (BoardEpicView, bool) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "lanes", "1":
-		return BoardEpicLanes, true
-	case "chips", "2":
-		return BoardEpicChips, true
-	case "groups", "3":
-		return BoardEpicGroups, true
+	case "rail", "1":
+		return BoardEpicRail, true
+	case "rows", "2":
+		return BoardEpicRows, true
 	}
-	return BoardEpicLanes, false
+	return BoardEpicRail, false
 }
 
 // boardEpic is what the board knows about one epic. Done and Total count the
@@ -195,12 +185,11 @@ func (b *BoardModel) epicOrder() map[string]int {
 	return order
 }
 
-// arrangeColumns derives b.columns from b.rawColumns for the active design.
-// Chips keep the column order. Lanes and groups sort each column into epic
-// bands, the epic's own row first, issues without an epic last. Lanes also
-// drop the children of a folded epic.
+// arrangeColumns derives b.columns from b.rawColumns: each column sorted into
+// epic lanes, the epic's own issue first, issues without an epic last, and
+// the children of a folded epic left out.
 func (b *BoardModel) arrangeColumns() {
-	if b.epicView == BoardEpicChips || len(b.epics) == 0 {
+	if len(b.epics) == 0 {
 		b.columns = b.rawColumns
 		return
 	}
@@ -218,8 +207,7 @@ func (b *BoardModel) arrangeColumns() {
 	for col := range b.rawColumns {
 		arranged := make([]model.Issue, 0, len(b.rawColumns[col]))
 		for _, is := range b.rawColumns[col] {
-			epic := b.epicOf[is.ID]
-			if b.epicView == BoardEpicLanes && epic != "" && epic != is.ID && b.foldedEpics[epic] {
+			if epic := b.epicOf[is.ID]; epic != "" && epic != is.ID && b.foldedEpics[epic] {
 				continue
 			}
 			arranged = append(arranged, is)
@@ -234,6 +222,23 @@ func (b *BoardModel) arrangeColumns() {
 		})
 		b.columns[col] = arranged
 	}
+}
+
+// epicOnBoard reports whether the epic's own issue sits in a shown column. A
+// folded lane is reached through that issue, so without it a fold would leave
+// nothing to select.
+func (b *BoardModel) epicOnBoard(epic string) bool {
+	for col := range b.rawColumns {
+		if b.columnHidden(col) {
+			continue
+		}
+		for _, is := range b.rawColumns[col] {
+			if is.ID == epic {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // setColumns stores freshly grouped columns and arranges them for the design.
@@ -264,16 +269,16 @@ func (b *BoardModel) clampSelection() {
 	}
 }
 
-// ToggleEpicFold folds or unfolds the band of the selected issue and selects
-// the epic row, since a folded band shows only that row. It does nothing
-// outside the lanes design or for an issue without an epic.
+// ToggleEpicFold folds or unfolds the lane of the selected issue and selects
+// the epic, since a folded lane shows only the epic. It does nothing for an
+// issue without an epic or an epic whose own issue is not on the board.
 func (b *BoardModel) ToggleEpicFold() bool {
 	sel := b.SelectedIssue()
-	if b.epicView != BoardEpicLanes || sel == nil {
+	if sel == nil {
 		return false
 	}
 	epic := b.epicOf[sel.ID]
-	if epic == "" {
+	if epic == "" || !b.epicOnBoard(epic) {
 		return false
 	}
 	if b.foldedEpics == nil {
@@ -287,7 +292,7 @@ func (b *BoardModel) ToggleEpicFold() bool {
 	return true
 }
 
-// AnyEpicFolded reports whether at least one band is folded.
+// AnyEpicFolded reports whether at least one lane is folded.
 func (b *BoardModel) AnyEpicFolded() bool {
 	for _, folded := range b.foldedEpics {
 		if folded {
@@ -297,12 +302,9 @@ func (b *BoardModel) AnyEpicFolded() bool {
 	return false
 }
 
-// ToggleAllEpicFolds unfolds every band when any is folded, and folds them
-// all otherwise.
+// ToggleAllEpicFolds unfolds every lane when any is folded, and otherwise
+// folds every lane whose epic is on the board.
 func (b *BoardModel) ToggleAllEpicFolds() {
-	if b.epicView != BoardEpicLanes {
-		return
-	}
 	var selEpic string
 	if sel := b.SelectedIssue(); sel != nil {
 		selEpic = b.epicOf[sel.ID]
@@ -314,323 +316,12 @@ func (b *BoardModel) ToggleAllEpicFolds() {
 	}
 	b.foldedEpics = make(map[string]bool, len(b.epics))
 	for id := range b.epics {
-		b.foldedEpics[id] = true
+		if b.epicOnBoard(id) {
+			b.foldedEpics[id] = true
+		}
 	}
 	b.rearrangeKeepingSelection()
-	if selEpic != "" {
+	if selEpic != "" && b.foldedEpics[selEpic] {
 		b.SelectIssueByID(selEpic)
 	}
-}
-
-// ── Rendering ────────────────────────────────────────────────────────────
-
-// epicBand is one horizontal band in the lanes design, or one group in the
-// groups design. The empty epic ID is the band of issues without an epic.
-type epicBand struct {
-	epic string
-	rows []int // row indexes into the column
-}
-
-// bandsOf splits an arranged column into its consecutive epic runs.
-func (b BoardModel) bandsOf(col int) []epicBand {
-	var bands []epicBand
-	for row, is := range b.columns[col] {
-		epic := b.epicOf[is.ID]
-		if n := len(bands); n == 0 || bands[n-1].epic != epic {
-			bands = append(bands, epicBand{epic: epic})
-		}
-		bands[len(bands)-1].rows = append(bands[len(bands)-1].rows, row)
-	}
-	return bands
-}
-
-// hasEpicBands reports whether the board shows at least one epic, so a
-// project without epics renders as plain layout A.
-func (b BoardModel) hasEpicBands() bool {
-	for _, col := range b.activeColIdx {
-		for _, is := range b.columns[col] {
-			if b.epicOf[is.ID] != "" {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// progressBar draws done/total as width cells of heavy and light rule.
-func progressBar(done, total, width int) string {
-	if total <= 0 || width <= 0 {
-		return strings.Repeat("─", max(width, 0))
-	}
-	filled := done * width / total
-	return strings.Repeat("━", filled) + strings.Repeat("─", width-filled)
-}
-
-// epicHeader draws the full band header: fold marker, epic, title, progress.
-//
-//	▾ ◆ eg0 Stream capture pipeline  ━━──────  1/4
-func (b BoardModel) epicHeader(epic string, width int, withMarker bool) string {
-	t := b.theme
-	muted := t.Renderer.NewStyle().Foreground(t.Secondary)
-	if epic == "" {
-		return padCells(muted.Bold(true).Render(" No epic"), width)
-	}
-	info := b.epics[epic]
-	accent := t.Renderer.NewStyle().Foreground(info.color).Bold(true)
-	marker := ""
-	if withMarker {
-		marker = "▾ "
-		if b.foldedEpics[epic] {
-			marker = "▸ "
-		}
-	}
-	count := fmt.Sprintf("%d/%d", info.Done, info.Total)
-	barW := 8
-	if width < 50 {
-		barW = 4
-	}
-	head := " " + marker + "◆ " + b.displayID(epic)
-	titleW := width - lipgloss.Width(head) - barW - lipgloss.Width(count) - 6
-	title := ""
-	if titleW >= 4 {
-		title = " " + truncateRunesHelper(info.Title, titleW, "…")
-	}
-	gap := width - lipgloss.Width(head) - lipgloss.Width(title) - barW - lipgloss.Width(count) - 3
-	if gap < 1 {
-		return padCells(accent.Render(head+title)+" "+muted.Render(count), width)
-	}
-	line := accent.Render(head) + t.Renderer.NewStyle().Foreground(t.Base.GetForeground()).Bold(true).Render(title) +
-		strings.Repeat(" ", gap) + t.Renderer.NewStyle().Foreground(info.color).Render(progressBar(info.Done, info.Total, barW)) +
-		"  " + muted.Render(count)
-	return padCells(line, width)
-}
-
-// epicStub is the band header in the columns after the first: the epic and
-// how many of its rows this column holds.
-func (b BoardModel) epicStub(epic string, n, width int) string {
-	t := b.theme
-	muted := t.Renderer.NewStyle().Foreground(t.Secondary)
-	if epic == "" {
-		return padCells(muted.Render(fmt.Sprintf(" No epic · %d", n)), width)
-	}
-	accent := t.Renderer.NewStyle().Foreground(b.epics[epic].color)
-	return padCells(accent.Render(" ◆ "+b.displayID(epic))+muted.Render(fmt.Sprintf(" · %d", n)), width)
-}
-
-// columnLines is a column body as plain lines, with the line span of each
-// row and the band header that governs each line (for the sticky header).
-type columnLines struct {
-	lines     []string
-	rowStart  map[int]int
-	rowEnd    map[int]int
-	headerFor []string // rendered header of the band each line sits in
-	isHeader  []bool
-}
-
-func (c *columnLines) add(line, header string, isHeader bool) {
-	c.lines = append(c.lines, line)
-	c.headerFor = append(c.headerFor, header)
-	c.isHeader = append(c.isHeader, isHeader)
-}
-
-// window picks avail lines so rows [selStart, selEnd] stay in view, and
-// returns the span of c.lines it shows. When the view starts inside a band,
-// that band's header replaces the first line.
-func (c columnLines) window(selStart, selEnd, avail int) (lines []string, from, to int) {
-	if len(c.lines) <= avail || selEnd < avail {
-		to = min(avail, len(c.lines))
-		return c.lines[:to], 0, to
-	}
-	start := selEnd - avail + 2
-	if start > selStart {
-		start = selStart
-	}
-	if start < 0 {
-		start = 0
-	}
-	if c.isHeader[start] {
-		to = min(start+avail, len(c.lines))
-		return c.lines[start:to], start, to
-	}
-	to = min(start+avail-1, len(c.lines))
-	return append([]string{c.headerFor[start]}, c.lines[start:to]...), start, to
-}
-
-// scrolled windows a column that overflows avail lines, keeping the last line
-// for the position of the selection and the rows out of view, as the plain
-// column does.
-func (b BoardModel) scrolled(c columnLines, col, width, avail, selStart, selEnd int) []string {
-	if len(c.lines) <= avail {
-		return c.lines
-	}
-	out, from, to := c.window(selStart, selEnd, avail-1)
-	hidden := 0
-	for row, start := range c.rowStart {
-		if start < from || c.rowEnd[row] >= to {
-			hidden++
-		}
-	}
-	pos := fmt.Sprintf(" %d/%d · %d more", b.selectedRow[col]+1, len(b.columns[col]), hidden)
-	return append(fillLines(out, width, avail-1), padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Italic(true).Render(truncateRunesHelper(pos, width, "…")), width))
-}
-
-func (b BoardModel) rowRule(width int) string {
-	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Border).Render(strings.Repeat("┄", width)), width)
-}
-
-// columnHead is the column title and its rule.
-func (b BoardModel) columnHead(col, width int) []string {
-	return []string{b.columnHeader(col, width), padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Border).Render(strings.Repeat("─", width)), width)}
-}
-
-// lanesBody renders the lanes design: bands aligned across every full column
-// and one scroll offset shared by all of them.
-func (b BoardModel) lanesBody(width, height int, regions []boardRegion) [][]string {
-	var bandOrder []string
-	seen := map[string]bool{}
-	bandRows := map[int]map[string][]int{}
-	for _, r := range regions {
-		if r.collapsed {
-			continue
-		}
-		bandRows[r.col] = map[string][]int{}
-		for _, band := range b.bandsOf(r.col) {
-			bandRows[r.col][band.epic] = band.rows
-			if !seen[band.epic] {
-				seen[band.epic] = true
-				bandOrder = append(bandOrder, band.epic)
-			}
-		}
-	}
-	order := b.epicOrder()
-	sort.SliceStable(bandOrder, func(i, j int) bool {
-		oi, oj := len(order), len(order)
-		if bandOrder[i] != "" {
-			oi = order[bandOrder[i]]
-		}
-		if bandOrder[j] != "" {
-			oj = order[bandOrder[j]]
-		}
-		return oi < oj
-	})
-
-	firstFull := -1
-	for _, r := range regions {
-		if !r.collapsed {
-			firstFull = r.col
-			break
-		}
-	}
-	focused := b.actualFocusedCol()
-	built := map[int]columnLines{}
-	for _, r := range regions {
-		if r.collapsed || len(b.columns[r.col]) == 0 {
-			continue
-		}
-		c := columnLines{rowStart: map[int]int{}, rowEnd: map[int]int{}}
-		for _, epic := range bandOrder {
-			bandH := 0
-			for _, rows := range bandRows {
-				if n := len(rows[epic]); n > 0 && n*3-1 > bandH {
-					bandH = n*3 - 1
-				}
-			}
-			var header string
-			if r.col == firstFull {
-				header = b.epicHeader(epic, r.width, true)
-			} else {
-				header = b.epicStub(epic, len(bandRows[r.col][epic]), r.width)
-			}
-			c.add(header, header, true)
-			used := 0
-			for i, row := range bandRows[r.col][epic] {
-				if i > 0 {
-					c.add(b.rowRule(r.width), header, false)
-					used++
-				}
-				selected := r.col == focused && row == b.selectedRow[r.col]
-				c.rowStart[row] = len(c.lines)
-				for _, l := range b.renderRowLines(b.columns[r.col][row], r.width, selected, r.col, row) {
-					c.add(l, header, false)
-				}
-				c.rowEnd[row] = len(c.lines) - 1
-				used += 2
-			}
-			for ; used < bandH; used++ {
-				c.add(strings.Repeat(" ", r.width), header, false)
-			}
-		}
-		built[r.col] = c
-	}
-
-	// The shared offset follows the selection in the focused column.
-	avail := height - 2
-	fc := built[focused]
-	selStart, selEnd := 0, 0
-	if s, ok := fc.rowStart[b.selectedRow[focused]]; ok {
-		selStart, selEnd = s, fc.rowEnd[b.selectedRow[focused]]
-	}
-
-	blocks := make([][]string, len(regions))
-	for i, r := range regions {
-		switch {
-		case r.collapsed:
-			blocks[i] = b.renderRail(r.col, r.width, height)
-		case len(b.columns[r.col]) == 0:
-			blocks[i] = b.renderColumn(r.col, r.width, height)
-		default:
-			out := append(b.columnHead(r.col, r.width), b.scrolled(built[r.col], r.col, r.width, avail, selStart, selEnd)...)
-			blocks[i] = fillLines(out, r.width, height)
-		}
-	}
-	return blocks
-}
-
-// renderGroupedColumn renders one column in the groups design: an epic
-// subheader with progress above each run of rows.
-func (b BoardModel) renderGroupedColumn(col, width, height int) []string {
-	if len(b.columns[col]) == 0 {
-		return b.renderColumn(col, width, height)
-	}
-	c := columnLines{rowStart: map[int]int{}, rowEnd: map[int]int{}}
-	focused := col == b.actualFocusedCol()
-	for bi, band := range b.bandsOf(col) {
-		if bi > 0 {
-			c.add(strings.Repeat(" ", width), "", false)
-		}
-		header := b.epicHeader(band.epic, width, false)
-		c.add(header, header, true)
-		for i, row := range band.rows {
-			if i > 0 {
-				c.add(b.rowRule(width), header, false)
-			}
-			c.rowStart[row] = len(c.lines)
-			for _, l := range b.renderRowLines(b.columns[col][row], width, focused && row == b.selectedRow[col], col, row) {
-				c.add(l, header, false)
-			}
-			c.rowEnd[row] = len(c.lines) - 1
-		}
-	}
-	for i := range c.headerFor {
-		if c.headerFor[i] == "" && i+1 < len(c.headerFor) {
-			c.headerFor[i] = c.headerFor[i+1]
-		}
-	}
-	sel := b.selectedRow[col]
-	out := append(b.columnHead(col, width), b.scrolled(c, col, width, height-2, c.rowStart[sel], c.rowEnd[sel])...)
-	return fillLines(out, width, height)
-}
-
-// epicChip is the line-2 tag of a row in the chips design. An epic's own row
-// shows its completion instead of naming itself.
-func (b BoardModel) epicChip(issue model.Issue, titleW int) (string, lipgloss.TerminalColor) {
-	epic := b.epicOf[issue.ID]
-	if epic == "" {
-		return "", nil
-	}
-	info := b.epics[epic]
-	if epic == issue.ID {
-		return fmt.Sprintf("epic · %d/%d done", info.Done, info.Total), info.color
-	}
-	return "◆ " + b.displayID(epic) + " " + truncateRunesHelper(info.Title, titleW, "…"), info.color
 }

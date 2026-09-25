@@ -72,6 +72,7 @@ func TestBoardModel_SetSnapshot(t *testing.T) {
 
 	b := ui.NewBoardModel(nil, theme)
 	b.SetSnapshot(snap)
+	b.ToggleClosedColumn() // hidden until c
 
 	// Starts in Open column.
 	sel := b.SelectedIssue()
@@ -109,6 +110,7 @@ func TestAdaptiveColumns(t *testing.T) {
 	}
 
 	b := ui.NewBoardModel(issues, theme)
+	b.ToggleClosedColumn() // hidden until c
 
 	// Should start on first column (Open) - has items
 	sel := b.SelectedIssue()
@@ -665,6 +667,7 @@ func TestJumpToColumn(t *testing.T) {
 	}
 
 	b := ui.NewBoardModel(issues, theme)
+	b.ToggleClosedColumn() // hidden until c
 
 	// Jump to column 3 (Closed - index 3)
 	b.JumpToColumn(3)
@@ -700,6 +703,7 @@ func TestJumpToFirstLastColumn(t *testing.T) {
 	}
 
 	b := ui.NewBoardModel(issues, theme)
+	b.ToggleClosedColumn() // hidden until c
 
 	// Start at first column
 	b.JumpToLastColumn()

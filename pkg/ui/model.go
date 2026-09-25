@@ -3056,10 +3056,18 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.statusMsg = "Filter: Open issues"
 		m.statusIsError = false
 	case "c":
-		m.currentFilter = "closed"
-		m.applyFilter()
-		m.statusMsg = "Filter: Closed issues"
+		if m.board.GetSwimLaneMode() != SwimByStatus {
+			m.statusMsg = "c shows the closed column when the board groups by status"
+			m.statusIsError = false
+			break
+		}
+		m.board.ToggleClosedColumn()
+		m.statusMsg = "Closed column hidden"
+		if m.board.ShowsClosedColumn() {
+			m.statusMsg = "Closed column shown"
+		}
 		m.statusIsError = false
+		m.syncBoardToDetail()
 	case "r":
 		m.currentFilter = "ready"
 		m.applyFilter()
@@ -3092,24 +3100,14 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.statusIsError = false
 		m.syncBoardToDetail()
 
-	// Tab folds the selected epic's band in the lanes design.
+	// Tab folds the selected issue's epic lane.
 	case "tab":
-		if m.board.EpicView() != BoardEpicLanes {
-			m.statusMsg = "Tab folds an epic in the lanes design; press v to switch"
-			m.statusIsError = false
-			break
-		}
 		if !m.board.ToggleEpicFold() {
-			m.statusMsg = "This issue belongs to no epic"
+			m.statusMsg = "Nothing to fold: this issue has no epic on the board"
 			m.statusIsError = false
 		}
 		m.syncBoardToDetail()
 	case "shift+tab":
-		if m.board.EpicView() != BoardEpicLanes {
-			m.statusMsg = "Shift+Tab folds all epics in the lanes design; press v to switch"
-			m.statusIsError = false
-			break
-		}
 		m.board.ToggleAllEpicFolds()
 		m.syncBoardToDetail()
 

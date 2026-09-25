@@ -23,9 +23,6 @@ const (
 type boardRegionInput struct {
 	col   int
 	count int
-	// preferRail marks a column that folds even when populated: closed work in
-	// status mode is history, not a queue to act on.
-	preferRail bool
 }
 
 type boardRegion struct {
@@ -61,7 +58,7 @@ func planBoardRegions(width int, inputs []boardRegionInput, focusedCol int, bp b
 	// Candidates for a full region, nearest to the focus first.
 	var candidates []int
 	for i, in := range inputs {
-		if i != focusPos && in.count > 0 && !in.preferRail {
+		if i != focusPos && in.count > 0 {
 			candidates = append(candidates, i)
 		}
 	}
@@ -93,7 +90,7 @@ func planBoardRegions(width int, inputs []boardRegionInput, focusedCol int, bp b
 		}
 		fullW := width - (nShown - 1) - nRails*boardRailWidth
 		if fullW >= boardMinFullWidth*len(full) {
-			return layoutRegions(inputs, shown, full, focusPos, fullW, boardRailWidth)
+			return layoutRegions(inputs, shown, full, fullW, boardRailWidth)
 		}
 		// Drop full neighbours before squeezing rails: a rail still names the column.
 		if len(full) > 1 {
@@ -109,7 +106,7 @@ func planBoardRegions(width int, inputs []boardRegionInput, focusedCol int, bp b
 				railW = boardRailWidth
 			}
 			fullW = width - (nShown - 1) - nRails*railW
-			return layoutRegions(inputs, shown, full, focusPos, fullW, railW)
+			return layoutRegions(inputs, shown, full, fullW, railW)
 		}
 		// Not even narrow rails fit: hide the rail farthest from the focus.
 		far, farDist := -1, -1
@@ -122,34 +119,25 @@ func planBoardRegions(width int, inputs []boardRegionInput, focusedCol int, bp b
 	}
 }
 
-// layoutRegions splits fullW over the full regions, giving the focused column
-// a 1.6 share so it reads as the working column.
-func layoutRegions(inputs []boardRegionInput, shown []bool, full map[int]bool, focusPos, fullW, railW int) []boardRegion {
-	shares := 0
-	for i := range full {
-		if i == focusPos {
-			shares += 8
-		} else {
-			shares += 5
-		}
-	}
+// layoutRegions splits fullW equally over the full regions. Epic lanes align
+// across the columns, so no column is wider than the rest; the leftover cells
+// go to the first columns, one each.
+func layoutRegions(inputs []boardRegionInput, shown []bool, full map[int]bool, fullW, railW int) []boardRegion {
+	each, extra := fullW/len(full), fullW%len(full)
 	var regions []boardRegion
-	used := 0
 	for i, in := range inputs {
 		if !shown[i] {
 			continue
 		}
 		r := boardRegion{col: in.col, collapsed: !full[i], width: railW}
-		if full[i] && i != focusPos {
-			r.width = fullW * 5 / shares
-			used += r.width
+		if full[i] {
+			r.width = each
+			if extra > 0 {
+				r.width++
+				extra--
+			}
 		}
 		regions = append(regions, r)
-	}
-	for i := range regions {
-		if regions[i].col == inputs[focusPos].col {
-			regions[i].width = fullW - used
-		}
 	}
 	return regions
 }

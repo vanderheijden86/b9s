@@ -432,9 +432,10 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "h / l", Desc: "Move between columns"},
 					{Key: "j / k", Desc: "Move within column"},
-					{Key: "v", Desc: "Cycle epic lanes / chips / groups"},
-					{Key: "Tab", Desc: "Fold the selected epic (lanes)"},
-					{Key: "Shift+Tab", Desc: "Fold or unfold all epics (lanes)"},
+					{Key: "v", Desc: "Switch epic rail / epic rows"},
+					{Key: "Tab", Desc: "Fold the selected epic"},
+					{Key: "Shift+Tab", Desc: "Fold or unfold all epics"},
+					{Key: "c", Desc: "Show or hide the closed column"},
 					{Key: "Enter", Desc: "View issue details"},
 				}},
 				Spacer{Lines: 1},

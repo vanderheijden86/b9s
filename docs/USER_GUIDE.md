@@ -264,17 +264,18 @@ The Dolt SQL login, for example `bd_b9s`, is one credential shared by every agen
 | Priority | P0 Critical, P1 High, P2 Medium, P3+ Other |
 | Type | Bug, Feature, Task, Epic |
 
-The focused column takes most of the width. Each issue has two lines: ID, title, priority and age, then type, `blocked by X`, `lane: stage` and `blocks N`. Empty columns and the closed column fold into narrow rails; `h` or `l` onto a rail opens it.
+Columns with issues share the width equally. Each issue is a boxed card: the title on up to two lines, a tag line with `blocked by X`, `lane: stage` and `blocks N` when they apply, and a footer with the type icon, the ID, the priority and the age. Empty columns fold into narrow rails; `h` or `l` onto a rail opens it. The closed column is hidden until `c` shows it, and the bar above the board counts the hidden closed issues.
 
-An issue belongs to its nearest epic ancestor through parent-child links. The board has three ways to show that ([ADR 0017](adr/0017-choose-board-layout-a-and-show-epics-three-ways.md)). `v` cycles them and keeps the selection, and `ui.board_epics` in the config sets the one used at start.
+An issue belongs to its nearest epic ancestor through parent-child links. The board puts the issues of each epic in one horizontal lane, aligned across the columns, and has two designs for the epic itself ([ADR 0018](adr/0018-show-epics-as-a-rail-or-rows-and-hide-closed.md)). `v` switches between them and keeps the selection, and `ui.board_epics` in the config sets the one used at start.
 
 | Design | What it shows |
 |--------|---------------|
-| Lanes (default) | Horizontal bands, one per epic, aligned across the columns. The first column's band header shows the epic, its title and a completion bar with done/total; the other columns show how many of the band's issues they hold. Issues without an epic sit in a last `No epic` band. `Tab` folds the selected epic's band to the epic's own row, `Shift-Tab` folds all bands or unfolds them. |
-| Chips | The plain column order. A bar in the epic's color starts each row, and the second line names the epic. An epic's own row shows `epic · done/total done`. |
-| Groups | Each column groups its issues by epic under a subheader with the completion bar. Columns scroll on their own. |
+| Epic rail (default) | A column on the left holds each lane's epic: its ID, title, a completion bar with done/total and the issue count. The epic stays in view while its lane scrolls. |
+| Epic rows | A header row above each lane with the epic's ID, title, issue count and completion bar. |
 
-Completion counts every issue under the epic in the project, closed ones included, so a filter never changes it. Bands come in order of the most urgent open issue in them. A project without epics shows the plain board in every design.
+Issues without an epic sit in a last `No epic` lane. `Tab` folds the selected issue's epic: its cards leave the board and each column shows how many it hides. `Shift-Tab` folds every epic, or unfolds them all when one is folded. The epic's own issue is the lane header, not a card; selecting it highlights the lane.
+
+Completion counts every issue under the epic in the project, closed ones included, so a filter never changes it. Lanes come in order of the most urgent open issue in them. A project without epics shows the plain board in every design.
 
 A row separates four facts: the column is the stored status, `blocked by X` names an open blocker, `lane: stage` comes from the `lane-stage=` label, and `blocks N` counts the issues that wait on this one. In single-project mode IDs drop the project prefix.
 
@@ -282,12 +283,13 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 |------|--------|
 | `h` `l`, `Left` `Right` | Change the column |
 | `j` `k`, `Up` `Down` | Move between issues |
-| `v` | Cycle the epic designs: lanes, chips, groups |
-| `Tab` | Lanes: fold or unfold the selected issue's epic |
-| `Shift-Tab` | Lanes: fold all epics, or unfold them all when one is folded |
+| `v` | Switch the epic design: rail or rows |
+| `Tab` | Fold or unfold the selected issue's epic |
+| `Shift-Tab` | Fold all epics, or unfold them all when one is folded |
+| `c` | Show or hide the closed column (status swimlanes) |
 | `0`, `$`, `gg`, `G` | First card, last card, top, bottom |
 | `Enter` | Open the card in the detail pane |
-| `o`, `c`, `r` | Show open, closed or ready issues |
+| `o`, `r` | Show open or ready issues |
 | `/`, `n` `N` | Search, next and previous match |
 | `e` | Hide or show empty columns |
 | `y` | Copy the issue ID |
@@ -360,7 +362,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
-  board_epics: lanes      # lanes, chips or groups; v cycles
+  board_epics: rail       # rail or rows; v switches
   sort:
     field: created      # priority, created, updated, title, status, type or deps
     direction: desc     # asc or desc; leave out for the field's natural order

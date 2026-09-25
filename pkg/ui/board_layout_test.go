@@ -88,12 +88,12 @@ func regionsWidth(regions []boardRegion) int {
 func statusInputs(counts [4]int) []boardRegionInput {
 	var in []boardRegionInput
 	for col, n := range counts {
-		in = append(in, boardRegionInput{col: col, count: n, preferRail: col == ColClosed})
+		in = append(in, boardRegionInput{col: col, count: n})
 	}
 	return in
 }
 
-func TestPlanBoardRegions_WideSparseCollapsesEmptyAndClosed(t *testing.T) {
+func TestPlanBoardRegions_WideSparseCollapsesEmptyColumns(t *testing.T) {
 	regions := planBoardRegions(220, statusInputs([4]int{29, 1, 0, 76}), ColOpen, adaptiveBreakpoints)
 
 	if got := regionsWidth(regions); got != 220 {
@@ -103,17 +103,26 @@ func TestPlanBoardRegions_WideSparseCollapsesEmptyAndClosed(t *testing.T) {
 	inProgress, _ := regionFor(regions, ColInProgress)
 	blocked, _ := regionFor(regions, ColBlocked)
 	closed, _ := regionFor(regions, ColClosed)
-	if open.collapsed || inProgress.collapsed {
+	if open.collapsed || inProgress.collapsed || closed.collapsed {
 		t.Fatalf("populated columns must stay full: %+v", regions)
 	}
-	if !blocked.collapsed || !closed.collapsed {
-		t.Fatalf("empty and closed columns must collapse to rails: %+v", regions)
+	if !blocked.collapsed || blocked.width > 16 {
+		t.Fatalf("an empty column must collapse to a narrow rail: %+v", regions)
 	}
-	if open.width <= inProgress.width {
-		t.Fatalf("focused column must be widest: open=%d in-progress=%d", open.width, inProgress.width)
-	}
-	if blocked.width > 16 || closed.width > 16 {
-		t.Fatalf("rails must stay narrow: blocked=%d closed=%d", blocked.width, closed.width)
+}
+
+func TestPlanBoardRegions_FullColumnsShareTheWidthEqually(t *testing.T) {
+	for _, focus := range []int{ColOpen, ColInProgress, ColClosed} {
+		regions := planBoardRegions(220, statusInputs([4]int{29, 1, 0, 76}), focus, adaptiveBreakpoints)
+		lo, hi := 1<<30, 0
+		for _, r := range regions {
+			if !r.collapsed {
+				lo, hi = min(lo, r.width), max(hi, r.width)
+			}
+		}
+		if hi-lo > 1 {
+			t.Fatalf("focus %d: full columns must be equally wide, got %+v", focus, regions)
+		}
 	}
 }
 
@@ -207,7 +216,7 @@ func assertFits(t *testing.T, name, view string, width, height int) {
 }
 
 func TestBoardLayouts_FitEveryWidth(t *testing.T) {
-	for _, layout := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
+	for _, layout := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
 		for _, width := range []int{60, 80, 110, 160, 220} {
 			b := newSparseBoard()
 			b.SetEpicView(layout)
@@ -220,18 +229,19 @@ func TestBoardLayouts_FitEveryWidth(t *testing.T) {
 	}
 }
 
-func TestBoardAdaptiveView_ShowsCompactRowsAndRails(t *testing.T) {
+func TestBoardAdaptiveView_ShowsBoxedCardsAndRails(t *testing.T) {
 	b := newSparseBoard()
 	b.SelectIssueByID("spectroscope-eg0.4.2")
 	view := stripANSI(b.View(220, 40))
 
 	for _, want := range []string{
-		"Epic lanes 1/3",
-		"[eg0.4.2]", "Wire the flow subscription transport", "blocked by eg0.4.1",
-		"[eg0.4.1]", "lane: reviewing", "blocks 1",
+		"Epic rail 1/2",
+		"eg0.4.2", "Wire the flow subscription transport", "blocked by eg0.4.1",
+		"eg0.4.1", "lane: reviewing", "blocks 1",
 		"lane: implementing",
-		"CLOSED", "20", "today",
+		"closed 20 hidden", "c closed",
 		"v epic design",
+		"╭", "╰",
 	} {
 		if !strings.Contains(view, want) {
 			t.Errorf("adaptive board is missing %q:\n%s", want, view)
@@ -240,10 +250,8 @@ func TestBoardAdaptiveView_ShowsCompactRowsAndRails(t *testing.T) {
 	if strings.Contains(view, "spectroscope-eg0") {
 		t.Errorf("single-project board must not repeat the project prefix:\n%s", view)
 	}
-	for _, border := range []string{"┏", "╭", "┃"} {
-		if strings.Contains(view, border) {
-			t.Errorf("rows must not be framed boxes, found %q", border)
-		}
+	if strings.Contains(view, "Delivered item") {
+		t.Errorf("the closed column is hidden until c:\n%s", view)
 	}
 }
 
@@ -256,7 +264,7 @@ func TestBoardView_RemovesTerminalControlPayloads(t *testing.T) {
 		IssueType:   model.TypeTask,
 		Labels:      []string{"lane-stage=ok\u009b31mbad"},
 	}
-	for _, layout := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
+	for _, layout := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
 		b := NewBoardModel([]model.Issue{issue}, DefaultTheme(lipgloss.DefaultRenderer()))
 		b.SetEpicView(layout)
 		out := b.View(160, 30)
@@ -272,7 +280,7 @@ func TestBoardView_SelectedRowKeepsBackgroundAfterInnerResets(t *testing.T) {
 	renderer := lipgloss.NewRenderer(io.Discard)
 	renderer.SetColorProfile(termenv.TrueColor)
 	theme := DefaultTheme(renderer)
-	for _, layout := range []BoardEpicView{BoardEpicLanes, BoardEpicChips, BoardEpicGroups} {
+	for _, layout := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
 		b := NewBoardModel(sparseBoardIssues(), theme)
 		b.SetActiveProjectName("spectroscope")
 		b.SetEpicView(layout)

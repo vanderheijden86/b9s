@@ -10,8 +10,8 @@ import (
 )
 
 // FocusPopulatedColumn moves the focus off an empty column onto the first
-// column that holds issues. The focused column gets the most width, so an
-// empty focus spends the board on nothing.
+// column that holds issues. The focused column is always shown in full, so an
+// empty focus spends a full column on nothing.
 func (b *BoardModel) FocusPopulatedColumn() {
 	if len(b.columns[b.actualFocusedCol()]) > 0 {
 		return
@@ -40,14 +40,18 @@ func (b BoardModel) renderBoardBar(width int) string {
 	bold := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
 	muted := t.Renderer.NewStyle().Foreground(t.Secondary)
 
-	// Counts come from the grouped columns, so a folded epic band never makes
+	// Counts come from the grouped columns, so a folded epic lane never makes
 	// its issues look gone.
 	headers := b.getColumnHeaders()
 	var counts []string
-	total, shown := 0, b.TotalCount()
+	total, shown := 0, 0
 	for col := 0; col < 4; col++ {
+		if b.columnHidden(col) {
+			continue
+		}
 		counts = append(counts, fmt.Sprintf("%s %d", strings.ToLower(headers[col]), len(b.rawColumns[col])))
 		total += len(b.rawColumns[col])
+		shown += len(b.columns[col])
 	}
 	summary := fmt.Sprintf("by %s · %d issues", strings.ToLower(b.GetSwimLaneModeName()), total)
 	if folded := total - shown; folded > 0 {
@@ -59,54 +63,48 @@ func (b BoardModel) renderBoardBar(width int) string {
 	if hidden := b.HiddenColumnCount(); hidden > 0 {
 		right += fmt.Sprintf(" · +%d hidden", hidden)
 	}
+	if b.columnHidden(ColClosed) {
+		right += fmt.Sprintf(" · closed %d hidden · c", len(b.rawColumns[ColClosed]))
+	}
 	return joinLeftRight(left, muted.Render(right), width)
 }
 
 func (b BoardModel) renderKeyHints(width int) string {
-	hints := "h/l column  j/k item  enter detail  s swimlane  / search  v epic design"
-	if b.epicView == BoardEpicLanes {
-		hints = "h/l column  j/k item  tab fold epic  shift+tab fold all  enter detail  s swimlane  v epic design"
-	}
+	hints := "h/l column  j/k card  tab fold  shift+tab fold all  c closed  enter detail  s swimlane  / search  v epic design"
 	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Render(truncateRunesHelper(hints, width, "…")), width)
 }
 
-// columnsBody renders the status regions side by side as exactly height lines
-// of exactly width cells.
-func (b BoardModel) columnsBody(width, height int) []string {
+func (b BoardModel) regionInputs() []boardRegionInput {
 	var inputs []boardRegionInput
 	for _, col := range b.activeColIdx {
-		inputs = append(inputs, boardRegionInput{
-			col:        col,
-			count:      len(b.columns[col]),
-			preferRail: b.swimLaneMode == SwimByStatus && col == ColClosed,
-		})
+		inputs = append(inputs, boardRegionInput{col: col, count: len(b.columns[col])})
 	}
-	regions := planBoardRegions(width, inputs, b.actualFocusedCol(), adaptiveBreakpoints)
+	return inputs
+}
 
-	var blocks [][]string
-	if b.epicView == BoardEpicLanes && b.hasEpicBands() {
-		blocks = b.lanesBody(width, height, regions)
-	} else {
-		blocks = make([][]string, len(regions))
-		for i, r := range regions {
-			switch {
-			case r.collapsed:
-				blocks[i] = b.renderRail(r.col, r.width, height)
-			case b.epicView == BoardEpicGroups && b.hasEpicBands():
-				blocks[i] = b.renderGroupedColumn(r.col, r.width, height)
-			default:
-				blocks[i] = b.renderColumn(r.col, r.width, height)
-			}
+// columnsBody renders the board body as exactly height lines of exactly
+// width cells: epic lanes when the board shows an epic, plain columns
+// otherwise.
+func (b BoardModel) columnsBody(width, height int) []string {
+	if b.hasEpicLanes() {
+		return b.lanesBody(width, height)
+	}
+	regions := planBoardRegions(width, b.regionInputs(), b.actualFocusedCol(), adaptiveBreakpoints)
+	blocks := make([][]string, len(regions))
+	for i, r := range regions {
+		if r.collapsed {
+			blocks[i] = b.renderRail(r.col, r.width, height)
+		} else {
+			blocks[i] = b.renderColumn(r.col, r.width, height)
 		}
 	}
-	sep := b.theme.Renderer.NewStyle().Foreground(b.theme.Border).Render("│")
 	out := make([]string, height)
 	for line := range out {
 		parts := make([]string, len(blocks))
 		for i := range blocks {
 			parts[i] = blocks[i][line]
 		}
-		out[line] = padCells(strings.Join(parts, sep), width)
+		out[line] = padCells(strings.Join(parts, " "), width)
 	}
 	return out
 }
@@ -166,7 +164,12 @@ func (b BoardModel) columnColor(col int) lipgloss.TerminalColor {
 	return []lipgloss.AdaptiveColor{b.theme.Open, b.theme.InProgress, b.theme.Blocked, b.theme.Closed}[col]
 }
 
-// renderColumn draws a full region: header, rule, then rows scrolled so the
+// columnHead is the column title and its rule.
+func (b BoardModel) columnHead(col, width int) []string {
+	return []string{b.columnHeader(col, width), padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Border).Render(strings.Repeat("─", width)), width)}
+}
+
+// renderColumn draws a full region: header, rule, then cards scrolled so the
 // selection stays visible.
 func (b BoardModel) renderColumn(col, width, height int) []string {
 	t := b.theme
@@ -179,36 +182,31 @@ func (b BoardModel) renderColumn(col, width, height int) []string {
 		return fillLines(out, width, height)
 	}
 
-	rowH := 3 // two content lines and a separator
-	visible := avail / rowH
-	if len(issues) > visible {
-		visible = (avail - 1) / rowH // keep a line for the "more" hint
-	}
-	if visible < 1 {
-		visible = 1
-	}
-	sel := b.selectedRow[col]
-	start := 0
-	if sel >= visible {
-		start = sel - visible + 1
-	}
-	end := start + visible
-	if end > len(issues) {
-		end = len(issues)
-	}
+	var lines []string
+	starts, ends := make([]int, len(issues)), make([]int, len(issues))
 	focusedCol := col == b.actualFocusedCol()
-	for row := start; row < end; row++ {
-		selected := focusedCol && row == sel
-		out = append(out, b.renderRowLines(issues[row], width, selected, col, row)...)
-		if row < end-1 {
-			out = append(out, padCells(t.Renderer.NewStyle().Foreground(t.Border).Render(strings.Repeat("┄", width)), width))
+	sel := b.selectedRow[col]
+	for row, issue := range issues {
+		starts[row] = len(lines)
+		lines = append(lines, b.cardLines(issue, width, focusedCol && row == sel, col, row)...)
+		ends[row] = len(lines) - 1
+	}
+	if len(lines) <= avail {
+		return fillLines(append(out, lines...), width, height)
+	}
+	shown := max(avail-1, 1)
+	from := windowStart(len(lines), shown, starts[sel], ends[sel])
+	out = append(out, lines[from:min(from+shown, len(lines))]...)
+	hidden := 0
+	for row := range issues {
+		if starts[row] < from || ends[row] >= from+shown {
+			hidden++
 		}
 	}
-	if hidden := len(issues) - (end - start); hidden > 0 {
-		more := fmt.Sprintf(" %d/%d · %d more", sel+1, len(issues), hidden)
-		out = append(out, padCells(t.Renderer.NewStyle().Foreground(t.Secondary).Italic(true).Render(truncateRunesHelper(more, width, "…")), width))
-	}
-	return fillLines(out, width, height)
+	more := fmt.Sprintf(" %d/%d · %d more", sel+1, len(issues), hidden)
+	out = fillLines(out, width, height-1)
+	out = append(out, padCells(t.Renderer.NewStyle().Foreground(t.Secondary).Italic(true).Render(truncateRunesHelper(more, width, "…")), width))
+	return out
 }
 
 // emptyColumnNote explains an empty column in short phrases, one per rail
@@ -324,73 +322,6 @@ func (b BoardModel) priorityStyle(issue model.Issue, selected bool) lipgloss.Sty
 		return b.fg(selected, lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"}).Bold(true)
 	}
 	return b.fg(selected, b.theme.Secondary)
-}
-
-// renderRowLines draws the two lines of a board row:
-//
-//	[eg0.4.2]  Wire the flow subscription transport        P1  2d
-//	task  blocked by eg0.4.1  lane: blocked  blocks 3
-//
-// The chips design starts both lines with a bar in the epic's color and puts
-// the epic chip right after the type, before the facts that may be dropped.
-func (b BoardModel) renderRowLines(issue model.Issue, width int, selected bool, col, row int) []string {
-	t := b.theme
-	card := b.cardView(issue)
-	idColor := lipgloss.TerminalColor(t.Primary)
-	if b.IsSearchMatch(col, row) {
-		idColor = lipgloss.AdaptiveColor{Light: "#1565c0", Dark: "#64b5f6"}
-	}
-
-	id := "[" + card.ShortID + "]"
-	right := card.Priority + "  " + card.Age
-	titleW := width - lipgloss.Width(id) - lipgloss.Width(right) - 5
-	if titleW < 4 {
-		titleW = 4
-	}
-	title := truncateRunesHelper(card.Title, titleW, "…")
-	gap := width - 1 - lipgloss.Width(id) - 2 - lipgloss.Width(title) - lipgloss.Width(right) - 1
-	if gap < 1 {
-		gap = 1
-	}
-	lead := " "
-	var chip string
-	var chipColor lipgloss.TerminalColor
-	if b.epicView == BoardEpicChips {
-		if chip, chipColor = b.epicChip(issue, 24); chip != "" {
-			lead = b.fg(selected, chipColor).Render("▌")
-		}
-	}
-	line1 := lead + b.fg(selected, idColor).Bold(true).Render(id) + "  " +
-		b.fg(selected, t.Base.GetForeground()).Bold(selected).Render(title) + strings.Repeat(" ", gap) +
-		b.priorityStyle(issue, selected).Render(card.Priority) + "  " +
-		b.fg(selected, getAgeColor(issue.UpdatedAt)).Render(card.Age)
-
-	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
-	parts := []string{b.fg(selected, iconColor).Render(icon + " " + card.Type)}
-	used := lipgloss.Width(icon + " " + card.Type)
-	add := func(text string, c lipgloss.TerminalColor) {
-		if used+2+lipgloss.Width(text) > width-2 {
-			return
-		}
-		parts = append(parts, b.fg(selected, c).Render(text))
-		used += 2 + lipgloss.Width(text)
-	}
-	if chip != "" {
-		add(chip, chipColor)
-	}
-	if card.BlockedBy != "" {
-		add("blocked by "+card.BlockedBy, t.Blocked)
-	}
-	if card.LaneStage != "" {
-		add("lane: "+card.LaneStage, t.InProgress)
-	}
-	if card.BlocksCount > 0 {
-		add(fmt.Sprintf("blocks %d", card.BlocksCount), t.Feature)
-	}
-	line2 := lead + strings.Join(parts, "  ")
-
-	bg := b.rowSurface(selected, col, row)
-	return []string{surface(line1, width, bg), surface(line2, width, bg)}
 }
 
 // surface pads a styled line to width and, when bg is set, paints the whole
