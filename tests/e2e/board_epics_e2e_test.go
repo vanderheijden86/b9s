@@ -57,3 +57,20 @@ func TestBoardClosedColumnToggleWithC(t *testing.T) {
 	}
 	containsAll(t, out, []string{"hidden · c", "Closed column shown", "CLOSED"})
 }
+
+// f limits the board to the selected card's branch and names it in the bar
+// above the board; f again shows the whole board.
+func TestBoardBranchToggleWithF(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeFilterFixture(t))
+
+	out, err := runTreeTUI(t, tempDir, 3200, []keyStep{
+		kd("b", 600*time.Millisecond),
+		kd("f", 600*time.Millisecond),
+		kd("f", 600*time.Millisecond),
+	})
+	if err != nil {
+		t.Fatalf("run board TUI: %v", err)
+	}
+	containsAll(t, out, []string{"branch ", "f shows the whole board", "Whole board"})
+}

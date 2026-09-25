@@ -3110,6 +3110,16 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.board.NextEpic()
 		m.syncBoardToDetail()
 
+	// f shows only the selected card's top-level branch, as f does in the tree.
+	case "f":
+		if root := m.board.ToggleBranch(); root != "" {
+			m.statusMsg = "Branch " + root + " · f shows the whole board"
+		} else {
+			m.statusMsg = "Whole board"
+		}
+		m.statusIsError = false
+		m.syncBoardToDetail()
+
 	// Tab folds the selected issue's epic lane.
 	case "tab":
 		if !m.board.ToggleEpicFold() {
@@ -4789,6 +4799,7 @@ func (m *Model) renderFooter() string {
 			{"tab", "fold"},
 			{"enter", "detail"},
 			{"j/k", "card"},
+			{"f", "branch"},
 			{"m", "move"},
 			{"s", "swim"},
 			{"/", "search"},

@@ -289,6 +289,7 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `v` | Switch the epic design: rail or rows |
 | `Tab` | Fold or unfold the selected issue's epic |
 | `Shift-Tab` | Fold all epics, or unfold them all when one is folded |
+| `f` | Show only the selected issue's top-level branch, or the whole board again |
 | `c` | Show or hide the closed column (status swimlanes) |
 | `0`, `$`, `gg`, `G` | First card, last card, top, bottom |
 | `Enter` | Open the card in the detail pane |

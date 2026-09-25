@@ -47,6 +47,12 @@ type BoardModel struct {
 	onEpicColumn   bool
 	epicColumnLane string
 
+	// branchRoot limits the board to one top-level issue and its descendants.
+	// groupedColumns keeps the full grouping so clearing it needs no reload.
+	branchRoot     string
+	rootOf         map[string]string
+	groupedColumns [4][]model.Issue
+
 	// Search state (bv-yg39)
 	searchMode    bool
 	searchQuery   string

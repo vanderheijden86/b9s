@@ -54,6 +54,9 @@ func (b *BoardModel) renderBoardBar(width int) string {
 		shown += len(b.columns[col])
 	}
 	summary := fmt.Sprintf("by %s · %d issues", strings.ToLower(b.GetSwimLaneModeName()), total)
+	if b.branchRoot != "" {
+		summary = fmt.Sprintf("branch %s · f · ", b.displayID(b.branchRoot)) + summary
+	}
 	if folded := total - shown; folded > 0 {
 		summary += fmt.Sprintf(" · %d folded", folded)
 	}
@@ -70,7 +73,7 @@ func (b *BoardModel) renderBoardBar(width int) string {
 }
 
 func (b *BoardModel) renderKeyHints(width int) string {
-	hints := "←→ column  ↑↓ in lane  { } epic  tab fold  S-tab all  c closed  enter detail  / search  s swimlane  v design"
+	hints := "←→ column  ↑↓ in lane  { } epic  f branch  tab fold  S-tab all  c closed  enter detail  / search  s swimlane  v design"
 	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Render(truncateRunesHelper(hints, width, "…")), width)
 }
 

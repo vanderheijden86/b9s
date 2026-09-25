@@ -135,6 +135,15 @@ func (b *BoardModel) rebuildEpicIndex() {
 		}
 	}
 
+	b.rootOf = make(map[string]string, len(universe))
+	for _, is := range universe {
+		root := is.ID
+		for depth := 0; parent[root] != "" && depth < maxEpicDepth; depth++ {
+			root = parent[root]
+		}
+		b.rootOf[is.ID] = root
+	}
+
 	b.epicOf = make(map[string]string, len(universe))
 	b.epics = make(map[string]*boardEpic)
 	for _, is := range universe {
@@ -246,9 +255,63 @@ func (b *BoardModel) epicOnBoard(epic string) bool {
 
 // setColumns stores freshly grouped columns and arranges them for the design.
 func (b *BoardModel) setColumns(cols [4][]model.Issue) {
-	b.rawColumns = cols
+	b.groupedColumns = cols
 	b.rebuildEpicIndex()
+	b.rawColumns = b.branchColumns()
 	b.arrangeColumns()
+}
+
+// branchRootFor returns the top-level ancestor of id, or id itself when it
+// has no parent on the board's universe.
+func (b *BoardModel) branchRootFor(id string) string {
+	if root := b.rootOf[id]; root != "" {
+		return root
+	}
+	return id
+}
+
+func (b *BoardModel) branchColumns() [4][]model.Issue {
+	if b.branchRoot == "" {
+		return b.groupedColumns
+	}
+	var cols [4][]model.Issue
+	for col, issues := range b.groupedColumns {
+		for _, is := range issues {
+			if b.branchRootFor(is.ID) == b.branchRoot {
+				cols[col] = append(cols[col], is)
+			}
+		}
+	}
+	return cols
+}
+
+// BranchRoot returns the top-level issue the board is limited to, or "".
+func (b *BoardModel) BranchRoot() string { return b.branchRoot }
+
+// ToggleBranch limits the board to the selected card's top-level branch, or
+// shows the whole board again when a branch is already shown. It reports the
+// branch root now shown, "" for the whole board.
+func (b *BoardModel) ToggleBranch() string {
+	if b.branchRoot != "" {
+		b.branchRoot = ""
+	} else if sel := b.SelectedIssue(); sel != nil {
+		b.branchRoot = b.branchRootFor(sel.ID)
+	} else {
+		return ""
+	}
+	var selID string
+	if sel := b.SelectedIssue(); sel != nil {
+		selID = sel.ID
+	}
+	b.rawColumns = b.branchColumns()
+	b.arrangeColumns()
+	b.clampSelection()
+	b.updateActiveColumns()
+	if selID != "" {
+		b.SelectIssueByID(selID)
+	}
+	b.updateSearchMatches()
+	return b.branchRoot
 }
 
 func (b *BoardModel) rearrangeKeepingSelection() {
