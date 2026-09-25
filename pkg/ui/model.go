@@ -5390,19 +5390,11 @@ func (m *Model) updateViewportContent() {
 	}
 	item := issueItem.Issue
 
-	var sb strings.Builder
-
+	var update *detailUpdateNotice
 	if m.updateAvailable {
-		sb.WriteString(fmt.Sprintf("⭐ **Update Available:** [%s](%s)\n\n", m.updateTag, m.updateURL))
+		update = &detailUpdateNotice{Tag: m.updateTag}
 	}
-	sb.WriteString(formatIssueMarkdown(item, m.issueMap))
-
-	rendered, err := m.renderer.Render(sb.String())
-	if err != nil {
-		m.viewport.SetContent(fmt.Sprintf("Error rendering markdown: %v", err))
-	} else {
-		m.viewport.SetContent(rendered)
-	}
+	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.theme, m.viewport.Width, m.renderer, update))
 }
 
 // personMarkdown renders a creator or assignee cell; an empty name stays

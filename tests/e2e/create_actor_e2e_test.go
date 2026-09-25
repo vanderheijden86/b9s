@@ -80,5 +80,5 @@ func TestDetailShowsCreatorApartFromAssigneeE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run TUI: %v", err)
 	}
-	containsAll(t, out, []string{"Creator", "@maker-e2e", "Assignee", "@holder-e2e"})
+	containsAll(t, out, []string{"creator", "@maker-e2e", "assignee", "@holder-e2e"})
 }
