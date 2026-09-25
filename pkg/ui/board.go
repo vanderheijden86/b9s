@@ -41,6 +41,12 @@ type BoardModel struct {
 	epics        map[string]*boardEpic
 	foldedEpics  map[string]bool
 
+	// The epics form the first column of a lane board. While onEpicColumn is
+	// set, the selection is the epic of lane epicColumnLane ("" being the
+	// lane without an epic) and focusedCol only remembers the status column.
+	onEpicColumn   bool
+	epicColumnLane string
+
 	// Search state (bv-yg39)
 	searchMode    bool
 	searchQuery   string
@@ -240,6 +246,7 @@ func (b *BoardModel) updateActiveColumns() {
 	if b.focusedCol < 0 {
 		b.focusedCol = 0
 	}
+	b.leaveStaleEpicColumn()
 }
 
 // columnHidden reports whether a column is left off the board whatever it
@@ -574,10 +581,10 @@ func (b *BoardModel) actualFocusedCol() int {
 
 // Navigation methods
 //
-// With epic lanes, j, k and the jumps below move over cards only. An epic's
-// own issue sits in the column of its status but is drawn as the lane
-// header, so as a stop it would appear in some columns and not in others.
-// { and } reach the epics.
+// With epic lanes, the moves below stop on cards only. An epic's own issue
+// sits in the column of its status but is drawn as the lane header, so as a
+// stop it would appear in some columns and not in others. The epics are
+// reached through the epic column instead (board_epics.go).
 
 // isCardRow reports whether row of col is a card rather than a lane header.
 func (b *BoardModel) isCardRow(col, row int) bool {
@@ -596,33 +603,61 @@ func (b *BoardModel) cardRowFrom(col, row, step int) int {
 	return -1
 }
 
-func (b *BoardModel) MoveDown() {
-	col := b.actualFocusedCol()
-	if r := b.cardRowFrom(col, b.selectedRow[col]+1, 1); r >= 0 {
-		b.selectedRow[col] = r
-	}
-}
+func (b *BoardModel) MoveDown() { b.moveVertical(1) }
 
-func (b *BoardModel) MoveUp() {
-	col := b.actualFocusedCol()
-	if r := b.cardRowFrom(col, b.selectedRow[col]-1, -1); r >= 0 {
-		b.selectedRow[col] = r
+func (b *BoardModel) MoveUp() { b.moveVertical(-1) }
+
+// moveVertical moves one card in direction step, and never out of the lane.
+func (b *BoardModel) moveVertical(step int) {
+	if b.onEpicColumn {
+		b.stepEpicColumn(step)
+		return
 	}
+	col := b.actualFocusedCol()
+	cur := b.selectedRow[col]
+	r := b.cardRowFrom(col, cur+step, step)
+	if r < 0 {
+		return
+	}
+	cols := b.columns[col]
+	if b.hasEpicLanes() && cur < len(cols) && b.epicOf[cols[r].ID] != b.epicOf[cols[cur].ID] {
+		return
+	}
+	b.selectedRow[col] = r
 }
 
 func (b *BoardModel) MoveRight() {
+	if b.hasEpicLanes() {
+		from := b.focusedCol + 1
+		if b.onEpicColumn {
+			from = 0
+		}
+		b.moveAcross(from, 1)
+		return
+	}
 	if b.focusedCol < len(b.activeColIdx)-1 {
-		b.moveAcross(b.focusedCol + 1)
+		b.focusedCol++
 	}
 }
 
 func (b *BoardModel) MoveLeft() {
+	if b.onEpicColumn {
+		return
+	}
+	if b.hasEpicLanes() {
+		b.moveAcross(b.focusedCol-1, -1)
+		return
+	}
 	if b.focusedCol > 0 {
-		b.moveAcross(b.focusedCol - 1)
+		b.focusedCol--
 	}
 }
 
 func (b *BoardModel) MoveToTop() {
+	if b.onEpicColumn {
+		b.stepEpicColumn(-len(b.shownLanes()))
+		return
+	}
 	col := b.actualFocusedCol()
 	if r := b.cardRowFrom(col, 0, 1); r >= 0 {
 		b.selectedRow[col] = r
@@ -630,6 +665,10 @@ func (b *BoardModel) MoveToTop() {
 }
 
 func (b *BoardModel) MoveToBottom() {
+	if b.onEpicColumn {
+		b.stepEpicColumn(len(b.shownLanes()))
+		return
+	}
 	col := b.actualFocusedCol()
 	if r := b.cardRowFrom(col, len(b.columns[col])-1, -1); r >= 0 {
 		b.selectedRow[col] = r
@@ -678,6 +717,7 @@ func (b *BoardModel) JumpToColumn(colIdx int) {
 	for i, activeCol := range b.activeColIdx {
 		if activeCol == colIdx {
 			b.focusedCol = i
+			b.onEpicColumn = false
 			return
 		}
 	}
@@ -695,12 +735,14 @@ func (b *BoardModel) JumpToColumn(colIdx int) {
 		}
 	}
 	b.focusedCol = bestIdx
+	b.onEpicColumn = false
 }
 
 // JumpToFirstColumn jumps to the first non-empty column (H key)
 func (b *BoardModel) JumpToFirstColumn() {
 	if len(b.activeColIdx) > 0 {
 		b.focusedCol = 0
+		b.onEpicColumn = false
 	}
 }
 
@@ -708,6 +750,7 @@ func (b *BoardModel) JumpToFirstColumn() {
 func (b *BoardModel) JumpToLastColumn() {
 	if len(b.activeColIdx) > 0 {
 		b.focusedCol = len(b.activeColIdx) - 1
+		b.onEpicColumn = false
 	}
 }
 
@@ -818,6 +861,7 @@ func (b *BoardModel) jumpToMatch(idx int) {
 		}
 	}
 	b.selectedRow[match.col] = match.row
+	b.onEpicColumn = false
 }
 
 // NextMatch jumps to the next search match (n key)
@@ -862,8 +906,17 @@ func (b *BoardModel) IsSearchMatch(colIdx, rowIdx int) bool {
 	return false
 }
 
-// SelectedIssue returns the currently selected issue, or nil if none
+// SelectedIssue returns the currently selected issue, or nil if none. In the
+// epic column that is the lane's epic, and nil for the lane without one.
 func (b *BoardModel) SelectedIssue() *model.Issue {
+	if b.onEpicColumn {
+		return b.epicIssue(b.epicColumnLane)
+	}
+	return b.selectedCard()
+}
+
+// selectedCard returns the selected issue of the focused column.
+func (b *BoardModel) selectedCard() *model.Issue {
 	col := b.actualFocusedCol()
 	cols := b.columns[col]
 	row := b.selectedRow[col]
@@ -878,6 +931,14 @@ func (b *BoardModel) SelectedIssue() *model.Issue {
 func (b *BoardModel) SelectIssueByID(id string) bool {
 	if id == "" {
 		return false
+	}
+	if b.hasEpicLanes() && b.epicOf[id] == id {
+		for _, lane := range b.shownLanes() {
+			if lane == id {
+				b.selectEpicColumn(id)
+				return true
+			}
+		}
 	}
 
 	// Search the shown columns; if found, set both focused column and selected row.
@@ -898,6 +959,7 @@ func (b *BoardModel) SelectIssueByID(id string) bool {
 				}
 			}
 			b.selectedRow[col] = row
+			b.onEpicColumn = false
 			return true
 		}
 	}

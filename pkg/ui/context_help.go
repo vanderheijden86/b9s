@@ -157,7 +157,7 @@ const contextHelpGraph = `## Dependency Graph
 const contextHelpBoard = `## Board View
 
 **Navigation**
-  h/l  j/k  Column, issue
+  h/l  j/k  Column, issue (epics: the first column)
   1-4  H/L  Jump to column, first/last
   gg/G      Top/bottom of column
 

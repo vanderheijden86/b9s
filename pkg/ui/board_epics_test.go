@@ -562,49 +562,143 @@ func selectedID(b BoardModel) string {
 	return ""
 }
 
-// h and l move across the lane the selection is in, so the selection stays
-// on the same band of the screen instead of jumping to another epic.
-func TestBoardEpics_SideMovesStayInTheLane(t *testing.T) {
-	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
-		b := newEpicBoard(view)
-		b.SelectIssueByID("spectroscope-eg0.2.1")
-		b.MoveRight()
-		if got := selectedID(b); got != "eg0.2" {
-			t.Fatalf("%s: l from eg0.2.1 must land on eg0.2 in the same lane, got %q", view, got)
+// arrowWalk presses arrow keys on the board and checks where each one lands.
+// A want starting with "epic:" names the lane selected in the epic column,
+// "epic:" alone being the lane without an epic.
+func arrowWalk(t *testing.T, b *BoardModel, view BoardEpicView, steps [][2]string) {
+	t.Helper()
+	for i, s := range steps {
+		switch s[0] {
+		case "left":
+			b.MoveLeft()
+		case "right":
+			b.MoveRight()
+		case "up":
+			b.MoveUp()
+		case "down":
+			b.MoveDown()
 		}
-		b.MoveLeft()
-		if got := selectedID(b); got != "eg0.2.1" {
-			t.Fatalf("%s: h back must return to the card it came from, got %q", view, got)
+		got := selectedID(*b)
+		if b.OnEpicColumn() {
+			got = "epic:" + strings.TrimPrefix(b.epicColumnLane, "spectroscope-")
 		}
-		b.SelectIssueByID("spectroscope-k3s.1")
-		b.MoveRight()
-		if got := selectedID(b); got != "k3s" {
-			t.Fatalf("%s: with no k3s card in progress, l must land on the k3s epic there, got %q", view, got)
-		}
-		b.SelectIssueByID("spectroscope-x1")
-		b.MoveRight()
-		if got := selectedID(b); got != "eg0.2" {
-			t.Fatalf("%s: with no lane card to the right, l takes the nearest card above, got %q", view, got)
+		if got != s[1] {
+			t.Fatalf("%s step %d (%s): want %q, got %q", view, i, s[0], s[1], got)
 		}
 	}
 }
 
-// } and { step through the epics: to the next epic, and to the start of the
-// current lane, then to the epic before it.
+// The epics form the first column. Left and right move between it and the
+// status columns inside the selected lane, and skip a column where the lane
+// has no card. Up and down in the epic column change the lane.
+func TestBoardEpics_EpicColumnIsTheFirstColumn(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newEpicBoard(view)
+		b.SelectIssueByID("spectroscope-eg0.1")
+		arrowWalk(t, &b, view, [][2]string{
+			{"right", "eg0.2"}, // in progress
+			{"right", "eg0.2"}, // no eg0 card in blocked
+			{"left", "eg0.1"},
+			{"left", "epic:eg0"},
+			{"left", "epic:eg0"},
+			{"up", "epic:k3s"},
+			{"up", "epic:k3s"},
+			{"right", "k3s.1"},
+			{"right", "k3s.1"}, // in progress holds only the k3s epic itself
+			{"left", "epic:k3s"},
+			{"down", "epic:eg0"},
+			{"down", "epic:"},
+			{"down", "epic:"},
+			{"right", "x1"},
+			{"left", "epic:"},
+			{"up", "epic:eg0"},
+			{"right", "eg0.1"},
+		})
+		if sel := b.SelectedIssue(); sel == nil || sel.ID != "spectroscope-eg0.1" {
+			t.Fatalf("%s: SelectedIssue follows the card, got %+v", view, sel)
+		}
+	}
+}
+
+// Up and down on a card stay in the lane and stop at its first and last card.
+func TestBoardEpics_UpDownStayInTheLane(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newEpicBoard(view)
+		b.SelectIssueByID("spectroscope-eg0.1")
+		arrowWalk(t, &b, view, [][2]string{
+			{"down", "eg0.2.1"},
+			{"down", "eg0.2.1"}, // x1 is in the next lane
+			{"up", "eg0.1"},
+			{"up", "eg0.1"}, // k3s.1 is in the lane above
+		})
+		b.SelectIssueByID("spectroscope-eg0.2")
+		arrowWalk(t, &b, view, [][2]string{{"up", "eg0.2"}, {"down", "eg0.2"}})
+	}
+}
+
+// The selected epic is the issue the detail pane shows; the lane without an
+// epic has no issue.
+func TestBoardEpics_EpicColumnSelectsTheEpicIssue(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
+	b.SelectIssueByID("spectroscope-k3s.1")
+	b.MoveLeft()
+	if sel := b.SelectedIssue(); sel == nil || sel.ID != "spectroscope-k3s" {
+		t.Fatalf("the epic column selects the epic issue, got %+v", sel)
+	}
+	b.MoveDown()
+	b.MoveDown()
+	if sel := b.SelectedIssue(); sel != nil {
+		t.Fatalf("the lane without an epic has no issue, got %+v", sel)
+	}
+	if !b.SelectIssueByID("spectroscope-eg0") || !b.OnEpicColumn() || b.epicColumnLane != "spectroscope-eg0" {
+		t.Fatal("selecting an epic by id selects it in the epic column")
+	}
+	b.SelectIssueByID("spectroscope-x1")
+	if b.OnEpicColumn() {
+		t.Fatal("selecting a card leaves the epic column")
+	}
+}
+
+// Only the epic column highlights the epic; a card stays plain meanwhile.
+func TestBoardEpics_EpicColumnHighlightsOnlyTheEpic(t *testing.T) {
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.TrueColor)
+	theme := DefaultTheme(renderer)
+	bg := bgSeqFromColor(theme.Highlight, renderer)
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := NewBoardModel(epicBoardIssues(), theme)
+		b.SetActiveProjectName("spectroscope")
+		b.SetEpicView(view)
+		b.SelectIssueByID("spectroscope-k3s.1")
+		b.MoveLeft()
+		for _, line := range strings.Split(b.View(200, 40), "\n") {
+			if view == BoardEpicRail {
+				// The rail cell shares the line; its right edge is the first │.
+				line = line[strings.Index(line, "│")+len("│"):]
+			}
+			if strings.Contains(stripANSI(line), "mac-k3s") && strings.Contains(line, bg) {
+				t.Fatalf("%s: the card must not look selected while the epic is:\n%s", view, stripANSI(line))
+			}
+		}
+	}
+}
+
+// } and { step through the epic column: { first selects the epic of the
+// current lane, then the epic before it.
 func TestBoardEpics_BracesJumpBetweenEpics(t *testing.T) {
 	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
 		m := epicKeyModel(t)
 		m.board.SetEpicView(view)
 		m.board.SelectIssueByID("spectroscope-k3s.1")
 		steps := []struct{ key, want string }{
-			{"}", "eg0"}, {"}", "x1"}, {"}", "x1"},
+			{"}", "eg0"}, {"}", ""}, {"}", ""},
 			{"{", "eg0"}, {"{", "k3s"}, {"{", "k3s"},
 		}
 		for i, s := range steps {
 			u, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s.key)})
 			m = u.(Model)
-			if got := selectedID(m.board); got != s.want {
-				t.Fatalf("%s step %d (%s): want %q, got %q", view, i, s.key, s.want, got)
+			if got := strings.TrimPrefix(m.board.epicColumnLane, "spectroscope-"); !m.board.OnEpicColumn() || got != s.want {
+				t.Fatalf("%s step %d (%s): want epic %q, got %q", view, i, s.key, s.want, got)
 			}
 		}
 		m.board.SelectIssueByID("spectroscope-eg0.2")
@@ -615,34 +709,10 @@ func TestBoardEpics_BracesJumpBetweenEpics(t *testing.T) {
 	}
 }
 
-// j and k move over cards only. An epic is a lane header, reached with { and },
-// so whether its status matches the column never makes it a stop.
-func TestBoardEpics_UpDownSkipLaneHeaders(t *testing.T) {
+// g, G and paging move over the cards of the whole column, never onto an epic.
+func TestBoardEpics_JumpsSkipLaneHeaders(t *testing.T) {
 	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
 		b := newEpicBoard(view)
-		b.SelectIssueByID("spectroscope-k3s.1")
-		for _, want := range []string{"eg0.1", "eg0.2.1", "x1", "x1"} {
-			b.MoveDown()
-			if got := selectedID(b); got != want {
-				t.Fatalf("%s: j wants %q, got %q", view, want, got)
-			}
-		}
-		for _, want := range []string{"eg0.2.1", "eg0.1", "k3s.1", "k3s.1"} {
-			b.MoveUp()
-			if got := selectedID(b); got != want {
-				t.Fatalf("%s: k wants %q, got %q", view, want, got)
-			}
-		}
-		b.SelectIssueByID("spectroscope-eg0")
-		b.MoveDown()
-		if got := selectedID(b); got != "eg0.1" {
-			t.Fatalf("%s: j from an epic goes to the next card, got %q", view, got)
-		}
-		b.SelectIssueByID("spectroscope-eg0")
-		b.MoveUp()
-		if got := selectedID(b); got != "k3s.1" {
-			t.Fatalf("%s: k from an epic goes to the card above, got %q", view, got)
-		}
 		b.SelectIssueByID("spectroscope-eg0.2")
 		b.MoveToTop()
 		if got := selectedID(b); got != "eg0.2" {
@@ -651,6 +721,11 @@ func TestBoardEpics_UpDownSkipLaneHeaders(t *testing.T) {
 		b.PageUp(40)
 		if got := selectedID(b); got != "eg0.2" {
 			t.Fatalf("%s: page up must not land on an epic, got %q", view, got)
+		}
+		b.SelectIssueByID("spectroscope-k3s.1")
+		b.MoveToBottom()
+		if got := selectedID(b); got != "x1" {
+			t.Fatalf("%s: bottom of open is its last card, got %q", view, got)
 		}
 	}
 }

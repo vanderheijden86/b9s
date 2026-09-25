@@ -275,7 +275,7 @@ An issue belongs to its nearest epic ancestor through parent-child links. The bo
 
 Issues without an epic sit in a last `No epic` lane. `Tab` folds the selected issue's epic: its cards leave the board and each column shows how many it hides. `Shift-Tab` folds every epic, or unfolds them all when one is folded. The epic's own issue is the lane header, not a card; selecting it highlights the lane.
 
-`h` and `l` keep the selection in its lane: the target column's card in that lane, else the lane's epic, else the nearest card above the lane. `j`, `k`, `gg`, `G` and the page keys move over cards only and pass the epic headers, since an epic sits in one column but heads the lane in all of them. `}` goes to the next epic, and `{` goes to the start of the current lane, then to the epic before it. An epic sits in the column of its own status, so the focused column can change.
+The epics form the first column of the board: the rail cells in the rail design, the header rows in the rows design. `Left` and `Right` (`h` `l`) move between the epic column and the status columns inside the selected lane, and skip a column where the lane has no card. `Right` from an epic goes to the lane's card in the first column that has one. `Up` and `Down` (`j` `k`) move between the cards of the lane in the column and stop at its first and last card. In the epic column they go to the epic above or below, which is how you change lane; the lane without an epic is the last stop. `gg`, `G` and the page keys move over all the cards of the column. `}` selects the next epic, and `{` selects the epic of the current lane, then the epic before it. A selected epic shows in the detail pane.
 
 Completion counts every issue under the epic in the project, closed ones included, so a filter never changes it. Lanes come in order of the most urgent open issue in them. A project without epics shows the plain board in every design.
 
@@ -283,8 +283,8 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 
 | Keys | Action |
 |------|--------|
-| `h` `l`, `Left` `Right` | Change the column and stay in the epic lane |
-| `j` `k`, `Up` `Down` | Move between cards in the column |
+| `h` `l`, `Left` `Right` | Move between the epic column and the status columns, in the lane |
+| `j` `k`, `Up` `Down` | Move between the lane's cards, or between epics in the epic column |
 | `{` `}` | Go to the previous or next epic |
 | `v` | Switch the epic design: rail or rows |
 | `Tab` | Fold or unfold the selected issue's epic |

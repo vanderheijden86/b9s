@@ -163,7 +163,9 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 	}
 	regions := planBoardRegions(colsW, b.regionInputs(), b.actualFocusedCol(), adaptiveBreakpoints)
 	focused := b.actualFocusedCol()
-	sel := b.SelectedIssue()
+	if b.onEpicColumn {
+		focused = -1 // no card is selected
+	}
 
 	var lines []boardLine
 	var lanes []boardLane
@@ -173,7 +175,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 
 	for li, epic := range b.laneOrder(regions) {
 		folded := epic != "" && b.foldedEpics[epic]
-		epicSelected := sel != nil && epic != "" && sel.ID == epic
+		epicSelected := b.onEpicColumn && b.epicColumnLane == epic
 		lane := boardLane{epic: epic, start: len(lines), selected: epicSelected}
 		top := 0
 		if railW > 0 {
@@ -240,7 +242,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 			for row, s := range cellSpans[i] {
 				g := span{lane.start + top + s.start, lane.start + top + s.end}
 				cards = append(cards, g)
-				if r.col == focused && row == b.selectedRow[r.col] && sel != nil && b.columns[r.col][row].ID == sel.ID {
+				if r.col == focused && row == b.selectedRow[r.col] {
 					selSpan = g
 				}
 			}

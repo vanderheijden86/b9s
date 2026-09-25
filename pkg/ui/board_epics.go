@@ -89,6 +89,9 @@ func epicColor(id string) lipgloss.AdaptiveColor {
 	return epicPalette[h.Sum32()%uint32(len(epicPalette))]
 }
 
+// OnEpicColumn reports whether the selection is in the epic column.
+func (b *BoardModel) OnEpicColumn() bool { return b.onEpicColumn }
+
 // EpicView returns the active epic design.
 func (b *BoardModel) EpicView() BoardEpicView { return b.epicView }
 
@@ -326,53 +329,69 @@ func (b *BoardModel) ToggleAllEpicFolds() {
 	}
 }
 
-// laneRank orders the lanes: epics by epicOrder, the lane without an epic last.
-func laneRank(epic string, order map[string]int) int {
-	if epic == "" {
-		return len(order)
+// The epic column is the first column of a lane board, and a lane runs
+// across it and the status columns. Left and right move between the columns
+// inside the selected lane, skipping a column where the lane has no card; up
+// and down move inside the lane, or from lane to lane in the epic column.
+
+// selectedLane returns the lane the selection is in.
+func (b *BoardModel) selectedLane() string {
+	if b.onEpicColumn {
+		return b.epicColumnLane
 	}
-	return order[epic]
+	if sel := b.selectedCard(); sel != nil {
+		return b.epicOf[sel.ID]
+	}
+	return ""
 }
 
-// moveAcross focuses the shown column at index to and keeps the selection in
-// the epic lane it was in, so it stays on the same band of the screen. The
-// column's own selection wins while it is in that lane; otherwise the lane's
-// first card, then the lane's epic, then the nearest card above the lane.
-func (b *BoardModel) moveAcross(to int) {
-	lane, inLane := "", false
-	if sel := b.SelectedIssue(); sel != nil && b.hasEpicLanes() {
-		lane, inLane = b.epicOf[sel.ID], true
-	}
-	b.focusedCol = to
-	col := b.actualFocusedCol()
+// laneCardRow returns the row of col to select for lane: the column's own
+// selection while it is a card of that lane, else the lane's first card, or
+// -1 when the lane has no card in col.
+func (b *BoardModel) laneCardRow(col int, lane string) int {
 	cols := b.columns[col]
-	if !inLane || len(cols) == 0 {
-		return
+	if row := b.selectedRow[col]; row < len(cols) && b.isCardRow(col, row) && b.epicOf[cols[row].ID] == lane {
+		return row
 	}
-	if row := b.selectedRow[col]; row < len(cols) && b.epicOf[cols[row].ID] == lane {
-		return
-	}
-	header := -1
 	for row, is := range cols {
-		if b.epicOf[is.ID] != lane {
-			continue
+		if b.epicOf[is.ID] == lane && b.isCardRow(col, row) {
+			return row
 		}
-		if is.ID != lane {
+	}
+	return -1
+}
+
+// moveAcross selects the lane's card in the nearest shown column from index
+// from in direction step. Moving left past the first column with a card
+// selects the lane's epic.
+func (b *BoardModel) moveAcross(from, step int) {
+	lane := b.selectedLane()
+	for i := from; i >= 0 && i < len(b.activeColIdx); i += step {
+		col := b.activeColIdx[i]
+		if row := b.laneCardRow(col, lane); row >= 0 {
+			b.focusedCol = i
 			b.selectedRow[col] = row
+			b.onEpicColumn = false
 			return
 		}
-		header = row
 	}
-	if header >= 0 {
-		b.selectedRow[col] = header
-		return
+	if step < 0 {
+		b.selectEpicColumn(lane)
 	}
-	order := b.epicOrder()
-	rank := laneRank(lane, order)
-	b.selectedRow[col] = 0
-	for row, is := range cols {
-		if laneRank(b.epicOf[is.ID], order) < rank {
-			b.selectedRow[col] = row
+}
+
+func (b *BoardModel) selectEpicColumn(lane string) {
+	b.onEpicColumn = true
+	b.epicColumnLane = lane
+}
+
+// stepEpicColumn selects the epic step lanes away, staying at either end.
+func (b *BoardModel) stepEpicColumn(step int) {
+	lanes := b.shownLanes()
+	for i, lane := range lanes {
+		if lane == b.epicColumnLane {
+			b.epicColumnLane = lanes[max(min(i+step, len(lanes)-1), 0)]
+			return
 		}
 	}
 }
@@ -386,78 +405,58 @@ func (b *BoardModel) shownLanes() []string {
 	return b.laneOrder(regions)
 }
 
-// laneHead returns where the lane starts: its epic when the epic is on the
-// board, else its first issue in the focused column, else in any shown column.
-func (b *BoardModel) laneHead(lane string) (col, row int, ok bool) {
-	cols := append([]int{b.actualFocusedCol()}, b.activeColIdx...)
-	if lane != "" {
-		for _, c := range cols {
-			for r, is := range b.columns[c] {
-				if is.ID == lane {
-					return c, r, true
-				}
+// leaveStaleEpicColumn drops the epic column selection once its lane is
+// gone, so the selection falls back to the focused column's card.
+func (b *BoardModel) leaveStaleEpicColumn() {
+	if !b.onEpicColumn {
+		return
+	}
+	if b.hasEpicLanes() {
+		for _, lane := range b.shownLanes() {
+			if lane == b.epicColumnLane {
+				return
 			}
 		}
 	}
-	for _, c := range cols {
-		for r, is := range b.columns[c] {
-			if b.epicOf[is.ID] == lane {
-				return c, r, true
-			}
-		}
-	}
-	return 0, 0, false
+	b.onEpicColumn = false
 }
 
-func (b *BoardModel) selectAt(col, row int) {
-	for i, c := range b.activeColIdx {
-		if c == col {
-			b.focusedCol = i
-			b.selectedRow[col] = row
-			return
+// epicIssue returns the issue of epic id, which may sit outside the filter.
+func (b *BoardModel) epicIssue(id string) *model.Issue {
+	if id == "" {
+		return nil
+	}
+	if is := b.issueMap[id]; is != nil {
+		return is
+	}
+	for i := range b.epicUniverse {
+		if b.epicUniverse[i].ID == id {
+			return &b.epicUniverse[i]
 		}
 	}
+	return nil
 }
 
-// NextEpic selects the start of the lane after the selected issue's lane.
+// NextEpic selects the epic of the lane after the selection's lane.
 func (b *BoardModel) NextEpic() {
-	sel := b.SelectedIssue()
-	if sel == nil {
+	if !b.hasEpicLanes() {
 		return
 	}
-	lanes := b.shownLanes()
-	cur := b.epicOf[sel.ID]
-	for i, lane := range lanes {
-		if lane != cur || i+1 >= len(lanes) {
-			continue
-		}
-		if col, row, ok := b.laneHead(lanes[i+1]); ok {
-			b.selectAt(col, row)
-		}
-		return
+	if !b.onEpicColumn {
+		b.selectEpicColumn(b.selectedLane())
 	}
+	b.stepEpicColumn(1)
 }
 
-// PrevEpic selects the start of the selected issue's lane, or the start of
-// the lane before it when the selection is already there.
+// PrevEpic selects the epic of the selection's lane, or the epic before it
+// when that epic is already selected.
 func (b *BoardModel) PrevEpic() {
-	sel := b.SelectedIssue()
-	if sel == nil {
+	if !b.hasEpicLanes() {
 		return
 	}
-	lanes := b.shownLanes()
-	cur := b.epicOf[sel.ID]
-	for i, lane := range lanes {
-		if lane != cur {
-			continue
-		}
-		col, row, ok := b.laneHead(lane)
-		if ok && b.columns[col][row].ID == sel.ID && i > 0 {
-			col, row, ok = b.laneHead(lanes[i-1])
-		}
-		if ok {
-			b.selectAt(col, row)
-		}
+	if !b.onEpicColumn {
+		b.selectEpicColumn(b.selectedLane())
 		return
 	}
+	b.stepEpicColumn(-1)
 }
