@@ -240,7 +240,7 @@ func TestBoardAdaptiveView_ShowsBoxedCardsAndRails(t *testing.T) {
 		"eg0.4.1", "lane: reviewing", "blocks 1",
 		"lane: implementing",
 		"closed 20 hidden", "c closed",
-		"v design", "{ } epic", "↑↓ in lane",
+		"v design", "{ } epic", "↑↓ card",
 		"╭", "╰",
 	} {
 		if !strings.Contains(view, want) {

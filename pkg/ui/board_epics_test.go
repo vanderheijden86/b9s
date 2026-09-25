@@ -620,16 +620,20 @@ func TestBoardEpics_EpicColumnIsTheFirstColumn(t *testing.T) {
 	}
 }
 
-// Up and down on a card stay in the lane and stop at its first and last card.
-func TestBoardEpics_UpDownStayInTheLane(t *testing.T) {
+// Up and down on a card move through the column's cards and cross into the
+// next lane, passing the epic headers.
+func TestBoardEpics_UpDownCrossLanesInTheColumn(t *testing.T) {
 	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
 		b := newEpicBoard(view)
 		b.SelectIssueByID("spectroscope-eg0.1")
 		arrowWalk(t, &b, view, [][2]string{
 			{"down", "eg0.2.1"},
-			{"down", "eg0.2.1"}, // x1 is in the next lane
+			{"down", "x1"}, // into the lane without an epic
+			{"down", "x1"},
+			{"up", "eg0.2.1"},
 			{"up", "eg0.1"},
-			{"up", "eg0.1"}, // k3s.1 is in the lane above
+			{"up", "k3s.1"}, // past the eg0 header
+			{"up", "k3s.1"},
 		})
 		b.SelectIssueByID("spectroscope-eg0.2")
 		arrowWalk(t, &b, view, [][2]string{{"up", "eg0.2"}, {"down", "eg0.2"}})

@@ -73,7 +73,7 @@ func (b *BoardModel) renderBoardBar(width int) string {
 }
 
 func (b *BoardModel) renderKeyHints(width int) string {
-	hints := "←→ column  ↑↓ in lane  { } epic  f branch  tab fold  S-tab all  z fold column  c closed  enter detail  / search  s swimlane  v design"
+	hints := "←→ column  ↑↓ card  { } epic  f branch  tab fold  S-tab all  z fold column  c closed  enter detail  / search  s swimlane  v design"
 	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Render(truncateRunesHelper(hints, width, "…")), width)
 }
 

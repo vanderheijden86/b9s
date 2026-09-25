@@ -701,23 +701,17 @@ func (b *BoardModel) MoveDown() { b.moveVertical(1) }
 
 func (b *BoardModel) MoveUp() { b.moveVertical(-1) }
 
-// moveVertical moves one card in direction step, and never out of the lane.
+// moveVertical moves one card in direction step through the column, into
+// the next lane at a lane's edge. In the epic column it moves one epic.
 func (b *BoardModel) moveVertical(step int) {
 	if b.onEpicColumn {
 		b.stepEpicColumn(step)
 		return
 	}
 	col := b.actualFocusedCol()
-	cur := b.selectedRow[col]
-	r := b.cardRowFrom(col, cur+step, step)
-	if r < 0 {
-		return
+	if r := b.cardRowFrom(col, b.selectedRow[col]+step, step); r >= 0 {
+		b.selectedRow[col] = r
 	}
-	cols := b.columns[col]
-	if b.hasEpicLanes() && cur < len(cols) && b.epicOf[cols[r].ID] != b.epicOf[cols[cur].ID] {
-		return
-	}
-	b.selectedRow[col] = r
 }
 
 func (b *BoardModel) MoveRight() {
