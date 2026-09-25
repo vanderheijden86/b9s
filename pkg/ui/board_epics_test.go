@@ -490,3 +490,127 @@ func TestBoardEpicRail_SelectedEpicHasAHighlightedBorder(t *testing.T) {
 		t.Fatalf("an unselected epic's box must not use the primary border color, got %q", top)
 	}
 }
+
+// The lane layout places cards by cardHeight and draws only the visible ones,
+// so a height that disagrees with the drawn card shifts every card below it.
+func TestBoardCardHeight_MatchesDrawnCard(t *testing.T) {
+	b := newEpicBoard(BoardEpicRail)
+	long := model.Issue{ID: "spectroscope-z1", Title: "A very long title that wraps over more than two lines on a narrow card for sure",
+		IssueType: model.TypeTask, Status: model.StatusOpen, Priority: 1,
+		Labels:       []string{"lane:review"},
+		Dependencies: []*model.Dependency{{IssueID: "spectroscope-z1", DependsOnID: "spectroscope-eg0.1", Type: model.DepBlocks}}}
+	issues := append(epicBoardIssues(), long)
+	for _, is := range issues {
+		for w := 8; w <= 48; w += 5 {
+			for _, sel := range []bool{false, true} {
+				got := b.cardHeight(is, w)
+				want := len(b.cardLines(is, w, sel, 0, 0))
+				if got != want {
+					t.Fatalf("%s at width %d: cardHeight %d, drawn %d lines", is.ID, w, got, want)
+				}
+			}
+		}
+	}
+}
+
+// In the rows design the epic header is a full-width box, so it stands out
+// from the cards under it, and a selected epic gets the selected-card border.
+func TestBoardEpicRows_EpicHeaderIsAFullWidthBox(t *testing.T) {
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.TrueColor)
+	theme := DefaultTheme(renderer)
+	probe := renderer.NewStyle().Foreground(theme.Primary).Render("x")
+	primary := probe[:strings.Index(probe, "x")]
+
+	b := NewBoardModel(epicBoardIssues(), theme)
+	b.SetActiveProjectName("spectroscope")
+	b.SetEpicView(BoardEpicRows)
+	const width = 160
+	for _, sel := range []string{"spectroscope-x1", "spectroscope-eg0"} {
+		b.SelectIssueByID(sel)
+		raw := strings.Split(b.View(width, 40), "\n")
+		head := -1
+		for i, line := range raw {
+			if strings.Contains(stripANSI(line), "◆ eg0") {
+				head = i
+				break
+			}
+		}
+		if head < 1 || head+1 >= len(raw) {
+			t.Fatalf("no eg0 header:\n%s", stripANSI(strings.Join(raw, "\n")))
+		}
+		top, mid, bottom := stripANSI(raw[head-1]), stripANSI(raw[head]), stripANSI(raw[head+1])
+		if !strings.HasPrefix(top, "╭") || !strings.HasSuffix(top, "╮") {
+			t.Fatalf("the header box must open over the full width, got %q", top)
+		}
+		if !strings.HasPrefix(mid, "┃") || !strings.HasSuffix(mid, "│") {
+			t.Fatalf("the header row must have both box sides, got %q", mid)
+		}
+		if !strings.HasPrefix(bottom, "╰") || !strings.HasSuffix(bottom, "╯") {
+			t.Fatalf("the header box must close under the row, got %q", bottom)
+		}
+		if selected := sel == "spectroscope-eg0"; selected != strings.HasPrefix(raw[head-1], primary) {
+			t.Fatalf("selected=%v: the header border must be primary only when the epic is selected, got %q", selected, raw[head-1])
+		}
+	}
+}
+
+func selectedID(b BoardModel) string {
+	if sel := b.SelectedIssue(); sel != nil {
+		return strings.TrimPrefix(sel.ID, "spectroscope-")
+	}
+	return ""
+}
+
+// h and l move across the lane the selection is in, so the selection stays
+// on the same band of the screen instead of jumping to another epic.
+func TestBoardEpics_SideMovesStayInTheLane(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := newEpicBoard(view)
+		b.SelectIssueByID("spectroscope-eg0.2.1")
+		b.MoveRight()
+		if got := selectedID(b); got != "eg0.2" {
+			t.Fatalf("%s: l from eg0.2.1 must land on eg0.2 in the same lane, got %q", view, got)
+		}
+		b.MoveLeft()
+		if got := selectedID(b); got != "eg0.2.1" {
+			t.Fatalf("%s: h back must return to the card it came from, got %q", view, got)
+		}
+		b.SelectIssueByID("spectroscope-k3s.1")
+		b.MoveRight()
+		if got := selectedID(b); got != "k3s" {
+			t.Fatalf("%s: with no k3s card in progress, l must land on the k3s epic there, got %q", view, got)
+		}
+		b.SelectIssueByID("spectroscope-x1")
+		b.MoveRight()
+		if got := selectedID(b); got != "eg0.2" {
+			t.Fatalf("%s: with no lane card to the right, l takes the nearest card above, got %q", view, got)
+		}
+	}
+}
+
+// } and { step through the epics: to the next epic, and to the start of the
+// current lane, then to the epic before it.
+func TestBoardEpics_BracesJumpBetweenEpics(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		m := epicKeyModel(t)
+		m.board.SetEpicView(view)
+		m.board.SelectIssueByID("spectroscope-k3s.1")
+		steps := []struct{ key, want string }{
+			{"}", "eg0"}, {"}", "x1"}, {"}", "x1"},
+			{"{", "eg0"}, {"{", "k3s"}, {"{", "k3s"},
+		}
+		for i, s := range steps {
+			u, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s.key)})
+			m = u.(Model)
+			if got := selectedID(m.board); got != s.want {
+				t.Fatalf("%s step %d (%s): want %q, got %q", view, i, s.key, s.want, got)
+			}
+		}
+		m.board.SelectIssueByID("spectroscope-eg0.2")
+		u, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("{")})
+		if got := selectedID(u.(Model).board); got != "eg0" {
+			t.Fatalf("%s: { inside a lane goes to its epic first, got %q", view, got)
+		}
+	}
+}

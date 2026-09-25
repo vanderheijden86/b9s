@@ -430,8 +430,9 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "Navigation"},
 				KeyTable{Bindings: []KeyBinding{
-					{Key: "h / l", Desc: "Move between columns"},
+					{Key: "h / l", Desc: "Move between columns, in the same epic lane"},
 					{Key: "j / k", Desc: "Move within column"},
+					{Key: "{ / }", Desc: "Previous / next epic"},
 					{Key: "v", Desc: "Switch epic rail / epic rows"},
 					{Key: "Tab", Desc: "Fold the selected epic"},
 					{Key: "Shift+Tab", Desc: "Fold or unfold all epics"},

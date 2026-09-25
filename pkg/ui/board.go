@@ -593,13 +593,13 @@ func (b *BoardModel) MoveUp() {
 
 func (b *BoardModel) MoveRight() {
 	if b.focusedCol < len(b.activeColIdx)-1 {
-		b.focusedCol++
+		b.moveAcross(b.focusedCol + 1)
 	}
 }
 
 func (b *BoardModel) MoveLeft() {
 	if b.focusedCol > 0 {
-		b.focusedCol--
+		b.moveAcross(b.focusedCol - 1)
 	}
 }
 

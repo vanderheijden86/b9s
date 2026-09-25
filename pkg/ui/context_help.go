@@ -169,6 +169,7 @@ const contextHelpBoard = `## Board View
 
 **Epics**
   v         Epic rail / epic rows
+  { }       Previous / next epic
   Tab       Fold the selected epic
   S-Tab     Fold or unfold all
 

@@ -35,7 +35,7 @@ func (b BoardModel) View(width, height int) string {
 	return strings.Join(lines, "\n")
 }
 
-func (b BoardModel) renderBoardBar(width int) string {
+func (b *BoardModel) renderBoardBar(width int) string {
 	t := b.theme
 	bold := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
 	muted := t.Renderer.NewStyle().Foreground(t.Secondary)
@@ -69,12 +69,12 @@ func (b BoardModel) renderBoardBar(width int) string {
 	return joinLeftRight(left, muted.Render(right), width)
 }
 
-func (b BoardModel) renderKeyHints(width int) string {
-	hints := "h/l column  j/k card  tab fold  shift+tab fold all  c closed  enter detail  s swimlane  / search  v epic design"
+func (b *BoardModel) renderKeyHints(width int) string {
+	hints := "h/l column  j/k card  { } epic  tab fold  S-tab all  c closed  enter detail  / search  s swimlane  v design"
 	return padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Secondary).Render(truncateRunesHelper(hints, width, "…")), width)
 }
 
-func (b BoardModel) regionInputs() []boardRegionInput {
+func (b *BoardModel) regionInputs() []boardRegionInput {
 	var inputs []boardRegionInput
 	for _, col := range b.activeColIdx {
 		inputs = append(inputs, boardRegionInput{col: col, count: len(b.columns[col])})
@@ -85,7 +85,7 @@ func (b BoardModel) regionInputs() []boardRegionInput {
 // columnsBody renders the board body as exactly height lines of exactly
 // width cells: epic lanes when the board shows an epic, plain columns
 // otherwise.
-func (b BoardModel) columnsBody(width, height int) []string {
+func (b *BoardModel) columnsBody(width, height int) []string {
 	if b.hasEpicLanes() {
 		return b.lanesBody(width, height)
 	}
@@ -109,7 +109,7 @@ func (b BoardModel) columnsBody(width, height int) []string {
 	return out
 }
 
-func (b BoardModel) columnHeader(col, width int) string {
+func (b *BoardModel) columnHeader(col, width int) string {
 	t := b.theme
 	focused := col == b.actualFocusedCol()
 	title := b.getColumnHeaders()[col]
@@ -144,7 +144,7 @@ func (b BoardModel) columnHeader(col, width int) string {
 	return padCells(line, width)
 }
 
-func (b BoardModel) columnColor(col int) lipgloss.TerminalColor {
+func (b *BoardModel) columnColor(col int) lipgloss.TerminalColor {
 	switch b.swimLaneMode {
 	case SwimByPriority:
 		return []lipgloss.AdaptiveColor{
@@ -165,13 +165,13 @@ func (b BoardModel) columnColor(col int) lipgloss.TerminalColor {
 }
 
 // columnHead is the column title and its rule.
-func (b BoardModel) columnHead(col, width int) []string {
+func (b *BoardModel) columnHead(col, width int) []string {
 	return []string{b.columnHeader(col, width), padCells(b.theme.Renderer.NewStyle().Foreground(b.theme.Border).Render(strings.Repeat("─", width)), width)}
 }
 
 // renderColumn draws a full region: header, rule, then cards scrolled so the
 // selection stays visible.
-func (b BoardModel) renderColumn(col, width, height int) []string {
+func (b *BoardModel) renderColumn(col, width, height int) []string {
 	t := b.theme
 	out := b.columnHead(col, width)
 	issues := b.columns[col]
@@ -212,7 +212,7 @@ func (b BoardModel) renderColumn(col, width, height int) []string {
 // emptyColumnNote explains an empty column in short phrases, one per rail
 // line. An empty stored BLOCKED column is common while open issues wait on
 // dependencies, so it names that count.
-func (b BoardModel) emptyColumnNote(col int) []string {
+func (b *BoardModel) emptyColumnNote(col int) []string {
 	if b.swimLaneMode == SwimByStatus && col == ColBlocked {
 		if n := computeColumnStats(b.columns[ColOpen], b.issueMap).BlockedCount; n > 0 {
 			return []string{"none stored", fmt.Sprintf("%d open", n), "wait on deps"}
@@ -223,7 +223,7 @@ func (b BoardModel) emptyColumnNote(col int) []string {
 }
 
 // renderRail draws a folded column: its name, its count and a short summary.
-func (b BoardModel) renderRail(col, width, height int) []string {
+func (b *BoardModel) renderRail(col, width, height int) []string {
 	t := b.theme
 	muted := t.Renderer.NewStyle().Foreground(t.Secondary)
 	issues := b.columns[col]
@@ -299,7 +299,7 @@ func recentlyClosed(issues []model.Issue, limit int) []model.Issue {
 
 // rowSurface returns the background sequence for a row: the selection, the
 // current search match, or none.
-func (b BoardModel) rowSurface(selected bool, col, row int) string {
+func (b *BoardModel) rowSurface(selected bool, col, row int) string {
 	t := b.theme
 	switch {
 	case selected:
@@ -310,14 +310,14 @@ func (b BoardModel) rowSurface(selected bool, col, row int) string {
 	return ""
 }
 
-func (b BoardModel) fg(selected bool, c lipgloss.TerminalColor) lipgloss.Style {
+func (b *BoardModel) fg(selected bool, c lipgloss.TerminalColor) lipgloss.Style {
 	if selected {
 		c = selectedCardTextColor
 	}
 	return b.theme.Renderer.NewStyle().Foreground(c)
 }
 
-func (b BoardModel) priorityStyle(issue model.Issue, selected bool) lipgloss.Style {
+func (b *BoardModel) priorityStyle(issue model.Issue, selected bool) lipgloss.Style {
 	if issue.Priority <= 1 {
 		return b.fg(selected, lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"}).Bold(true)
 	}

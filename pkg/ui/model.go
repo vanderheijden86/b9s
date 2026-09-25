@@ -3100,6 +3100,14 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.statusIsError = false
 		m.syncBoardToDetail()
 
+	// { and } step between the epic lanes.
+	case "{":
+		m.board.PrevEpic()
+		m.syncBoardToDetail()
+	case "}":
+		m.board.NextEpic()
+		m.syncBoardToDetail()
+
 	// Tab folds the selected issue's epic lane.
 	case "tab":
 		if !m.board.ToggleEpicFold() {
