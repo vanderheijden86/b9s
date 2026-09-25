@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detail View Options</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #eef0f4;
+    --term: #f7f8fa;
+    --text: #242832;
+    --muted: #697386;
+    --line: #c9ced8;
+    --accent: #6b47d9;
+    --id: #5b21b6;
+    --head: #0f6f86;
+    --hi: #c62828;
+    --open: #007700;
+    --prog: #006080;
+    --blocked: #cc0000;
+    --closed: #6b7385;
+    --task: #2684ff;
+    --epic: #6b47d9;
+    --chip-fg: #ffffff;
+    --sel-bg: #e3dcff;
+    --shadow: rgba(20, 24, 32, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0c0f; --term: #16171d; --text: #f8f8f2; --muted: #7f8bb3; --line: #3a3f52;
+      --accent: #bd93f9; --id: #bd93f9; --head: #8be9fd; --hi: #ef5350; --open: #50fa7b;
+      --prog: #8be9fd; --blocked: #ff5555; --closed: #6272a4; --task: #4c9aff; --epic: #bd93f9;
+      --chip-fg: #282a36; --sel-bg: #2c3350; --shadow: rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0c0f; --term: #16171d; --text: #f8f8f2; --muted: #7f8bb3; --line: #3a3f52;
+    --accent: #bd93f9; --id: #bd93f9; --head: #8be9fd; --hi: #ef5350; --open: #50fa7b;
+    --prog: #8be9fd; --blocked: #ff5555; --closed: #6272a4; --task: #4c9aff; --epic: #bd93f9;
+    --chip-fg: #282a36; --sel-bg: #2c3350; --shadow: rgba(0, 0, 0, 0.4);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  main { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; max-width: 86ch; line-height: 1.45; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .tab, .toggle {
+    font: inherit; font-size: 13px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--term); color: var(--text); cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--term); }
+  .toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .spacer { flex: 1; }
+
+  .term {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--term);
+    box-shadow: 0 12px 28px var(--shadow);
+  }
+  .screen {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: pre;
+    padding: 10px 12px;
+    width: max-content;
+  }
+  .verdict { margin: 12px 2px 0; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 92ch; }
+  .verdict strong { color: var(--text); }
+
+  /* Terminal cell styles: only what lipgloss can emit (fg, bg, bold, italic, underline). */
+  .b { font-weight: 700; }
+  .i { font-style: italic; }
+  .u { text-decoration: underline; }
+  .mu { color: var(--muted); }
+  .ln { color: var(--line); }
+  .ac { color: var(--accent); }
+  .id { color: var(--id); font-weight: 700; }
+  .hd { color: var(--head); }
+  .hi { color: var(--hi); }
+  .st-open { color: var(--open); }
+  .st-in_progress { color: var(--prog); }
+  .st-blocked { color: var(--blocked); }
+  .st-closed { color: var(--closed); }
+  .ty-task { color: var(--task); }
+  .ty-epic { color: var(--epic); }
+  .chip { font-weight: 700; color: var(--chip-fg); }
+  .chip.st-open { background: var(--open); }
+  .chip.st-in_progress { background: var(--prog); }
+  .chip.st-blocked { background: var(--blocked); }
+  .chip.st-closed { background: var(--closed); }
+  .tabon { color: var(--chip-fg); background: var(--accent); font-weight: 700; }
+  .sel { background: var(--sel-bg); }
+  .click { cursor: pointer; }
+  .click:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Detail view: five designs</h1>
+  <div class="sub">
+    The detail pane beside the tree, 76 columns wide. Every option draws only what a terminal can show:
+    character cells, foreground and background colors, bold and box-drawing lines. No emoji, so every column lines up.
+    The update notice moves out of the pane into the top bar in all five.
+    Switch between a task and an epic to see how each design handles children.
+  </div>
+
+  <div class="controls" role="tablist" aria-label="Detail view options" id="tabs"></div>
+  <div class="controls">
+    <button class="toggle" id="kind" type="button" aria-pressed="false">showing: task</button>
+    <span class="spacer"></span>
+    <button class="toggle" id="theme" type="button">theme</button>
+  </div>
+
+  <div class="term"><div class="screen" id="screen"></div></div>
+  <div class="verdict" id="verdict"></div>
+</main>
+
+<script>
+(() => {
+  const TASK = {
+    id: 'e5u3.9', type: 'task', icon: '✔', status: 'in_progress', pri: 1,
+    title: 'Build epic rail (default) and epic rows board designs; closed column behind c',
+    creator: 'vanderheijden86', email: 'vanderheijden86@gmail.com', assignee: '',
+    created: '2026-09-25 09:01', createdAgo: '2h', updated: '12m', labels: ['ui', 'board'],
+    description: 'User picked mockup option 5 (epic rail) as the default board design and option 1 (epic rows) as the second, switched with v. Chips and groups go. Cards become boxed. Columns equal width, no focus column. Closed column hidden by default and shown with c. See docs/mockups/board-epic-lanes-options.html.',
+    notes: [
+      { ago: '40m', text: 'Rail renders at 24 columns; 14/14 board tests green.' },
+      { ago: '1h', text: 'Started. Plan: rail layout first, then rows behind v.' },
+    ],
+    rels: [
+      { kind: 'parent', arrow: '↑', id: 'e5u3', icon: '♦', type: 'epic', title: 'Epic: Redesign the board TUI', status: 'open' },
+      { kind: 'blocked by', arrow: '⊘', id: 'e5u3.8', icon: '✔', type: 'task', title: 'Add the lanes view model', status: 'closed' },
+      { kind: 'blocks', arrow: '→', id: 'e5u3.10', icon: '✔', type: 'task', title: 'Remove the old swimlane chips', status: 'open' },
+    ],
+    children: [],
+    comments: [
+      { author: 'vanderheijden86', ago: '1h', text: 'Keep the rail 24 columns wide; narrower wraps the epic title badly.' },
+    ],
+  };
+  const CHILDREN = [
+    { id: 'e5u3.1', title: 'Write the lanes spec', status: 'closed', ago: '3d' },
+    { id: 'e5u3.2', title: 'Draw five lane mockups', status: 'closed', ago: '2d' },
+    { id: 'e5u3.5', title: 'Group cards by epic', status: 'closed', ago: '1d' },
+    { id: 'e5u3.6', title: 'Box the cards', status: 'closed', ago: '1d' },
+    { id: 'e5u3.7', title: 'Equal column widths', status: 'closed', ago: '20h' },
+    { id: 'e5u3.8', title: 'Add the lanes view model', status: 'closed', ago: '3h' },
+    { id: 'e5u3.9', title: 'Build epic rail (default) and epic rows board designs', status: 'in_progress', ago: '12m' },
+    { id: 'e5u3.10', title: 'Remove the old swimlane chips', status: 'open', ago: '' },
+    { id: 'e5u3.11', title: 'Update the README key tables', status: 'open', ago: '' },
+  ];
+  const EPIC = {
+    id: 'e5u3', type: 'epic', icon: '♦', status: 'open', pri: 1,
+    title: 'Epic: Redesign the board TUI',
+    creator: 'vanderheijden86', email: 'vanderheijden86@gmail.com', assignee: '',
+    created: '2026-09-21 14:10', createdAgo: '4d', updated: '12m', labels: ['ui'],
+    description: 'Replace the swimlane board with epic lanes. The user picks a layout from docs/mockups/board-epic-lanes-options.html; this epic covers the build, the tests and the README key tables.',
+    notes: [],
+    rels: [],
+    children: CHILDREN,
+    comments: [],
+  };
+
+  const W = 76;      // detail pane width in cells
+  const TW = 40;     // tree pane width in cells
+
+  // ---- cell helpers --------------------------------------------------------
+  const S = (t, c = '', extra) => Object.assign({ t: String(t), c }, extra || {});
+  const clen = s => Array.from(s).length;
+  const lineLen = l => l.reduce((n, s) => n + clen(s.t), 0);
+  const pad = (l, w) => { const n = w - lineLen(l); return n > 0 ? l.concat([S(' '.repeat(n))]) : l; };
+  const trunc = (s, n) => clen(s) <= n ? s : Array.from(s).slice(0, Math.max(n - 1, 0)).join('') + '…';
+  const spread = (left, right, w) => left.concat([S(' '.repeat(Math.max(w - lineLen(left) - lineLen(right), 1)))], right);
+  function wrap(text, w) {
+    const out = []; let cur = '';
+    for (const word of text.split(/\s+/)) {
+      if (!cur) cur = word;
+      else if (clen(cur) + 1 + clen(word) <= w) cur += ' ' + word;
+      else { out.push(cur); cur = word; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  const words = s => s.replace('_', ' ');
+  const chip = st => S(' ' + words(st).toUpperCase() + ' ', 'chip st-' + st);
+  const prio = p => S('P' + p, p <= 1 ? 'hi b' : 'mu b');
+  const person = (name, empty) => name ? S('@' + name) : S(empty, 'mu i');
+  const label = t => [S(t, 'mu b')];
+  const blank = () => [];
+  const bar = (done, total, n) => {
+    const f = Math.round(n * done / total);
+    return [S('━'.repeat(f), 'st-open'), S('─'.repeat(n - f), 'ln')];
+  };
+  const dot = st => S('●', 'st-' + st);
+  const people = it => [S('creator ', 'mu'), person(it.creator, 'unknown'), S('  assignee ', 'mu'), person(it.assignee, 'none')];
+
+  function relRow(r, w) {
+    const head = [S(r.arrow + ' ' + r.kind.padEnd(11), 'mu'), S(r.id.padEnd(8), 'id')];
+    const status = [dot(r.status), S(' ' + words(r.status), 'st-' + r.status)];
+    const room = w - lineLen(head) - lineLen(status) - 1;
+    return spread(head.concat([S(trunc(r.title, room))]), status, w);
+  }
+  function childRow(c, w) {
+    const mark = c.status === 'closed' ? S('✔ ', 'st-closed') : c.status === 'in_progress' ? S('▶ ', 'st-in_progress') : S('○ ', 'st-open');
+    const head = [S('  '), mark, S(c.id.padEnd(8), 'id')];
+    const tail = c.ago ? [S(c.ago, 'mu')] : [S(words(c.status), 'st-' + c.status)];
+    const room = w - lineLen(head) - lineLen(tail) - 1;
+    const titleCls = c.status === 'closed' ? 'mu' : '';
+    return spread(head.concat([S(trunc(c.title, room), titleCls)]), tail, w);
+  }
+  const doneOf = it => it.children.filter(c => c.status === 'closed').length;
+
+  // Shared compact header used by options 3 and 4.
+  function compactHeader(it, w) {
+    const out = [];
+    out.push(spread([S(it.icon + ' ' + it.type, 'ty-' + it.type), S(' · ', 'mu'), S(it.id, 'id')], [S('updated ' + it.updated, 'st-open')], w));
+    wrap(it.title, w).forEach(l => out.push([S(l, 'b')]));
+    out.push([chip(it.status), S('  '), prio(it.pri), S('  ')].concat(people(it)));
+    return out;
+  }
+
+  // ---- option 1: card header ---------------------------------------------
+  function optCard(it) {
+    const out = [];
+    const bc = 'st-' + it.status;
+    const iw = W - 4;
+    const row = segs => [S('┃ ', bc)].concat(pad(segs, iw), [S(' ┃', bc)]);
+    out.push([S('┏' + '━'.repeat(W - 2) + '┓', bc)]);
+    out.push(row(spread([S(it.icon + ' ' + it.type, 'ty-' + it.type), S(' · ', 'mu'), S(it.id, 'id')], [S('updated ' + it.updated, 'st-open')], iw)));
+    wrap(it.title, iw).forEach(l => out.push(row([S(l, 'b')])));
+    out.push(row([]));
+    out.push(row([chip(it.status), S('  '), prio(it.pri), S('  ')].concat(people(it))));
+    out.push([S('┗' + '━'.repeat(W - 2) + '┛', bc)]);
+    out.push([S(' created ' + it.created.slice(0, 10) + ' · ' + it.email, 'mu')]);
+    out.push([S(' ')].concat(it.labels.map(l => S('#' + l + ' ', 'ac'))));
+    out.push(blank());
+    out.push(label('DESCRIPTION'));
+    wrap(it.description, W).forEach(l => out.push([S(l)]));
+    out.push(blank());
+    if (it.children.length) {
+      out.push(label('CHILDREN · ' + doneOf(it) + '/' + it.children.length).concat([S('  ')], bar(doneOf(it), it.children.length, 30)));
+      it.children.forEach(c => out.push(childRow(c, W)));
+      out.push(blank());
+    }
+    if (it.rels.length) {
+      out.push(label('RELATIONS · ' + it.rels.length));
+      it.rels.forEach(r => out.push(relRow(r, W)));
+      out.push(blank());
+    }
+    if (it.notes.length) {
+      out.push(label('NOTES'));
+      it.notes.forEach(n => wrap(n.text, W - 6).forEach((l, i) => out.push([S(i ? '      ' : n.ago.padEnd(6), 'mu'), S(l)])));
+      out.push(blank());
+    }
+    if (it.comments.length) {
+      out.push(label('COMMENTS · ' + it.comments.length));
+      it.comments.forEach(c => {
+        out.push([S(c.author, 'ac b'), S(' · ' + c.ago, 'mu')]);
+        wrap(c.text, W - 2).forEach(l => out.push([S('  ' + l)]));
+      });
+    }
+    return out;
+  }
+
+  // ---- option 2: inspector sidebar ---------------------------------------
+  function optInspector(it) {
+    const R = 28, L = W - R - 3;
+    const left = [];
+    left.push([S(it.icon + ' ', 'ty-' + it.type), S(it.id, 'id')]);
+    wrap(it.title, L).forEach(l => left.push([S(l, 'b')]));
+    left.push(blank());
+    left.push(label('DESCRIPTION'));
+    wrap(it.description, L).forEach(l => left.push([S(l)]));
+    left.push(blank());
+    if (it.children.length) {
+      left.push(label('CHILDREN · ' + doneOf(it) + '/' + it.children.length));
+      it.children.forEach(c => left.push(childRow(c, L)));
+      left.push(blank());
+    }
+    if (it.notes.length) {
+      left.push(label('NOTES'));
+      it.notes.forEach(n => wrap(n.text, L - 5).forEach((l, i) => left.push([S(i ? '     ' : n.ago.padEnd(5), 'mu'), S(l)])));
+      left.push(blank());
+    }
+    if (it.comments.length) {
+      left.push(label('COMMENTS · ' + it.comments.length));
+      it.comments.forEach(c => {
+        left.push([S(c.author, 'ac b'), S(' · ' + c.ago, 'mu')]);
+        wrap(c.text, L - 2).forEach(l => left.push([S('  ' + l)]));
+      });
+    }
+
+    const right = [];
+    const prop = (k, v) => right.push([S(k.padEnd(10), 'mu')].concat(v));
+    prop('status', [dot(it.status), S(' ' + words(it.status), 'st-' + it.status)]);
+    prop('priority', [prio(it.pri)]);
+    prop('type', [S(it.icon + ' ' + it.type, 'ty-' + it.type)]);
+    prop('creator', [person(it.creator, 'unknown')]);
+    prop('assignee', [person(it.assignee, 'none')]);
+    prop('created', [S(it.created.slice(0, 10))]);
+    prop('updated', [S(it.updated + ' ago', 'st-open')]);
+    prop('labels', it.labels.map(l => S('#' + l + ' ', 'ac')));
+    if (it.children.length) {
+      right.push(blank());
+      right.push([S('progress  ', 'mu'), S(doneOf(it) + '/' + it.children.length + ' ')].concat(bar(doneOf(it), it.children.length, 12)));
+    }
+    const groups = {};
+    it.rels.forEach(r => (groups[r.kind] = groups[r.kind] || []).push(r));
+    Object.keys(groups).forEach(k => {
+      right.push(blank());
+      right.push(label(k.toUpperCase()));
+      groups[k].forEach(r => {
+        right.push([dot(r.status), S(' '), S(r.id, 'id')]);
+        right.push([S('  ' + trunc(r.title, R - 2), 'mu')]);
+      });
+    });
+
+    const out = [];
+    for (let i = 0; i < Math.max(left.length, right.length); i++) {
+      out.push(pad(left[i] || [], L).concat([S(' │ ', 'ln')], right[i] || []));
+    }
+    return out;
+  }
+
+  // ---- option 3: tabs ----------------------------------------------------
+  function optTabs(it, st) {
+    const tabs = it.children.length
+      ? [['overview', 'Overview'], ['children', 'Children ' + it.children.length], ['notes', 'Notes'], ['comments', 'Comments ' + it.comments.length]]
+      : [['overview', 'Overview'], ['relations', 'Relations ' + it.rels.length], ['notes', 'Notes ' + it.notes.length], ['comments', 'Comments ' + it.comments.length]];
+    if (!tabs.some(t => t[0] === st.sub)) st.sub = 'overview';
+    const out = compactHeader(it, W);
+    out.push(blank());
+    const strip = [];
+    tabs.forEach(([k, name], i) => {
+      strip.push(S(' ' + (i + 1) + ' ' + name + ' ', (k === st.sub ? 'tabon' : 'mu') + ' click', { sub: k }));
+      strip.push(S(' '));
+    });
+    out.push(spread(strip, [S('[ ] switch', 'mu')], W));
+    out.push([S('─'.repeat(W), 'ln')]);
+    out.push(blank());
+    if (st.sub === 'overview') {
+      wrap(it.description, W).forEach(l => out.push([S(l)]));
+      out.push(blank());
+      out.push([S('labels   ', 'mu')].concat(it.labels.map(l => S('#' + l + ' ', 'ac'))));
+      out.push([S('created  ', 'mu'), S(it.created + ' · ' + it.email)]);
+      if (it.children.length) out.push([S('progress ', 'mu'), S(doneOf(it) + '/' + it.children.length + ' ')].concat(bar(doneOf(it), it.children.length, 30)));
+    } else if (st.sub === 'children') {
+      it.children.forEach(c => out.push(childRow(c, W)));
+    } else if (st.sub === 'relations') {
+      it.rels.forEach(r => out.push(relRow(r, W)));
+    } else if (st.sub === 'notes') {
+      if (!it.notes.length) out.push([S('No notes.', 'mu i')]);
+      it.notes.forEach(n => wrap(n.text, W - 6).forEach((l, i) => out.push([S(i ? '      ' : n.ago.padEnd(6), 'mu'), S(l)])));
+    } else {
+      if (!it.comments.length) out.push([S('No comments. Press C to add one.', 'mu i')]);
+      it.comments.forEach(c => {
+        out.push([S(c.author, 'ac b'), S(' · ' + c.ago, 'mu')]);
+        wrap(c.text, W - 2).forEach(l => out.push([S('  ' + l)]));
+      });
+    }
+    return out;
+  }
+
+  // ---- option 4: activity timeline ---------------------------------------
+  function optTimeline(it) {
+    const out = compactHeader(it, W);
+    out.push(blank());
+    const desc = wrap(it.description, W);
+    desc.slice(0, 3).forEach(l => out.push([S(l)]));
+    if (desc.length > 3) out.push([S('… ' + (desc.length - 3) + ' more lines · enter expands', 'mu')]);
+    out.push(blank());
+    if (it.rels.length) {
+      out.push([S('↑ ', 'mu'), S(it.rels[0].id, 'id'), S(' ' + it.rels[0].title, 'mu')].concat(
+        it.rels.slice(1).map(r => S('   ' + r.arrow + ' ' + r.id, 'mu'))));
+      out.push(blank());
+    }
+    if (it.children.length) {
+      out.push(label('CHILDREN ' + doneOf(it) + '/' + it.children.length + '  ').concat(bar(doneOf(it), it.children.length, 40)));
+      out.push(blank());
+    }
+    out.push(label('ACTIVITY'));
+    let events = [];
+    if (it.children.length) {
+      events = it.children.filter(c => c.ago).slice().reverse().map(c => ({
+        ago: c.ago, cls: 'st-' + c.status, who: c.id,
+        text: c.status === 'closed' ? 'closed · ' + c.title : 'moved to ' + words(c.status) + ' · ' + c.title,
+      }));
+    } else {
+      events = [
+        { ago: it.updated, cls: 'st-in_progress', who: it.creator, text: 'moved to in progress' },
+        ...it.notes.map(n => ({ ago: n.ago, cls: 'hd', who: 'note', text: n.text })),
+        ...it.comments.map(c => ({ ago: c.ago, cls: 'ac', who: c.author, text: c.text })),
+      ];
+    }
+    events.push({ ago: it.createdAgo, cls: 'mu', who: it.creator, text: 'created' });
+    events.forEach((e, idx) => {
+      const last = idx === events.length - 1;
+      const body = wrap(e.text, W - 12);
+      out.push([S(' ● ', e.cls), S(e.ago.padEnd(5), 'mu'), S(e.who, e.cls === 'mu' ? 'mu' : 'b')]);
+      body.forEach(l => out.push([S(last ? '   ' : ' │ ', 'ln'), S('     '), S(l)]));
+      if (!last) out.push([S(' │', 'ln')]);
+    });
+    return out;
+  }
+
+  // ---- option 5: describe ------------------------------------------------
+  function optDescribe(it) {
+    const out = [];
+    const kv = (k, v) => out.push([S((k + ':').padEnd(13), 'hd')].concat(v));
+    kv('Name', [S(it.id, 'id')]);
+    wrap(it.title, W - 13).forEach((l, i) => i ? out.push([S(' '.repeat(13)), S(l, 'b')]) : kv('Title', [S(l, 'b')]));
+    kv('Type', [S(it.icon + ' ' + it.type, 'ty-' + it.type)]);
+    kv('Status', [S(it.status, 'st-' + it.status + ' b')]);
+    kv('Priority', [prio(it.pri)]);
+    kv('Creator', [S(it.creator), S(' <' + it.email + '>', 'mu')]);
+    kv('Assignee', [S(it.assignee || '<none>', it.assignee ? '' : 'mu')]);
+    kv('Labels', [S(it.labels.join(', '))]);
+    kv('Created', [S(it.created), S(' (' + it.createdAgo + ' ago)', 'mu')]);
+    kv('Updated', [S(it.updated + ' ago', 'st-open')]);
+    if (it.rels.length) {
+      out.push([S('Relations:', 'hd')]);
+      it.rels.forEach(r => out.push([S('  ' + (r.kind + ':').padEnd(13), 'hd'), S(r.id.padEnd(9), 'id'), S(trunc(r.title, W - 34)), S(' ' + r.status, 'st-' + r.status)]));
+    }
+    if (it.children.length) {
+      out.push([S('Children:', 'hd'), S('    ' + doneOf(it) + '/' + it.children.length + ' closed  ')].concat(bar(doneOf(it), it.children.length, 20)));
+      it.children.forEach(c => out.push([S('  '), S(c.id.padEnd(9), 'id'), S(words(c.status).padEnd(12), 'st-' + c.status), S(trunc(c.title, W - 23), c.status === 'closed' ? 'mu' : '')]));
+    }
+    out.push([S('Description:', 'hd')]);
+    wrap(it.description, W - 2).forEach(l => out.push([S('  ' + l)]));
+    if (it.notes.length) {
+      out.push([S('Notes:', 'hd')]);
+      it.notes.forEach(n => wrap(n.text, W - 8).forEach((l, i) => out.push([S('  ' + (i ? '' : n.ago).padEnd(6), 'mu'), S(l)])));
+    }
+    out.push([S('Events:', 'hd')].concat(it.comments.length ? [] : [S('      <none>', 'mu')]));
+    if (it.comments.length) {
+      out.push([S('  ' + 'Age'.padEnd(6) + 'From'.padEnd(18) + 'Message', 'b')]);
+      out.push([S('  ' + '---'.padEnd(6) + '----'.padEnd(18) + '-------', 'mu')]);
+      it.comments.forEach(c => wrap(c.text, W - 26).forEach((l, i) => out.push([S('  ' + (i ? '' : c.ago).padEnd(6) + (i ? '' : c.author).padEnd(18)), S(l)])));
+    }
+    return out;
+  }
+
+  const OPTIONS = [
+    { key: 'card', label: '1 Card header', fn: optCard,
+      verdict: '<strong>The board card, enlarged.</strong> The header is a thick box in the status color, exactly like a board card, with the type, ID, age, title, status label, priority and people. Everything below reads top to bottom under muted section labels. <strong>Cost:</strong> the box takes 2 extra lines. <strong>Build:</strong> low; this is what is on main now, plus the box and the epic progress bar.' },
+    { key: 'inspector', label: '2 Inspector', fn: optInspector,
+      verdict: '<strong>Linear and Jira style.</strong> Text on the left, a fixed property column on the right with status, people, dates, labels and every relation. The properties never scroll away. <strong>Cost:</strong> the text column drops to 45 cells, so it only works when the pane is wide; a stacked or narrow pane falls back to option 1. <strong>Build:</strong> medium.' },
+    { key: 'tabs', label: '3 Tabs', fn: optTabs,
+      verdict: '<strong>One screen, no scrolling.</strong> A three-line header stays put and the body switches between Overview, Relations or Children, Notes and Comments with <code>1</code>–<code>4</code> or <code>[</code> <code>]</code>. Click the tabs in the mockup. <strong>Cost:</strong> content is hidden behind a key, and <code>[</code> <code>]</code> are taken by the tree today, so the keys need a decision. <strong>Build:</strong> medium.' },
+    { key: 'timeline', label: '4 Activity', fn: optTimeline,
+      verdict: '<strong>What happened, newest first.</strong> The description folds to three lines and the pane becomes a timeline of status changes, timestamped notes and comments; an epic shows its children closing. Good for agent-driven work. <strong>Cost:</strong> Beads stores no status events, so moves must come from Dolt history (<code>dolt_history_issues</code>), which JSONL and SQLite sources lack. <strong>Build:</strong> high.' },
+    { key: 'describe', label: '5 Describe', fn: optDescribe,
+      verdict: '<strong>k9s <code>describe</code>.</strong> Aligned <code>Key:</code> value pairs, indented sections and an Events table, as <code>kubectl describe</code> prints them. Dense, plain and familiar to anyone who uses k9s. <strong>Cost:</strong> the least visual hierarchy of the five; the title is just another field. <strong>Build:</strong> low.' },
+  ];
+
+  // ---- tree pane -----------------------------------------------------------
+  function treeLines(showEpic) {
+    const rows = [
+      { pre: '▾ ', icon: '♦', type: 'epic', st: 'open', title: 'Epic: Redesign the board TUI', id: 'e5u3', sel: showEpic },
+    ].concat(CHILDREN.map((c, i) => ({
+      pre: i === CHILDREN.length - 1 ? '  └─ ' : '  ├─ ', icon: '✔', type: 'task', st: c.status, title: c.title, id: c.id,
+      sel: !showEpic && c.id === 'e5u3.9',
+    })));
+    const abbrev = { open: 'OPEN', in_progress: 'PROG', blocked: 'BLKD', closed: 'DONE' };
+    const out = [[S(' Issue', 'mu b')]];
+    rows.forEach(r => {
+      const head = [S(r.pre, 'ln'), S(r.icon + ' ', 'ty-' + r.type), S(abbrev[r.st].padEnd(5), 'st-' + r.st)];
+      const tail = [S(' ' + r.id.padStart(7), 'mu')];
+      const room = TW - lineLen(head) - lineLen(tail);
+      const line = pad(head.concat([S(trunc(r.title, room), r.st === 'closed' ? 'mu' : '')]), TW - lineLen(tail)).concat(tail);
+      out.push(r.sel ? line.map(s => Object.assign({}, s, { c: s.c + ' sel' })) : line);
+    });
+    return out;
+  }
+
+  // ---- render --------------------------------------------------------------
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = l => l.map(s => s.c
+    ? `<span class="${s.c}"${s.sub ? ` data-sub="${s.sub}"` : ''}>${esc(s.t)}</span>`
+    : esc(s.t)).join('');
+
+  const state = { opt: 0, epic: false, sub: 'overview' };
+  const tabsEl = document.getElementById('tabs');
+  const screen = document.getElementById('screen');
+
+  function render() {
+    tabsEl.innerHTML = '';
+    OPTIONS.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.className = 'tab'; b.type = 'button'; b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(i === state.opt));
+      b.textContent = o.label;
+      b.onclick = () => { state.opt = i; render(); };
+      tabsEl.appendChild(b);
+    });
+    const it = state.epic ? EPIC : TASK;
+    const detail = OPTIONS[state.opt].fn(it, state);
+    const tree = treeLines(state.epic);
+    const total = TW + 3 + W;
+    const lines = [];
+    lines.push(spread([S(' b9s ', 'tabon'), S('  b9s', 'ac b'), S(' · 950 issues · tree', 'mu')], [S('↑ v1.1.0 available · U ', 'ac')], total));
+    lines.push([S('─'.repeat(total), 'ln')]);
+    const h = Math.max(tree.length, detail.length, 28);
+    for (let i = 0; i < h; i++) {
+      lines.push(pad(tree[i] || [], TW).concat([S(' │ ', 'ln')], pad(detail[i] || [], W)));
+    }
+    lines.push([S('─'.repeat(total), 'ln')]);
+    lines.push([S(' enter', 'ac'), S(':detail  ', 'mu'), S('j/k', 'ac'), S(':scroll  ', 'mu'), S('n/p', 'ac'), S(':sibling  ', 'mu'),
+      S('e', 'ac'), S(':edit  ', 'mu'), S('c', 'ac'), S(':copy  ', 'mu'), S('O', 'ac'), S(':open  ', 'mu'), S('esc', 'ac'), S(':back', 'mu')]);
+    screen.innerHTML = lines.map(html).join('\n');
+    document.getElementById('verdict').innerHTML = OPTIONS[state.opt].verdict;
+  }
+
+  screen.addEventListener('click', e => {
+    const t = e.target.closest('[data-sub]');
+    if (t) { state.sub = t.dataset.sub; render(); }
+  });
+  const kind = document.getElementById('kind');
+  kind.onclick = () => {
+    state.epic = !state.epic;
+    kind.setAttribute('aria-pressed', String(state.epic));
+    kind.textContent = 'showing: ' + (state.epic ? 'epic' : 'task');
+    render();
+  };
+  document.getElementById('theme').onclick = () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+  };
+  render();
+})();
+</script>
+</body>
+</html>
