@@ -105,11 +105,11 @@ Everywhere:
 
 In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a new line in Description and Notes, `→` completes an assignee or label, `Ctrl-E` opens Description or Notes in `$EDITOR`, `Ctrl-S` saves and `Esc` cancels.
 
-The detail pane opens with the issue's type, ID, status, priority, creator and assignee. Below them come the description, design, acceptance and notes as Markdown, then a relations list with the parent, blockers, the issues it blocks and its children, and then the comments.
+The detail pane opens with a card framed in the issue's status color: type, ID and last update, the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, and the comments come last.
 
 In the detail pane, `j` and `k` scroll, `Home` and `End` jump to the top and bottom, `n` and `p` go to the next and previous sibling, and `c` copies the issue as Markdown.
 
-On the board, `h` and `l` change the column, `j` and `k` move between issues, `o` and `r` show open or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID. Each issue is a boxed card, and empty columns fold into rails. The closed column stays hidden until `c` shows it. Issues sit in one horizontal lane per epic. `v` switches between two designs: the epic rail shows each epic with its completion in a column on the left, and epic rows put that as a header row above the lane. `Tab` folds the selected epic's lane and `Shift-Tab` folds or unfolds all of them.
+On the board, `h` and `l` change the column, `j` and `k` move between issues, `o` and `r` show open or ready issues, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID. Each issue is a boxed card, and empty columns fold into rails. The closed column stays hidden until `c` shows it. Issues sit in one horizontal lane per epic. `v` switches between two designs: the epic rail shows each epic with its completion in a column on the left, and epic rows put that as a header row above the lane. `h` and `l` stay in the epic lane, and `{` and `}` go to the previous and next epic. `Tab` folds the selected epic's lane and `Shift-Tab` folds or unfolds all of them.
 
 ## Creators and assignees
 

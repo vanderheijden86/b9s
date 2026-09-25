@@ -54,7 +54,7 @@ func TestRenderIssueDetail_HeaderShowsMetaWithoutTable(t *testing.T) {
 
 func TestRenderIssueDetail_ListsRelationsBothWays(t *testing.T) {
 	out := renderDetailFixture(t, nil)
-	for _, want := range []string{"RELATIONS", "parent", "Epic: Redesign the board TUI", "blocked by", "Blocker task", "child", "Child step"} {
+	for _, want := range []string{"RELATIONS", "parent", "Epic: Redesign the board TUI", "blocked by", "Blocker task"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("relations missing %q:\n%s", want, out)
 		}
@@ -89,5 +89,54 @@ func TestRenderIssueDetail_LinesFitWidth(t *testing.T) {
 		if w := lipgloss.Width(line); w > 40 {
 			t.Fatalf("line wider than pane (%d > 40): %q", w, stripANSI(line))
 		}
+	}
+}
+
+func TestRenderIssueDetail_HeaderIsAHeavyBox(t *testing.T) {
+	lines := strings.Split(renderDetailFixture(t, nil), "\n")
+	top, bottom := -1, -1
+	for i, l := range lines {
+		if strings.HasPrefix(l, "┏") && top < 0 {
+			top = i
+		}
+		if strings.HasPrefix(l, "┗") && bottom < 0 {
+			bottom = i
+		}
+	}
+	if top < 0 || bottom <= top {
+		t.Fatalf("header box not found:\n%s", strings.Join(lines, "\n"))
+	}
+	box := strings.Join(lines[top:bottom+1], "\n")
+	for _, want := range []string{"e5u3.9", "Build epic rail", "IN PROGRESS", "P1", "@alice", "@BrownBear"} {
+		if !strings.Contains(box, want) {
+			t.Errorf("box missing %q:\n%s", want, box)
+		}
+	}
+	for _, l := range lines[top+1 : bottom] {
+		if !strings.HasPrefix(l, "┃") || !strings.HasSuffix(strings.TrimRight(l, " "), "┃") {
+			t.Errorf("box side missing: %q", l)
+		}
+	}
+	after := strings.Join(lines[bottom+1:], "\n")
+	for _, want := range []string{"alice@example.com", "#ui", "DESCRIPTION"} {
+		if !strings.Contains(after, want) {
+			t.Errorf("%q should follow the box:\n%s", want, after)
+		}
+	}
+}
+
+func TestRenderIssueDetail_ChildrenShowProgress(t *testing.T) {
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	issue, issueMap := detailFixture()
+	issueMap["bd-c2"] = &model.Issue{ID: "bd-c2", Title: "Second step", Status: model.StatusOpen, IssueType: model.TypeTask,
+		Dependencies: []*model.Dependency{{IssueID: "bd-c2", DependsOnID: "bd-e5u3.9", Type: model.DepParentChild}}}
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	for _, want := range []string{"CHILDREN · 1/2", "━", "Child step", "Second step"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("children section missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "↓ child") {
+		t.Errorf("children should not repeat under RELATIONS:\n%s", out)
 	}
 }

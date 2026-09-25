@@ -44,7 +44,10 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 				muted.Render(" · press U to update")))
 	}
 
-	// Line 1: type icon, type, short ID, and the age on the right.
+	// The header card: type, ID and age, the title, then status, priority
+	// and people, framed in the status color like a board card.
+	statusColor := detailStatusColor(t, item.Status)
+	inner := width - 4
 	icon, iconColor := t.GetTypeIcon(string(item.IssueType))
 	typeName := string(item.IssueType)
 	if typeName == "" {
@@ -57,18 +60,12 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	if !item.UpdatedAt.IsZero() {
 		right = r.NewStyle().Foreground(getAgeColor(item.UpdatedAt)).Render("updated " + FormatTimeRel(item.UpdatedAt))
 	}
-	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
-	if right == "" || gap < 2 {
-		blocks = append(blocks, wrap.Render(left))
-	} else {
-		blocks = append(blocks, left+strings.Repeat(" ", gap)+right)
+	head := left
+	if gap := inner - lipgloss.Width(left) - lipgloss.Width(right); right != "" && gap >= 2 {
+		head = left + strings.Repeat(" ", gap) + right
 	}
+	title := r.NewStyle().Bold(true).Foreground(t.Base.GetForeground()).Render(item.Title)
 
-	// Title
-	blocks = append(blocks, r.NewStyle().Bold(true).Foreground(t.Base.GetForeground()).Width(width).Render(item.Title))
-
-	// Meta: status chip, priority, creator → assignee
-	statusColor := detailStatusColor(t, item.Status)
 	chip := r.NewStyle().Bold(true).Padding(0, 1).
 		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
 		Background(statusColor).
@@ -79,7 +76,14 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	}
 	people := muted.Render("creator ") + detailPerson(r, t, item.CreatedBy, "unknown") +
 		muted.Render("  assignee ") + detailPerson(r, t, item.Assignee, "none")
-	blocks = append(blocks, "", wrap.Render(chip+"  "+prioStyle.Render(formatPriority(item.Priority))+"  "+people))
+	meta := chip + "  " + prioStyle.Render(formatPriority(item.Priority)) + "  " + people
+
+	card := r.NewStyle().
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(statusColor).
+		Padding(0, 1).
+		Width(width - 2)
+	blocks = append(blocks, card.Render(strings.Join([]string{head, title, "", meta}, "\n")))
 
 	facts := []string{}
 	if !item.CreatedAt.IsZero() {
@@ -101,8 +105,7 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 		}
 		blocks = append(blocks, wrap.Render(strings.Join(tags, " ")))
 	}
-
-	blocks = append(blocks, r.NewStyle().Foreground(t.Border).Render(strings.Repeat("─", width)))
+	blocks = append(blocks, "")
 
 	section := func(label string) string {
 		return r.NewStyle().Bold(true).Foreground(t.Muted).Render(label)
@@ -124,7 +127,32 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	markdownSection("ACCEPTANCE", item.AcceptanceCriteria)
 	markdownSection("NOTES", item.Notes)
 
-	if rels := detailRelations(rawID, item, issueMap); len(rels) > 0 {
+	rels, children := detailRelations(rawID, item, issueMap)
+	if len(children) > 0 {
+		done := 0
+		for _, c := range children {
+			if c.issue != nil && c.issue.Status == model.StatusClosed {
+				done++
+			}
+		}
+		label := fmt.Sprintf("CHILDREN · %d/%d", done, len(children))
+		barW := min(30, width-lipgloss.Width(label)-2)
+		line := section(label)
+		if barW >= 4 {
+			line += "  " + r.NewStyle().Foreground(t.Open).Render(progressBar(done, len(children), barW))
+		}
+		blocks = append(blocks, line)
+		idWidth := 0
+		for _, c := range children {
+			idWidth = max(idWidth, lipgloss.Width(detailShortID(c.id)))
+		}
+		idWidth = min(idWidth, width/3)
+		for _, c := range children {
+			blocks = append(blocks, renderDetailRelation(r, t, c, width, idWidth, false))
+		}
+		blocks = append(blocks, "")
+	}
+	if len(rels) > 0 {
 		blocks = append(blocks, section(fmt.Sprintf("RELATIONS · %d", len(rels))))
 		idWidth := 0
 		for _, rel := range rels {
@@ -132,7 +160,7 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 		}
 		idWidth = min(idWidth, width/3)
 		for _, rel := range rels {
-			blocks = append(blocks, renderDetailRelation(r, t, rel, width, idWidth))
+			blocks = append(blocks, renderDetailRelation(r, t, rel, width, idWidth, true))
 		}
 		blocks = append(blocks, "")
 	}
@@ -176,8 +204,10 @@ func detailStatusColor(t Theme, s model.Status) lipgloss.AdaptiveColor {
 
 // detailRelations lists the issue's own dependencies and the issues that
 // point back at it, so children and dependents show without opening them.
-func detailRelations(rawID string, item model.Issue, issueMap map[string]*model.Issue) []detailRelation {
-	var parents, blockedBy, related, blocks, children []detailRelation
+// Children come back apart from the other relations: they get their own
+// section with a progress bar.
+func detailRelations(rawID string, item model.Issue, issueMap map[string]*model.Issue) (rels, children []detailRelation) {
+	var parents, blockedBy, related, blocks []detailRelation
 	for _, dep := range item.Dependencies {
 		if dep == nil {
 			continue
@@ -223,8 +253,7 @@ func detailRelations(rawID string, item model.Issue, issueMap map[string]*model.
 	}
 	out := append(parents, blockedBy...)
 	out = append(out, byID(blocks)...)
-	out = append(out, byID(children)...)
-	return append(out, related...)
+	return append(out, related...), byID(children)
 }
 
 // detailShortID drops the project prefix, as the board cards do.
@@ -236,9 +265,14 @@ func detailShortID(id string) string {
 	return id
 }
 
-func renderDetailRelation(r *lipgloss.Renderer, t Theme, rel detailRelation, width, idWidth int) string {
+// renderDetailRelation draws one row: the relation label when withLabel is
+// set, then the short ID, the title and the status on the right edge.
+func renderDetailRelation(r *lipgloss.Renderer, t Theme, rel detailRelation, width, idWidth int, withLabel bool) string {
 	muted := r.NewStyle().Foreground(t.Muted)
-	label := fmt.Sprintf("%s %-10s ", rel.arrow, rel.label)
+	label := ""
+	if withLabel {
+		label = fmt.Sprintf("%s %-10s ", rel.arrow, rel.label)
+	}
 	idWidth = max(min(idWidth, width-lipgloss.Width(label)-1), 4)
 	id := truncateRunesHelper(detailShortID(rel.id), idWidth, "…")
 	id += strings.Repeat(" ", max(idWidth-lipgloss.Width(id), 0))
