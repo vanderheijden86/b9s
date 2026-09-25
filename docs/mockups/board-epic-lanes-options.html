@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic Lanes Options</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #eef0f4;
+    --term: #f7f8fa;
+    --text: #242832;
+    --muted: #697386;
+    --line: #d8dce3;
+    --line-soft: #e0e3e8;
+    --col: #eceef2;
+    --card: #ffffff;
+    --accent: #6d28d9;
+    --id: #5b21b6;
+    --head: #2b6a7a;
+    --pri: #b42318;
+    --age: #357a45;
+    --warn: #98610b;
+    --sel-bg: #e9e1ff;
+    --shadow: rgba(20, 24, 32, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0c0f;
+      --term: #121418;
+      --text: #e1e4ea;
+      --muted: #8f99af;
+      --line: #303644;
+      --line-soft: #272c37;
+      --col: #171a20;
+      --card: #1c2029;
+      --accent: #c4a7ff;
+      --id: #c4a7ff;
+      --head: #75d7ec;
+      --pri: #ff6b75;
+      --age: #79cf8d;
+      --warn: #f5bc55;
+      --sel-bg: #293047;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0c0f; --term: #121418; --text: #e1e4ea; --muted: #8f99af; --line: #303644;
+    --line-soft: #272c37; --col: #171a20; --card: #1c2029; --accent: #c4a7ff; --id: #c4a7ff;
+    --head: #75d7ec; --pri: #ff6b75; --age: #79cf8d; --warn: #f5bc55; --sel-bg: #293047;
+    --shadow: rgba(0, 0, 0, 0.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 48px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  main { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; max-width: 80ch; line-height: 1.45; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .tab, .toggle {
+    font: inherit; font-size: 13px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--term); color: var(--text); cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--term); }
+  .toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .spacer { flex: 1; }
+
+  .term {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--term);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    box-shadow: 0 12px 28px var(--shadow);
+  }
+  .term-inner { min-width: 860px; }
+  .bar { display: flex; gap: 12px; align-items: center; min-height: 36px; padding: 0 12px; border-bottom: 1px solid var(--line); color: var(--muted); }
+  .bar strong { color: var(--accent); }
+  .bar .hidden-note { border: 1px dashed var(--line); border-radius: 4px; padding: 1px 6px; }
+  .keys { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 12px; border-top: 1px solid var(--line); color: var(--muted); }
+  .keys b { color: var(--accent); font-weight: 600; }
+  .verdict { margin: 10px 2px 0; font-size: 14px; line-height: 1.5; color: var(--muted); max-width: 90ch; }
+  .verdict strong { color: var(--text); }
+
+  /* Shared grid: equal columns, no focus column. */
+  .grid { display: grid; gap: 8px; padding: 0 10px; }
+  .colhead { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px; background: var(--col); border-radius: 4px; color: var(--muted); }
+  .colhead strong { color: var(--head); letter-spacing: .04em; }
+  .heads { padding-top: 10px; padding-bottom: 4px; }
+
+  .id { color: var(--id); white-space: nowrap; }
+  .pri { color: var(--pri); }
+  .age { color: var(--age); }
+  .warn { color: var(--warn); }
+  .muted { color: var(--muted); }
+  .glyph { display: inline-block; width: 1.3em; text-align: center; }
+
+  .progress { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }
+  .progress .track { display: inline-block; width: 90px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .progress .fill { display: block; height: 100%; }
+
+  /* Epic header rows */
+  .epic { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin: 6px 10px 4px; border-radius: 4px; cursor: pointer; user-select: none; }
+  .epic:hover { background: var(--col); }
+  .epic .chev { width: 1em; color: var(--muted); }
+  .epic .diamond { font-size: 15px; }
+  .epic .title { font-weight: 600; }
+  .epic .count { color: var(--muted); }
+  .epic .chip { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--col); color: var(--muted); letter-spacing: .05em; }
+  .epic.focused { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* Lane cells */
+  .cell { min-height: 20px; padding: 6px; border-radius: 4px; background: var(--col); display: flex; flex-direction: column; gap: 6px; }
+  .cell.empty::after { content: ""; min-height: 24px; }
+
+  /* Box card */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; line-height: 1.4; }
+  .card .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .f { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; color: var(--muted); }
+  .card .tag { margin-top: 6px; }
+  .card.sel { background: var(--sel-bg); border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .card.closed { opacity: .6; }
+  .card.closed .t { text-decoration: line-through; text-decoration-color: var(--muted); }
+
+  /* Option 2: compact tiles */
+  .o2 .epic { margin: 8px 10px 2px; padding: 4px 6px; gap: 8px; }
+  .o2 .epic .rule { flex: 1; height: 1px; background: var(--line); }
+  .o2 .cell { background: transparent; padding: 2px 0; gap: 4px; }
+  .o2 .card { padding: 5px 8px; border-top-width: 3px; }
+  .o2 .card .t { -webkit-line-clamp: 1; }
+  .o2 .card .top { display: flex; justify-content: space-between; margin-bottom: 2px; }
+
+  /* Option 3: tinted bands */
+  .o3 .lane { margin: 8px 10px; border-radius: 6px; padding-bottom: 8px; }
+  .o3 .lane .epic { margin: 0; border-radius: 6px 6px 0 0; }
+  .o3 .lane .grid { padding: 0 8px; }
+  .o3 .cell { background: transparent; padding: 0; }
+  .o3 .card { border-left-width: 4px; }
+
+  /* Option 4: folded summaries */
+  .o4 .sumrow { display: grid; gap: 8px; padding: 0 10px; margin-bottom: 4px; }
+  .o4 .sum { padding: 6px 10px; border-radius: 4px; background: var(--col); color: var(--muted); display: flex; gap: 8px; align-items: center; min-height: 32px; }
+  .o4 .sum b { color: var(--text); font-weight: 600; }
+  .o4 .dots { letter-spacing: 2px; }
+
+  /* Option 5: epic rail */
+  .o5 .railgrid { display: grid; gap: 8px; padding: 0 10px; }
+  .o5 .rail { border-radius: 6px; padding: 10px; background: var(--col); display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+  .o5 .rail .title { font-weight: 600; line-height: 1.35; }
+  .o5 .rail .progress .track { width: 100%; }
+  .o5 .rail .progress { display: flex; }
+  .o5 .rail.focused { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .o5 .railrow { margin-bottom: 8px; }
+  .o5 .foldline { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 0 10px; min-height: 100%; }
+
+  @media (max-width: 700px) {
+    body { padding: 16px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Epic lanes: five redesigns</h1>
+  <div class="sub">
+    Board layout A in the lanes design, with epic rows the way a Jira board grouped by epic draws them.
+    Every option uses boxed cards and equal columns without a focus column. The closed column is hidden by default and <code>c</code> shows it.
+    Click an epic row to fold it. Same Spectroscope workload in every tab.
+  </div>
+
+  <div class="controls" role="tablist" aria-label="Lane view options" id="tabs"></div>
+  <div class="controls">
+    <button class="toggle" id="closed" aria-pressed="false" type="button">c · show closed column</button>
+    <span class="spacer"></span>
+    <button class="toggle" id="theme" type="button">theme</button>
+  </div>
+
+  <div class="term"><div class="term-inner" id="board"></div></div>
+  <div class="verdict" id="verdict"></div>
+</main>
+
+<script>
+(() => {
+  const EPICS = [
+    { id: 'eg0', title: 'Spectroscope observes the cluster', color: '#a78bfa', done: 9, total: 21, status: 'IN PROGRESS',
+      cards: {
+        open: [
+          { id: 'eg0.5.3', title: 'Decide who may reach the device control plane', type: '◇', pri: 'P1', age: '2d', note: 'blocks 1', noteCls: 'warn' },
+          { id: 'eg0.4', title: 'Client renders live packet streams', type: '▲', pri: 'P1', age: '2d' },
+          { id: 'eg0.4.1', title: 'Add packet append API with cursor semantics', type: '✓', pri: 'P1', age: '2d', note: 'blocks 5', noteCls: 'warn' },
+        ],
+        prog: [ { id: 'eg0.14.1', title: 'Use recorded mac-k3s capture fixture', type: '✓', pri: 'P2', age: '1m', note: 'lane: implementing', noteCls: 'muted' } ],
+        blocked: [ { id: 'eg0.4.2', title: 'Wire the flow subscription transport', type: '✓', pri: 'P1', age: '2d', note: 'by eg0.4.1', noteCls: 'pri' } ],
+        closed: [ { id: 'eg0.2.5', title: 'Apply the redaction profile to captures', type: '✓', pri: 'P0', age: '1d' } ],
+      } },
+    { id: 'jzf', title: 'Preview build reliability', color: '#38bdf8', done: 6, total: 8, status: 'IN PROGRESS',
+      cards: {
+        open: [ { id: 'jzf.8', title: 'Bound preview startup to 90 seconds', type: '✓', pri: 'P1', age: '4d' } ],
+        prog: [],
+        blocked: [ { id: 'jzf.7', title: 'Cache the base image between previews', type: '✓', pri: 'P2', age: '4d', note: 'by jzf.8', noteCls: 'pri' } ],
+        closed: [ { id: 'jzf.6', title: 'Preview build requires Docker', type: '✗', pri: 'P0', age: '4d' } ],
+      } },
+    { id: 'k3s', title: 'Local cluster parity', color: '#f59e0b', done: 2, total: 5, status: 'OPEN', startFolded: true,
+      cards: {
+        open: [
+          { id: 'k3s.3', title: 'Mirror localhost:5000 to the k3d registry', type: '✓', pri: 'P2', age: '6d' },
+          { id: 'k3s.4', title: 'Wait for Traefik before rollout status', type: '✗', pri: 'P2', age: '6d' },
+        ],
+        prog: [ { id: 'k3s.1', title: 'Resolve preview hostnames locally', type: '▲', pri: 'P1', age: '3h', note: 'lane: reviewing', noteCls: 'muted' } ],
+        blocked: [],
+        closed: [ { id: 'k3s.2', title: 'Drop nip.io addressing', type: '✓', pri: 'P1', age: '2d' } ],
+      } },
+    { id: null, title: 'No epic', color: '#8f99af', done: 51, total: 77, status: '',
+      cards: {
+        open: [
+          { id: 'x1', title: 'Rotate the Grafana admin password', type: '✓', pri: 'P3', age: '9d' },
+          { id: 'x4', title: 'Tidy the Makefile help target', type: '✓', pri: 'P4', age: '12d' },
+        ],
+        prog: [], blocked: [],
+        closed: [ { id: 'x2', title: 'Pin the Go toolchain in CI', type: '✓', pri: 'P2', age: '5d' } ],
+      } },
+  ];
+  const COLS = [
+    { key: 'open', label: 'OPEN', total: 29 },
+    { key: 'prog', label: 'IN PROGRESS', total: 1 },
+    { key: 'blocked', label: 'BLOCKED', total: 2 },
+    { key: 'closed', label: 'CLOSED', total: 76 },
+  ];
+
+  const OPTIONS = [
+    { key: 'rows', label: '1 Epic rows',
+      verdict: '<strong>Closest to the screenshot.</strong> A full-width epic row with a chevron, the id, the title, the issue count, a status chip and a completion bar. Cards sit under it in tinted columns. <strong>Cost:</strong> about 5 lines per card, so about 4 cards fit per column on a 40-line terminal. <strong>Build:</strong> low, because it reuses the lanes code.' },
+    { key: 'tiles', label: '2 Compact tiles',
+      verdict: '<strong>Density first.</strong> The epic header is a thin rule, and cards are 3-line tiles with a top edge in the epic color. The title is clipped to one line. <strong>Cost:</strong> long titles are cut, and Enter opens the full title. <strong>Build:</strong> low.' },
+    { key: 'bands', label: '3 Tinted bands',
+      verdict: '<strong>Epics read as blocks.</strong> Each lane has a faint tint of the epic color, and every card has a left edge in that color. Nobody can mistake where one epic ends. <strong>Cost:</strong> a terminal has only 256 colors or truecolor, so tints need truecolor or they fall back to the edge alone. <strong>Build:</strong> medium.' },
+    { key: 'summary', label: '4 Folded summaries',
+      verdict: '<strong>Folding keeps its information.</strong> A folded epic shows its counts aligned under each column, so Shift-Tab gives a matrix of the whole project on one screen. <strong>Cost:</strong> two row shapes to learn. <strong>Build:</strong> medium.' },
+    { key: 'rail', label: '5 Epic rail',
+      verdict: '<strong>Classic swimlanes.</strong> The epic sits in a left rail with its title wrapped, a full bar and the counts, and its cards fill the columns to the right. <strong>Cost:</strong> the rail takes 24 columns of width from every status column. <strong>Build:</strong> medium.' },
+  ];
+
+  const state = { option: 'rows', closed: false, folded: new Set(EPICS.filter(e => e.startFolded).map(e => e.id)) };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const cols = () => COLS.filter(c => state.closed || c.key !== 'closed');
+  const gridCols = n => `grid-template-columns: repeat(${n}, minmax(0, 1fr))`;
+  const count = e => cols().reduce((n, c) => n + e.cards[c.key].length, 0);
+  const tint = (hex, a) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+  };
+
+  function progress(e, wide) {
+    const pct = Math.round((e.done / e.total) * 100);
+    return `<span class="progress"><span class="track" ${wide ? 'style="width:100%"' : ''}><span class="fill" style="width:${pct}%;background:${e.color}"></span></span>${e.done}/${e.total}</span>`;
+  }
+
+  function card(c, e, colKey, opts = {}) {
+    const sel = c.id === 'eg0.5.3' ? ' sel' : '';
+    const closed = colKey === 'closed' ? ' closed' : '';
+    let style = '';
+    if (opts.topEdge) style = `border-top-color:${e.color}`;
+    if (opts.leftEdge) style = `border-left-color:${e.color}`;
+    const note = c.note ? `<div class="tag ${c.noteCls}">${esc(c.note)}</div>` : '';
+    if (opts.tile) {
+      return `<div class="card${sel}${closed}" style="${style}">
+        <div class="top"><span><span class="glyph">${c.type}</span><span class="id">${c.id}</span></span><span><span class="pri">${c.pri}</span> <span class="age">${c.age}</span></span></div>
+        <div class="t">${esc(c.title)}</div></div>`;
+    }
+    return `<div class="card${sel}${closed}" style="${style}">
+      <div class="t">${esc(c.title)}</div>${note}
+      <div class="f"><span><span class="glyph">${c.type}</span><span class="id">${c.id}</span></span><span><span class="pri">${c.pri}</span> · <span class="age">${c.age}</span></span></div></div>`;
+  }
+
+  function cells(e, opts) {
+    return cols().map(c => {
+      const cs = e.cards[c.key];
+      return `<div class="cell${cs.length ? '' : ' empty'}">${cs.map(x => card(x, e, c.key, opts)).join('')}</div>`;
+    }).join('');
+  }
+
+  function epicRow(e, extra = '', style = '') {
+    const folded = state.folded.has(e.id);
+    const diamond = e.id ? `<span class="diamond" style="color:${e.color}">◆</span><span class="id">${e.id}</span>` : `<span class="diamond muted">◇</span>`;
+    const chip = e.status ? `<span class="chip">${e.status}</span>` : '';
+    return `<div class="epic${e.id === 'eg0' ? ' focused' : ''}" data-epic="${e.id}" style="${style}">
+      <span class="chev">${folded ? '▸' : '▾'}</span>${diamond}<span class="title">${esc(e.title)}</span>
+      <span class="count">${count(e)} issues</span>${chip}${extra}</div>`;
+  }
+
+  function heads() {
+    return `<div class="grid heads" style="${gridCols(cols().length)}">${cols().map(c =>
+      `<div class="colhead"><strong>${c.label}</strong><span>${c.total}</span></div>`).join('')}</div>`;
+  }
+
+  const RENDER = {
+    rows() {
+      return heads() + EPICS.map(e => epicRow(e, `<span style="flex:1"></span>${e.id ? progress(e) : ''}`) +
+        (state.folded.has(e.id) ? '' : `<div class="grid" style="${gridCols(cols().length)}">${cells(e, {})}</div>`)).join('');
+    },
+    tiles() {
+      return heads() + `<div class="o2">` + EPICS.map(e => epicRow(e, `${e.id ? progress(e) : ''}<span class="rule"></span>`) +
+        (state.folded.has(e.id) ? '' : `<div class="grid" style="${gridCols(cols().length)}">${cells(e, { tile: true, topEdge: true })}</div>`)).join('') + `</div>`;
+    },
+    bands() {
+      return heads() + `<div class="o3">` + EPICS.map(e => {
+        const folded = state.folded.has(e.id);
+        return `<div class="lane" style="background:${tint(e.color, .07)};${folded ? 'padding-bottom:0' : ''}">` +
+          epicRow(e, `<span style="flex:1"></span>${e.id ? progress(e) : ''}`, `background:${tint(e.color, .16)};${folded ? 'border-radius:6px' : ''}`) +
+          (folded ? '' : `<div class="grid" style="${gridCols(cols().length)};padding-top:8px">${cells(e, { leftEdge: true })}</div>`) + `</div>`;
+      }).join('') + `</div>`;
+    },
+    summary() {
+      return heads() + `<div class="o4">` + EPICS.map(e => {
+        const folded = state.folded.has(e.id);
+        const row = epicRow(e, `<span style="flex:1"></span>${e.id ? progress(e) : ''}`);
+        if (!folded) return row + `<div class="grid" style="${gridCols(cols().length)}">${cells(e, {})}</div>`;
+        return row + `<div class="sumrow" style="${gridCols(cols().length)}">${cols().map(c => {
+          const cs = e.cards[c.key];
+          const top = cs[0] ? `<span class="id">${cs[0].id}</span>` : '';
+          return `<div class="sum">${cs.length ? `<b>${cs.length}</b> <span class="dots" style="color:${e.color}">${'■'.repeat(cs.length)}</span>${top}` : '<span>·</span>'}</div>`;
+        }).join('')}</div>`;
+      }).join('') + `</div>`;
+    },
+    rail() {
+      const n = cols().length;
+      const tpl = `grid-template-columns: 200px repeat(${n}, minmax(0, 1fr))`;
+      const head = `<div class="grid heads" style="${tpl}"><div class="colhead"><strong>EPIC</strong><span>4</span></div>${cols().map(c =>
+        `<div class="colhead"><strong>${c.label}</strong><span>${c.total}</span></div>`).join('')}</div>`;
+      return head + `<div class="o5">` + EPICS.map(e => {
+        const folded = state.folded.has(e.id);
+        const rail = `<div class="rail${e.id === 'eg0' ? ' focused' : ''}" data-epic="${e.id}" style="border-left:4px solid ${e.color}">
+          <div><span class="chev muted">${folded ? '▸' : '▾'}</span> ${e.id ? `<span class="id">${e.id}</span>` : '<span class="muted">◇</span>'}</div>
+          <div class="title">${esc(e.title)}</div>
+          ${e.id ? progress(e, true) : ''}
+          <div class="muted">${count(e)} issues${e.status ? ' · ' + e.status.toLowerCase() : ''}</div></div>`;
+        const body = folded
+          ? `<div class="foldline" style="grid-column: 2 / span ${n}">${cols().map(c => `<span>${c.label.toLowerCase()} <b style="color:var(--text)">${e.cards[c.key].length}</b></span>`).join('<span>·</span>')}<span>· Tab to open</span></div>`
+          : cells(e, { leftEdge: false });
+        return `<div class="railgrid railrow" style="${tpl}">${rail}${body}</div>`;
+      }).join('') + `</div>`;
+    },
+  };
+
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = OPTIONS.map(o => `<button class="tab" role="tab" type="button" data-opt="${o.key}">${o.label}</button>`).join('');
+
+  function render() {
+    for (const t of tabsEl.children) t.setAttribute('aria-selected', String(t.dataset.opt === state.option));
+    document.getElementById('closed').setAttribute('aria-pressed', String(state.closed));
+    const opt = OPTIONS.find(o => o.key === state.option);
+    const closedNote = state.closed ? '<span>closed 76</span>' : '<span class="hidden-note">closed 76 hidden · c</span>';
+    document.getElementById('board').innerHTML =
+      `<div class="bar"><span>dolt://127.0.0.1:3306/spectroscope ✓</span><span class="spacer"></span><strong>spectroscope</strong></div>
+       <div class="bar"><strong>BOARD</strong><span>by status</span><span>Epic lanes 1/3</span><span style="color:var(--text)">${EPICS.reduce((n, e) => n + count(e), 0)} shown</span>
+         <span class="spacer"></span><span>${state.folded.size} folded</span>${closedNote}</div>` +
+      RENDER[state.option]() +
+      `<div class="keys"><span><b>h/l</b> column</span><span><b>j/k</b> card</span><span><b>J/K</b> epic</span><span><b>tab</b> fold</span><span><b>shift+tab</b> fold all</span><span><b>c</b> closed</span><span><b>enter</b> detail</span><span><b>v</b> epic design</span></div>`;
+    document.getElementById('verdict').innerHTML = opt.verdict;
+  }
+
+  tabsEl.addEventListener('click', ev => {
+    const t = ev.target.closest('[data-opt]');
+    if (t) { state.option = t.dataset.opt; render(); }
+  });
+  tabsEl.addEventListener('keydown', ev => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[ev.key];
+    if (!step) return;
+    const i = OPTIONS.findIndex(o => o.key === state.option);
+    state.option = OPTIONS[(i + step + OPTIONS.length) % OPTIONS.length].key;
+    render();
+    tabsEl.querySelector(`[data-opt="${state.option}"]`).focus();
+  });
+  document.getElementById('board').addEventListener('click', ev => {
+    const row = ev.target.closest('[data-epic]');
+    if (!row) return;
+    const id = row.dataset.epic === 'null' ? null : row.dataset.epic;
+    state.folded.has(id) ? state.folded.delete(id) : state.folded.add(id);
+    render();
+  });
+  document.getElementById('closed').addEventListener('click', () => { state.closed = !state.closed; render(); });
+  document.getElementById('theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+  });
+  render();
+})();
+</script>
+</body>
+</html>
