@@ -314,6 +314,25 @@ func (b *BoardModel) ToggleBranch() string {
 	return b.branchRoot
 }
 
+// SetBranchFor limits the board to the top-level branch that holds id and
+// returns that branch's root, or "" when id is not on the board. Unlike
+// ToggleBranch it never shows the whole board.
+func (b *BoardModel) SetBranchFor(id string) string {
+	root, ok := b.rootOf[id]
+	if !ok {
+		return ""
+	}
+	if b.branchRoot != root {
+		b.branchRoot = root
+		b.rawColumns = b.branchColumns()
+		b.arrangeColumns()
+		b.clampSelection()
+		b.updateActiveColumns()
+		b.updateSearchMatches()
+	}
+	return root
+}
+
 func (b *BoardModel) rearrangeKeepingSelection() {
 	var selID string
 	if sel := b.SelectedIssue(); sel != nil {

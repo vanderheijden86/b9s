@@ -320,6 +320,22 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `:project` | `:projects`, `:proj` | List the databases on the Dolt server |
 | `:mouse` | | Hand the mouse to the terminal, or take it back |
 | `:layout` | | Stack the detail pane below the tree, or put it back to the right |
+| `:branch <id>` | | Select the issue and show only its top-level branch, as `f` does. The short id shown on screen works too |
+
+## Steering b9s from another program
+
+`b9s ctl branch <id>` tells a running b9s to select an issue and show only its top-level branch. Inside tmux it steers the b9s in the caller's tmux window, and fails when there is none. Outside tmux it steers the only running b9s. `--pane %N` names one explicitly.
+
+```bash
+b9s ctl branch bd-rn0w.3
+b9s ctl --pane %118 branch bd-rn0w
+```
+
+When the issue is not loaded yet, for example straight after `bd create`, b9s shows `Waiting for <id> to load` and applies the request on the next reload. It gives up after five seconds.
+
+Each b9s registers in `~/.local/state/b9s/instances` (or `$XDG_STATE_HOME/b9s/instances`, or `B9S_CONTROL_DIR`), a directory only you can read. See [ADR 0023](adr/0023-steer-a-running-b9s-through-a-control-socket.md).
+
+**Claude Code.** A `PostToolUse` hook on `Bash` can run `b9s ctl branch <id>` after every `bd create`, so the b9s beside Claude follows the issues it files. The hook reads the id from the tool output and does nothing outside tmux or when no b9s shares the window.
 
 ## Projects
 

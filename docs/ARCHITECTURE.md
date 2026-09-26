@@ -9,6 +9,7 @@ b9s is a Go program built on [Bubble Tea](https://github.com/charmbracelet/bubbl
 - [Startup](#startup)
 - [Data sources](#data-sources)
 - [Live reload](#live-reload)
+- [Control socket](#control-socket)
 - [The UI model](#the-ui-model)
 - [Query state](#query-state)
 - [Writes go through bd](#writes-go-through-bd)
@@ -47,6 +48,7 @@ Reads and writes take different paths on purpose. b9s reads the store directly f
 | `pkg/ui` | The whole terminal UI: the root `Model`, the tree, detail pane, board, graph, command prompt, pickers, forms, tutorial and the `IssueWriter` that runs `bd` |
 | `pkg/model` | Domain types: `Issue`, `Dependency`, `Status`, `Priority` and their parsing |
 | `internal/datasource` | Source discovery and readers for Dolt, SQLite and JSONL, plus the Dolt watcher, the project catalog and the open-failure reasons |
+| `internal/control` | The control socket: instance registration, the verb set, picking the instance in the caller's tmux window, and the `b9s ctl` client side |
 | `pkg/loader` | JSONL parsing, `.beads` directory lookup including `BEADS_DIR` and git worktrees, and git-history loading |
 | `pkg/watcher` | File watching with debouncing, and a polling fallback on filesystems where events are unreliable |
 | `pkg/identity` | The alias registry that maps creator and assignee names to people, agents and pools |
@@ -104,6 +106,12 @@ The active source decides how changes are detected:
 - **SQLite.** The file is watched like JSONL.
 
 Every path ends in the same reload message to the UI model, which reloads the issues and keeps the cursor, the marks and the fold state. `Ctrl-R` and `F5` send that message by hand.
+
+## Control socket
+
+Every TUI instance serves `internal/control` on a unix socket in a 0700 state directory and writes `<pid>.json` beside it with its tmux pane. `b9s ctl` lists the registrations, drops those whose process is gone, picks the one in the caller's tmux window and sends one JSON request. The server checks the verb against a closed set and hands the request to the program with `tea.Program.Send`, so it enters `Update` like any other message.
+
+`branch <id>` becomes `ShowBranchMsg`. The model selects the issue and sets the branch filter; when the id is not loaded it keeps the request and retries after every message until a five-second deadline message ends it. See [ADR 0023](adr/0023-steer-a-running-b9s-through-a-control-socket.md).
 
 ## The UI model
 

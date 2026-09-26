@@ -17,12 +17,15 @@ const (
 	CommandMouse
 	CommandLayout
 	CommandWrap
+	CommandBranch
 )
 
 // Command is a resolved ':' command.
 type Command struct {
 	Kind      CommandKind
 	IssueType model.IssueType
+	// Arg is the issue id a branch command names.
+	Arg string
 }
 
 func typeFilterCommand(t model.IssueType) Command {
@@ -31,7 +34,7 @@ func typeFilterCommand(t model.IssueType) Command {
 
 // commandNames are the canonical spellings offered as suggestions. The alias
 // table below must resolve every one of them.
-var commandNames = []string{"bug", "chore", "epic", "feature", "issues", "layout", "mouse", "project", "task", "wrap"}
+var commandNames = []string{"branch", "bug", "chore", "epic", "feature", "issues", "layout", "mouse", "project", "task", "wrap"}
 
 // commandAliases is a closed table in code rather than config: the set of
 // entity views is fixed by the Beads schema, and tests can check it is total.
@@ -51,6 +54,16 @@ var commandAliases = map[string]Command{
 
 // ResolveCommand maps prompt text to a command.
 func ResolveCommand(text string) (Command, error) {
+	if fields := strings.Fields(text); len(fields) > 0 && strings.EqualFold(fields[0], "branch") {
+		if len(fields) > 2 {
+			return Command{}, fmt.Errorf("branch takes one issue id")
+		}
+		command := Command{Kind: CommandBranch}
+		if len(fields) == 2 {
+			command.Arg = fields[1]
+		}
+		return command, nil
+	}
 	name := strings.ToLower(strings.TrimSpace(text))
 	if command, ok := commandAliases[name]; ok {
 		return command, nil

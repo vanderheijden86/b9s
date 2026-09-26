@@ -443,6 +443,7 @@ type Model struct {
 	issues           []model.Issue
 	pooledIssues     []*model.Issue // Issue pool refs for sync reloads (return to pool on replace)
 	issueMap         map[string]*model.Issue
+	pendingBranchID  string                  // ShowBranchMsg waiting for its issue to load
 	beadsPath        string                  // Path to beads.jsonl for reloading
 	watcher          *watcher.Watcher        // File watcher for live reload
 	doltWatcher      *datasource.DoltWatcher // Dolt polling watcher for live reload
@@ -1192,8 +1193,18 @@ func (m Model) Init() tea.Cmd {
 // cursor at the new height.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.syncTreeSize()
-	next, cmd := m.update(msg)
+	var next tea.Model
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case ShowBranchMsg:
+		next, cmd = m.handleShowBranch(msg.ID)
+	case showBranchDeadlineMsg:
+		next = m.expireShowBranch(msg.ID)
+	default:
+		next, cmd = m.update(msg)
+	}
 	if updated, ok := next.(Model); ok {
+		updated.retryPendingBranch()
 		updated.syncTreeSize()
 		next = updated
 	}

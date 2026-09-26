@@ -3240,6 +3240,25 @@ func (t *TreeModel) PrevSearchMatch() {
 }
 
 // expandPathToNode expands all ancestors so the node becomes visible.
+// ExpandPathTo expands every ancestor of id and returns its top-level
+// ancestor, or false when the tree holds no such issue.
+func (t *TreeModel) ExpandPathTo(id string) (string, bool) {
+	node, ok := t.issueMap[id]
+	if !ok || node == nil {
+		return "", false
+	}
+	t.expandPathToNode(node)
+	t.rebuildFlatList()
+	root := node
+	for root.Parent != nil {
+		root = root.Parent
+	}
+	if root.Issue == nil {
+		return "", false
+	}
+	return root.Issue.ID, true
+}
+
 func (t *TreeModel) expandPathToNode(node *IssueTreeNode) {
 	ancestor := node.Parent
 	for ancestor != nil {

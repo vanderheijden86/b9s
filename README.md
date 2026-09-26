@@ -33,7 +33,7 @@ b9s takes its interaction model from k9s, the Kubernetes terminal UI. Where k9s 
 
 - **Header.** A header with the logo, the project shortcuts and a title bar that names the project and its data source. `Ctrl-E` or `H` hides and shows it.
 - **Project shortcuts.** Recent projects sit on `1`-`9`, like favourite namespaces, and follow the same rules: a new project goes to the front, a known one keeps its number, and `lock_recent` freezes the list. `0` shows every project at once, as `0` shows every namespace.
-- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project`, `:layout` and `:wrap`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
+- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project`, `:layout`, `:wrap` and `:branch <id>`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
 - **Filter.** `/` opens the query. `Enter` hides the field and keeps the filter, and `Esc` clears it.
 - **Marking.** `Space` marks an issue, `V` or `Ctrl-Space` marks a range and `Ctrl-\` clears the marks. Close, delete and status changes apply to every marked issue, or to the cursor row when nothing is marked.
 - **Table navigation.** `Ctrl-F` and `Ctrl-B` page, and `Ctrl-W` toggles wide columns. When the issue under the cursor is closed or deleted, the next issue takes its row.
@@ -198,6 +198,8 @@ The mouse wheel moves through issues and scrolls the detail pane. Because b9s ca
 
 Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:mouse` again to scroll with the wheel. Without it, hold the terminal's override key while you drag: `Option` in iTerm2, `Shift` in most other terminals.
 
+`b9s ctl branch <id>` steers the b9s in the same tmux window: it selects the issue and shows only its branch. A Claude Code hook can run it after `bd create`, so b9s follows the issues the agent files. See the [user guide](docs/USER_GUIDE.md#steering-b9s-from-another-program).
+
 ## Command-line options
 
 | Option | Effect |
@@ -210,6 +212,7 @@ Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:
 | `--update` | Install the latest release; `--yes` skips the prompt |
 | `--rollback` | Go back to the version before the last update |
 | `--version` | Print the version |
+| `ctl [--pane %N] branch <id>` | Steer a running b9s, see [Mouse and tmux](#mouse-and-tmux) |
 
 ## Development
 

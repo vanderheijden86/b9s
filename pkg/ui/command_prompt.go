@@ -118,6 +118,8 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		return m.toggleSplitLayout(), nil
 	case CommandWrap:
 		return m.toggleTitleWrap(), nil
+	case CommandBranch:
+		return m.handleShowBranch(command.Arg)
 	}
 	return m, nil
 }

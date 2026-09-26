@@ -29,6 +29,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "ctl" {
+		os.Exit(runCtl(os.Args[2:], os.Stdout, os.Stderr))
+	}
 	cpuProfile := flag.String("cpu-profile", "", "Write CPU profile to file")
 	help := flag.Bool("help", false, "Show help")
 	versionFlag := flag.Bool("version", false, "Show version")
@@ -329,6 +332,10 @@ func runTUIProgram(m ui.Model) error {
 		tea.WithMouseCellMotion(),
 		tea.WithoutSignalHandler(),
 	)
+
+	if srv := startControl(p); srv != nil {
+		defer srv.Close()
+	}
 
 	runDone := make(chan struct{})
 	defer close(runDone)
