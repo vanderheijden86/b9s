@@ -11,11 +11,12 @@ export default defineConfig({
   workers: 4,
   reporter: [["list"]],
   use: { trace: "retain-on-failure", actionTimeout: 5000, navigationTimeout: 10000 },
-  // Phones get the one-column board; wide.spec.ts covers laptops and iPads.
+  // Phones get the one-column board; wide.spec.ts and keys.spec.ts cover
+  // laptops and iPads, which have a keyboard.
   projects: [
-    { name: "pixel", use: { ...devices["Pixel 7"] }, testIgnore: /wide\.spec/ },
-    { name: "iphone", use: { ...devices["iPhone 14"] }, testIgnore: /wide\.spec/ },
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } }, testMatch: /wide\.spec/ },
-    { name: "ipad", use: { ...devices["iPad Pro 11"] }, testMatch: /wide\.spec/ },
+    { name: "pixel", use: { ...devices["Pixel 7"] }, testIgnore: /(wide|keys)\.spec/ },
+    { name: "iphone", use: { ...devices["iPhone 14"] }, testIgnore: /(wide|keys)\.spec/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } }, testMatch: /(wide|keys)\.spec/ },
+    { name: "ipad", use: { ...devices["iPad Pro 11"] }, testMatch: /(wide|keys)\.spec/ },
   ],
 });

@@ -6,6 +6,7 @@ import {
   act, applySuggestion, chipTap, closeDetail, closeSheet, foldSubtree, moveCard, nextStatus, openDetail,
   openSheet, reload, setStatus, sheetAction, swipeRightLabel, tabTap, toast, toggleMark, markRange, hideToast,
 } from "./actions";
+import { onKey } from "./keys";
 import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, siblings, wide } from "./render";
 import { S } from "./state";
 import { $, haptic } from "./util";
@@ -492,13 +493,14 @@ function bindClicks(): void {
   sIn.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); void act("applysearch"); } });
   document.addEventListener("keydown", e => {
     const t = e.target as HTMLElement;
-    if (e.key === "Escape") {
+    if (e.key === "Escape" && t.closest("input, textarea, select")) {
       if (S.sheet) { closeSheet(); e.preventDefault(); return; }
       if (S.detail) { closeDetail(); e.preventDefault(); }
       return;
     }
     if (t.closest("input, textarea, select")) return;
     if (S.view === "board" && !S.sheet && wide() && !e.metaKey && !e.ctrlKey && !e.altKey && boardKey(e.key)) { e.preventDefault(); return; }
+    if (onKey(e)) { e.preventDefault(); return; }
     if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
       const row = t.closest<HTMLElement>("[data-id], [data-card]");
       const id = row && (row.dataset.id || row.dataset.card);
