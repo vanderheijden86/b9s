@@ -489,7 +489,7 @@ The address shows the view and the open issue, for example `#/board/bd-12`. A re
 
 ### Laptop, desktop and iPad
 
-A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. As in the TUI, the board opens on the epic rail: the first column holds one cell per epic, with its completion and issue count, level with its lane. `v` switches to epic rows, a header row above each lane, and the choice stays. The detail opens as a panel on the right, so the board stays in view beside it. A phone keeps the one-column board.
+A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. As in the TUI, the board opens on the epic rail: the first column holds one cell per epic, with its completion and issue count, level with its lane. `v` switches to epic rows, a header row above each lane, and the choice stays. The detail opens as a panel on the right, so the board stays in view beside it. `\` or the panel's ⤢ button widens it to the full window, and again makes it a panel. A phone keeps the one-column board.
 
 | Input | Effect |
 |-------|--------|
@@ -502,6 +502,7 @@ A window at least 720 px wide and 500 px high shows the whole board at once. Eve
 | `v` | Switch between the epic rail and epic rows |
 | `j` `k`, `Down` `Up` | Move the cursor through the column |
 | `Enter` | Open the detail panel. With it open, the cursor keys change the issue it shows |
+| `\` | Switch the detail between a side panel and the full width |
 | `z`, `Z` | Fold the cursor's column into a rail, unfold every column |
 | `Esc` | Close the detail panel |
 

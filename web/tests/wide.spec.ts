@@ -2,7 +2,7 @@
 // epic lanes as swimlanes, mouse drag between columns, TUI keys, and the
 // detail as a side panel that leaves the board in view.
 
-import { expect, open, test, type Project } from "./harness";
+import { expect, open, SAMPLE, test, type Project } from "./harness";
 import type { Page } from "@playwright/test";
 
 const col = (page: Page, k: string) => page.locator(`#wboard .wcell[data-dcol="${k}"]`);
@@ -214,4 +214,44 @@ test("h from the first column selects the epic; Enter opens it and Tab folds its
   await expect(card(page, "t-2")).toHaveCount(0);
   await page.keyboard.press("Tab");
   await expect(card(page, "t-2")).toBeVisible();
+});
+
+test("\\ or the panel's button switches the detail between a side panel and the full width", async ({ page, project }) => {
+  await board(page, project);
+  await card(page, "t-1").click();
+  const d = page.locator(".detail"), vp = page.viewportSize()!;
+  // The panel slides in, so its box settles a moment after it appears.
+  const box = async () => (await d.boundingBox()) || { x: -1, width: -1 };
+  const panel = async () => { const b = await box(); return b.width > 0 && b.width < vp.width * 0.6; };
+  const full = async () => { const b = await box(); return b.x <= 1 && b.width >= vp.width - 2; };
+  await expect.poll(panel).toBe(true);
+  await page.keyboard.press("\\");
+  await expect.poll(full).toBe(true);
+  await expect(d).toHaveAttribute("data-id", "t-1");
+  await expect(d.locator('[data-act="dsize"]')).toHaveAttribute("aria-label", "Side panel");
+  await page.keyboard.press("\\");
+  await expect.poll(panel).toBe(true);
+  await d.locator('[data-act="dsize"]').click();
+  await expect.poll(full).toBe(true);
+  // The board's keys still move the cursor behind the full panel, and the panel follows.
+  await page.keyboard.press("l");
+  await expect(d).toHaveAttribute("data-id", "t-3");
+  await expect.poll(full).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(d).toHaveCount(0);
+});
+
+test.describe("a lane taller than its epic cell", () => {
+  test.use({ fixture: { issues: [...SAMPLE, ...[6, 7, 8, 9].map(n => ({ id: `t-${n}`, title: `[${n}] Task ${n}`, parent: "t-epic", priority: 3 }))] } });
+
+  test("the epic cell spans the whole lane", async ({ page, project }) => {
+    await board(page, project);
+    const eb = (await epic(page, "t-epic").boundingBox())!;
+    const last = (await card(page, "t-9").boundingBox())!;
+    expect(last.y + last.height).toBeGreaterThan(eb.y + 120);
+    expect(eb.y + eb.height).toBeGreaterThanOrEqual(last.y + last.height - 2);
+    // The next lane's epic starts below it, so the cell fills its own row only.
+    const none = (await epic(page, "none").boundingBox())!;
+    expect(none.y).toBeGreaterThanOrEqual(eb.y + eb.height - 1);
+  });
 });

@@ -1,10 +1,11 @@
 // The TUI's regular keys for a browser with a keyboard. Each key calls the
 // same action a tap or a gesture does, so a key and its gesture can never
 // disagree. README.md's key tables are the reference; keys with no meaning
-// in a browser (Ctrl-C quits, \ < > lay out panes) are left out.
+// in a browser (Ctrl-C quits, < > resize panes) are left out.
 //
 //   keydown ──▶ sheet open? ── only Esc
 //               │
+//               ├─ \ sizes the detail when it shows
 //               ├─ global keys (views, projects, reload, help)
 //               ├─ board keys          when the board shows
 //               ├─ detail keys (n p c) when the detail shows
@@ -40,6 +41,8 @@ export function onKey(e: KeyboardEvent): boolean {
     return false;
   }
   if (k === "Escape") return escape();
+  // The TUI's \ stacks the detail full width; here it sizes the sheet or the side panel.
+  if (k === "\\" && S.detail) { void act("dsize"); return true; }
   if (globalKey(k)) return true;
   if (S.view === "board") return boardKey(k);
   if (S.detail && detailKey(k)) return true;

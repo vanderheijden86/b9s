@@ -333,7 +333,7 @@ export const KEYS: [string, string][] = [
   ["e, S, K, Delete", "edit, status, close, delete"], ["Ctrl-N, c", "create, copy ID and title"],
   ["b, g, Esc", "board, dependency graph, back"], ["1-9, 0", "open a recent project, all projects"],
   ["L, A, P", "put labels, assignees or projects on 1-9"], ["Ctrl-E H, D", "hide the header, source health"],
-  ["Ctrl-R, F5", "reload"], ["Detail: n p, c", "next or previous sibling, copy as Markdown"],
+  ["Ctrl-R, F5", "reload"], ["Detail: n p, c, \\", "next or previous sibling, copy as Markdown, full size or back"],
   ["Board: h j k l, z Z", "move, fold the column, unfold all"], ["Board: o i C, r, c", "toggle open, in progress, closed; ready; closed column"],
   ["Board: s, v, e", "group by, epic rows or rail, hide empty columns"], ["Board: y, f, { }, Tab", "copy ID, branch, previous or next epic, fold the lane"],
 ];

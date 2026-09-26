@@ -162,7 +162,8 @@
   .whint { margin-left: auto; align-self: center; color: var(--muted); font-size: 0.846rem; white-space: nowrap; }
   .whead.epich { color: var(--accent); border-bottom-color: var(--accent); cursor: default; }
   .wboard .lt { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; }
-  .wepic { align-self: start; margin: 16px 0 10px; padding: 8px 10px 10px; border: 1px solid var(--line); border-left: 3px solid var(--ec); border-radius: 6px; background: var(--bg); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 0.923rem; }
+  /* The cell stretches to its lane's row, so a tall lane keeps its epic beside every card. */
+  .wepic { align-self: stretch; align-content: start; margin: 16px 0 4px; padding: 8px 10px 10px; border: 1px solid var(--line); border-left: 3px solid var(--ec); border-radius: 6px; background: var(--bg); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 0.923rem; }
   .wepic:hover:not(.sel) { border-color: var(--muted); border-left-color: var(--ec); }
   .wepic.sel { background: rgba(139,233,253,.14); border-color: var(--cyan); border-left-color: var(--ec); }
   .wepic .eh { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; color: var(--ec); }
@@ -317,7 +318,9 @@
       border-top: 0; border-left: 1px solid var(--line); border-radius: 0; box-shadow: -12px 0 40px rgba(0,0,0,.45);
     }
     .detail.enter { transform: translateX(100%); }
-    .detail .grab, .detail [data-act="dsize"] { display: none; }
+    /* Full width covers the view instead of narrowing it, so the board keeps its layout for when the panel shrinks back. */
+    .detail.full { left: 0; width: auto; border-left: 0; box-shadow: none; }
+    .detail .grab { display: none; }
     .detail .dhead { padding-top: 10px; touch-action: auto; }
     .detail .dacts { padding-bottom: 0; }
     .app.hasdetail .view { right: var(--dw); }
