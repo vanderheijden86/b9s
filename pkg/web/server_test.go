@@ -264,6 +264,119 @@ func TestWriteWithoutCSRFHeaderIsRefused(t *testing.T) {
 	}
 }
 
+func headerAuth(t *testing.T) *Auth {
+	t.Helper()
+	a, err := NewHeaderAuth([]byte("0123456789abcdef0123456789abcdef"), "X-Forwarded-Email", "Owner@Example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
+}
+
+// get sends one GET carrying the given email header, as a login proxy would.
+func (ts *testServer) getAs(t *testing.T, path, email string) *http.Response {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+path, nil)
+	if email != "" {
+		req.Header.Set("X-Forwarded-Email", email)
+	}
+	noRedirect := &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := noRedirect.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
+func TestHeaderAuthAdmitsOnlyTheOwner(t *testing.T) {
+	ts := newTestServer(t, headerAuth(t), nil)
+	cases := []struct {
+		email string
+		want  int
+	}{
+		{"owner@example.com", http.StatusOK},
+		{"OWNER@example.com", http.StatusOK}, // email addresses compare without case
+		{"", http.StatusUnauthorized},
+		{"someone@example.com", http.StatusUnauthorized},
+		{"owner@example.com.evil", http.StatusUnauthorized},
+	}
+	for _, c := range cases {
+		resp := ts.getAs(t, "/api/snapshot", c.email)
+		resp.Body.Close()
+		if resp.StatusCode != c.want {
+			t.Errorf("email %q: %d, want %d", c.email, resp.StatusCode, c.want)
+		}
+	}
+}
+
+func TestHeaderAuthIgnoresAPairingCookie(t *testing.T) {
+	a := headerAuth(t)
+	ts := newTestServer(t, a, nil)
+	// A cookie minted from the same secret must not stand in for the header:
+	// the proxy's sign-in is the only way in.
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/snapshot", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: a.sessionValue()})
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("cookie without header: %d, want 401", resp.StatusCode)
+	}
+
+	resp = ts.getAs(t, "/pair?t="+a.PairToken(), "")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden || len(resp.Cookies()) != 0 {
+		t.Fatalf("pair without header: %d with %d cookies", resp.StatusCode, len(resp.Cookies()))
+	}
+	resp = ts.getAs(t, "/pair", "owner@example.com")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther || len(resp.Cookies()) != 0 {
+		t.Fatalf("pair as owner: %d with %d cookies", resp.StatusCode, len(resp.Cookies()))
+	}
+}
+
+func TestHeaderAuthStillNeedsCSRFForWrites(t *testing.T) {
+	a := headerAuth(t)
+	ts := newTestServer(t, a, nil)
+	resp := ts.getAs(t, "/api/session", "owner@example.com")
+	var session Session
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if session.CSRF == "" || session.CSRF != a.CSRF() {
+		t.Fatalf("session CSRF %q", session.CSRF)
+	}
+
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/api/write", strings.NewReader(`{"op":"close","ids":["t-1"]}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-Email", "owner@example.com")
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("write without CSRF: %d, want 403", resp.StatusCode)
+	}
+}
+
+func TestNewHeaderAuthRejectsBadArguments(t *testing.T) {
+	secret := []byte("0123456789abcdef0123456789abcdef")
+	for _, c := range []struct{ header, owner string }{
+		{"", "a@b.c"},
+		{"X Bad", "a@b.c"},
+		{"X-Forwarded-Email", ""},
+		{"X-Forwarded-Email", "no-at-sign"},
+	} {
+		if _, err := NewHeaderAuth(secret, c.header, c.owner); err == nil {
+			t.Errorf("header %q owner %q: no error", c.header, c.owner)
+		}
+	}
+}
+
 func TestPairTokenSurvivesRestartAndRenewUnpairs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "web", "secret")
 	first, err := LoadOrCreateSecret(path, false)
