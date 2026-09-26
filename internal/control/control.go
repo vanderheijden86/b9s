@@ -36,6 +36,10 @@ var knownVerbs = map[Verb]bool{VerbBranch: true}
 type Request struct {
 	Verb Verb   `json:"verb"`
 	ID   string `json:"id,omitempty"`
+	// IfKnown lists candidate ids in priority order, in place of ID. The
+	// first one b9s has loaded wins; the others, and a miss on all of them,
+	// are ignored without waiting or reporting.
+	IfKnown []string `json:"if_known,omitempty"`
 }
 
 type response struct {

@@ -109,7 +109,7 @@ Every path ends in the same reload message to the UI model, which reloads the is
 
 ## Control socket
 
-Every TUI instance serves `internal/control` on a unix socket in a 0700 state directory and writes `<pid>.json` beside it with its tmux pane. `b9s ctl` lists the registrations, drops those whose process is gone, picks the one in the caller's tmux window and sends one JSON request. The server checks the verb against a closed set and hands the request to the program with `tea.Program.Send`, so it enters `Update` like any other message.
+Every TUI instance serves `internal/control` on a unix socket in a 0700 state directory and writes `<pid>.json` beside it with its tmux pane. `b9s ctl` lists the registrations, drops those whose process is gone, picks the one in the caller's tmux window and sends one JSON request. The server checks the verb against a closed set and hands the request to the program with `tea.Program.Send`, so it enters `Update` like any other message. A request with `if_known` candidates becomes `ShowKnownBranchMsg`, which never waits for a missing id, so guessed ids leave no trace.
 
 `branch <id>` becomes `ShowBranchMsg`. The model selects the issue and sets the branch filter; when the id is not loaded it keeps the request and retries after every message until a five-second deadline message ends it. See [ADR 0023](adr/0023-steer-a-running-b9s-through-a-control-socket.md).
 

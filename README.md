@@ -198,7 +198,7 @@ The mouse wheel moves through issues and scrolls the detail pane. Because b9s ca
 
 Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:mouse` again to scroll with the wheel. Without it, hold the terminal's override key while you drag: `Option` in iTerm2, `Shift` in most other terminals.
 
-`b9s ctl branch <id>` steers the b9s in the same tmux window: it selects the issue and shows only its branch. A Claude Code hook can run it after `bd create`, so b9s follows the issues the agent files. See the [user guide](docs/USER_GUIDE.md#steering-b9s-from-another-program).
+`b9s ctl branch <id>` steers the b9s in the same tmux window: it selects the issue and shows only its branch. `--if-known` takes candidate ids and ignores those b9s has not loaded. A Claude Code hook uses both, so b9s follows the issues the agent files or claims and the issues named in a prompt. See the [user guide](docs/USER_GUIDE.md#steering-b9s-from-another-program).
 
 ## Command-line options
 
@@ -212,7 +212,7 @@ Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:
 | `--update` | Install the latest release; `--yes` skips the prompt |
 | `--rollback` | Go back to the version before the last update |
 | `--version` | Print the version |
-| `ctl [--pane %N] branch <id>` | Steer a running b9s, see [Mouse and tmux](#mouse-and-tmux) |
+| `ctl [--pane %N] branch [--if-known] <id>...` | Steer a running b9s, see [Mouse and tmux](#mouse-and-tmux) |
 
 ## Development
 

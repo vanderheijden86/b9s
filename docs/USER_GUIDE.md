@@ -329,13 +329,22 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 ```bash
 b9s ctl branch bd-rn0w.3
 b9s ctl --pane %118 branch bd-rn0w
+b9s ctl branch --if-known follow-up bd-rn0w.3 bd-x1
 ```
 
 When the issue is not loaded yet, for example straight after `bd create`, b9s shows `Waiting for <id> to load` and applies the request on the next reload. It gives up after five seconds.
 
+`--if-known` takes candidate ids in priority order, such as every word of a sentence that looks like an id. b9s shows the first one it has loaded and ignores the others without waiting or touching the status line. Nothing happens when it knows none of them, so a caller can pass guesses, or ids from another project.
+
 Each b9s registers in `~/.local/state/b9s/instances` (or `$XDG_STATE_HOME/b9s/instances`, or `B9S_CONTROL_DIR`), a directory only you can read. See [ADR 0023](adr/0023-steer-a-running-b9s-through-a-control-socket.md).
 
-**Claude Code.** A `PostToolUse` hook on `Bash` can run `b9s ctl branch <id>` after every `bd create`, so the b9s beside Claude follows the issues it files. The hook reads the id from the tool output and does nothing outside tmux or when no b9s shares the window.
+**Claude Code.** One hook script, registered for two events, keeps the b9s beside Claude on the issue at hand. It does nothing outside tmux or when no b9s shares the window.
+
+| Event | Trigger | Request |
+|---|---|---|
+| `UserPromptSubmit` | A prompt that names issues, such as `/goal agent-swarm-4ff8 ...` | `branch --if-known` with every id-shaped word |
+| `PostToolUse` on `Bash` | `bd create` | `branch <id>`, with the id read from the output |
+| `PostToolUse` on `Bash` | `bd update <id> --claim` or `--status in_progress` | `branch --if-known <id>` |
 
 ## Projects
 

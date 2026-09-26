@@ -12,6 +12,11 @@ import (
 // program (the control socket) as well as from the :branch command.
 type ShowBranchMsg struct{ ID string }
 
+// ShowKnownBranchMsg is ShowBranchMsg for guessed ids, such as the words of a
+// prompt that look like issue ids. The first id that is loaded wins. Unknown
+// ids are expected, so they never wait, and they leave the status line alone.
+type ShowKnownBranchMsg struct{ IDs []string }
+
 // showBranchDeadlineMsg ends the wait for an issue that was not loaded when
 // its ShowBranchMsg arrived.
 type showBranchDeadlineMsg struct{ ID string }
@@ -36,6 +41,16 @@ func (m Model) handleShowBranch(id string) (Model, tea.Cmd) {
 	m.statusMsg = "Waiting for " + id + " to load"
 	m.statusIsError = false
 	return m, tea.Tick(showBranchWait, func(time.Time) tea.Msg { return showBranchDeadlineMsg{ID: id} })
+}
+
+func (m Model) handleShowKnownBranch(ids []string) Model {
+	for _, id := range ids {
+		if id = strings.TrimSpace(id); id != "" && m.showBranch(id) {
+			m.pendingBranchID = ""
+			return m
+		}
+	}
+	return m
 }
 
 func (m Model) expireShowBranch(id string) Model {

@@ -13,11 +13,15 @@ import (
 )
 
 const ctlUsage = `usage: b9s ctl [--pane %N] branch <issue-id>
+       b9s ctl [--pane %N] branch --if-known <candidate-id>...
 
 Steers a running b9s. Inside tmux it picks the b9s in the caller's tmux
 window; outside tmux it picks the only running b9s. --pane names one.
 
-  branch <issue-id>   select the issue and show only its top-level branch
+  branch <issue-id>   select the issue and show only its top-level branch;
+                      an id not loaded yet is awaited for a few seconds
+  branch --if-known   the same for the first candidate b9s has loaded;
+                      unknown candidates are ignored silently
 `
 
 // runCtl implements `b9s ctl` and returns the process exit code.
@@ -37,11 +41,23 @@ func runCtl(args []string, stdout, stderr io.Writer) int {
 	var req control.Request
 	switch rest[0] {
 	case string(control.VerbBranch):
-		if len(rest) != 2 {
+		bfs := flag.NewFlagSet("branch", flag.ContinueOnError)
+		bfs.SetOutput(io.Discard)
+		ifKnown := bfs.Bool("if-known", false, "ignore candidates b9s has not loaded")
+		if err := bfs.Parse(rest[1:]); err != nil {
 			fmt.Fprint(stderr, ctlUsage)
 			return 2
 		}
-		req = control.Request{Verb: control.VerbBranch, ID: rest[1]}
+		ids := bfs.Args()
+		switch {
+		case *ifKnown && len(ids) > 0:
+			req = control.Request{Verb: control.VerbBranch, IfKnown: ids}
+		case !*ifKnown && len(ids) == 1:
+			req = control.Request{Verb: control.VerbBranch, ID: ids[0]}
+		default:
+			fmt.Fprint(stderr, ctlUsage)
+			return 2
+		}
 	default:
 		fmt.Fprintf(stderr, "b9s ctl: unknown command %q\n%s", rest[0], ctlUsage)
 		return 2
@@ -87,7 +103,11 @@ func startControl(p *tea.Program) *control.Server {
 	srv, err := control.Serve(dir, inst, func(r control.Request) error {
 		switch r.Verb {
 		case control.VerbBranch:
-			p.Send(ui.ShowBranchMsg{ID: r.ID})
+			if len(r.IfKnown) > 0 {
+				p.Send(ui.ShowKnownBranchMsg{IDs: r.IfKnown})
+			} else {
+				p.Send(ui.ShowBranchMsg{ID: r.ID})
+			}
 		}
 		return nil
 	})

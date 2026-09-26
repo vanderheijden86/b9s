@@ -145,3 +145,36 @@ func TestShowBranchMsg_AcceptsTheShortIDShownOnScreen(t *testing.T) {
 		t.Fatalf("board branch = %q, want spectroscope-k3s", got)
 	}
 }
+
+func TestShowKnownBranchMsg_ShowsTheFirstLoadedIDAndIgnoresTheRest(t *testing.T) {
+	m := showBranchTreeModel(t)
+
+	m, cmd := sendMsg(t, m, ShowKnownBranchMsg{IDs: []string{"follow-up", "task-b", "task-a"}})
+
+	if got := m.queryState.Text(); got != "epic-b" {
+		t.Fatalf("branch query = %q, want epic-b", got)
+	}
+	if got := m.tree.GetSelectedID(); got != "task-b" {
+		t.Fatalf("selected %q, want task-b", got)
+	}
+	if cmd != nil {
+		t.Fatal("a known id must not start a wait")
+	}
+}
+
+func TestShowKnownBranchMsg_NoLoadedIDChangesNothing(t *testing.T) {
+	m := showBranchTreeModel(t)
+	m.statusMsg = "before"
+
+	m, cmd := sendMsg(t, m, ShowKnownBranchMsg{IDs: []string{"follow-up", "other-x1"}})
+
+	if cmd != nil || m.pendingBranchID != "" {
+		t.Fatalf("unknown ids started a wait: pending %q", m.pendingBranchID)
+	}
+	if m.statusMsg != "before" || m.statusIsError {
+		t.Fatalf("status = %q (error %v), want it untouched", m.statusMsg, m.statusIsError)
+	}
+	if got := m.queryState.Text(); got != "" {
+		t.Fatalf("query = %q, want none", got)
+	}
+}

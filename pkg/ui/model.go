@@ -1198,6 +1198,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowBranchMsg:
 		next, cmd = m.handleShowBranch(msg.ID)
+	case ShowKnownBranchMsg:
+		next = m.handleShowKnownBranch(msg.IDs)
 	case showBranchDeadlineMsg:
 		next = m.expireShowBranch(msg.ID)
 	default:
