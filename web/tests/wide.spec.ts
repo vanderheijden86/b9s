@@ -123,3 +123,25 @@ test("z folds the cursor column and Z unfolds every column", async ({ page, proj
   await page.keyboard.press("Shift+Z");
   await expect(page.locator('#wboard .whead[data-tab="blocked"]')).not.toHaveClass(/rail/);
 });
+
+test("Back closes the side detail and Backspace steps back too", async ({ page, project }) => {
+  await board(page, project);
+  await page.keyboard.press("j");
+  await page.keyboard.press("l");
+  await page.keyboard.press("Enter");
+  const d = page.locator(".detail");
+  await expect(d).toHaveAttribute("data-id", "t-1");
+  // Moving the cursor with the panel open replaces the entry: one Back closes it.
+  await page.keyboard.press("l");
+  await expect(d).toHaveAttribute("data-id", "t-3");
+  await expect(page).toHaveURL(/#\/board\/t-3$/);
+  await page.goBack();
+  await expect(d).toHaveCount(0);
+  await expect(page.locator("#wboard")).toBeVisible();
+  await page.keyboard.press("Backspace");
+  await expect(page.locator("#vTree")).toBeVisible();
+  // At the first entry of the app, Backspace stays in the app.
+  await page.keyboard.press("Backspace");
+  await expect(page.locator("#vTree")).toBeVisible();
+  expect(page.url()).toContain(project.url);
+});
