@@ -11,8 +11,11 @@ export default defineConfig({
   workers: 4,
   reporter: [["list"]],
   use: { trace: "retain-on-failure", actionTimeout: 5000, navigationTimeout: 10000 },
+  // Phones get the one-column board; wide.spec.ts covers laptops and iPads.
   projects: [
-    { name: "pixel", use: { ...devices["Pixel 7"] } },
-    { name: "iphone", use: { ...devices["iPhone 14"] } },
+    { name: "pixel", use: { ...devices["Pixel 7"] }, testIgnore: /wide\.spec/ },
+    { name: "iphone", use: { ...devices["iPhone 14"] }, testIgnore: /wide\.spec/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } }, testMatch: /wide\.spec/ },
+    { name: "ipad", use: { ...devices["iPad Pro 11"] }, testMatch: /wide\.spec/ },
   ],
 });

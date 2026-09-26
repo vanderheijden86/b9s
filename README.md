@@ -250,6 +250,23 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 
 No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
 
+### Laptop, desktop and iPad
+
+A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. The detail opens as a panel on the right, so the board stays in view beside it. A phone keeps the one-column board.
+
+| Input | Effect |
+|-------|--------|
+| Drag a card with the mouse | Move it to the column under the pointer. The board scrolls when the pointer is near an edge |
+| Click a column header | Fold it into a rail; click the rail to unfold it |
+| Click a lane header | Fold or unfold that epic's lane |
+| `h` `l`, `Left` `Right` | Move the cursor to the nearest card in the previous or next column |
+| `j` `k`, `Down` `Up` | Move the cursor through the column |
+| `Enter` | Open the detail panel. With it open, the cursor keys change the issue it shows |
+| `z`, `Z` | Fold the cursor's column into a rail, unfold every column |
+| `Esc` | Close the detail panel |
+
+On a touch screen, a long press on a card still starts the drag.
+
 ## Mouse and tmux
 
 The mouse wheel moves through issues and scrolls the detail pane. Because b9s captures the mouse for this, a drag does not select text, and in tmux with `mouse on` the drag goes to b9s instead of starting copy mode.

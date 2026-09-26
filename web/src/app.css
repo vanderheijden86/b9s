@@ -144,9 +144,22 @@
   .card.sel { border-color: var(--hi); border-left-color: var(--hi); }
   .card.ghost { position: absolute; z-index: 90; pointer-events: none; opacity: .92; box-shadow: 0 12px 30px rgba(0,0,0,.6); transform: rotate(-2deg); width: 300px; }
   .card.lifted { opacity: .3; }
-  .lane { display: flex; gap: 6px; align-items: baseline; color: var(--accent); font-size: 0.923rem; padding: 8px 2px 5px; white-space: nowrap; }
+  .lane { width: 100%; text-align: left; display: flex; gap: 6px; align-items: baseline; color: var(--accent); font-size: 0.923rem; padding: 8px 2px 5px; white-space: nowrap; }
   .lane .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
   .lane .n { color: var(--muted); }
+  /* the wide board: every column side by side, epic lanes as rows across them */
+  .wboard { flex: 1; min-width: 0; overflow: auto; overscroll-behavior: contain; display: grid; grid-auto-rows: min-content; align-content: start; column-gap: 12px; padding: 0 16px 24px; touch-action: pan-x pan-y; }
+  .whead { position: sticky; top: 0; z-index: 3; display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 8px; background: var(--bg); border-bottom: 2px solid var(--hc, var(--line)); color: var(--text); font-weight: 700; text-align: left; }
+  .whead b { font-weight: 400; color: var(--muted); }
+  .whead:hover span { color: var(--hi); }
+  .whead.rail { writing-mode: vertical-rl; align-items: center; padding: 10px 0; font-weight: 400; color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; height: 120px; }
+  .wboard .lane { grid-column: 1 / -1; padding: 12px 6px 6px; border-bottom: 1px solid var(--line); }
+  .wcell { min-height: 44px; padding: 8px 0 4px; border-radius: 6px; }
+  .wcell.drop, .whead.drop { background: rgba(241,250,140,.07); outline: 1px dashed var(--yellow); outline-offset: -1px; }
+  .wboard .card { cursor: pointer; }
+  .wboard .card:hover:not(.sel) { border-color: var(--muted); border-left-color: var(--c, var(--line)); }
+  .wempty { grid-column: 1 / -1; }
+  .whint { margin-left: auto; align-self: center; color: var(--muted); font-size: 0.846rem; white-space: nowrap; }
   .edgehint { position: absolute; top: 0; bottom: 0; width: 36px; z-index: 5; display: none; align-items: center; justify-content: center; color: var(--yellow); background: rgba(241,250,140,.08); pointer-events: none; }
   .dragging .edgehint { display: flex; }
   .edgehint.l { left: 0; } .edgehint.r { right: 0; }
@@ -282,5 +295,18 @@
   :focus-visible { outline: 2px solid var(--hi); outline-offset: -2px; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .err { color: var(--red); }
+  /* Wide screens: the detail is a side panel between header and bar, and the views make room for it. */
+  @media (min-width: 720px) and (min-height: 500px) {
+    :root { --dw: min(460px, 42vw); }
+    .detail {
+      left: auto; top: calc(var(--sat) + 32px); bottom: calc(48px + var(--sab)); width: var(--dw); height: auto;
+      border-top: 0; border-left: 1px solid var(--line); border-radius: 0; box-shadow: -12px 0 40px rgba(0,0,0,.45);
+    }
+    .detail.enter { transform: translateX(100%); }
+    .detail .grab, .detail [data-act="dsize"] { display: none; }
+    .detail .dhead { padding-top: 10px; touch-action: auto; }
+    .detail .dacts { padding-bottom: 0; }
+    .app.hasdetail .view { right: var(--dw); }
+  }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }
 [hidden] { display: none !important; }

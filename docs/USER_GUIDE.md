@@ -428,7 +428,7 @@ The database password never reaches the browser. The server reads the store and 
 | Screen | What it shows |
 |--------|---------------|
 | Tree | The TUI tree: epics, children, status glyphs, a second line with priority, type, assignee, age, progress, blockers, comment count and labels (choose them under Tree options) |
-| Board | One column at a time, grouped by status, priority or type. Columns fold into rails, and epics show as cards, rows or a side rail |
+| Board | One column at a time on a phone, every column side by side on a wider screen, grouped by status, priority or type. Columns fold into rails, and epics show as cards, rows or a side rail |
 | Search | The [query language](#search) with completions. Results update as you type, and Apply puts the query on the tree |
 | Detail | A sheet over the list: fields, parent, children, blockers, text sections as Markdown, comments, and Status, Edit, Comment, Branch and More |
 | Graph | The chains of blockers and blocked issues around one issue, with parent, children and discovered-from |
@@ -463,6 +463,23 @@ The chips under the header are the status filters and the Ready filter from the 
 | Tap `F` | Follow live changes | `F` |
 
 No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
+
+### Laptop, desktop and iPad
+
+A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. The detail opens as a panel on the right, so the board stays in view beside it. A phone keeps the one-column board.
+
+| Input | Effect |
+|-------|--------|
+| Drag a card with the mouse | Move it to the column under the pointer. The board scrolls when the pointer is near an edge |
+| Click a column header | Fold it into a rail; click the rail to unfold it |
+| Click a lane header | Fold or unfold that epic's lane |
+| `h` `l`, `Left` `Right` | Move the cursor to the nearest card in the previous or next column |
+| `j` `k`, `Down` `Up` | Move the cursor through the column |
+| `Enter` | Open the detail panel. With it open, the cursor keys change the issue it shows |
+| `z`, `Z` | Fold the cursor's column into a rail, unfold every column |
+| `Esc` | Close the detail panel |
+
+On a touch screen, a long press on a card still starts the drag.
 
 ### Writes
 

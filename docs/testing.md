@@ -83,7 +83,7 @@ The mobile and preview shell scripts in `tests/` are not Go tests. They check a 
 
 ## Browser tests
 
-`make web-e2e` (or `npm --prefix web run test:e2e`) runs the web UI in Playwright, as a Pixel 7 in Chromium and an iPhone 14 in WebKit. Global setup builds the bundle and `.b9s-e2e/b9s` from the working tree. Set `B9S_WEB_BIN` to test another binary.
+`make web-e2e` (or `npm --prefix web run test:e2e`) runs the web UI in Playwright, as a Pixel 7 in Chromium and an iPhone 14 in WebKit. `wide.spec.ts` runs only in two wide projects, a 1440 x 900 desktop Chrome and an iPad Pro 11 in WebKit, and the phone projects skip it. Global setup builds the bundle and `.b9s-e2e/b9s` from the working tree. Set `B9S_WEB_BIN` to test another binary.
 
 - Each test gets its own temp folder with `.beads/issues.jsonl`, an isolated `XDG_CONFIG_HOME`, and its own `b9s web --no-token` on a free loopback port (`web/tests/harness.ts`). No test reaches a Beads database.
 - `web/tests/fake-bd.mjs` stands in for `bd` on the `PATH`. It applies `update`, `close`, `delete`, `defer`, `comments add` and `create` to the JSONL, and logs each call to `.beads/bd-calls.log`, so a test checks both the command and its effect. `FAKE_BD_FAIL=<command>` makes that command fail.
