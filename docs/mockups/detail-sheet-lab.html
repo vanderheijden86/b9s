@@ -1,0 +1,341 @@
+<title>Detail Sheet Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --page: #0b0c0f; --bg: #16171d; --bg2: #1c1e26; --bg3: #252836; --line: #2d3142;
+    --text: #f8f8f2; --dim: #bfbfbf; --muted: #7f8bb3; --accent: #bd93f9; --cyan: #8be9fd; --hi: #4fc1e9;
+    --green: #50fa7b; --red: #ff5555; --orange: #ffb86c; --blue: #4c9aff; --feat: #57d9a3; --yellow: #f1fa8c;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 13px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+    display: flex; flex-direction: column; overflow: hidden; -webkit-text-size-adjust: 100%; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  button:focus-visible { outline: 2px solid var(--hi); outline-offset: 2px; }
+
+  /* ---------- lab bar ---------- */
+  .lab { flex: none; padding: 8px 16px 6px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); background: var(--bg); border-bottom: 1px solid var(--line); }
+  .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--bg3); border-radius: 8px; padding: 3px; }
+  .seg button { padding: 6px 2px; border-radius: 6px; color: var(--dim); font-size: 12px; white-space: nowrap; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 700; }
+  .legend { margin-top: 6px; color: var(--muted); font-size: 12px; min-height: 2.8em; }
+  .legend b { color: var(--dim); font-weight: 500; }
+  .legend .rec { color: var(--green); }
+
+  /* ---------- app shell ---------- */
+  #app { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--page); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .hd { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 14px; }
+  .hd .proj { color: var(--accent); font-weight: 700; }
+  .hd .n { color: var(--green); font-weight: 700; } .hd .p { color: var(--hi); font-weight: 700; }
+  .hd .sp { flex: 1; }
+  .tabs { display: flex; gap: 14px; padding: 6px 16px; border-bottom: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 13px; }
+  .tabs .on { color: var(--text); background: var(--bg3); border-radius: 6px; padding: 3px 8px; margin: -3px -8px; }
+  #list { position: absolute; inset: 78px 0 0 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px 80px; }
+  .row { display: block; width: 100%; text-align: left; padding: 8px 10px; margin: 5px 0; border: 1px solid var(--line); border-left: 3px solid var(--rowc, var(--line));
+    border-radius: 8px; background: var(--bg); }
+  .row.cur { border-color: var(--hi); box-shadow: 0 0 0 1px var(--hi) inset; }
+  .row .t { display: flex; gap: 6px; white-space: nowrap; overflow: hidden; }
+  .row .t .id { color: var(--accent); flex: none; } .row .t .tt { overflow: hidden; text-overflow: ellipsis; }
+  .row .m { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .row .m .bug { color: var(--red); } .row .m .feat { color: var(--feat); } .row .m .task { color: var(--blue); }
+  .row.pressing { background: var(--bg3); }
+
+  /* ---------- detail sheet ---------- */
+  .detail { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; height: 52%; background: var(--bg2); border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,.55); display: flex; flex-direction: column; touch-action: manipulation;
+    transition: height .24s cubic-bezier(.2,.8,.2,1), transform .24s cubic-bezier(.2,.8,.2,1), border-radius .24s; }
+  .detail.full { height: 100%; border-radius: 0; }
+  .detail.enter { transform: translateY(100%); }
+  .detail.page { height: 100%; border-radius: 0; }
+  .detail.page.enter { transform: translateX(100%); }
+  .detail.drag { transition: none; }
+  .dhead { flex: none; touch-action: none; padding: 0 12px 6px 16px; border-bottom: 1px solid var(--line); }
+  .grab { height: 18px; display: grid; place-items: center; }
+  .grab::before { content: ""; width: 38px; height: 4px; border-radius: 2px; background: var(--line); }
+  .page .grab { height: 8px; } .page .grab::before { display: none; }
+  .dtop { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dtop .id { color: var(--accent); } .dtop .sp { flex: 1; }
+  .dtop button { padding: 4px 8px; color: var(--dim); font-size: 14px; }
+  .dtop .back { color: var(--hi); font-size: 13px; }
+  .dtitle { font-size: 15px; line-height: 1.35; font-weight: 700; margin: 4px 0 2px; text-wrap: balance; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 12px; }
+  .pill { border: 1px solid currentColor; border-radius: 10px; padding: 0 7px; line-height: 18px; }
+  .dbody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 8px 16px 20px; }
+  .dbody.snap { transition: transform .2s ease-out, opacity .2s; }
+  .meta { display: grid; grid-template-columns: 88px 1fr; gap: 3px 10px; font-size: 12px; margin: 0 0 10px; }
+  .meta dt { color: var(--muted); } .meta dd { margin: 0; color: var(--dim); }
+  .dsec { margin: 14px 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .dbody p { margin: 6px 0; color: var(--dim); max-width: 62ch; }
+  .rel { display: flex; gap: 6px; align-items: baseline; width: 100%; text-align: left; padding: 7px 0; min-height: 36px; border-bottom: 1px dashed var(--line); white-space: nowrap; }
+  .rel .id { color: var(--accent); } .rel .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .dacts { flex: none; display: flex; gap: 6px; padding: 8px 12px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--bg2); }
+  .dacts button { flex: 1; padding: 9px 0; border-radius: 8px; background: var(--bg3); color: var(--dim); font-size: 12px; }
+  .dacts button.pri { color: var(--bg); background: var(--green); font-weight: 700; }
+  .scrim { position: absolute; inset: 0; z-index: 19; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .24s; }
+  .scrim.on { opacity: 1; }
+
+  #toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 40; background: var(--bg3); color: var(--text); padding: 6px 12px;
+    border-radius: 8px; font-size: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,.5); white-space: nowrap; }
+  #toast.on { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .detail, .dbody.snap, .scrim, #toast { transition: none; } }
+</style>
+
+<div class="lab">
+  <div class="seg" role="group" aria-label="Variant">
+    <button data-v="today" aria-pressed="true">A today</button>
+    <button data-v="dbl" aria-pressed="false">B dbl-tap</button>
+    <button data-v="detent" aria-pressed="false">C detents</button>
+    <button data-v="page" aria-pressed="false">D page</button>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<div id="app">
+  <div class="hd"><span class="proj">b9s</span><span>·</span><span class="n">28</span><span>open</span><span>·</span><span class="p">11</span><span>prog</span><span class="sp"></span><span>F</span><span>+</span><span>?</span></div>
+  <div class="tabs"><span class="on">Open 24</span><span>In prog 3</span><span>Blocked 2</span><span class="sp" style="flex:1"></span><span>⚙ status</span></div>
+  <div id="list"></div>
+  <div class="scrim" id="scrim"></div>
+  <div id="detailHost"></div>
+  <div id="toast"></div>
+</div>
+
+<script>
+  const ISSUES = [
+    ["x8k8", "XRay heading hides the final sibling when the tree is filtered", "P2", "bug", "13d", "blocked"],
+    ["4epf", "XRay drill-down is ignored when a status/label/assignee filter is active", "P3", "bug", "13d", "blocked"],
+    ["foit.28", "Web keys dead on a fresh page and in the query tab", "P1", "bug", "2d", "in_progress"],
+    ["foit.30", "Mockup: full-screen detail on the phone, with half-sheet toggle options", "P2", "task", "1h", "in_progress"],
+    ["foit.24", "Edit sheet: assignee picker lists project members", "P2", "feature", "5d", "open"],
+    ["foit.25", "Board: drag a card between lanes on the phone", "P2", "task", "5d", "open"],
+    ["foit.26", "Search: fuzzy match on id and title", "P3", "task", "6d", "open"],
+    ["k2m1", "Tree: wrap long titles at 130% text size", "P3", "bug", "8d", "open"],
+    ["q7d4", "SSE reconnect drops the cursor after a project switch", "P2", "bug", "9d", "open"],
+    ["foit.27", "PWA: offline snapshot of the last project", "P3", "task", "10d", "deferred"],
+    ["r9x2", "Health: show lane attempt count in the status bar", "P3", "feature", "12d", "open"],
+    ["foit.29", "Comments: markdown preview before posting", "P3", "feature", "12d", "open"],
+    ["t3n8", "Query tab: save a filter as a named tab", "P2", "feature", "15d", "open"],
+    ["v5c0", "Graph: pinch to zoom on the phone", "P3", "task", "16d", "open"],
+  ];
+  const ROWC = { bug: "var(--red)", feature: "var(--feat)", task: "var(--blue)" };
+  const LEGEND = {
+    today: "<b>Today.</b> Tap a row: half sheet. Tap the handle or ⌃: full. Drag handle up: full, down: close. Swipe ← → in the body: siblings.",
+    dbl: "<b>Your proposal.</b> Tap a row: full screen. Double-tap anywhere on the sheet: half, again: full. Single taps inside the sheet wait 300 ms so the browser can tell them apart.",
+    detent: "<b class=\"rec\">Recommended.</b> Tap a row: full screen. Pull the body down from the top: half, again: close. Scroll up in the half sheet: full. Tap handle: toggle. Drag handle up or down: same detents.",
+    page: "<b>Page push.</b> Tap a row: full page slides in from the right, ‹ or swipe from the left edge closes it. No half sheet. Long-press a row: a half peek that you tap to open.",
+  };
+  const $ = s => document.querySelector(s);
+  let V = "today";
+  let D = null;                 // { idx, size: "half"|"full" }
+  let toastT = 0;
+  const toast = m => { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 1400); };
+  const hap = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
+  function renderList() {
+    $("#list").innerHTML = ISSUES.map((r, i) => `<button class="row${D && D.idx === i ? " cur" : ""}" data-i="${i}" style="--rowc:${ROWC[r[3]]}">
+      <div class="t"><span class="id">${r[0]}</span><span class="tt">${r[1]}</span></div>
+      <div class="m">${r[2]} · <span class="${r[3]}">● ${r[3]}</span> · ${r[4]} · ${r[5]}</div></button>`).join("");
+  }
+
+  function detailHTML() {
+    const r = ISSUES[D.idx], full = D.size === "full", page = V === "page";
+    const kids = ISSUES.filter((_, i) => i !== D.idx).slice(0, 3);
+    return `<section class="detail enter${full ? " full" : ""}${page ? " page" : ""}" id="detail">
+      <div class="dhead" id="dhead"><div class="grab"></div>
+        <div class="dtop">${page ? `<button class="back" data-act="close">‹ tree</button>` : ""}<span class="id">bd-${r[0]}</span><span class="sp"></span>
+          <span>${D.idx + 1}/${ISSUES.length} ‹ swipe ›</span>
+          ${page ? "" : `<button data-act="size" aria-label="Resize">${full ? "⌄" : "⌃"}</button>`}<button data-act="close" aria-label="Close">✕</button></div>
+        <div class="dtitle">${r[1]}</div>
+        <div class="pills"><span class="pill" style="color:var(--${r[5] === "blocked" ? "red" : r[5] === "in_progress" ? "hi" : "green"})">⊘ ${r[5]}</span><span class="pill" style="color:var(--muted)">${r[2]}</span><span class="pill" style="color:${ROWC[r[3]]}">● ${r[3]}</span><span class="pill" style="color:var(--cyan)">#lane-project=b9s</span></div>
+      </div>
+      <div class="dbody" id="dbody">
+        <dl class="meta"><dt>assignee</dt><dd>—</dd><dt>creator</dt><dd>vanderheijden86</dd><dt>created</dt><dd>2026-08-17 07:53 · 5w</dd><dt>updated</dt><dd>2026-09-13 17:46 · ${r[4]}</dd></dl>
+        <div class="dsec">Description</div>
+        <p>${r[1]}. The phone layout opens this sheet over the tree, so the reader keeps the row context above and the fields below.</p>
+        <p>Reproduce on a Pixel 9 at 412 px: open the tree, filter by status, tap the row. The half sheet shows the title, pills and the first four fields. Everything below needs a scroll or a resize.</p>
+        <p>The fix touches gestures.ts and the detail render. Keep the 24 px dead zones on both edges so the browser Back swipe still wins there.</p>
+        <div class="dsec">Children</div>
+        ${kids.map(k => `<button class="rel" data-go="${ISSUES.indexOf(k)}"><span class="id">${k[0]}</span><span class="t">${k[1]}</span><span style="color:var(--muted)">${k[2]}</span></button>`).join("")}
+        <div class="dsec">Blocked by</div>
+        <button class="rel" data-go="${(D.idx + 5) % ISSUES.length}"><span class="id">${ISSUES[(D.idx + 5) % ISSUES.length][0]}</span><span class="t">${ISSUES[(D.idx + 5) % ISSUES.length][1]}</span></button>
+        <div class="dsec">Comments</div>
+        <p><span style="color:var(--muted)">vanderheijden86 · 3d</span><br>Half screen on the phone hides most of the description. Let it open full and give the half sheet a gesture instead.</p>
+        <p><span style="color:var(--muted)">polly · 2d</span><br>Agreed. The detents mockup shows the trade-off. Scroll-to-expand feels native on iOS and Android sheets.</p>
+        <p><span style="color:var(--muted)">vanderheijden86 · 1d</span><br>Trying all four on the phone now.</p>
+      </div>
+      <div class="dacts"><button class="pri">Status</button><button>Edit</button><button>Comment</button><button>Branch</button><button>More</button></div>
+    </section>`;
+  }
+
+  function renderDetail(animate) {
+    const host = $("#detailHost");
+    if (!D) { host.innerHTML = ""; $("#scrim").classList.remove("on"); return; }
+    host.innerHTML = detailHTML();
+    const sec = $("#detail");
+    if (animate) requestAnimationFrame(() => requestAnimationFrame(() => sec.classList.remove("enter"))); else sec.classList.remove("enter");
+    $("#scrim").classList.toggle("on", D.size === "full" || V === "page");
+  }
+
+  const openDetail = (idx, size) => { D = { idx, size }; renderList(); renderDetail(true); };
+  const closeDetail = () => { if (!D) return; const sec = $("#detail"); sec.classList.add("enter"); $("#scrim").classList.remove("on"); D = null; setTimeout(() => { renderList(); renderDetail(false); }, 240); };
+  const setSize = s => { if (!D || D.size === s) return; D.size = s; const sec = $("#detail"); sec.classList.remove("drag"); sec.style.height = ""; sec.classList.toggle("full", s === "full"); $("#scrim").classList.toggle("on", s === "full"); sec.querySelector("[data-act=size]") && (sec.querySelector("[data-act=size]").textContent = s === "full" ? "⌄" : "⌃"); hap(8); };
+  const defaultSize = () => (V === "today" ? "half" : "full");
+
+  /* ---------- rows ---------- */
+  (function bindRows() {
+    const list = $("#list");
+    let g = null;
+    list.addEventListener("pointerdown", e => {
+      const row = e.target.closest(".row"); if (!row) return;
+      g = { row, i: +row.dataset.i, x0: e.clientX, y0: e.clientY, moved: false, lp: 0 };
+      if (V === "page") g.lp = setTimeout(() => { if (g && !g.moved) { g.done = true; row.classList.add("pressing"); hap(12); openDetail(g.i, "half"); toast("Peek · tap it to open"); } }, 450);
+    });
+    list.addEventListener("pointermove", e => { if (g && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > 8) { g.moved = true; clearTimeout(g.lp); } });
+    const up = e => {
+      if (!g) return; clearTimeout(g.lp); const x = g; g = null; x.row.classList.remove("pressing");
+      if (x.moved || x.done || e.type === "pointercancel") return;
+      openDetail(x.i, defaultSize());
+    };
+    list.addEventListener("pointerup", up); list.addEventListener("pointercancel", up);
+  })();
+
+  /* ---------- detail gestures ---------- */
+  (function bindDetail() {
+    const host = $("#detailHost"), app = $("#app");
+    const appH = () => app.getBoundingClientRect().height, halfH = () => appH() * 0.52;
+    let drag = null, swipe = null, lastTap = 0, pendingTap = 0;
+    const isTap = (e, s) => Math.hypot(e.clientX - s.x0, e.clientY - s.y0) < 8;
+
+    host.addEventListener("pointerdown", e => {
+      if (!D) return;
+      const t = e.target;
+      if (t.closest("button") && !t.closest(".rel")) return;
+      if (t.closest("#dhead")) {
+        const sec = $("#detail");
+        drag = { y0: e.clientY, x0: e.clientX, h0: sec.getBoundingClientRect().height, moved: false, sec };
+        if (V === "today" || V === "detent" || V === "dbl") { try { t.closest("#dhead").setPointerCapture(e.pointerId); } catch {} }
+        return;
+      }
+      const body = t.closest("#dbody");
+      if (body) swipe = { x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, body, top: body.scrollTop, rel: t.closest(".rel") };
+    });
+    host.addEventListener("pointermove", e => {
+      if (drag && V !== "page") {
+        const dy = e.clientY - drag.y0;
+        if (Math.abs(dy) > 4) drag.moved = true;
+        if (V === "dbl" && dy < 0) return;               // in B the handle only closes
+        drag.sec.classList.add("drag");
+        drag.sec.style.height = Math.max(80, Math.min(appH(), drag.h0 - dy)) + "px";
+        return;
+      }
+      const s = swipe; if (!s || e.pointerId !== s.pid) return;
+      const dx = e.clientX - s.x0, dy = e.clientY - s.y0;
+      if (!s.mode) {
+        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3) { s.mode = "h"; try { s.body.setPointerCapture(s.pid); } catch {} s.body.classList.remove("snap"); }
+        else if (Math.abs(dy) > 10) s.mode = "v";
+      }
+      if (s.mode === "h") { s.body.style.transform = `translateX(${dx}px)`; s.body.style.opacity = String(1 - Math.min(Math.abs(dx) / 400, .5)); }
+    });
+    const up = e => {
+      if (drag) {
+        const d = drag; drag = null; d.sec.classList.remove("drag");
+        if (!D) return;
+        if (!d.moved) { tapOnSheet(e, d); return; }
+        if (V === "page") return;
+        const h = d.h0 - (e.clientY - d.y0);
+        if (h < halfH() * 0.62) { closeDetail(); return; }
+        if (V === "dbl") { d.sec.style.height = ""; return; }
+        setSize(h > (halfH() + appH()) / 2 ? "full" : "half");
+        return;
+      }
+      const s = swipe; swipe = null;
+      if (!s || !D) return;
+      if (!s.mode) { if (s.rel) relTap(e, s, +s.rel.dataset.go); else tapOnSheet(e, s); return; }
+      if (s.mode !== "h") return;
+      const dx = e.clientX - s.x0, body = s.body, w = app.getBoundingClientRect().width;
+      body.classList.add("snap");
+      const next = dx < 0 ? D.idx + 1 : D.idx - 1;
+      if (Math.abs(dx) < w * 0.22 || next < 0 || next >= ISSUES.length) {
+        body.style.transform = ""; body.style.opacity = "";
+        if ((next < 0 || next >= ISSUES.length) && Math.abs(dx) > 40) toast(dx < 0 ? "Last sibling" : "First sibling");
+        return;
+      }
+      body.style.transform = `translateX(${dx < 0 ? -w : w}px)`; body.style.opacity = "0";
+      setTimeout(() => {
+        D.idx = next; renderList(); renderDetail(false);
+        const nb = $("#dbody"); nb.style.transform = `translateX(${dx < 0 ? w : -w}px)`; nb.style.opacity = "0";
+        requestAnimationFrame(() => { nb.classList.add("snap"); nb.style.transform = ""; nb.style.opacity = ""; });
+        $("#list").querySelector(".row.cur")?.scrollIntoView({ block: "nearest" });
+      }, 170);
+    };
+    host.addEventListener("pointerup", up); host.addEventListener("pointercancel", up);
+
+    function tapOnSheet(e, s) {
+      if (!isTap(e, s)) return;
+      const onHead = !!e.target.closest("#dhead");
+      if (V === "dbl") {
+        const now = performance.now();
+        if (now - lastTap < 300) { lastTap = 0; clearTimeout(pendingTap); setSize(D.size === "full" ? "half" : "full"); return; }
+        lastTap = now;
+        return;
+      }
+      if (V === "page") { if (D.size === "half") setSize("full"); return; }
+      if (onHead) setSize(D.size === "full" ? "half" : "full");
+    }
+    function relTap(e, s, go) {
+      if (!isTap(e, s)) return;
+      const nav = () => { D.idx = go; renderList(); renderDetail(false); toast("‹ goes back in the real app"); };
+      if (V === "dbl") {
+        const now = performance.now();
+        if (now - lastTap < 300) { lastTap = 0; clearTimeout(pendingTap); setSize(D.size === "full" ? "half" : "full"); return; }
+        lastTap = now;
+        pendingTap = setTimeout(nav, 300);          // the single tap has to wait for a second tap that never comes
+        return;
+      }
+      nav();
+    }
+
+    // Buttons in the head
+    host.addEventListener("click", e => {
+      const b = e.target.closest("[data-act]"); if (!b || !D) return;
+      if (b.dataset.act === "close") closeDetail();
+      if (b.dataset.act === "size") setSize(D.size === "full" ? "half" : "full");
+    });
+
+    // C: scroll-to-expand and pull-to-collapse, from touch moves inside the body (they keep firing during native scroll).
+    let tch = null;
+    host.addEventListener("touchstart", e => { if (V !== "detent" || !D) return; const body = e.target.closest("#dbody"); if (!body) return; tch = { y0: e.touches[0].clientY, top: body.scrollTop, body, done: false }; }, { passive: true });
+    host.addEventListener("touchmove", e => {
+      if (!tch || tch.done || !D) return;
+      const dy = e.touches[0].clientY - tch.y0;
+      if (D.size === "half" && dy < -16) { tch.done = true; setSize("full"); return; }
+      if (tch.top <= 0 && tch.body.scrollTop <= 0 && dy > 70) { tch.done = true; if (D.size === "full") setSize("half"); else closeDetail(); }
+    }, { passive: true });
+    host.addEventListener("touchend", () => { tch = null; }, { passive: true });
+    // Same for a mouse wheel on the desktop.
+    host.addEventListener("wheel", e => {
+      if (V !== "detent" || !D) return; const body = e.target.closest("#dbody"); if (!body) return;
+      if (D.size === "half" && e.deltaY > 6) setSize("full");
+      else if (D.size === "full" && body.scrollTop <= 0 && e.deltaY < -30) setSize("half");
+    }, { passive: true });
+
+    // D: swipe in from the left edge closes the page.
+    let edge = null;
+    app.addEventListener("pointerdown", e => { if (V === "page" && D && e.clientX - app.getBoundingClientRect().left < 24) edge = { x0: e.clientX }; }, true);
+    app.addEventListener("pointerup", e => { if (edge && e.clientX - edge.x0 > 60) closeDetail(); edge = null; }, true);
+    $("#scrim").addEventListener("click", () => { if (V !== "page") closeDetail(); });
+  })();
+
+  /* ---------- variant switch ---------- */
+  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+    V = b.dataset.v;
+    document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    $("#legend").innerHTML = LEGEND[V];
+    try { localStorage.setItem("variant", V); } catch {}
+    D = null; renderList(); renderDetail(false);
+  }));
+  try { const v = localStorage.getItem("variant"); if (v && LEGEND[v]) document.querySelector(`.seg button[data-v="${v}"]`).click(); } catch {}
+  $("#legend").innerHTML = LEGEND[V];
+  renderList();
+  openDetail(1, defaultSize());
+</script>

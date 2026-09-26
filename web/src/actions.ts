@@ -6,7 +6,7 @@ import * as api from "./api";
 import type { ProjectEntry, WriteRequest, WriteResult } from "./api.gen";
 import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type Item } from "./data";
 import { boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, treeList, wide } from "./render";
-import { PC, S, SORTS, SORT_HELP, ST, TY, queryString, saveChips, stOf, type Sheet, type SortKey } from "./state";
+import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveChips, stOf, type Sheet, type SortKey } from "./state";
 import { $, $opt, copyText, esc, fmtDate, haptic, store } from "./util";
 
 /* ================= toast ================= */
@@ -180,7 +180,7 @@ export function openDetail(id: string, push = false): void {
   S.cursor = id;
   if (S.detail && push) S.detail.stack.push(id);
   else if (S.detail) S.detail.stack = [id];
-  else S.detail = { stack: [id], size: "half" };
+  else S.detail = { stack: [id], size: defaultDetailSize() };
   revealInTree(id);
   render();
   ensureVisible(id);
@@ -317,7 +317,7 @@ export const GESTURES: [string, string, string][] = [
   ["Tap a row", "open detail sheet", "Enter"], ["Tap ▾ / ▸", "fold", "Tab"], ["Double-tap ▾", "fold whole subtree", "h / l"],
   ["Short swipe →", "start / stop", "S"], ["Long swipe →", "status picker", "S"], ["Short swipe ←", "close, 5 s undo", "K"], ["Long swipe ←", "action sheet", "e c y f x"],
   ["Long-press a row", "mark; tap more rows", "Space"], ["Long-press while marking", "mark the range", "Ctrl-Space"], ["Pull down on tree", "reload", "Ctrl-R"],
-  ["Swipe ← → on detail", "next / previous sibling", "n p"], ["Drag handle up / down", "full height / close", "Esc"], ["Tap a relation", "go there; ‹ goes back", ""],
+  ["Swipe ← → on detail", "next / previous sibling", "n p"], ["Double-tap the detail", "half or full height", "\\"], ["Drag handle up / down", "full height / close", "Esc"], ["Tap a relation", "go there; ‹ goes back", ""],
   ["Swipe ← → on board", "next column", "h l"], ["Tap the active column tab", "fold it into a rail", "z"], ["Tap Z unfold", "unfold all", "Z"],
   ["Tap an epic in the rail", "scroll to its lane", ""], ["Long-press an epic in the rail", "fold its lane", "Tab"],
   ["Long-press a card, drag", "move to a column", ""], ["Tap project name", "project sheet", "1-9 0"], ["Tap the ● dot", "source health", "D"],

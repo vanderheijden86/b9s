@@ -148,3 +148,6 @@ export function treeRows(): { rows: TreeRow[]; matchCount: number } {
 }
 
 export function saveChips(): void { store.set("chips", [...S.st]); }
+
+/** defaultDetailSize is full height on a phone, where half a sheet hides the text, and the side panel on a wide screen. */
+export const defaultDetailSize = (): "half" | "full" => (wide() ? "half" : "full");

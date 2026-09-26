@@ -13,7 +13,7 @@
 // history.state.
 
 import { get } from "./data";
-import { S, type View } from "./state";
+import { S, defaultDetailSize, type View } from "./state";
 
 interface Place { v: View; d: string[] | null; g: string[] }
 interface Entry { place: Place; n: number; prev: Place | null }
@@ -78,7 +78,7 @@ export function openHash(h = parseHash()): boolean {
   S.view = h.v;
   if (h.id && get(h.id)) {
     if (h.v === "graph") S.graph = [h.id];
-    else S.detail = { stack: [h.id], size: S.detail?.size ?? "half" };
+    else S.detail = { stack: [h.id], size: S.detail?.size ?? defaultDetailSize() };
     S.cursor = h.id;
   }
   return true;
@@ -94,7 +94,7 @@ export function bindHistory(render: () => void, closeSheet: () => void): void {
       if (e) {
         const p = e.place, ids = (p.d || []).filter(id => get(id));
         S.view = p.v;
-        S.detail = ids.length ? { stack: ids, size: S.detail?.size ?? "half" } : null;
+        S.detail = ids.length ? { stack: ids, size: S.detail?.size ?? defaultDetailSize() } : null;
         if (p.v === "graph") S.graph = [...p.g];
         if (ids.length) S.cursor = ids[ids.length - 1];
       } else {

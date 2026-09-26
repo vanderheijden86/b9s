@@ -228,6 +228,8 @@
   }
   .detail.enter { transform: translateY(100%); }
   .detail.drag { transition: none; }
+  .detail.full { border-radius: 0; }
+  .detail.full .grab { height: calc(18px + var(--sat)); padding-top: var(--sat); }
   .dhead { flex: none; touch-action: none; padding: 0 12px 6px 16px; border-bottom: 1px solid var(--line); }
   .grab { height: 18px; display: grid; place-items: center; }
   .grab::before { content: ""; width: 38px; height: 4px; border-radius: 2px; background: var(--line); }

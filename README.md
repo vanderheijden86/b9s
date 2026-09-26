@@ -226,7 +226,7 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 
 | Gesture | Effect | TUI key |
 |---------|--------|---------|
-| Tap a row | Open the detail sheet | `Enter` |
+| Tap a row | Open the detail at full height | `Enter` |
 | Tap ▾ or ▸ | Fold or unfold | `Tab` |
 | Double-tap ▾ | Fold the whole subtree | `h` / `l` |
 | Short swipe right | Start, or stop when in progress | `S` |
@@ -237,7 +237,8 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Long-press while marking | Mark the range | `Ctrl-Space` |
 | Pull down on the tree | Reload | `Ctrl-R` |
 | Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
-| Drag the detail handle | Up: full height. Down: close | `Esc` |
+| Double-tap the detail | Switch between full and half height | `\` |
+| Drag the detail handle | Up: full height. Down: half height, then close | `Esc` |
 | Tap a relation in the detail | Go there; `‹` goes back | |
 | Browser Back, or `Backspace` | Step back: the previous issue, then the closed detail, then the previous view. Forward redoes it | `Esc` |
 | Swipe left or right on the board | Next column | `h` / `l` |

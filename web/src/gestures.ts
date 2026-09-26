@@ -178,6 +178,30 @@ function bindHeader(): void {
 /* ================= detail sheet ================= */
 
 let detailDrag: { y0: number; h0: number; moved: boolean; sec: HTMLElement } | null = null;
+/** lastTap is the previous tap on the detail sheet, which a second tap close in time and place makes a double tap. */
+let lastTap = { t: 0, x: 0, y: 0 };
+const DBL_MS = 320, DBL_PX = 30;
+
+/**
+ * sheetTap resizes the phone sheet on the second of two quick taps. Buttons and
+ * relations never reach it, so their single tap acts at once instead of
+ * waiting to learn whether a second tap follows.
+ */
+function sheetTap(e: PointerEvent): void {
+  if (wide() || !S.detail) return;
+  if ((e.target as HTMLElement).closest("button, a, input, textarea, select, [data-nav], [data-act]")) { lastTap.t = 0; return; }
+  const now = performance.now();
+  if (now - lastTap.t < DBL_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < DBL_PX) {
+    lastTap.t = 0;
+    S.detail.size = S.detail.size === "full" ? "half" : "full";
+    window.getSelection()?.removeAllRanges();
+    haptic(8);
+    render();
+    return;
+  }
+  lastTap = { t: now, x: e.clientX, y: e.clientY };
+}
+
 let bodySwipe: { x0: number; y0: number; pid: number; mode: null | "h" | "v"; edge: boolean; body: HTMLElement } | null = null;
 
 function bindDetail(): void {
@@ -221,7 +245,7 @@ function bindDetail(): void {
       d.sec.classList.remove("drag");
       if (!S.detail) return;
       const h = d.h0 - (e.clientY - d.y0);
-      if (!d.moved) { S.detail.size = S.detail.size === "full" ? "half" : "full"; d.sec.style.height = ""; render(); return; }
+      if (!d.moved) { d.sec.style.height = ""; if (e.type === "pointerup") sheetTap(e); return; }
       if (h < halfH() * 0.62) { closeDetail(); return; }
       S.detail.size = h > (halfH() + fullH()) / 2 ? "full" : "half";
       d.sec.style.height = "";
@@ -230,6 +254,7 @@ function bindDetail(): void {
     }
     const g = bodySwipe;
     bodySwipe = null;
+    if (g && !g.mode && e.type === "pointerup") { sheetTap(e); return; }
     if (!g || g.mode !== "h" || !S.detail) return;
     const dx = e.clientX - g.x0, body = g.body;
     body.classList.add("snap");
