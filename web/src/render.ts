@@ -6,6 +6,7 @@ import * as api from "./api";
 import type { Issue } from "./api.gen";
 import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, openBlockers, pool, progress, projectOf, shortId, type Item } from "./data";
 import { PC, S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow } from "./state";
+import { syncHistory } from "./nav";
 import { $, age, esc, fmtDate, md, store } from "./util";
 
 export function l2HTML(i: Item, opts: { proj?: boolean } = {}): string {
@@ -52,6 +53,7 @@ export function render(): void {
   if (S.view === "graph") renderGraph();
   renderDetail();
   syncQuery();
+  syncHistory();
 }
 
 function renderHeader(): void {

@@ -239,6 +239,7 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
 | Drag the detail handle | Up: full height. Down: close | `Esc` |
 | Tap a relation in the detail | Go there; `‹` goes back | |
+| Browser Back, or `Backspace` | Step back: the previous issue, then the closed detail, then the previous view. Forward redoes it | `Esc` |
 | Swipe left or right on the board | Next column | `h` / `l` |
 | Tap the active column tab | Fold it into a rail | `z` |
 | Tap `Z unfold` | Unfold every column | `Z` |
@@ -249,6 +250,8 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Tap `F` | Follow live changes | `F` |
 
 No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
+
+The address shows the view and the open issue, for example `#/board/bd-12`. A reload or a shared link opens the same place. Moving the cursor or swiping to a sibling replaces the open issue rather than adding a step, so one Back closes the detail.
 
 ### Laptop, desktop and iPad
 

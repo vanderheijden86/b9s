@@ -6,6 +6,7 @@ import {
   act, applySuggestion, chipTap, closeDetail, closeSheet, foldSubtree, moveCard, nextStatus, openDetail,
   openSheet, reload, setStatus, sheetAction, swipeRightLabel, tabTap, toast, toggleMark, markRange, hideToast,
 } from "./actions";
+import { canGoBack } from "./nav";
 import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, siblings, wide } from "./render";
 import { S } from "./state";
 import { $, haptic } from "./util";
@@ -498,6 +499,13 @@ function bindClicks(): void {
       return;
     }
     if (t.closest("input, textarea, select")) return;
+    if (e.key === "Backspace" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // Back inside the app only: on the entry the app opened on it would leave the page.
+      e.preventDefault();
+      if (S.sheet) closeSheet();
+      else if (canGoBack()) history.back();
+      return;
+    }
     if (S.view === "board" && !S.sheet && wide() && !e.metaKey && !e.ctrlKey && !e.altKey && boardKey(e.key)) { e.preventDefault(); return; }
     if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
       const row = t.closest<HTMLElement>("[data-id], [data-card]");

@@ -202,7 +202,7 @@ The Dolt SQL login is a workspace credential shared by every agent, so it is sho
 - **Types**: `web/src/api.gen.ts` is generated from `types.go` by `TestGeneratedTypesAreCurrent`, and fails that test when stale.
 - **Bundle**: `pkg/web/dist` is committed and embedded with `go:embed`. `dist/source.sha256` hashes the inputs, and `TestEmbeddedBundleIsCurrent` fails when `web/` changed without `make web`.
 
-The browser app (`web/src`) keeps one module per concern: `api.ts` the fetch and SSE client, `data.ts` the snapshot and derived fields, `state.ts` the view state and filters, `render.ts` the DOM, `actions.ts` writes, sheets and undo, `gestures.ts` the pointer handlers, and `main.ts` the boot and live updates. A live change that arrives while a finger is on a row waits until the gesture ends. See [ADR 0019](adr/0019-serve-a-mobile-web-ui-from-b9s-web.md).
+The browser app (`web/src`) keeps one module per concern: `api.ts` the fetch and SSE client, `data.ts` the snapshot and derived fields, `state.ts` the view state and filters, `render.ts` the DOM, `actions.ts` writes, sheets and undo, `gestures.ts` the pointer handlers, `nav.ts` the browser history, and `main.ts` the boot and live updates. `nav.ts` derives the place (view, detail stack, graph path) from the view state after each render and pushes, replaces or steps back a history entry, so no action has to call the History API itself. A live change that arrives while a finger is on a row waits until the gesture ends. See [ADR 0019](adr/0019-serve-a-mobile-web-ui-from-b9s-web.md).
 
 ## Configuration
 
