@@ -1,0 +1,1602 @@
+<title>b9s Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* One deliberate dark look, the TUI's Dracula-derived palette (pkg/ui/theme.go). */
+  :root {
+    color-scheme: dark;
+    --page: #0b0c0f;
+    --bg: #16171d;
+    --bg2: #1c1e26;
+    --bg3: #252836;
+    --line: #2d3142;
+    --text: #f8f8f2;
+    --dim: #bfbfbf;
+    --muted: #7f8bb3;
+    --accent: #bd93f9;
+    --cyan: #8be9fd;
+    --hi: #4fc1e9;
+    --green: #50fa7b;
+    --red: #ff5555;
+    --orange: #ffb86c;
+    --blue: #4c9aff;
+    --feat: #57d9a3;
+    --yellow: #f1fa8c;
+    --ink: #16171d;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sat: 0px;
+    --sab: 0px;
+  }
+  html { height: 100%; box-sizing: border-box; overscroll-behavior: none; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none;
+    background: var(--page); color: var(--text);
+    font: 13px/18px var(--mono); font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  input, textarea, select { font: 16px/22px var(--mono); color: var(--text); }
+
+  /* ---------- stage: desktop frame around the phone ---------- */
+  .stage { height: 100%; display: flex; gap: 40px; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow: auto; }
+  .panel { width: 300px; flex: none; display: flex; flex-direction: column; gap: 18px; color: var(--dim); padding-top: 8px; }
+  .panel h1 { margin: 0; font-size: 18px; line-height: 24px; color: var(--text); text-wrap: balance; }
+  .panel h1 span { color: var(--accent); }
+  .panel p { margin: 0; font-size: 12px; line-height: 18px; }
+  .panel h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-size: 12px; color: var(--dim); }
+  .seg button.on { border-color: var(--accent); color: var(--text); background: rgba(189,147,249,.14); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12px; }
+  .kv b { color: var(--text); font-weight: 500; }
+  .ok { color: var(--green); } .warn { color: var(--orange); }
+  .try { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 12px; line-height: 16px; }
+  .try li { display: grid; grid-template-columns: 1fr auto; gap: 8px; border-bottom: 1px dashed var(--line); padding-bottom: 5px; }
+  .try kbd { font: inherit; color: var(--accent); }
+  .frame-wrap { flex: none; }
+  .device {
+    position: relative; width: var(--dw); height: var(--dh);
+    border-radius: 44px; background: #000; padding: 9px;
+    box-shadow: 0 0 0 2px #34374a, 0 30px 80px rgba(0,0,0,.6);
+    transform-origin: top center;
+  }
+  .device .app { border-radius: 36px; }
+
+  /* A phone renders the app edge to edge: the frame and panel go away. */
+  @media (max-width: 560px) {
+    .stage { padding: 0; display: block; overflow: hidden; }
+    .panel { display: none; }
+    .frame-wrap, .device { width: 100% !important; height: 100% !important; transform: none !important; }
+    .device { padding: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
+    .device .app { border-radius: 0; }
+    .fakeos { display: none !important; }
+  }
+
+  /* ---------- app shell ---------- */
+  .app {
+    position: relative; width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg); display: flex; flex-direction: column;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fakeos { flex: none; height: var(--sat); display: flex; align-items: flex-end; justify-content: space-between; padding: 0 28px 6px; font-size: 12px; font-weight: 700; color: var(--text); font-family: system-ui, sans-serif; position: relative; }
+  .fakeos .cam { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: #000; border-radius: 20px; }
+  .ios .fakeos .cam { width: 112px; height: 32px; }
+  .pixel .fakeos .cam { width: 20px; height: 20px; top: 14px; }
+  .homebar { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%); width: 120px; height: 4px; border-radius: 3px; background: rgba(248,248,242,.55); z-index: 80; pointer-events: none; }
+
+  header.hd { flex: none; height: 32px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); background: var(--bg2); touch-action: none; }
+  .hd .proj { font-weight: 700; color: var(--accent); height: 32px; display: flex; align-items: center; gap: 4px; padding-right: 6px; }
+  .hd .proj small { color: var(--muted); font-weight: 400; }
+  .hd .dot { width: 28px; height: 32px; display: grid; place-items: center; color: var(--green); }
+  .hd .dot.pulse { animation: pulse 1.2s ease-out 2; }
+  .hd .dot.bad { color: var(--orange); }
+  @keyframes pulse { 50% { color: var(--yellow); transform: scale(1.35); } }
+  .hd .cnt { flex: 1; min-width: 0; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  .hd .cnt b { color: var(--green); font-weight: 500; } .hd .cnt i { font-style: normal; color: var(--cyan); }
+  .hd .ib { width: 36px; height: 32px; display: grid; place-items: center; color: var(--dim); font-size: 15px; }
+  .hd .ib.on { color: var(--yellow); }
+  .hd .ib.follow { font-size: 11px; font-weight: 700; }
+
+  .chips { flex: none; height: 34px; display: flex; gap: 6px; align-items: center; padding: 0 16px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); background: var(--bg2); }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips[hidden] { display: none !important; }
+  .chip { flex: none; height: 24px; border: 1px solid var(--line); border-radius: 12px; padding: 0 9px; display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .chip .k { color: var(--muted); font-size: 11px; }
+  .chip .n { color: var(--muted); font-size: 11px; }
+  .chip.on { border-color: currentColor; background: rgba(248,248,242,.06); }
+  .chip.on .k, .chip.on .n { color: inherit; opacity: .75; }
+  .chip.q { color: var(--yellow); border-style: dashed; max-width: 180px; }
+  .chip.q span { overflow: hidden; text-overflow: ellipsis; }
+  .chip.fx { color: var(--accent); border-color: var(--accent); }
+  .chips .sep { flex: none; width: 1px; height: 18px; background: var(--line); }
+
+  main { flex: 1; min-height: 0; position: relative; }
+  .view { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .view[hidden] { display: none !important; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+
+  /* ---------- tree rows ---------- */
+  .ptr { height: 0; overflow: hidden; display: grid; place-items: center; color: var(--muted); font-size: 12px; transition: height .2s; }
+  .ptr.ready { color: var(--cyan); }
+  .row { position: relative; overflow: hidden; touch-action: pan-y; border-bottom: 1px solid rgba(45,49,66,.55); }
+  .row .ul, .row .ur { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 18px; font-weight: 700; font-size: 12px; color: var(--ink); }
+  .row .ul { justify-content: flex-start; background: var(--cyan); }
+  .row .ur { justify-content: flex-end; background: var(--muted); }
+  .row .ul.long { background: var(--accent); } .row .ur.long { background: var(--orange); }
+  .row .ul.weak, .row .ur.weak { filter: saturate(.3) brightness(.6); }
+  .rc { position: relative; z-index: 1; background: var(--bg); padding: 4px 16px 4px calc(16px + var(--d, 0) * 13px); min-height: 44px; }
+  .row.snap .rc { transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+  .l1, .l2 { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
+  .l1 .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .wrap .l1 { white-space: normal; align-items: flex-start; }
+  .wrap .l1 .t { white-space: normal; overflow-wrap: anywhere; }
+  .l2 { font-size: 11.5px; color: var(--muted); padding-left: 34px; overflow: hidden; }
+  .l2 > * { flex: none; }
+  .chev { width: 28px; margin-left: -8px; margin-right: -6px; text-align: center; color: var(--muted); flex: none; position: relative; }
+  .chev::after { content: ""; position: absolute; inset: -12px -4px; }
+  .chev.none { visibility: hidden; }
+  .st { flex: none; width: 12px; text-align: center; }
+  .id { flex: none; color: var(--accent); }
+  .row.sel .rc { background: #1d2b36; box-shadow: inset 3px 0 var(--hi); }
+  .row.sel .id { color: var(--hi); }
+  .row.dim .t, .row.dim .id { opacity: .5; }
+  .row.marked .rc { background: #262038; box-shadow: inset 3px 0 var(--accent); }
+  .mk { flex: none; width: 12px; color: var(--accent); }
+  .row.flash .rc { animation: flash 2.4s ease-out; }
+  @keyframes flash { 0%, 30% { background: #3a3a20; } }
+  .ph { position: sticky; top: 0; z-index: 2; background: var(--bg3); color: var(--accent); padding: 6px 16px; font-weight: 700; display: flex; gap: 8px; border-bottom: 1px solid var(--line); }
+  .ph .n { color: var(--muted); font-weight: 400; }
+  .empty { padding: 32px 16px; color: var(--muted); text-align: center; }
+  .empty button { color: var(--cyan); text-decoration: underline; }
+  .fbar { flex: none; padding: 6px 16px; background: rgba(189,147,249,.1); color: var(--accent); display: flex; gap: 8px; align-items: center; font-size: 12px; border-bottom: 1px solid var(--line); }
+  .fbar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fbar button { color: var(--text); padding: 4px 6px; }
+
+  /* ---------- bottom bars ---------- */
+  nav.bar { flex: none; height: calc(48px + var(--sab)); padding-bottom: var(--sab); display: flex; border-top: 1px solid var(--line); background: var(--bg2); }
+  nav.bar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: var(--muted); font-size: 11px; line-height: 14px; }
+  nav.bar button .g { font-size: 16px; line-height: 18px; }
+  nav.bar button.on { color: var(--hi); }
+  nav.bulk { background: #231d33; }
+  nav.bulk .cnt { flex: 1.3; color: var(--accent); font-weight: 700; font-size: 12px; }
+  nav.bulk button { color: var(--text); }
+  nav.bulk button.red { color: var(--red); }
+
+  /* ---------- board ---------- */
+  .tabs { flex: none; display: flex; gap: 4px; padding: 6px 12px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; height: 30px; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; gap: 6px; color: var(--dim); border: 1px solid transparent; font-size: 12px; }
+  .tab b { font-weight: 500; color: var(--muted); }
+  .tab.on { border-color: var(--line); background: var(--bg3); color: var(--text); }
+  .tab.on::after { content: "z"; color: var(--muted); font-size: 10px; margin-left: 2px; }
+  .tab.rail { padding: 0 6px; color: var(--muted); border: 1px dashed var(--line); writing-mode: vertical-rl; height: 30px; font-size: 10px; line-height: 12px; }
+  .tab.drop { border-color: var(--yellow); background: rgba(241,250,140,.12); color: var(--yellow); }
+  .tab.unf { color: var(--cyan); }
+  .bbody { flex: 1; min-height: 0; display: flex; position: relative; }
+  .brail { flex: none; width: 64px; border-right: 1px solid var(--line); overflow-y: auto; scrollbar-width: none; }
+  .brail button { display: block; width: 100%; padding: 8px 6px; text-align: left; font-size: 11px; line-height: 14px; color: var(--muted); border-bottom: 1px solid rgba(45,49,66,.6); }
+  .brail button.on { color: var(--accent); background: rgba(189,147,249,.12); box-shadow: inset 2px 0 var(--accent); }
+  .brail button b { display: block; color: var(--dim); font-weight: 400; }
+  .bcol { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 12px 16px; touch-action: pan-y; }
+  .bcol.snap { transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+  .card { position: relative; background: var(--bg2); border: 1px solid var(--line); border-left: 3px solid var(--c, var(--line)); border-radius: 6px; padding: 5px 8px 5px 9px; margin-bottom: 6px; }
+  .card .l2 { padding-left: 0; }
+  .card.sel { border-color: var(--hi); border-left-color: var(--hi); }
+  .card.ghost { position: absolute; z-index: 90; pointer-events: none; opacity: .92; box-shadow: 0 12px 30px rgba(0,0,0,.6); transform: rotate(-2deg); width: 300px; }
+  .card.lifted { opacity: .3; }
+  .lane { display: flex; gap: 6px; align-items: baseline; color: var(--accent); font-size: 12px; padding: 8px 2px 5px; white-space: nowrap; }
+  .lane .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+  .lane .n { color: var(--muted); }
+  .edgehint { position: absolute; top: 0; bottom: 0; width: 36px; z-index: 5; display: none; align-items: center; justify-content: center; color: var(--yellow); background: rgba(241,250,140,.08); pointer-events: none; }
+  .dragging .edgehint { display: flex; }
+  .edgehint.l { left: 0; } .edgehint.r { right: 0; }
+
+  /* ---------- search / more / graph ---------- */
+  .sbox { flex: none; padding: 8px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .sbox input { flex: 1; min-width: 0; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg2); padding: 0 12px; outline: none; }
+  .sbox input:focus { border-color: var(--accent); }
+  .sbox button { color: var(--cyan); font-size: 12px; padding: 8px 4px; }
+  .sugg { flex: none; display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+  .sugg::-webkit-scrollbar { display: none; }
+  .sugg .chip { color: var(--cyan); }
+  .sugg .chip.v { color: var(--text); }
+  .shead { padding: 8px 16px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .shead button { color: var(--hi); }
+  .sec { padding: 14px 16px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 11px 16px; min-height: 44px; border-bottom: 1px solid rgba(45,49,66,.55); }
+  .item .g { width: 18px; text-align: center; color: var(--accent); flex: none; }
+  .item .x { flex: 1; min-width: 0; }
+  .item .x small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .v { color: var(--muted); font-size: 12px; flex: none; }
+  .item .v.on { color: var(--green); }
+  .crumbs { flex: none; display: flex; gap: 4px; padding: 8px 12px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+  .crumbs button { flex: none; color: var(--muted); font-size: 12px; padding: 3px 6px; border-radius: 4px; }
+  .crumbs button:last-child { color: var(--accent); background: rgba(189,147,249,.12); }
+  .gnode { margin: 10px 12px; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 8px; background: rgba(189,147,249,.07); }
+  .gnode .t2 { color: var(--text); font-weight: 700; white-space: normal; }
+  .gnode .l2 { padding-left: 0; }
+  .gsec { padding: 10px 16px 4px; font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; display: flex; gap: 8px; }
+  .gsec b { color: var(--dim); font-weight: 500; }
+
+  /* ---------- sheets ---------- */
+  .detail {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
+    height: var(--h, 52%); background: var(--bg2); border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,.55);
+    display: flex; flex-direction: column; transform: translateY(0);
+    transition: height .24s cubic-bezier(.2,.8,.2,1), transform .24s cubic-bezier(.2,.8,.2,1);
+  }
+  .detail.enter { transform: translateY(100%); }
+  .detail.drag { transition: none; }
+  .dhead { flex: none; touch-action: none; padding: 0 12px 6px 16px; border-bottom: 1px solid var(--line); }
+  .grab { height: 18px; display: grid; place-items: center; }
+  .grab::before { content: ""; width: 38px; height: 4px; border-radius: 2px; background: var(--line); }
+  .dtop { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dtop .sp { flex: 1; }
+  .dtop button { padding: 4px 6px; color: var(--dim); }
+  .dtop .back { color: var(--hi); }
+  .dtitle { font-size: 15px; line-height: 21px; font-weight: 700; margin: 4px 0 2px; text-wrap: balance; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 12px; }
+  .pill { border: 1px solid currentColor; border-radius: 10px; padding: 0 7px; line-height: 18px; }
+  .dbody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 8px 16px 20px; }
+  .dbody.snap { transition: transform .2s ease-out, opacity .2s; }
+  .meta { display: grid; grid-template-columns: 88px 1fr; gap: 3px 10px; font-size: 12px; margin-bottom: 10px; }
+  .meta dt { color: var(--muted); } .meta dd { margin: 0; color: var(--dim); overflow-wrap: anywhere; }
+  .dsec { margin: 14px 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+  .dsec button { color: var(--hi); text-transform: none; letter-spacing: 0; }
+  .rel { display: flex; gap: 6px; align-items: baseline; width: 100%; text-align: left; padding: 7px 0; min-height: 36px; border-bottom: 1px dashed var(--line); white-space: nowrap; }
+  .rel .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .bar2 { height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; margin: 6px 0 2px; }
+  .bar2 i { display: block; height: 100%; background: var(--green); }
+  .md { color: var(--dim); font-size: 13px; line-height: 20px; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+  .md h3 { color: var(--cyan); font-size: 13px; margin: 12px 0 4px; }
+  .md p { margin: 0 0 8px; }
+  .md ul, .md ol { margin: 0 0 8px; padding-left: 18px; }
+  .md code { color: var(--orange); background: var(--bg3); border-radius: 3px; padding: 0 3px; font-size: 12px; }
+  .md pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; overflow-x: auto; font-size: 12px; line-height: 17px; }
+  .md pre code { background: none; padding: 0; color: var(--text); }
+  .md b { color: var(--text); }
+  .cm { border-left: 2px solid var(--line); padding: 2px 0 2px 10px; margin: 8px 0; }
+  .cm .who { font-size: 11.5px; color: var(--muted); } .cm .who b { color: var(--cyan); font-weight: 500; }
+  .dacts { flex: none; display: flex; border-top: 1px solid var(--line); padding-bottom: var(--sab); }
+  .dacts button { flex: 1; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: var(--dim); gap: 1px; }
+  .dacts button .g { font-size: 14px; color: var(--cyan); }
+  .pager { font-size: 11px; color: var(--muted); }
+
+  .backdrop { position: absolute; inset: 0; z-index: 30; background: rgba(0,0,0,.5); opacity: 0; transition: opacity .2s; }
+  .backdrop.on { opacity: 1; }
+  .msheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 31; max-height: calc(100% - var(--sat) - 24px);
+    background: var(--bg2); border-radius: 14px 14px 0 0; border-top: 1px solid var(--line);
+    display: flex; flex-direction: column; transform: translateY(100%); transition: transform .24s cubic-bezier(.2,.8,.2,1);
+    padding-bottom: var(--sab);
+  }
+  .msheet.on { transform: translateY(0); }
+  .msheet .mh { flex: none; touch-action: none; padding: 0 16px 8px; }
+  .msheet .mh h3 { margin: 0; font-size: 14px; line-height: 20px; }
+  .msheet .mh p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .msheet .mb { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; }
+  .opt { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 16px; min-height: 46px; border-top: 1px solid rgba(45,49,66,.55); }
+  .opt .g { width: 18px; text-align: center; flex: none; }
+  .opt .x { flex: 1; min-width: 0; } .opt .x small { display: block; color: var(--muted); font-size: 11.5px; }
+  .opt .key { color: var(--muted); font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+  .opt.red { color: var(--red); }
+  .opt.cur { background: rgba(79,193,233,.1); }
+  .form { display: grid; gap: 12px; padding: 4px 16px 8px; }
+  .form label { display: grid; gap: 4px; font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .form input, .form textarea, .form select { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 8px 10px; outline: none; text-transform: none; letter-spacing: 0; }
+  .form input:focus, .form textarea:focus { border-color: var(--accent); }
+  .form textarea { min-height: 88px; resize: vertical; }
+  .segs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .segs button { border: 1px solid var(--line); border-radius: 6px; min-height: 34px; padding: 0 10px; font-size: 12px; color: var(--dim); text-transform: none; letter-spacing: 0; }
+  .segs button.on { border-color: currentColor; background: rgba(248,248,242,.07); }
+  .fbtns { display: flex; gap: 8px; padding: 8px 16px 4px; }
+  .fbtns button { flex: 1; height: 44px; border-radius: 8px; border: 1px solid var(--line); font-weight: 700; }
+  .fbtns .pri { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+  .fbtns .danger { background: var(--red); color: var(--ink); border-color: var(--red); }
+  .cmd { margin: 6px 16px; padding: 8px 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); color: var(--green); font-size: 12px; overflow-x: auto; white-space: pre; user-select: text; -webkit-user-select: text; }
+  .gtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .gtable td { padding: 7px 16px; border-top: 1px solid rgba(45,49,66,.55); vertical-align: top; }
+  .gtable td:first-child { color: var(--text); width: 46%; padding-right: 4px; }
+  .gtable td:last-child { color: var(--muted); }
+  .gtable kbd { font: inherit; color: var(--accent); }
+  .qr { width: 132px; height: 132px; margin: 8px auto; display: grid; grid-template-columns: repeat(21, 1fr); background: #f8f8f2; padding: 6px; border-radius: 6px; }
+  .qr i { background: #16171d; } .qr i.o { background: transparent; }
+
+  .toast { position: absolute; left: 12px; right: 12px; bottom: calc(56px + var(--sab)); z-index: 40; background: var(--bg3); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px 10px 12px; box-shadow: 0 8px 26px rgba(0,0,0,.5); display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; overflow: hidden; transform: translateY(12px); opacity: 0; transition: transform .2s, opacity .2s; pointer-events: none; }
+  .toast.on { transform: none; opacity: 1; pointer-events: auto; }
+  .toast .m { font-size: 12px; color: var(--text); }
+  .toast .c { grid-column: 1; font-size: 11px; color: var(--green); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toast button { grid-row: 1 / span 2; grid-column: 2; color: var(--yellow); font-weight: 700; padding: 8px 6px; }
+  .toast .tm { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--yellow); width: 100%; transform-origin: left; }
+  .zones { position: absolute; inset: 0; z-index: 70; pointer-events: none; }
+  .zones::before, .zones::after { content: ""; position: absolute; top: 0; bottom: 0; width: 24px; background: repeating-linear-gradient(45deg, rgba(255,85,85,.28) 0 6px, rgba(255,85,85,.1) 6px 12px); }
+  .zones::before { left: 0; } .zones::after { right: 0; }
+  .zones i { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--sab) + 12px); background: rgba(255,85,85,.18); }
+</style>
+
+<div class="stage">
+  <aside class="panel" aria-label="Mockup controls">
+    <div>
+      <h1><span>b9s</span> mobile, clickable mockup</h1>
+    </div>
+    <p>The phone web UI from epic bd-foit, with every TUI function on taps and swipes. Real b9s issues from the Dolt export of 26 Sep 2026. Writes are simulated: each one shows the <code>bd</code> command the server runs.</p>
+    <div>
+      <h2>Device</h2>
+      <div class="seg" id="devs">
+        <button data-dev="pixel">Pixel 9 · 412×915</button>
+        <button data-dev="ios">iPhone 16 · 393×852</button>
+        <button data-dev="narrow">Small · 360×780</button>
+      </div>
+    </div>
+    <div>
+      <h2>Overlays</h2>
+      <div class="seg">
+        <button id="tZones">Gesture dead zones</button>
+        <button id="tLive">Live changes</button>
+        <button id="tNow">Simulate a change now</button>
+      </div>
+    </div>
+    <div>
+      <h2>Density check</h2>
+      <div class="kv" id="density"></div>
+    </div>
+    <div>
+      <h2>Try this (mouse drags work too)</h2>
+      <ul class="try" id="tryList"></ul>
+    </div>
+  </aside>
+  <div class="frame-wrap" id="frameWrap">
+    <div class="device pixel" id="device">
+      <div class="app" id="app">
+        <div class="fakeos"><span id="clock">9:41</span><span class="cam"></span><span>5G ▮▮▮ 87%</span></div>
+        <header class="hd" id="hd"></header>
+        <div class="chips" id="chips"></div>
+        <main id="main">
+          <section class="view" id="vTree">
+            <div id="fbar"></div>
+            <div class="scroll" id="treeList"><div class="ptr" id="ptr">↓ pull to reload</div><div id="treeRows"></div></div>
+          </section>
+          <section class="view" id="vBoard" hidden></section>
+          <section class="view" id="vSearch" hidden>
+            <div class="sbox"><input id="sIn" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="status:open type:bug words…" aria-label="Query"><button id="sApply">Apply</button></div>
+            <div class="sugg" id="sSugg"></div>
+            <div class="scroll" id="sList"></div>
+          </section>
+          <section class="view" id="vMore" hidden><div class="scroll" id="moreList"></div></section>
+          <section class="view" id="vGraph" hidden></section>
+        </main>
+        <nav class="bar" id="bar"></nav>
+        <div id="detailHost"></div>
+        <div id="sheetHost"></div>
+        <div class="toast" id="toast" role="status"></div>
+        <div class="zones" id="zones" hidden><i></i></div>
+        <div class="homebar" id="homebar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const RAW = [{"id":"bd-2cpl","title":"[2cpl] Help overlay and tutorial list views b9s removed","status":"open","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T16:44:03Z","updated":"2026-09-23T16:51:21Z","closed":null,"reason":null,"desc":"The ? help overlay (pkg/ui/model.go viewsSection/globalSection, near line 4425) lists i Insights, h History view, a Actionable, f Flow matrix, [ Label dashboard, ] Attention view, and ; Shortcuts bar, ! Alerts panel, ' Recipes. No key handler implements these views: they were removed with the bv analysis engine. Some keys now do other things (h collapses in the tree, [ ] resize the split). tutorial_content.go also describes robot mode, insights, history and recipes. Users read wrong key help. Fix: derive the help rows from the real bindings, or remove the dead rows, with a test that every help row has a handler.","parent":null,"blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-2g5u","title":"[2g5u] Design canvas: detail view option 1 (card header)","status":"closed","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:29:45Z","updated":"2026-09-25T07:31:15Z","closed":"2026-09-25T07:31:15Z","reason":"Design canvas published","desc":"User picked option 1 (card header) from docs/mockups/detail-view-options.html. Build it as a Design artifact with task and epic artboards.","parent":null,"blockedBy":[],"from":["bd-esyf"],"nc":0},{"id":"bd-2uud","title":"[2uud] Wrap long issue titles in the tree list","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:19:47Z","updated":"2026-09-24T21:02:26Z","closed":"2026-09-24T21:02:26Z","reason":"v / :wrap wraps tree titles; scroll math counts wrapped lines","desc":"Tree rows truncate titles with an ellipsis, so long titles cannot be read in the list. Add a toggle (:wrap command and v key) that wraps every title onto indented continuation lines under the title column. Scrolling, paging and the visible range must count wrapped lines so the cursor stays on screen.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-36s","title":"Agenda view: time-horizon grouping (revisit)","status":"in_progress","priority":4,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-02-14T04:57:30Z","updated":"2026-02-21T05:02:08Z","closed":null,"reason":null,"desc":"Org-agenda style view that groups issues by time horizon (Today, This Week, Older, etc). Was implemented but removed because section headers rendered at the same level as issues instead of as proper parent nodes. Revisit when tree rendering supports virtual grouping headers as parent nodes.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-3xa0","title":"[3xa0] Modernize release workflow dependencies","status":"open","priority":3,"type":"chore","assignee":null,"creator":"vanderheijden86","created":"2026-09-10T10:24:21Z","updated":"2026-09-13T13:35:18Z","closed":null,"reason":null,"desc":"The v0.7.0 release completed with warnings that GoReleaser's brews configuration is deprecated and GitHub Actions dependencies target deprecated Node.js 20. Update the release configuration/actions to supported equivalents and verify with a non-publishing release check.","parent":null,"blockedBy":[],"from":["bd-jn08"],"nc":5},{"id":"bd-4epf","title":"XRay drill-down is ignored when a status/label/assignee filter is active","status":"open","priority":3,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-08-17T05:53:46Z","updated":"2026-09-13T15:46:23Z","closed":null,"reason":null,"desc":"rebuildFilteredFlatList (pkg/ui/tree.go) walks t.roots and ignores t.xrayRoot, so entering XRay mode (x) while a filter is active still renders the whole filtered tree instead of the drilled-down subtree. Same class of defect as bd-oe1y (visibility mechanisms not composing). Found while fixing bd-oe1y; not fixed there to keep that change scoped.","parent":null,"blockedBy":["bd-7p6m","bd-x8k8"],"from":[],"nc":28},{"id":"bd-50oo","title":"[50oo] Prune docs of removed features and fork references","status":"closed","priority":3,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T17:00:54Z","updated":"2026-09-24T16:00:28Z","closed":"2026-09-24T16:00:28Z","reason":"Docs rewritten, stale files deleted, repo description changed","desc":"Found while rewriting the README (bd-pcvg). The README now describes only current features and no longer mentions the fork, but the rest of the repo still does. To do: (1) docs/USER_GUIDE.md: remove the sections about removed features (about two thirds of its 35 H2 sections) and the beads_viewer mentions. (2) docs/ROBOT_MODE.md and docs/accessor_pattern.md describe only removed features: delete them. (3) docs/ARCHITECTURE.md, docs/testing.md ('for bv Contributors'), docs/beads_viewer-vs-beads.md: remove fork mentions and removed features. ADRs and dated plans stay as historical records. (4) Delete legacy root files CLEANED_UP_PROMPTS_USED_TO_CREATE_PROJECT.md, TOON_INTEGRATION_BRIEF.md and benchmarks/*.txt. (5) screenshots/*.webp show the upstream UI (Insights view, beads_viewer update banner): delete or replace them. (6) .claude/CLAUDE.md is stale: Go 1.25+ (not 1.22+), DoltWatcher poll","parent":"bd-gmaz","blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-6e8h","title":"[6e8h] Epic: Recent projects and k9s-style ':' command prompt","status":"in_progress","priority":1,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:04:41Z","updated":"2026-09-14T12:47:44Z","closed":null,"reason":null,"desc":"Implement docs/plans/2026-09-14-recent-projects-command-mode-design.md: header shows cwd project plus a k9s-style recent list (cap 9) persisted in b9s config; ':' prompt with :epic/:task/:feature/:bug/:chore type filters and a :project table listing Dolt databases the startup credential can read. Removes scan_paths discovery and projects:/favorites: config. Design task: bd-54q8.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.1","title":"[6e8h.1] Config: recent_projects with k9s TouchRecent, lock, migration, atomic save","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:05:17Z","updated":"2026-09-14T09:30:39Z","closed":"2026-09-14T09:30:39Z","reason":"recent_projects config with k9s ordering, migration and atomic merged save","desc":"pkg/config: RecentProject{Name,Database,Host,Path}, MaxRecentProjects=9, TouchRecent (new prepends, existing keeps slot, cap 9, LockRecent honoured), migrate favorites:/projects: into recent_projects, ignore discovery: with deprecation log, atomic temp+rename save that re-reads and merges. See design doc.","parent":"bd-6e8h","blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.10","title":"[6e8h.10] Toggle mouse capture with :mouse","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T13:20:17Z","updated":"2026-09-23T13:23:15Z","closed":"2026-09-23T13:23:03Z","reason":"Added :mouse toggle for text selection in tmux","desc":"b9s enables mouse cell motion for wheel scroll. Inside tmux (mouse on) that sends drags to b9s, which ignores them, so text cannot be selected and copied. Add a :mouse command that turns mouse capture off and on, with a status message, and document it.","parent":"bd-6e8h","blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.11","title":"[6e8h.11] Recent projects list shows projects the connected Dolt user cannot read","status":"closed","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T19:53:05Z","updated":"2026-09-24T20:08:36Z","closed":"2026-09-24T20:08:36Z","reason":"Header hides recent projects the startup Dolt user cannot read; checkout counts no longer masked by JSONL export","desc":"The header's recent projects list shows every project ever opened (b9s, architectuur-doc, osenco-infra, omnigent-config, agent-swarm, kuhfellkaufen, agents-config, vd__oosterweel_sync, rws-sync) even when the Dolt user in the current .beads/metadata.json is only granted on its own database (bd_b9s -> b9s). Projects the user cannot read must not appear as recent entries, so the list reflects what the connected user can actually open. Investigate how recent projects are stored and rendered, how a project's readability is decided, and fix the list so entries the current user cannot read are hidden.","parent":"bd-6e8h","blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.2","title":"[6e8h.2] Datasource: ListProjectDatabases catalog query and reachability enum","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:05:31Z","updated":"2026-09-14T10:36:16Z","closed":"2026-09-14T10:24:22Z","reason":"Catalog query and reachability classification with integration tests via tunnel","desc":"internal/datasource/catalog.go: SELECT DISTINCT table_schema FROM information_schema.tables WHERE table_name='issues' using the startup DataSource credential. Closed Reachability enum Unknown|Reachable|Denied|NoIssuesTable|ServerDown classified from driver errors. DoltIntegration test.","parent":"bd-6e8h","blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.3","title":"[6e8h.3] UI: ':' command prompt with alias table and type filter commands","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:05:44Z","updated":"2026-09-14T09:44:56Z","closed":"2026-09-14T09:44:56Z","reason":"':' prompt with alias table, type filter commands and visible filter chip","desc":"pkg/ui/command_prompt.go + commands.go: PromptState Idle/Editing, grey prefix suggestion (Tab/right accepts, up/down cycles), closed alias table, Resolve -> Command|error. :epic/:feature/:task/:bug/:chore replace type: tokens in shared QueryState keeping other tokens; :issues/:all clears type. ':' works in list/tree/board/detail unless a text input has focus.","parent":"bd-6e8h","blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.4","title":"[6e8h.4] UI: :project full-screen table","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:05:58Z","updated":"2026-09-14T12:26:26Z","closed":"2026-09-14T12:26:26Z","reason":"':project' table lists readable databases, adds the pick to recent projects and switches","desc":"pkg/ui/project_table.go: ProjectTable Loading/Loaded/Failed, rows from ListProjectDatabases with async O/P/R counts, RECENT and LOCAL columns, / filter, Esc back, Enter -> TouchRecent + save + SwitchProjectMsg.","parent":"bd-6e8h","blockedBy":["bd-6e8h.1","bd-6e8h.2","bd-6e8h.3"],"from":[],"nc":0},{"id":"bd-6e8h.5","title":"[6e8h.5] UI: header from recent list, startup touch, read-only Checkout, drop scan discovery","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:06:11Z","updated":"2026-09-14T12:06:22Z","closed":"2026-09-14T12:06:22Z","reason":"Header from recent list, read-only no-checkout projects, reachability marks, discovery and favorites removed","desc":"Header rows = recent_projects; startup prepends cwd project if new; 0 combines recent projects; unreachable entries greyed with reason; projects without checkout are read-only via a Checkout type required by write actions; remove DiscoverProjectsWithErrors scan and favorites toggle.","parent":"bd-6e8h","blockedBy":["bd-6e8h.1"],"from":[],"nc":0},{"id":"bd-6e8h.6","title":"[6e8h.6] E2E, ADRs 0008/0009 and README for recent projects and ':' prompt","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T09:06:25Z","updated":"2026-09-14T12:44:17Z","closed":"2026-09-14T12:44:17Z","reason":"E2E, ADRs 0008/0009, README and help overlay for recent projects and the ':' prompt","desc":"PTY E2E with temp XDG_CONFIG_HOME: :proj Enter, pick, quit, restart, assert header order. ADR 0008 recent projects replace discovery; ADR 0009 ':' prompt with closed alias table. README keybindings and config.","parent":"bd-6e8h","blockedBy":["bd-6e8h.4","bd-6e8h.5"],"from":[],"nc":0},{"id":"bd-6e8h.7","title":"[6e8h.7] Forget a recent project from the header or :project table","status":"open","priority":3,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T11:48:36Z","updated":"2026-09-14T11:48:43Z","closed":null,"reason":null,"desc":"There is no way to drop an entry from recent_projects except editing ~/.config/b9s/config.yaml. A recent project whose host silently drops packets delays every header count refresh by up to the 5s connect timeout (loadProjectCountsCmd waits for all results), so users need an in-app way to forget it. Found while documenting header refresh cost in docs/performance.md for bd-6e8h.5.4. Respect lock_recent; save through SaveRecentTo so comments survive.","parent":"bd-6e8h","blockedBy":[],"from":["bd-6e8h.5.4"],"nc":0},{"id":"bd-6e8h.8","title":"[6e8h.8] Fall back to the last working project when a switch fails","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T12:50:36Z","updated":"2026-09-14T14:22:40Z","closed":"2026-09-14T14:22:40Z","reason":"Readable open failures: CLI fallback to the last project that opened, load-first TUI switch with popup; all children closed","desc":"When switching to a project that is not found, unreachable, denied or yields no openable issues, b9s shows an error-like page and stays there. It should return to the most recent project whose issues loaded, and show a popup with a human-readable reason and what the user can do. Design first (brainstorming), starting with how the CLI/startup path should behave.","parent":"bd-6e8h","blockedBy":[],"from":[],"nc":0},{"id":"bd-6e8h.9","title":"[6e8h.9] Recent projects compare unresolved paths, so a symlinked checkout appears twice","status":"open","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T14:16:13Z","updated":"2026-09-14T14:16:20Z","closed":null,"reason":null,"desc":"config.RecentProject.sameProject and ui headerProjects compare checkout paths as strings. b9s records its startup folder from the resolved working directory (e.g. /private/var/... on macOS), while a path written by hand or reached through a symlink (/var/..., a symlinked ~/Documents) is stored unresolved. The same checkout then gets two header rows and two number keys, and switching between them is a no-op because the names match. Found while writing tests/e2e/open_failure_e2e_test.go (the fixture now resolves its temp dir). Fix: compare filepath.EvalSymlinks-resolved paths (falling back to Clean when the path no longer exists) in sameProject and headerProjects, with a guard test.","parent":"bd-6e8h","blockedBy":[],"from":["bd-6e8h.8.5"],"nc":0},{"id":"bd-6nix","title":"[6nix] Redesign the issue detail pane to match the board style","status":"closed","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T04:25:53Z","updated":"2026-09-25T04:59:12Z","closed":"2026-09-25T04:59:12Z","reason":"Detail pane redesigned in board style","desc":"The detail pane renders a glamour markdown table, a star emoji update banner and a raw mailto link. Replace the header with a lipgloss-rendered block in the board card style: type icon, ID, title, a status/priority/people meta line, muted section labels and a compact relations list. Keep formatIssueMarkdown for clipboard copy.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-6ye3","title":"[6ye3] Fail fast when the configured Dolt test host is unreachable","status":"open","priority":3,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T12:40:09Z","updated":"2026-09-14T12:40:16Z","closed":null,"reason":null,"desc":"A full go test ./... run spends 10 seconds per Dolt integration case when the configured test host is unreachable, then hits the package timeout. Add an availability discriminator or shared setup failure so the suite reports the infrastructure problem once without serial connection timeouts.","parent":null,"blockedBy":[],"from":["bd-j8cv"],"nc":0},{"id":"bd-77az","title":"[77az] Warn when config.yaml fails to load instead of ignoring it silently","status":"open","priority":3,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T17:01:06Z","updated":"2026-09-23T17:01:12Z","closed":null,"reason":null,"desc":"cmd/b9s/main.go:157-160 replaces the whole config with DefaultConfig when config.Load() fails, and nothing tells the user. An unknown ui.sort.field or direction, or a refresh.poll_interval below 100ms, therefore drops every setting, including recent_projects and lock_recent, without a message. The file is never saved over (main.go:292-296), so no data is lost, but the user cannot see why the header is empty or the sort is wrong. Show the load error in the status line or on stderr at startup. Found while documenting the config for the README rewrite (bd-pcvg).","parent":null,"blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-80q4","title":"[80q4] Project switch keeps writing tree-state.json of the startup project","status":"open","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T10:33:40Z","updated":"2026-09-14T10:33:46Z","closed":null,"reason":null,"desc":"TreeModel.SetBeadsDir is only called in NewModel. The ProjectSwitch handler (pkg/ui/model.go ~1583-1621) updates m.beadsPath but not the tree's beadsDir, so expand state and bookmarks of the switched-to project are loaded from and saved into the startup project's .beads/tree-state.json. Found while fixing bd-r3l0.","parent":null,"blockedBy":[],"from":["bd-r3l0"],"nc":0},{"id":"bd-86tc","title":"[86tc] Project switch keeps the previous project's tree-state path","status":"open","priority":3,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-15T04:45:27Z","updated":"2026-09-15T04:45:33Z","closed":null,"reason":null,"desc":"SetBeadsDir is only called in NewModel (pkg/ui/model.go). switchToProject updates m.beadsPath but never the tree's beadsDir, so after a switch saveState overwrites the previous project's .beads/tree-state.json with the new project's expansion and bookmarks, and loadState reads the wrong file. Dolt-only projects (no issues.jsonl) also never get a beadsDir because it is derived from FindJSONLPath, so their expansion and bookmarks do not persist across sessions. Found while fixing bd-ikxy.","parent":null,"blockedBy":[],"from":["bd-ikxy"],"nc":0},{"id":"bd-9bet","title":"[9bet] Provision b9s-shared-dolt-reader in b9s-bd-x8k8 preview namespace using operator credentials","status":"deferred","priority":2,"type":"task","assignee":null,"creator":"unknown","created":"2026-09-13T17:15:11Z","updated":"2026-09-13T17:15:22Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-x8k8. The full report is its lane comment on bd-x8k8.","parent":null,"blockedBy":[],"from":["bd-x8k8"],"nc":0},{"id":"bd-9bsq","title":"[9bsq] Epic: Remediate v1.0 security audit findings","status":"open","priority":0,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T15:18:39Z","updated":"2026-09-14T15:18:46Z","closed":null,"reason":null,"desc":"Track remediation of confirmed security and publication-hardening findings from the v1.0.0 audit, including credential trust boundaries, terminal control-sequence injection, stale vulnerable binaries, and release provenance.","parent":null,"blockedBy":[],"from":["bd-uu6f"],"nc":0},{"id":"bd-9bsq.1","title":"[9bsq.1] Prevent repository metadata from exfiltrating Dolt credentials","status":"closed","priority":0,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T15:18:52Z","updated":"2026-09-15T05:32:05Z","closed":"2026-09-15T05:32:05Z","reason":"Credential forwarding is restricted to trusted Dolt endpoints with regression coverage and ADR.","desc":"Untrusted .beads/metadata.json controls dolt_server_host while B9s automatically injects BEADS_DOLT_PASSWORD and does not require TLS. Constrain credential use to explicitly trusted endpoints, use mysql.Config consistently, add a failing regression test with a hostile host, and document the trust boundary.","parent":"bd-9bsq","blockedBy":[],"from":[],"nc":0},{"id":"bd-9bsq.2","title":"[9bsq.2] Sanitize untrusted terminal control sequences in issue data","status":"closed","priority":1,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T15:19:06Z","updated":"2026-09-15T05:32:11Z","closed":"2026-09-15T05:32:11Z","reason":"Untrusted issue data is sanitized at terminal rendering boundaries with regression coverage.","desc":"Issue titles, IDs, assignees, labels, descriptions, and comments are rendered into terminal output without removing control sequences. Centralize sanitization at the rendering boundary and add regression tests covering CSI, OSC, C0, and C1 sequences without breaking legitimate Unicode or B9s-generated styling.","parent":"bd-9bsq","blockedBy":[],"from":[],"nc":0},{"id":"bd-9bsq.3","title":"[9bsq.3] Remove vulnerable debug executables from published source and prevent recurrence","status":"in_progress","priority":1,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T15:19:20Z","updated":"2026-09-15T05:31:43Z","closed":null,"reason":null,"desc":"The v1.0.0 source tree contains executable 50 MB bv_profile and bv_test binaries built from old beads_viewer code with Go 1.25.5. Govulncheck reports 22 reachable vulnerabilities. Remove them only under the repository deletion-approval rule, add ignore/CI guards against committed binaries, and ensure releases contain only intended artifacts.","parent":"bd-9bsq","blockedBy":[],"from":[],"nc":0},{"id":"bd-9bsq.4","title":"[9bsq.4] Harden release provenance and updater verification","status":"in_progress","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T15:19:34Z","updated":"2026-09-15T05:48:54Z","closed":null,"reason":null,"desc":"The v1.0.0 tag is unsigned, release actions use mutable major tags, main and tags lack protection/rulesets, workflow defaults are write, artifacts have unsigned checksums but no attestations, and updater checksum verification is optional with stale repository and bv asset identities. Pin actions by SHA, minimize permissions, protect release refs, emit attestations/SBOM/signatures, make verification mandatory, and add integration tests.","parent":"bd-9bsq","blockedBy":[],"from":[],"nc":0},{"id":"bd-9bsq.5","title":"[9bsq.5] Remove absolute workstation paths from public artifacts","status":"in_progress","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T15:19:46Z","updated":"2026-09-15T05:31:53Z","closed":null,"reason":null,"desc":"The public .claude symlink, Beads JSONL records, two debug executables, and release binary metadata expose absolute workstation or build paths. Replace the absolute symlink under the deletion-approval rule, scrub or avoid generated local paths in publishable state, build releases with trimpath, and add a publication guard.","parent":"bd-9bsq","blockedBy":[],"from":[],"nc":0},{"id":"bd-a2n0","title":"[a2n0] Squash bd-4j0q onto main and make squash-on-main the repo standard","status":"closed","priority":2,"type":"chore","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T15:15:44Z","updated":"2026-09-24T17:36:46Z","closed":"2026-09-24T17:36:46Z","reason":"Squashed onto main; landing standard recorded","desc":"Rebase feat/bd-4j0q-creator-identity onto latest local main as one squashed commit. Record in agents-config/beads_viewer/AGENTS.md that feature branches land as one squashed commit on the latest local main.","parent":null,"blockedBy":[],"from":["bd-4j0q"],"nc":0},{"id":"bd-b6jw","title":"[b6jw] Add browser-accessible Kubernetes previews","status":"closed","priority":1,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-12T11:24:09Z","updated":"2026-09-12T19:28:38Z","closed":"2026-09-12T19:28:38Z","reason":"Restored stable localhost browser access and verified the visible TUI","desc":"Give b9s a repository-owned Omnigent preview interface. Build an immutable b9s plus browser-terminal image through BuildKit, deploy it into a task-scoped Kubernetes namespace, expose a clickable local preview URL, verify the exact commit and interactive TUI behavior with bounded checks, and destroy it idempotently. Include executable contract tests and operator documentation.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-b6jw.1","title":"[b6jw.1] Darken the browser preview terminal","status":"closed","priority":3,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-12T19:30:49Z","updated":"2026-09-12T19:35:16Z","closed":"2026-09-12T19:32:24Z","reason":"Darkened preview terminal background with a passing regression guard","desc":"The ttyd browser preview uses a gray terminal background that looks washed out. Darken the browser terminal canvas while preserving the existing B9s color palette, add an executable regression check, rebuild the immutable image, and verify it in the local Kubernetes preview.","parent":"bd-b6jw","blockedBy":[],"from":[],"nc":0},{"id":"bd-b6jw.2","title":"[b6jw.2] Make restricted preview redeploys idempotent","status":"closed","priority":1,"type":"bug","assignee":"unknown","creator":"vanderheijden86","created":"2026-09-12T19:34:14Z","updated":"2026-09-13T13:21:53Z","closed":"2026-09-13T13:21:53Z","reason":"delivered on omnigent/bd-b6jw.2 by lane","desc":"A second preview-deploy configures namespaced resources but fails because the B9s project-scoped deployer may create/delete its namespace yet cannot patch the existing namespace's commit-sha label and kubectl last-applied annotation. Reproduce with a same-task new SHA, add a policy/contract guard, and make repeated restricted redeploys succeed without widening access outside b9s-* namespaces.","parent":"bd-b6jw","blockedBy":["bd-7hm5","bd-ay47","bd-mf8n"],"from":["bd-b6jw.1"],"nc":5},{"id":"bd-b6jw.3","title":"[b6jw.3] Epic: Publish a mobile Tailscale preview","status":"closed","priority":1,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-13T07:49:10Z","updated":"2026-09-13T08:09:22Z","closed":"2026-09-13T08:09:22Z","reason":"Mobile Tailnet preview published and verified","desc":"Publish the browser-accessible B9s preview from the laptop through Tailscale only, and add touch-first navigation so a mobile user can move through project and issue lists without a hardware keyboard.","parent":"bd-b6jw","blockedBy":[],"from":[],"nc":0},{"id":"bd-b6jw.4","title":"[b6jw.4] Make preview verification resolve the cluster Service from a workstation","status":"open","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-13T08:49:52Z","updated":"2026-09-13T15:02:02Z","closed":null,"reason":null,"desc":"scripts/preview/preview-verify uses the cluster-only Service DNS name even when run from the laptop, so it cannot reach the otherwise healthy preview. Make verification choose a reachable boundary while preserving immutable identity checks.","parent":"bd-b6jw","blockedBy":["bd-omz0"],"from":[],"nc":20},{"id":"bd-b6jw.5","title":"[b6jw.5] Fix mobile preview project switching against shared Dolt","status":"closed","priority":1,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-13T09:02:46Z","updated":"2026-09-13T09:53:24Z","closed":"2026-09-13T09:53:24Z","reason":"Shared Dolt project switching verified end to end","desc":"The Tailnet mobile preview loads shared tickets in All projects, but selecting another project can show no Beads issues. Add a purpose-built browser E2E suite that switches across real populated shared databases, reproduces the regression, and guards the fixed behavior end to end.","parent":"bd-b6jw","blockedBy":[],"from":[],"nc":0},{"id":"bd-b6jw.6","title":"[b6jw.6] Restore the local Tailnet B9s preview","status":"closed","priority":1,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-13T11:19:21Z","updated":"2026-09-13T11:38:02Z","closed":"2026-09-13T11:34:55Z","reason":"Restored the preview and added guarded stale-session recovery","desc":"The published B9s preview at https://macbook-pro-2.tailb7c04d.ts.net/b9s/ is no longer reachable. Diagnose the Tailnet Serve, local ingress, k3s workload, and read-only Dolt boundaries independently; restore the existing deployment without deleting data; verify the live identity and mobile project-switch behavior; document any new failure discriminator.","parent":"bd-b6jw","blockedBy":[],"from":[],"nc":0},{"id":"bd-bfcb","title":"[bfcb] Correct legacy arrow-key E2E descriptions and replace weak visibility assertions","status":"deferred","priority":2,"type":"task","assignee":null,"creator":"unknown","created":"2026-09-12T11:23:36Z","updated":"2026-09-12T11:23:46Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-lvi5. The full report is its lane comment on bd-lvi5.","parent":null,"blockedBy":[],"from":["bd-lvi5"],"nc":0},{"id":"bd-bjqc","title":"[bjqc] Epic: k9s-style marking and bulk actions in tree view","status":"in_progress","priority":2,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T10:39:19Z","updated":"2026-09-14T14:22:19Z","closed":null,"reason":null,"desc":"Mark several tree rows k9s-style (space toggles, ctrl+space marks a range, ctrl+\\ clears) and have actions such as K (close) and delete apply to every marked issue, falling back to the cursor row when nothing is marked. Builds on the existing m/M mark state (bd-cz0), which no action consumes yet.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-bjqc.1","title":"[bjqc.1] k9s mark keys: space toggle, ctrl+space range, ctrl+\\ clear","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T10:39:31Z","updated":"2026-09-14T11:01:42Z","closed":"2026-09-14T11:01:42Z","reason":"k9s mark keys (space, ctrl+space range, ctrl+\\ clear) with footer count","desc":"Add k9s key bindings for marking in tree view: space toggles the mark and moves down, ctrl+space marks the visible range from the nearest mark to the cursor, ctrl+\\ clears marks. Keep m/M. Show marked count in footer; highlight marked rows.","parent":"bd-bjqc","blockedBy":[],"from":[],"nc":0},{"id":"bd-bjqc.2","title":"[bjqc.2] Bulk close and delete over marked issues","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T10:39:45Z","updated":"2026-09-14T11:01:53Z","closed":"2026-09-14T11:01:53Z","reason":"K/Delete act on marked issues with count confirmation and one bd call","desc":"K and delete act on all marked issues when any are marked (k9s GetSelectedItems semantics), with a count-based confirmation, one bd call per batch, and marks cleared after success.","parent":"bd-bjqc","blockedBy":["bd-bjqc.1"],"from":[],"nc":0},{"id":"bd-bjqc.3","title":"[bjqc.3] Bulk status change over marked issues","status":"closed","priority":3,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T10:39:58Z","updated":"2026-09-14T13:13:35Z","closed":"2026-09-14T13:13:35Z","reason":"Bulk status via S over marked issues; priority/labels split to bd-bjqc.4","desc":"Extend the marked-set semantics to the status, priority and label pickers so one edit applies to all marked issues.","parent":"bd-bjqc","blockedBy":["bd-bjqc.2"],"from":[],"nc":0},{"id":"bd-bjqc.4","title":"[bjqc.4] Bulk priority and label edits over marked issues","status":"open","priority":3,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T13:13:18Z","updated":"2026-09-14T13:13:25Z","closed":null,"reason":null,"desc":"Split from bd-bjqc.3, which delivered bulk status. Apply priority and label edits to every marked tree issue (else cursor row) through Model.actionTargets, one bd update call per batch, count in dialog and status line, unmark on apply.","parent":"bd-bjqc","blockedBy":[],"from":[],"nc":0},{"id":"bd-bjqc.5","title":"[bjqc.5] Live refresh moves the tree cursor back to the top row","status":"closed","priority":1,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T13:44:38Z","updated":"2026-09-14T13:58:36Z","closed":"2026-09-14T13:58:36Z","reason":"Tree rebuild keeps cursor issue/row and scroll position across live refresh","desc":"When issues refresh (Dolt watcher, file change, or the reload after a bd write such as a bulk close), the tree cursor jumps to row 0. Marking rows near the bottom becomes unusable. Suspected root cause: TreeModel.Build resets cursor to 0 and the FileChangedMsg reload path calls it without restoring the selection. Expected: cursor stays on the same issue (or the nearest row if it disappeared) and the scroll position holds.","parent":"bd-bjqc","blockedBy":[],"from":[],"nc":0},{"id":"bd-bjqc.6","title":"[bjqc.6] Dired mark keys u/U and a v range-mark fallback","status":"closed","priority":3,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-15T04:36:00Z","updated":"2026-09-15T04:44:27Z","closed":"2026-09-15T04:44:02Z","reason":"u/U dired unmark keys and V range mark added in tree view","desc":"Tree marking only has k9s keys plus m/M. Add dired-style u (unmark row) and U (clear all marks), and v as a range-mark alternative to ctrl+space, which macOS claims for input-source switching so it often never reaches the terminal. ctrl+u stays page up (paired with ctrl+d across views).","parent":"bd-bjqc","blockedBy":[],"from":[],"nc":0},{"id":"bd-bqp4","title":"[bqp4] Migrate existing Homebrew formula users after first cask release by retiring Formula/b9s.rb and adding tap_migrations.json","status":"deferred","priority":2,"type":"task","assignee":null,"creator":"unknown","created":"2026-09-13T13:11:34Z","updated":"2026-09-13T13:11:45Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-3xa0. The full report is its lane comment on bd-3xa0.","parent":null,"blockedBy":[],"from":["bd-3xa0"],"nc":0},{"id":"bd-conw","title":"[conw] Improve the rewritten README","status":"closed","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T15:06:06Z","updated":"2026-09-24T15:33:44Z","closed":"2026-09-24T15:33:44Z","reason":"README improved: complete verified key tables, screenshot, docs links","desc":"bd-pcvg rewrote README.md as a minimal k9s-style guide on the local branch docs/readme-rewrite. Review that rewrite against the code and docs, fix wrong or inconsistent claims, fill gaps a new reader hits, and tighten the prose. Same branch, same worktree, never pushed.","parent":"bd-gmaz","blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-e5u3","title":"[e5u3] Epic: Redesign the board TUI","status":"open","priority":1,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-12T20:49:58Z","updated":"2026-09-12T20:50:03Z","closed":null,"reason":null,"desc":"Redesign the board overview so dense and sparse project states are easier to scan, compare, navigate, and understand. The work should improve information hierarchy, column use, card readability, status and blocker semantics, responsive behavior, and interaction discoverability without changing Beads workflow semantics.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.1","title":"[e5u3.1] Produce comparative board redesign mockups","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-12T20:50:09Z","updated":"2026-09-12T21:06:23Z","closed":"2026-09-12T21:06:23Z","reason":"Created six board redesign concepts and a recommended implementation specification","desc":"Create a broad set of distinct, high-fidelity terminal board mockups before implementation. Explore materially different information architectures, not cosmetic variants. Cover sparse and dense boards, narrow and wide terminals, selection and detail states, long titles, cross-project IDs, blockers, dependencies, and dispatcher lane-stage visibility. Include at least six viable concepts, explain each concept's tradeoffs, identify reusable design principles, and recommend one direction with an implementation-oriented component and interaction spec. Keep artifacts reviewable in the repository and do not implement the production board in this task.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.10","title":"[e5u3.10] Epic rail cell: boxed and full lane height","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:17:36Z","updated":"2026-09-25T07:28:46Z","closed":"2026-09-25T07:28:46Z","reason":"Epic cell boxed and full lane height","desc":"In the epic rail design the epic cell stops after its text lines and has no box. The mockup (docs/mockups/board-epic-lanes-options.html) draws the epic as a box that spans the full lane height, and a selected epic shows a highlighted border like a selected card, not a solid fill.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.11","title":"[e5u3.11] Board lane design review: rows outline, navigation, speed","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:35:11Z","updated":"2026-09-25T07:49:03Z","closed":"2026-09-25T07:48:50Z","reason":"Lazy board drawing, boxed epic rows, lane-keeping h/l and {/} epic jumps","desc":"User review of the epic lanes board: the epic rows header blends into the background and should read as an epic (outline across the row); navigation between cards and epics is unclear; the board feels sluggish. Review the design for similar subtleties, measure render latency, and improve.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.12","title":"[e5u3.12] j/k move over cards only; epics through { and }","status":"closed","priority":3,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:48:03Z","updated":"2026-09-25T07:57:02Z","closed":"2026-09-25T07:57:02Z","reason":"j/k skip lane headers; { } move between epics","desc":"On the lane board the epic header is reachable with j/k only in the column of the epic's own status, because selection is a (column,row) pair and the epic issue lives in one column. Make the header a stop in every column, which needs a board selection that can point at a lane header independent of the column.","parent":"bd-e5u3","blockedBy":[],"from":["bd-e5u3.11"],"nc":0},{"id":"bd-e5u3.13","title":"[e5u3.13] Board f filters to the selected card's branch","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:58:40Z","updated":"2026-09-25T08:15:02Z","closed":"2026-09-25T08:14:48Z","reason":"Board f toggles the selected card's branch","desc":"On the board, f should show only the selected card's top-level branch (its root ancestor and every descendant), as f does in the tree. Pressing f again shows the whole board. User request 2026-09-25.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.14","title":"[e5u3.14] Board: epic rail is a column, arrows move inside the lane and skip empty columns","status":"closed","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T08:00:54Z","updated":"2026-09-25T08:10:52Z","closed":"2026-09-25T08:10:52Z","reason":"Epic column navigation with arrow keys, empty lane columns skipped","desc":"On the lane board, k at the top card of a column stops even when a lane above has cards in other columns (screenshot: 6e8h.9 in OPEN, 9bsq lane has cards only in IN PROGRESS). j/k must move to the next lane with cards, in the column nearest to the column last chosen with h/l.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.15","title":"[e5u3.15] Board keys toggle status filters in the query bar","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T08:11:44Z","updated":"2026-09-25T08:36:49Z","closed":"2026-09-25T08:36:49Z","reason":"o/i/C toggle status filters in the board query bar","desc":"On the board, filtering by status needs typing status:in_progress in the query bar. Keys o, i and C should toggle status:open, status:in_progress and status:closed terms in the shared query, so the bar shows the filter and Esc clears it. C also shows the hidden closed column.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.16","title":"[e5u3.16] z folds the selected board column into a rail","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T08:56:31Z","updated":"2026-09-25T09:18:53Z","closed":"2026-09-25T09:18:53Z","reason":"z folds the focused board column into a rail, Z unfolds all","desc":"The OPEN column takes most of the board width, so in-progress and blocked work is hard to see. A key (z) should fold the column under the cursor into a rail like an empty column, and unfold it on a second press. The user chose folding the selected column over an open-only key.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.17","title":"[e5u3.17] Board: up/down cross into the next lane in the column","status":"closed","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T17:43:27Z","updated":"2026-09-25T17:51:15Z","closed":"2026-09-25T17:51:15Z","reason":"Up/down cross lanes in the column","desc":"User feedback on bd-e5u3.14: at the last card of a lane, down must go on to the next card in the same column, across the epic boundary. Up does the same upward. Lane headers stay skipped.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.2","title":"[e5u3.2] Make board mockup tabs switch when opened standalone","status":"closed","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:09:35Z","updated":"2026-09-24T20:11:28Z","closed":"2026-09-24T20:11:17Z","reason":"Mockup tabs switch standalone","desc":"docs/mockups/board-redesign-concepts.html shows only variant A in a browser: panels B-F are hidden and no script switches the tab buttons. Add tab switching so all six variants are viewable.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.3","title":"[e5u3.3] Build board layout A: adaptive focus","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:14:18Z","updated":"2026-09-24T20:38:05Z","closed":"2026-09-24T20:38:05Z","reason":"Layouts A and E behind v, old board deleted, verified by unit, E2E and live capture","desc":"Implement mockup variant A (docs/mockups/board-redesign-concepts.html): summary bar with per-column counts, focused column gets most width, two-line rows (id, title, priority, age / type, impact, blocked-by, lane stage), closed column as a narrow rail when unfocused, empty-column hints, key hint line.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.4","title":"[e5u3.4] Build board layout E: focus + inspector","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:14:30Z","updated":"2026-09-24T20:38:07Z","closed":"2026-09-24T20:38:07Z","reason":"Layouts A and E behind v, old board deleted, verified by unit, E2E and live capture","desc":"Implement mockup variant E: compact one-line rows in status columns plus a persistent inspector for the selected issue (type, priority, status, lane stage, ready, impact, description, dependencies, labels, updated). Tab moves focus between board and inspector; j/k and ctrl+j/k scroll the inspector.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.5","title":"[e5u3.5] Switch board layouts with v and delete the card board","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:14:43Z","updated":"2026-09-24T20:38:09Z","closed":"2026-09-24T20:38:09Z","reason":"Layouts A and E behind v, old board deleted, verified by unit, E2E and live capture","desc":"Both layouts stay available until one is chosen: v toggles A/E in the board, ui.board_layout sets the startup layout. Delete the old bordered-card rendering, inline card expansion and old detail panel with their tests. Also fix l in the board opening the label picker instead of moving right.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.6","title":"[e5u3.6] Remove board layout E; A is the chosen board","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:38:27Z","updated":"2026-09-24T21:00:08Z","closed":"2026-09-24T21:00:08Z","reason":"Layout A only; three epic designs behind v","desc":"User chose layout A. Delete layout E (inspector, compact rows, Tab focus, ctrl+j/k scroll, ui.board_layout) and write ADR 0017 superseding ADR 0016.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.7","title":"[e5u3.7] Show epic membership on the board: three designs behind v","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T20:38:44Z","updated":"2026-09-24T21:00:10Z","closed":"2026-09-24T21:00:10Z","reason":"Layout A only; three epic designs behind v","desc":"User wants epics visible on board A. Build three switchable designs: (1) epic lanes: one horizontal band per epic with completion, Tab collapses/expands the children; (2) epic chips: colour bar and epic tag on each row; (3) epic groups: rows grouped under epic subheaders inside each column. v cycles; config sets the start design.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.8","title":"[e5u3.8] Mock up five lane-view redesigns with Jira-style epic rows and box cards","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T04:06:52Z","updated":"2026-09-25T04:10:26Z","closed":"2026-09-25T04:10:15Z","reason":"Five lane-view mockups delivered","desc":"User wants the epic lanes view to look more like a Jira board grouped by epic: epic rows span the board with a chevron, id, title, count and status; issues below are boxed square cards in the status columns. Keep b9s colors and feel. Closed column hidden by default. Unsure about the focus column. Deliver an HTML mockup with five options, switchable.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-e5u3.9","title":"[e5u3.9] Build epic rail (default) and epic rows board designs; closed column behind c","status":"closed","priority":1,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T04:17:10Z","updated":"2026-09-25T04:38:19Z","closed":"2026-09-25T04:38:19Z","reason":"Epic rail default, epic rows alternative, closed column behind c","desc":"User picked mockup option 5 (epic rail) as the default board design and option 1 (epic rows) as the second, switched with v. Chips and groups go. Cards become boxed. Columns equal width, no focus column. Closed column hidden by default and shown with c. See docs/mockups/board-epic-lanes-options.html.","parent":"bd-e5u3","blockedBy":[],"from":[],"nc":0},{"id":"bd-esyf","title":"[esyf] Mockups: five detail view designs","status":"closed","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:21:46Z","updated":"2026-09-25T07:27:42Z","closed":"2026-09-25T07:27:42Z","reason":"Five detail-view mockups delivered","desc":"User wants five mockups of the issue detail pane before settling the redesign. One HTML file in docs/mockups with tabs, task and epic samples, terminal-cell faithful rendering.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-foit","title":"[foit] Epic: Mobile-first web UI for b9s","status":"open","priority":2,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:36:45Z","updated":"2026-09-26T06:36:51Z","closed":null,"reason":null,"desc":"A phone-only web UI (Pixel 9, iPhone 15/16) with the same functions as the TUI, driven by taps and swipes instead of keys, at TUI-like density and look. Served by 'b9s web' from the same binary, reading through internal/datasource and writing through bd. Replaces the ttyd terminal preview of bd-b6jw.3 as the way to use b9s from a phone. The full design (architecture, gestures, density targets, test plan) is in this epic's design field.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-foit.1","title":"[foit.1] Clickable phone mockups of tree, detail, board and sheets","status":"in_progress","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:36:57Z","updated":"2026-09-26T06:43:31Z","closed":null,"reason":null,"desc":"Build static HTML mockups in docs/mockups at 412 and 393 px wide: tree with two-line rows, detail bottom sheet, board with one column per screen, filter chips, action and status sheets, marking bar. Real issue data from a fixture. Check the density target (16 rows visible on a Pixel 9) and the 24 px gesture dead zones. The user picks between variants before the frontend tasks start.","parent":"bd-foit","blockedBy":[],"from":[],"nc":0},{"id":"bd-foit.10","title":"[foit.10] Row swipe actions, undo, long-press marking and bulk bar","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:39:36Z","updated":"2026-09-26T06:39:43Z","closed":null,"reason":null,"desc":"Short swipe right starts work, long swipe right opens the status picker, short swipe left closes with a 5 s Undo, long swipe left opens the action sheet. Long-press enters mark mode; the bottom bar then acts on all marks (close, status, delete) per ADR 0011. Haptic feedback where the platform allows. Gesture E2E with real touch events on both profiles.","parent":"bd-foit","blockedBy":["bd-foit.4","bd-foit.7"],"from":[],"nc":0},{"id":"bd-foit.11","title":"[foit.11] Edit, create and status sheets","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:39:49Z","updated":"2026-09-26T06:39:56Z","closed":null,"reason":null,"desc":"Full-screen edit sheet for title, description, design, acceptance, notes, priority (segmented), type, labels and assignee with completion and identities (ADR 0014). Create from the bottom bar with the assignee set to the actor, as Ctrl-N. Status picker sheet. Comment composer in the detail sheet. Unsaved changes survive an accidental dismiss.","parent":"bd-foit","blockedBy":["bd-foit.4","bd-foit.8"],"from":[],"nc":0},{"id":"bd-foit.12","title":"[foit.12] Board: one column per screen, epic lanes, fold and drag","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:40:03Z","updated":"2026-09-26T06:40:11Z","closed":null,"reason":null,"desc":"Board by status, priority or type. One column fills the screen with a peek of the next; swipe changes the column. Epic lanes as sticky headers (rows design) or a compact rail, closed hidden until shown, column fold into a rail as z. Long-press drag moves a card to another status column through bd. Branch focus as f.","parent":"bd-foit","blockedBy":["bd-foit.7"],"from":[],"nc":0},{"id":"bd-foit.13","title":"[foit.13] Project sheet, all-projects view and source health","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:40:24Z","updated":"2026-09-26T06:40:31Z","closed":null,"reason":null,"desc":"Project sheet with the recent projects in the TUI order (1-9) and all projects (0, read-only). Header health dot; tapping it shows the data source health as D does. Honour ADR 0012 (open before replacing) and ADR 0015 (hide projects the user cannot read).","parent":"bd-foit","blockedBy":["bd-foit.3","bd-foit.6"],"from":[],"nc":0},{"id":"bd-foit.14","title":"[foit.14] Dependency view as a drill-down list","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:40:37Z","updated":"2026-09-26T06:40:46Z","closed":null,"reason":null,"desc":"Mobile replacement for the g graph: blockers above, blocked issues below, each tappable to re-centre on that issue, with depth indicators and cycle marking. No canvas graph: it is unreadable at 393 px.","parent":"bd-foit","blockedBy":["bd-foit.8"],"from":[],"nc":0},{"id":"bd-foit.15","title":"[foit.15] Live changes and follow mode","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:40:59Z","updated":"2026-09-26T06:41:07Z","closed":null,"reason":null,"desc":"Apply SSE change events without losing scroll position or the open sheet. Briefly highlight changed rows. Follow mode (F) scrolls to the issue another agent changed. Reconnect with backoff and a visible stale state when the stream drops.","parent":"bd-foit","blockedBy":["bd-foit.3","bd-foit.7"],"from":[],"nc":0},{"id":"bd-foit.16","title":"[foit.16] Performance and accessibility pass on real phones","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:41:13Z","updated":"2026-09-26T06:41:21Z","closed":null,"reason":null,"desc":"Measure on a real Pixel 9 and iPhone: first screen under 200 ms for 1,000 issues, 60 fps scrolling and swipes, no layout shift. Check contrast in the TUI palette, font scaling up to 130 percent, VoiceOver and TalkBack labels for every swipe action.","parent":"bd-foit","blockedBy":["bd-foit.10","bd-foit.12","bd-foit.7","bd-foit.8"],"from":[],"nc":0},{"id":"bd-foit.17","title":"[foit.17] Docs and proof video for the mobile web UI","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:41:28Z","updated":"2026-09-26T06:41:36Z","closed":null,"reason":null,"desc":"README section and user guide page with the gesture table, the pairing flow and the Tailscale route. Update ARCHITECTURE.md. Record the feature proof video under docs/videos with the branch in the filename.","parent":"bd-foit","blockedBy":["bd-foit.10","bd-foit.11","bd-foit.12","bd-foit.13","bd-foit.14","bd-foit.15","bd-foit.5","bd-foit.9"],"from":[],"nc":0},{"id":"bd-foit.2","title":"[foit.2] ADR: serve a mobile web UI from b9s web with an embedded SPA","status":"open","priority":2,"type":"decision","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:37:12Z","updated":"2026-09-26T06:37:19Z","closed":null,"reason":null,"desc":"Record the architecture: b9s web subcommand in the same binary, JSON read API over internal/datasource, SSE from the watcher, writes through bd only, esbuild-built Preact/TypeScript embedded with go:embed, JSON contract generated from Go types, loopback by default with Tailscale plus pairing token for the phone, Dolt credentials never sent to the browser (ADR 0013). Include the options rejected: ttyd terminal (bd-b6jw.3), htmx server rendering (weak for gestures), a separate Node server.","parent":"bd-foit","blockedBy":[],"from":[],"nc":0},{"id":"bd-foit.3","title":"[foit.3] b9s web: read API and SSE live updates","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:37:26Z","updated":"2026-09-26T06:37:33Z","closed":null,"reason":null,"desc":"Add the b9s web subcommand. Serve issues, dependencies, comments, projects and source health as JSON built from the same readers and query parser as the TUI. Push change events over SSE from DoltWatcher and the file watcher. Generate TypeScript types from the Go response types. Integration tests against JSONL fixtures and the scratch Dolt server only.","parent":"bd-foit","blockedBy":["bd-foit.2"],"from":[],"nc":0},{"id":"bd-foit.4","title":"[foit.4] b9s web: write API through bd","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:37:46Z","updated":"2026-09-26T06:37:54Z","closed":null,"reason":null,"desc":"Expose status set, close, delete, edit, create, comment and bulk actions by calling the existing bd write path (issue_writer), never SQL. Bulk actions follow ADR 0011. Return the bd error text on failure. Idempotency key per request so a retried tap does not close twice. Tests use a fake bd binary.","parent":"bd-foit","blockedBy":["bd-foit.3"],"from":[],"nc":0},{"id":"bd-foit.5","title":"[foit.5] b9s web: loopback default, pairing token and Tailscale access","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:38:06Z","updated":"2026-09-26T06:38:14Z","closed":null,"reason":null,"desc":"Listen on 127.0.0.1 by default. --listen opts into another address. On start, print a one-time pairing URL and QR code; the phone trades it for a long-lived HttpOnly cookie. CSRF protection on writes. Document tailscale serve as the remote route, reusing the bd-b6jw.3.2 setup. Guard test: the server refuses a non-loopback bind without a token.","parent":"bd-foit","blockedBy":["bd-foit.4"],"from":[],"nc":0},{"id":"bd-foit.6","title":"[foit.6] Frontend shell: TUI theme tokens, safe areas, PWA","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:38:27Z","updated":"2026-09-26T06:38:34Z","closed":null,"reason":null,"desc":"Scaffold the Preact/TypeScript app with esbuild and go:embed. Theme tokens shared with pkg/ui theme values (dark default, status colours, cyan cursor, monospace). Header, chip row and bottom bar sized per the design, env(safe-area-inset-*) everywhere, 24 px edge dead zones in a shared gesture helper. Web app manifest and icons so it installs to the home screen. Playwright harness with Pixel 9 and iPhone profiles lands here.","parent":"bd-foit","blockedBy":["bd-foit.1","bd-foit.2"],"from":[],"nc":0},{"id":"bd-foit.7","title":"[foit.7] Issue tree: dense two-line rows, folding, virtualised list","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:38:40Z","updated":"2026-09-26T06:38:47Z","closed":null,"reason":null,"desc":"Render the issue tree with two-line rows (status, ID, title / priority, type, assignee, age, blocked-by counts). Chevron tap folds, double tap folds the subtree, expand and collapse all in More. Wrap toggle as v. Sort and column choice. Virtualised so 1,000 issues stay under the 200 ms budget. Pull down reloads. E2E on both phone profiles.","parent":"bd-foit","blockedBy":["bd-foit.3","bd-foit.6"],"from":[],"nc":0},{"id":"bd-foit.8","title":"[foit.8] Detail bottom sheet with siblings swipe and relation drill-in","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:38:53Z","updated":"2026-09-26T06:39:01Z","closed":null,"reason":null,"desc":"Half-height sheet that drags to full height. Status-coloured card (type, ID, updated, title, status, priority, creator, assignee), Markdown for description, design, acceptance and notes, children with progress bar, relations, comments. Swipe left/right for siblings, down to dismiss, tap a relation to navigate with a back stack. Copy ID and Markdown.","parent":"bd-foit","blockedBy":["bd-foit.7"],"from":[],"nc":0},{"id":"bd-foit.9","title":"[foit.9] Search sheet and filter chips with the TUI query language","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-26T06:39:14Z","updated":"2026-09-26T06:39:22Z","closed":null,"reason":null,"desc":"Filter chips for open, in progress, closed, ready and all that write the same status terms into the query as o, i, C, r and a. A search sheet with the predicate language, fuzzy words, ! exclusion and completion of fields, values and labels. Branch (f) and subtree (x) focus from the action sheet. The query stays visible and one tap clears it.","parent":"bd-foit","blockedBy":["bd-foit.7"],"from":[],"nc":0},{"id":"bd-gmaz","title":"[gmaz] Epic: Improve README and prune stale docs","status":"open","priority":2,"type":"epic","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T15:08:57Z","updated":"2026-09-24T15:09:03Z","closed":null,"reason":null,"desc":"Follow-up to bd-pcvg. Improve the rewritten README (bd-conw) and prune docs of removed features and fork references (bd-50oo), on the local branch docs/readme-rewrite. Never pushed.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-i8ag","title":"[i8ag] Beads post-checkout hook blocks git worktree add for minutes","status":"open","priority":3,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T16:44:17Z","updated":"2026-09-23T16:44:24Z","closed":null,"reason":null,"desc":"On 2026-09-23, git worktree add .worktrees/docs-readme-rewrite ran the .beads/hooks/post-checkout hook (beads v0.63.3 integration). bd hooks run post-checkout sat idle for more than two minutes (all threads in cond_wait, no sockets, no locks), under the hook's 300 s timeout. It then printed 'beads: repair: bd dolt remote add origin git+ssh://git@github.com/vanderheijden86/b9s.git && bd dolt push'. The shared-server rules forbid Dolt remotes, so that hint must not be followed. Find why the hook waits, and stop it suggesting a Dolt remote for server-mode projects.","parent":null,"blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-ibvd","title":"[ibvd] Restore named lane role dispatch after harness stream failure; implementer retry loses its role binding and never starts","status":"deferred","priority":2,"type":"bug","assignee":null,"creator":"unknown","created":"2026-09-13T11:52:18Z","updated":"2026-09-13T11:52:28Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-48h9. The full report is its lane comment on bd-48h9.","parent":null,"blockedBy":[],"from":["bd-48h9"],"nc":0},{"id":"bd-ix2l","title":"Design k9s-style recent projects and ':' entity command mode","status":"open","priority":1,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T07:55:22Z","updated":"2026-09-14T07:55:22Z","closed":null,"reason":null,"desc":"The project picker lists every project on the Dolt server. It should start with only the cwd project plus a persisted MRU list of recently viewed projects (like k9s namespace favorites), and add a k9s-style ':' command prompt to open entity views by type (:task, :feature, :epic, :chore, :bug, :project). The :project view lists all accessible projects; picking one makes it active and adds it to the recent list. This task covers the brainstorm/design doc; implementation follows as an epic.","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-j7jf","title":"[j7jf] Raise the documented E2E timeout","status":"open","priority":3,"type":"chore","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T08:37:03Z","updated":"2026-09-25T08:37:10Z","closed":null,"reason":null,"desc":"The full tests/e2e suite now takes about 380s (78 tests at about 5s each). CLAUDE.md and docs/testing.md say -timeout 300s, which kills a healthy run and reads as a hang. Raise it or speed the suite up.","parent":null,"blockedBy":[],"from":["bd-e5u3.15"],"nc":0},{"id":"bd-kzyr","title":"[kzyr] Beads progress writes create runtime files rejected by the preview clean-worktree guard","status":"deferred","priority":2,"type":"bug","assignee":null,"creator":"unknown","created":"2026-09-13T17:14:51Z","updated":"2026-09-13T17:15:03Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-x8k8. The full report is its lane comment on bd-x8k8.","parent":null,"blockedBy":[],"from":["bd-x8k8"],"nc":0},{"id":"bd-lg9d","title":"Improve the rewritten README","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T15:05:15Z","updated":"2026-09-24T15:05:15Z","closed":null,"reason":null,"desc":"bd-pcvg rewrote README.md as a minimal k9s-style guide on the local branch docs/readme-rewrite. Review that rewrite against the code and docs, fix wrong or inconsistent claims, fill gaps a new reader hits, and tighten the prose. Same branch, same worktree, never pushed.","parent":null,"blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-lufq","title":"[lufq] Remove unused renderGlobalHeader from the UI model","status":"open","priority":4,"type":"chore","assignee":null,"creator":"vanderheijden86","created":"2026-09-14T12:02:18Z","updated":"2026-09-14T12:02:26Z","closed":null,"reason":null,"desc":"pkg/ui/model.go renderGlobalHeader has no callers since ba3fb13 made the project picker always visible, so its 'b9s | project (n)' label never renders. Found in bd-6e8h.5.4, which switched its favorite number to activeProjectSlot() but left the dead function in place to keep scope. Delete it, and activeProjectSlot if nothing else uses it.","parent":null,"blockedBy":[],"from":["bd-6e8h.5.4"],"nc":0},{"id":"bd-md8p","title":"[md8p] Global keys shadow view keys: tree b, backtick and Esc, board g/0, picker /","status":"open","priority":2,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T17:24:42Z","updated":"2026-09-23T17:24:49Z","closed":null,"reason":null,"desc":"The README rewrite (bd-pcvg) mapped every key handler in pkg/ui. The global shortcuts (model.go 2148-2431) and the global key switch (2435-2712) return before the focus handlers, so these view keys never run:\n\n- Tree `b` (ToggleBookmark, model.go:3330): global `b` toggles the board first (2543). Bookmarks (bd-k4n) cannot be added, and `B` cycles only bookmarks saved earlier.\n- Tree backtick (ToggleFlatMode, 3259): global backtick toggles the tutorial first (2172).\n- Tree `esc` (3362: exit occur mode, then XRay, then the tree filter): the global esc chain (2439-2503) always returns, and hasActiveFilters ignores XRay, occur mode and the assignee filter. Esc in XRay therefore opens the quit confirmation instead of leaving XRay. Related: bd-umh3.\n- Board `g`, `gg`, `0`, `ctrl+j`, `ctrl+k` (2959-2966, 3002-3004, 3081-3088): global keys return first. Coordinate with the board epic bd-e5u3.\n- H","parent":null,"blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-mrux","title":"[mrux] Build detail view option 1 (card header) in b9s","status":"closed","priority":2,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-25T07:31:54Z","updated":"2026-09-25T07:46:44Z","closed":"2026-09-25T07:46:44Z","reason":"Option 1 card header built","desc":"User picked option 1 from docs/mockups/detail-view-options.html (Design canvas EbdpEjNxpKK6HtJrCBS6Yx). Put type/ID/age, title and status/priority/people inside a heavy box in the status color; created, email and labels below it; epics get a CHILDREN section with done/total and a progress bar.","parent":null,"blockedBy":[],"from":["bd-2g5u"],"nc":0},{"id":"bd-n0wb","title":"Migrate from Go flag to cobra/pflag for double-dash options (GH#102)","status":"in_progress","priority":3,"type":"feature","assignee":null,"creator":"ubuntu","created":"2026-02-11T06:22:06Z","updated":"2026-02-21T05:07:32Z","closed":null,"reason":null,"desc":"## Problem\n\nbv uses Go's standard `flag` package which only supports single-dash convention (`-flag`) for all 129 flags. The rest of the ACFS ecosystem (br, ntm, dcg) uses double-dash convention (`--flag`). This inconsistency confuses users and breaks muscle memory.\n\n## Current State\n\nAll 129 flags are defined in `cmd/bv/main.go:52-207` using `flag.String()`, `flag.Bool()`, `flag.Int()`, `flag.Float64()`. The `flag.Parse()` call is at line 208. The beads_reference implementation at `beads_reference/cmd/bd/flags.go` already uses cobra/pflag via `github.com/spf13/cobra`.\n\n## Implementation Plan\n\n### Phase 1: Add cobra/pflag dependency\n\n```bash\ncd /data/projects/beads_viewer\ngo get github.com/spf13/cobra\ngo get github.com/spf13/pflag\n```\n\n### Phase 2: Create root command\n\nCreate `cmd/bv/root.go` with a cobra.Command that replaces the flag-based dispatch. Group the 129 flags into logical cat","parent":null,"blockedBy":[],"from":[],"nc":0},{"id":"bd-oixw","title":"[oixw] Derive mocked preview workload SHA from the rendered Deployment image to detect stale rendering","status":"deferred","priority":2,"type":"task","assignee":null,"creator":"unknown","created":"2026-09-13T13:21:20Z","updated":"2026-09-13T13:21:31Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-b6jw.2. The full report is its lane comment on bd-b6jw.2.","parent":null,"blockedBy":[],"from":["bd-b6jw.2"],"nc":0},{"id":"bd-pdob","title":"Improve the rewritten README","status":"open","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T15:05:39Z","updated":"2026-09-24T15:05:39Z","closed":null,"reason":null,"desc":"bd-pcvg rewrote README.md as a minimal k9s-style guide on the local branch docs/readme-rewrite. Review that rewrite against the code and docs, fix wrong or inconsistent claims, fill gaps a new reader hits, and tighten the prose. Same branch, same worktree, never pushed.","parent":null,"blockedBy":[],"from":["bd-pcvg"],"nc":0},{"id":"bd-rcsh","title":"[rcsh] Remember the :layout choice across restarts","status":"open","priority":3,"type":"feature","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T11:55:49Z","updated":"2026-09-24T11:55:55Z","closed":null,"reason":null,"desc":"The stacked/side-by-side split choice from :layout resets to side by side on every launch. Persist it (with the split ratio) so a user who prefers stacked keeps it.","parent":null,"blockedBy":[],"from":["bd-1lsu"],"nc":0},{"id":"bd-trdj","title":"[trdj] Drop pagerank from the accepted sort fields","status":"open","priority":3,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T15:29:46Z","updated":"2026-09-24T15:29:52Z","closed":null,"reason":null,"desc":"pkg/config accepts ui.sort.field: pagerank and ui.SortField has a PageRank entry, but nothing calls SetPageRankScores since the graph analysis package was removed, so the sort silently does nothing. Either remove the field from sortFieldNames and ui.SortField (config then rejects it with a clear error) or feed real scores. The docs now list only the seven working fields.","parent":null,"blockedBy":[],"from":["bd-50oo"],"nc":0},{"id":"bd-umh3","title":"[umh3] Cover Escape-key routing in filtered XRay regression tests","status":"deferred","priority":2,"type":"task","assignee":null,"creator":"unknown","created":"2026-09-13T13:04:26Z","updated":"2026-09-13T13:04:37Z","closed":null,"reason":null,"desc":"Discovered by the lane working bd-4epf. The full report is its lane comment on bd-4epf.","parent":null,"blockedBy":[],"from":["bd-4epf"],"nc":0},{"id":"bd-x8k8","title":"[x8k8] XRay heading hides the final subtree row when the subtree fits the viewport","status":"open","priority":2,"type":"bug","assignee":null,"creator":"unknown","created":"2026-09-13T15:37:30Z","updated":"2026-09-13T17:15:46Z","closed":null,"reason":null,"desc":"Live development preview verification of bd-4epf found that label lane-attempt=1 and assignee unknown show bd-b6jw plus matching child bd-b6jw.2 before XRay, but pressing x on bd-b6jw renders only the context parent. Toggling x restores the child and unrelated roots. Closed filter similarly omits final matching child bd-b6jw.1. In pkg/ui/tree.go View, extraLines increments for the XRay heading and end is reduced even when visibleRange is bounded by the list length rather than viewport capacity. Correct row budgeting must retain every fitting subtree row. Add rendered View regression for a context root plus one matching child in a tall viewport, plus ordinary XRay coverage. Found through actual ttyd WebSocket using installed Python websockets and pyte, against the task Service; no source changes made.","parent":null,"blockedBy":["bd-9bet"],"from":["bd-4epf"],"nc":17},{"id":"bd-xb9g","title":"[xb9g] One blank row below the footer when the project picker shows","status":"open","priority":3,"type":"bug","assignee":null,"creator":"vanderheijden86","created":"2026-09-24T12:38:07Z","updated":"2026-09-24T12:38:14Z","closed":null,"reason":null,"desc":"At 200x45 with the project picker visible, the picker takes 6 rows but bodyHeight subtracts panelRows for it, leaving an empty last terminal row below the footer. Measure the rendered header instead of assuming its height.","parent":null,"blockedBy":[],"from":["bd-roe4"],"nc":0},{"id":"bd-y1g5","title":"[y1g5] Consolidate repository to main root worktree","status":"in_progress","priority":2,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-10T19:30:32Z","updated":"2026-09-13T12:48:42Z","closed":null,"reason":null,"desc":"Audit all registered b9s worktrees, preserve any dirty or unpushed work, remove secondary worktrees only after exact-command approval, prune stale registrations, and leave /Users/andrevanderheijden/Documents/b9s checked out on synchronized main.","parent":null,"blockedBy":[],"from":[],"nc":1},{"id":"bd-yacz","title":"[yacz] Show identity names in detail view and tree person columns","status":"open","priority":3,"type":"task","assignee":null,"creator":"vanderheijden86","created":"2026-09-23T14:21:33Z","updated":"2026-09-23T14:21:41Z","closed":null,"reason":null,"desc":"The picker, filters and suggestions show identity names from b9s.identities, but the detail view, board detail and tree Creator/Assignee columns still show the raw stored alias (for example @vanderheijden86@gmail.com). Show the identity name, with the raw alias beside it when they differ.","parent":null,"blockedBy":[],"from":["bd-4j0q"],"nc":0}];
+  const RAWC = [{"id":"bd-3xa0","author":"unknown","at":"2026-09-13T13:11:49Z","text":"Step 4: implementer-codex committed the reviewed changes, but GitHub rejected the push because the lane’s token lacks `workflow` scope. No commit reached the remote; preview and PR creation cannot proceed.\nChanges committed locally on `omnigent/bd-3xa0`; push failed because the GitHub token lacks `workflow` scope. No preview or PR was created.\n\n- Review: APPROVED.\n- `go test ./... -count=1 -timeou"},{"id":"bd-3xa0","author":"unknown","at":"2026-09-13T13:11:54Z","text":"=== lane usage attempt=1 failure=push_failed tokens=10797 cost_usd=0.2688136 models=gpt-5.6-sol ==="},{"id":"bd-3xa0","author":"unknown","at":"2026-09-13T13:17:24Z","text":"=== lane usage attempt=2 failure=harness_failed tokens=0 cost_usd=unpriced models= ==="},{"id":"bd-3xa0","author":"unknown","at":"2026-09-13T13:35:06Z","text":"=== lane usage attempt=3 failure=harness_failed tokens=9865 cost_usd=0.1436264 models=gpt-5.6-sol ==="},{"id":"bd-3xa0","author":"unknown","at":"2026-09-13T13:35:23Z","text":"Lane abandoned in RUNNING after 3 attempts: harness_failed"},{"id":"bd-4epf","author":"unknown","at":"2026-09-13T13:05:09Z","text":"Fix reviewed, tested, and pushed to `omnigent/bd-4epf`. Delivery is blocked on operator provisioning; no PR opened.\n\n- `go test ./... -count=1 -timeout=10m -json -covermode=atomic`: branch 1,890 passed, base 1,885 passed; both 0 failed, 45 skipped.\n- `go build ./...` and `go vet ./...` passed. UBS unavailable.\n- Preview could not start without `b9s-shared-dolt-reader`; served SHA and UI behavior r"},{"id":"bd-4epf","author":"unknown","at":"2026-09-13T13:35:45Z","text":"=== lane usage attempt=1 failure=harness_failed tokens=0 cost_usd=unpriced models= ==="},{"id":"bd-4epf","author":"unknown","at":"2026-09-13T13:38:39Z","text":"=== lane usage attempt=2 failure=harness_failed tokens=0 cost_usd=unpriced models= ==="},{"id":"bd-4epf","author":"unknown","at":"2026-09-13T13:40:46Z","text":"=== lane usage attempt=3 failure=harness_failed tokens=0 cost_usd=unpriced models= ==="},{"id":"bd-4epf","author":"unknown","at":"2026-09-13T13:41:03Z","text":"Lane abandoned in RUNNING after 3 attempts: harness_failed"},{"id":"bd-x8k8","author":"unknown","at":"2026-09-13T16:37:28Z","text":"2026-09-13 18:37 CEST: Implementer started. Inspecting View row budgeting; will add rendered XRay regressions before the fix, then run bounded targeted and full Go checks. No commit or push authorized."},{"id":"bd-x8k8","author":"unknown","at":"2026-09-13T16:42:00Z","text":"2026-09-13 18:41 CEST: RED confirmed expected missing child in all 8 ordinary/filtered fitting cases and height-2 overflow. Test/subtest events: pass=2 fail=11 skip=0 (leaf cases pass=2 fail=9 skip=0). Applied capacity-based View clamp; targeted GREEN compiling on native arm64. Files: pkg/ui/tree.go, pkg/ui/tree_test.go, README.md."},{"id":"bd-x8k8","author":"unknown","at":"2026-09-13T16:46:16Z","text":"2026-09-13 18:46 CEST: Full go test ./... failed exit 1 at the 180s E2E package deadline; tests had been progressing every 5-7s, with no assertion failures. Keeping this as a failed check. Running all 48 E2E tests in two 24-test groups under the same 180s package deadline, without changing tests or increasing timeout. Local PTY XRay smoke pass=2 fail=0 skip=0."},{"id":"bd-x8k8","author":"unknown","at":"2026-09-13T16:49:09Z","text":"2026-09-13 18:49 CEST: Implementation ready for independent review. E2E groups each pass=24 fail=0 skip=0 (124.007s, 116.716s); completed combined suite pass=1898 fail=0 skip=45 test/subtest events (leaf pass=1780 fail=0 skip=45). Targeted pass=27 fail=0 skip=0, PTY smoke pass=2 fail=0 skip=0, build/typecheck/vet/format/diff checks pass. Monolithic full invocation remains FAILED at 180s package de"},{"id":"bd-x8k8","author":"unknown","at":"2026-09-13T16:50:07Z","text":"Review started: inspecting delivery diff, verification evidence, and XRay viewport regression coverage."},{"id":"bd-y1g5","author":"unknown","at":"2026-09-13T13:57:22Z","text":"Verification of ADR 0021 from a runner-shaped pod on local-mac-k3s: a lane role connection can record progress."}];
+
+  /* ================= data ================= */
+  const ME = "vanderheijden86";
+  const AGENTS = ["BrownBear", "LilacBear", "PinkHill", "WhiteCastle"];
+  const LABELS = { "bd-foit": ["mobile"], "bd-9bsq": ["security"], "bd-e5u3": ["board"], "bd-bjqc": ["tree"] };
+  const ALL = new Map();
+  const COMMENTS = new Map();
+  const PROJECTS = [
+    { name: "b9s", db: "b9s", recent: 1 },
+    { name: "LP_Team", db: "LP_Team", recent: 2, sample: true },
+    { name: "agents_config", db: "agents_config", recent: 3, sample: true },
+    { name: "osenco_website", db: "osenco_website", recent: 4, sample: true },
+    { name: "eddie", db: "eddie", recent: 5, sample: true },
+  ];
+  const SAMPLES = {
+    LP_Team: [["lp-1a2", "Epic: Quarterly planning board", "open", 1, "epic", null], ["lp-1a2.1", "Collect team capacity for Q4", "in_progress", 2, "task", "lp-1a2"], ["lp-1a2.2", "Draft objectives with owners", "open", 2, "task", "lp-1a2"], ["lp-7kq", "Calendar sync drops recurring events", "open", 1, "bug", null]],
+    agents_config: [["agents-config-g9h", "Epic: Run first Omnigent experiment", "in_progress", 1, "epic", null], ["agents-config-g9h.24", "Epic: Move Omnigent to big-hetzner", "open", 1, "epic", "agents-config-g9h"], ["agents-config-g9h.24.17", "Close the file credential boundary", "open", 0, "task", "agents-config-g9h.24"], ["agents-config-7ou", "Stop hook blocks replies with synonym rotation", "closed", 2, "bug", null]],
+    osenco_website: [["osw-3tf", "Rewrite the services page", "open", 2, "task", null], ["osw-9dd", "Contact form spam filter", "in_progress", 1, "feature", null]],
+    eddie: [["eddie-x1", "Voice prompt latency above 2 s", "open", 1, "bug", null], ["eddie-x2", "Nightly eval report", "open", 3, "chore", null]],
+  };
+  function add(r, proj) {
+    const i = {
+      id: r.id, proj, title: String(r.title || "").replace(/^\[[^\]]+\]\s*/, ""),
+      status: r.status, priority: r.priority, type: r.type || "task",
+      assignee: r.assignee || null, creator: r.creator || ME,
+      created: Date.parse(r.created) || Date.now(), updated: Date.parse(r.updated) || Date.now(),
+      closed: r.closed ? Date.parse(r.closed) : null, reason: r.reason || null,
+      desc: r.desc || "", parent: r.parent || null,
+      blockedBy: (r.blockedBy || []).slice(), from: (r.from || []).slice(), labels: [],
+    };
+    ALL.set(i.id, i);
+  }
+  RAW.forEach(r => add(r, "b9s"));
+  for (const [proj, rows] of Object.entries(SAMPLES)) {
+    rows.forEach(([id, title, status, priority, type, parent], n) => add({ id, title, status, priority, type, parent, creator: ME, created: new Date(Date.now() - (n + 2) * 864e5 * 3).toISOString(), updated: new Date(Date.now() - (n + 1) * 36e5 * 7).toISOString(), desc: "Sample issue: this project is not in the export, so the mockup shows placeholder rows to demonstrate switching." }, proj));
+  }
+  for (const i of ALL.values()) {
+    let p = i.id;
+    while (p) { if (LABELS[p]) { i.labels = LABELS[p].slice(); break; } p = ALL.get(p) && ALL.get(p).parent; }
+  }
+  RAWC.forEach(c => { if (!COMMENTS.has(c.id)) COMMENTS.set(c.id, []); COMMENTS.get(c.id).push({ author: c.author === "unknown" ? "lane-implementer" : c.author, at: Date.parse(c.at), text: c.text }); });
+
+  let KIDS = new Map();
+  function reindex() {
+    KIDS = new Map();
+    for (const i of ALL.values()) if (i.parent && ALL.has(i.parent)) { if (!KIDS.has(i.parent)) KIDS.set(i.parent, []); KIDS.get(i.parent).push(i.id); }
+  }
+  reindex();
+  const get = id => ALL.get(id);
+  const kids = id => KIDS.get(id) || [];
+  function descendants(id, out = []) { for (const k of kids(id)) { out.push(k); descendants(k, out); } return out; }
+  function ancestors(id) { const out = []; let p = get(id) && get(id).parent; while (p && ALL.has(p)) { out.push(p); p = get(p).parent; } return out; }
+  function eff(i) { if (i.status === "open" && i.blockedBy.some(b => get(b) && get(b).status !== "closed")) return "blocked"; return i.status; }
+  function blocksOf(i) { return [...ALL.values()].filter(x => x.blockedBy.includes(i.id)); }
+  function openBlockers(i) { return i.blockedBy.filter(b => get(b) && get(b).status !== "closed"); }
+  const isReady = i => i.status === "open" && eff(i) !== "blocked";
+  const shortId = id => id.replace(/^(bd|lp|osw|eddie|agents-config)-/, "");
+  function progress(id) { const k = kids(id).map(get); if (!k.length) return null; return { done: k.filter(x => x.status === "closed").length, all: k.length }; }
+  function laneOf(i) { const chain = [i.id, ...ancestors(i.id)]; for (let n = chain.length - 1; n >= 0; n--) if (get(chain[n]).type === "epic") return chain[n]; return null; }
+
+  const ST = {
+    open: { g: "○", c: "var(--green)", w: "open" },
+    in_progress: { g: "◐", c: "var(--cyan)", w: "in_progress" },
+    blocked: { g: "⊘", c: "var(--red)", w: "blocked" },
+    deferred: { g: "◌", c: "var(--orange)", w: "deferred" },
+    closed: { g: "✓", c: "var(--muted)", w: "closed" },
+  };
+  const TY = { epic: ["♦", "var(--accent)"], feature: ["▲", "var(--feat)"], task: ["✔", "var(--blue)"], bug: ["●", "var(--red)"], chore: ["○", "var(--cyan)"], decision: ["◆", "var(--orange)"] };
+  const PC = ["var(--red)", "var(--orange)", "var(--dim)", "var(--muted)", "var(--muted)"];
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function age(t) { const s = Math.max(0, (Date.now() - t) / 1000); if (s < 60) return Math.floor(s) + "s"; if (s < 3600) return Math.floor(s / 60) + "m"; if (s < 86400) return Math.floor(s / 3600) + "h"; if (s < 86400 * 14) return Math.floor(s / 86400) + "d"; if (s < 86400 * 60) return Math.floor(s / 604800) + "w"; return Math.floor(s / 2592000) + "mo"; }
+  const fmtDate = t => new Date(t).toISOString().slice(0, 16).replace("T", " ");
+
+  /* ================= state ================= */
+  const S = {
+    proj: "b9s", view: "tree",
+    q: { st: new Set(["open", "in_progress", "blocked"]), ready: false, text: "" },
+    sort: "priority", cols: new Set(["type", "prio", "who", "age", "deps", "kids", "notes"]),
+    wrap: false, folded: new Set(), focus: null, cursor: null,
+    marks: new Set(), marking: false, lastMark: null, chips: true,
+    detail: null, sheet: null, follow: false, live: true, overlay: false,
+    board: { group: "status", col: null, folded: new Set(), lanes: "rows", lane: null, laneFold: new Set() },
+    graph: [], flash: new Set(), identity: ME, log: [], device: "pixel",
+  };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("b9sm." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("b9sm." + k, JSON.stringify(v)); } catch (e) { /* storage is optional */ } },
+  };
+  S.device = store.get("device", "pixel");
+  S.wrap = store.get("wrap", false);
+
+  /* ================= query ================= */
+  function parseText(t) {
+    return t.trim().split(/\s+/).filter(Boolean).map(tok => {
+      const m = tok.match(/^(-?)([a-z]+):(.*)$/i);
+      return m ? { neg: !!m[1], k: m[2].toLowerCase(), v: m[3].toLowerCase() } : { word: tok.toLowerCase() };
+    });
+  }
+  function fuzzy(w, hay) {
+    if (hay.includes(w)) return true;
+    if (w.length < 4) return false;
+    let n = 0; for (const ch of hay) if (ch === w[n] && ++n === w.length) return true;
+    return false;
+  }
+  const STATUS_ALIAS = { prog: "in_progress", progress: "in_progress", wip: "in_progress", done: "closed" };
+  function matchTerm(i, t) {
+    if (t.word) return fuzzy(t.word, (shortId(i.id) + " " + i.title).toLowerCase());
+    const vs = t.v.split(",").filter(Boolean);
+    let r = true;
+    switch (t.k) {
+      case "status": case "s": r = vs.some(v => eff(i) === (STATUS_ALIAS[v] || v)); break;
+      case "type": case "t": r = vs.includes(i.type); break;
+      case "prio": case "p": case "priority": r = vs.some(v => +v.replace(/^p/, "") === i.priority); break;
+      case "assignee": case "a": r = vs.some(v => (i.assignee || "none").toLowerCase() === v.replace(/^@/, "")); break;
+      case "label": case "l": r = vs.some(v => i.labels.includes(v)); break;
+      case "parent": r = vs.some(v => ancestors(i.id).some(a => shortId(a) === v || a === v)); break;
+      case "id": r = vs.some(v => shortId(i.id).startsWith(v) || i.id.startsWith(v)); break;
+      case "is": r = vs.every(v => v === "ready" ? isReady(i) : v === "blocked" ? eff(i) === "blocked" : v === "marked" ? S.marks.has(i.id) : v === "mine" ? i.assignee === S.identity || i.creator === S.identity : true); break;
+      case "updated": { const m = t.v.match(/^([<>])(\d+)([hdw])$/); if (m) { const ms = +m[2] * { h: 36e5, d: 864e5, w: 6048e5 }[m[3]]; const d = Date.now() - i.updated; r = m[1] === "<" ? d < ms : d > ms; } break; }
+    }
+    return t.neg ? !r : r;
+  }
+  function matches(i, q = S.q) {
+    if (q.st.size && !q.st.has(eff(i))) return false;
+    if (q.ready && !isReady(i)) return false;
+    return parseText(q.text).every(t => matchTerm(i, t));
+  }
+  function queryString(q = S.q) {
+    const parts = [];
+    if (q.st.size) parts.push("status:" + [...q.st].join(","));
+    if (q.ready) parts.push("is:ready");
+    if (q.text.trim()) parts.push(q.text.trim());
+    return parts.join(" ");
+  }
+  function setQueryFromString(str) {
+    const st = new Set(); let ready = false; const rest = [];
+    for (const t of str.trim().split(/\s+/).filter(Boolean)) {
+      const m = t.match(/^status:(.+)$/i);
+      if (m) m[1].split(",").forEach(v => st.add(STATUS_ALIAS[v] || v));
+      else if (/^is:ready$/i.test(t)) ready = true;
+      else rest.push(t);
+    }
+    S.q = { st, ready, text: rest.join(" ") };
+  }
+  const pool = () => [...ALL.values()].filter(i => S.proj === "*" || i.proj === S.proj);
+
+  /* ================= tree model ================= */
+  const SORTS = {
+    priority: (a, b) => a.priority - b.priority || b.updated - a.updated,
+    updated: (a, b) => b.updated - a.updated,
+    created: (a, b) => b.created - a.created,
+    id: (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }),
+    status: (a, b) => ["in_progress", "blocked", "open", "deferred", "closed"].indexOf(eff(a)) - ["in_progress", "blocked", "open", "deferred", "closed"].indexOf(eff(b)) || a.priority - b.priority,
+  };
+  function treeRows() {
+    const P = pool();
+    const match = new Set(P.filter(i => matches(i)).map(i => i.id));
+    let show = new Set(match);
+    for (const id of match) for (const a of ancestors(id)) show.add(a);
+    if (S.focus) {
+      const keep = new Set([S.focus.id, ...descendants(S.focus.id)]);
+      if (S.focus.mode === "branch") ancestors(S.focus.id).forEach(a => keep.add(a));
+      show = new Set([...show].filter(x => keep.has(x)));
+    }
+    const cmp = SORTS[S.sort];
+    const out = [];
+    const walk = (id, d) => {
+      const i = get(id);
+      const ks = kids(id).filter(k => show.has(k)).map(get).sort(cmp);
+      out.push({ i, d, dim: !match.has(id), hasKids: ks.length > 0, folded: S.folded.has(id) });
+      if (!S.folded.has(id)) ks.forEach(k => walk(k.id, d + 1));
+    };
+    const roots = [...show].map(get).filter(i => !i.parent || !show.has(i.parent)).sort(cmp);
+    if (S.proj === "*") {
+      for (const p of PROJECTS) {
+        const rs = roots.filter(r => r.proj === p.name);
+        if (!rs.length) continue;
+        const key = "proj:" + p.name;
+        out.push({ hdr: p.name, n: [...show].filter(x => get(x).proj === p.name).length, folded: S.folded.has(key), key });
+        if (!S.folded.has(key)) rs.forEach(r => walk(r.id, 0));
+      }
+    } else roots.forEach(r => walk(r.id, 0));
+    return { rows: out, matchCount: match.size };
+  }
+
+  function l2HTML(i, opts = {}) {
+    const bits = [];
+    const [tg, tc] = TY[i.type] || ["·", "var(--muted)"];
+    if (S.cols.has("prio")) bits.push(`<span style="color:${PC[i.priority] || "var(--muted)"}">P${i.priority}</span>`);
+    if (S.cols.has("type")) bits.push(`<span style="color:${tc}">${tg} ${esc(i.type)}</span>`);
+    if (S.cols.has("who") && i.assignee) bits.push(`<span style="color:var(--dim)">@${esc(i.assignee)}</span>`);
+    if (S.cols.has("age")) bits.push(`<span>${age(i.updated)}</span>`);
+    const pr = progress(i.id);
+    if (S.cols.has("kids") && pr) bits.push(`<span style="color:var(--green)">${pr.done}/${pr.all}</span>`);
+    if (S.cols.has("deps")) {
+      const ob = openBlockers(i).length; if (ob) bits.push(`<span style="color:var(--red)">⊘${ob}</span>`);
+      const bl = blocksOf(i).filter(x => x.status !== "closed").length; if (bl) bits.push(`<span style="color:var(--orange)">→${bl}</span>`);
+    }
+    const nc = (COMMENTS.get(i.id) || []).length;
+    if (S.cols.has("notes") && nc) bits.push(`<span>✎${nc}</span>`);
+    if (S.cols.has("labels") && i.labels.length) bits.push(`<span style="color:var(--cyan)">#${esc(i.labels.join(" #"))}</span>`);
+    if (opts.proj && S.proj === "*") bits.push(`<span style="color:var(--accent)">${esc(i.proj)}</span>`);
+    return `<div class="l2">${bits.join("<span>·</span>")}</div>`;
+  }
+  function rowHTML(r, flat) {
+    if (r.hdr) return `<div class="ph" data-hdr="${esc(r.key)}"><span>${r.folded ? "▸" : "▾"}</span><span>${esc(r.hdr)}</span><span class="n">${r.n}</span></div>`;
+    const i = r.i, st = ST[eff(i)] || ST.open;
+    const cls = ["row", S.cursor === i.id ? "sel" : "", r.dim ? "dim" : "", S.marks.has(i.id) ? "marked" : "", S.flash.has(i.id) ? "flash" : ""].join(" ");
+    const chev = flat ? "" : `<span class="chev ${r.hasKids ? "" : "none"}" data-chev>${r.hasKids ? (r.folded ? "▸" : "▾") : "·"}</span>`;
+    const mk = S.marking ? `<span class="mk">${S.marks.has(i.id) ? "▪" : "▫"}</span>` : "";
+    return `<div class="${cls}" data-id="${esc(i.id)}"><div class="ul"></div><div class="ur"></div><div class="rc" style="--d:${flat ? 0 : Math.min(r.d, 6)}"><div class="l1">${mk}${chev}<span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.title)}</span></div>${l2HTML(i, { proj: true })}</div></div>`;
+  }
+
+  /* ================= dom refs ================= */
+  const $ = s => document.querySelector(s);
+  const app = $("#app"), device = $("#device"), frameWrap = $("#frameWrap");
+  const treeList = $("#treeList"), treeRowsEl = $("#treeRows"), ptr = $("#ptr");
+  let scale = 1;
+  const phoneMode = () => matchMedia("(max-width: 560px)").matches;
+  const appW = () => app.clientWidth;
+
+  /* ================= render ================= */
+  function render() {
+    renderHeader(); renderChips(); renderBar();
+    ["tree", "board", "search", "more", "graph"].forEach(v => { $("#v" + v[0].toUpperCase() + v.slice(1)).hidden = S.view !== v; });
+    if (S.view === "tree") renderTree();
+    if (S.view === "board") renderBoard();
+    if (S.view === "search") renderSearchResults();
+    if (S.view === "more") renderMore();
+    if (S.view === "graph") renderGraph();
+    renderDetail();
+    updateDensity();
+  }
+  function renderHeader() {
+    const P = pool();
+    const n = s => P.filter(i => eff(i) === s).length;
+    const pname = S.proj === "*" ? "all" : S.proj;
+    $("#hd").innerHTML = `<button class="proj" data-act="projects" aria-label="Switch project">b9s <small>·</small> ${esc(pname)} <small>▾</small></button>
+      <button class="dot" id="hdot" data-act="health" aria-label="Data source health">●</button>
+      <span class="cnt"><b>${n("open")}</b> open · <i>${n("in_progress")}</i> prog${n("blocked") ? ` · <span style="color:var(--red)">${n("blocked")}</span> blk` : ""}</span>
+      <button class="ib follow ${S.follow ? "on" : ""}" data-act="follow" aria-label="Follow mode">F</button>
+      <button class="ib" data-act="create" aria-label="Create issue">+</button>
+      <button class="ib" data-act="help" aria-label="Gestures">?</button>`;
+  }
+  function renderChips() {
+    const el = $("#chips"); el.hidden = !S.chips;
+    const P = pool();
+    const cnt = s => P.filter(i => eff(i) === s).length;
+    const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + "k" : n;
+    const chip = (k, key, label, color, on, n) => `<button class="chip ${on ? "on" : ""}" data-chip="${key}" style="color:${color}"><span class="k">${k}</span>${label}${n != null ? ` <span class="n">${fmt(n)}</span>` : ""}</button>`;
+    let h = chip("o", "open", "Open", "var(--green)", S.q.st.has("open"), cnt("open"))
+      + chip("i", "in_progress", "In prog", "var(--cyan)", S.q.st.has("in_progress"), cnt("in_progress"))
+      + chip("b", "blocked", "Blocked", "var(--red)", S.q.st.has("blocked"), cnt("blocked"))
+      + chip("d", "deferred", "Deferred", "var(--orange)", S.q.st.has("deferred"), cnt("deferred"))
+      + chip("C", "closed", "Closed", "var(--muted)", S.q.st.has("closed"), cnt("closed"))
+      + chip("r", "ready", "Ready", "var(--yellow)", S.q.ready, P.filter(isReady).length)
+      + chip("a", "all", "All", "var(--dim)", S.q.st.size === 0 && !S.q.ready, null);
+    h += `<span class="sep"></span>`;
+    if (S.q.text.trim()) h += `<button class="chip q" data-act="search"><span>⌕ ${esc(S.q.text.trim())}</span></button><button class="chip" data-act="clearq" aria-label="Clear query">✕</button>`;
+    else h += `<button class="chip" data-act="search" style="color:var(--muted)">⌕ query</button>`;
+    h += `<button class="chip" data-act="sort" style="color:var(--dim)">⇅ ${S.sort}</button>`;
+    el.innerHTML = h;
+  }
+  function renderBar() {
+    const el = $("#bar");
+    if (S.marking) {
+      el.className = "bar bulk";
+      el.innerHTML = `<button class="cnt" data-act="markall">${S.marks.size} marked<br><span style="font-weight:400;color:var(--muted)">tap: all</span></button>
+        <button data-act="bulkstatus"><span class="g">◐</span>Status</button>
+        <button data-act="bulkclose"><span class="g">✓</span>Close</button>
+        <button class="red" data-act="bulkdelete"><span class="g">⌫</span>Delete</button>
+        <button data-act="unmark"><span class="g">✕</span>Done</button>`;
+      return;
+    }
+    el.className = "bar";
+    const tab = (v, g, l) => `<button class="${S.view === v || (v === "more" && S.view === "graph") ? "on" : ""}" data-view="${v}"><span class="g">${g}</span>${l}</button>`;
+    el.innerHTML = tab("tree", "≣", "Tree") + tab("board", "▥", "Board") + tab("search", "⌕", "Search") + tab("more", "⋯", "More");
+  }
+  function renderTree() {
+    const fb = $("#fbar");
+    fb.innerHTML = S.focus ? `<div class="fbar"><span>${S.focus.mode === "branch" ? "⎇ branch" : "⌖ subtree"} · ${esc(shortId(S.focus.id))} ${esc(get(S.focus.id).title)}</span><button data-act="unfocus">✕ clear</button></div>` : "";
+    const { rows } = treeRows();
+    treeRowsEl.className = S.wrap ? "wrap" : "";
+    treeRowsEl.innerHTML = rows.length ? rows.map(r => rowHTML(r)).join("") : `<div class="empty">No issues match <b>${esc(queryString())}</b>.<br><br><button data-act="allq">Show all statuses</button></div>`;
+    treeList.style.paddingBottom = S.detail ? detailHeightPx() + "px" : "";
+  }
+
+  /* ================= board ================= */
+  const GROUPS = {
+    status: [["open", "Open"], ["in_progress", "In prog"], ["blocked", "Blocked"], ["closed", "Closed"]],
+    priority: [[0, "P0"], [1, "P1"], [2, "P2"], [3, "P3"], [4, "P4"]],
+    type: [["epic", "Epic"], ["feature", "Feature"], ["task", "Task"], ["bug", "Bug"], ["chore", "Chore"]],
+  };
+  function colOf(i) { const g = S.board.group; if (g === "status") { const e = eff(i); return e === "deferred" ? "open" : e; } if (g === "priority") return i.priority; return i.type; }
+  function boardCols() {
+    let cols = GROUPS[S.board.group];
+    if (S.board.group === "status") cols = cols.filter(([k]) => k === "open" ? (!S.q.st.size || S.q.st.has("open") || S.q.st.has("deferred")) : (!S.q.st.size ? k !== "closed" : S.q.st.has(k)));
+    return cols;
+  }
+  function boardItems(key) {
+    const lane = S.board.lanes === "rail" ? S.board.lane : null;
+    return pool().filter(i => {
+      if (i.type === "epic" && S.board.group !== "type" && S.board.lanes !== "off") return false;
+      if (String(colOf(i)) !== String(key) || !matches(i)) return false;
+      if (S.focus) { const keep = new Set([S.focus.id, ...descendants(S.focus.id)]); if (!keep.has(i.id)) return false; }
+      return !lane || laneOf(i) === lane;
+    }).sort(SORTS[S.sort]);
+  }
+  function activeCol() {
+    const cols = boardCols().filter(([k]) => !S.board.folded.has(String(k)));
+    if (!cols.length) return null;
+    if (!cols.some(([k]) => String(k) === String(S.board.col))) S.board.col = cols[0][0];
+    return cols.find(([k]) => String(k) === String(S.board.col));
+  }
+  function cardHTML(i) {
+    const st = ST[eff(i)];
+    const [, tc] = TY[i.type] || [];
+    return `<div class="card ${S.cursor === i.id ? "sel" : ""}" data-card="${esc(i.id)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.title)}</span></div>${l2HTML(i, { proj: true })}</div>`;
+  }
+  function renderBoard() {
+    const v = $("#vBoard");
+    const cols = boardCols();
+    const cur = activeCol();
+    const folded = cols.filter(([k]) => S.board.folded.has(String(k)));
+    let tabs = cols.map(([k, l]) => {
+      const n = boardItems(k).length;
+      if (S.board.folded.has(String(k))) return `<button class="tab rail" data-tab="${k}" aria-label="Unfold ${l}">${l.slice(0, 4)} ${n}</button>`;
+      return `<button class="tab ${cur && String(cur[0]) === String(k) ? "on" : ""}" data-tab="${k}">${l} <b>${n}</b></button>`;
+    }).join("");
+    if (folded.length) tabs += `<button class="tab unf" data-act="unfoldall">Z unfold</button>`;
+    tabs += `<button class="tab" data-act="boardopts" style="color:var(--muted)">⚙ ${S.board.group}${S.board.lanes !== "off" ? " · lanes " + S.board.lanes : ""}</button>`;
+    let body = "";
+    if (!cur) body = `<div class="bcol"><div class="empty">Every column is folded.<br><br><button data-act="unfoldall">Unfold all</button></div></div>`;
+    else {
+      const items = boardItems(cur[0]);
+      let inner = "";
+      if (!items.length) inner = `<div class="empty">No cards in ${esc(cur[1])}.</div>`;
+      else if (S.board.lanes === "rows" && S.board.group !== "type") {
+        const lanes = new Map();
+        items.forEach(i => { const l = laneOf(i) || "none"; if (!lanes.has(l)) lanes.set(l, []); lanes.get(l).push(i); });
+        for (const [l, arr] of [...lanes].sort((a, b) => (a[0] === "none") - (b[0] === "none") || b[1].length - a[1].length)) {
+          const f = S.board.laneFold.has(l);
+          inner += `<button class="lane" data-lane="${esc(l)}" style="width:100%;text-align:left"><span>${f ? "▸" : "▾"} ${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(get(l).title)}</span><span class="n">${arr.length}</span></button>`;
+          if (!f) inner += arr.map(cardHTML).join("");
+        }
+      } else inner = items.map(cardHTML).join("");
+      let rail = "";
+      if (S.board.lanes === "rail" && S.board.group !== "type") {
+        const counts = new Map();
+        pool().filter(i => String(colOf(i)) === String(cur[0]) && matches(i) && i.type !== "epic").forEach(i => { const l = laneOf(i) || "none"; counts.set(l, (counts.get(l) || 0) + 1); });
+        rail = `<div class="brail"><button class="${!S.board.lane ? "on" : ""}" data-rlane="">all<b>${[...counts.values()].reduce((a, b) => a + b, 0)}</b></button>` + [...counts].sort((a, b) => b[1] - a[1]).map(([l, n]) => `<button class="${S.board.lane === l ? "on" : ""}" data-rlane="${esc(l)}">${l === "none" ? "no epic" : "♦" + esc(shortId(l))}<b>${n}</b></button>`).join("") + `</div>`;
+      }
+      body = `${rail}<div class="bcol" id="bcol">${inner}</div><div class="edgehint l">‹</div><div class="edgehint r">›</div>`;
+    }
+    const keepScroll = $("#bcol") ? $("#bcol").scrollTop : 0;
+    v.innerHTML = `<div class="tabs" id="tabs">${tabs}</div><div class="bbody" id="bbody">${body}</div>`;
+    if ($("#bcol") && S.board._keep) $("#bcol").scrollTop = keepScroll;
+    S.board._keep = false;
+  }
+
+  /* ================= search ================= */
+  const PRED = ["status:", "type:", "prio:", "assignee:", "label:", "parent:", "is:ready", "is:blocked", "is:mine", "updated:<7d", "id:", "-status:closed"];
+  function suggestions(val) {
+    const tok = val.split(/\s+/).pop() || "";
+    const m = tok.match(/^(-?)(\w+):(.*)$/);
+    if (!m) return PRED.filter(p => !tok || p.startsWith(tok)).map(p => ({ t: p, v: false }));
+    const k = m[2], v = m[3].split(",").pop();
+    let vals = [];
+    if (k === "status") vals = Object.keys(ST);
+    if (k === "type") vals = Object.keys(TY);
+    if (k === "prio") vals = ["0", "1", "2", "3", "4"];
+    if (k === "assignee") vals = [...new Set(pool().map(i => i.assignee).filter(Boolean))].concat(["none"]);
+    if (k === "label") vals = [...new Set(pool().flatMap(i => i.labels))];
+    if (k === "parent") vals = pool().filter(i => i.type === "epic" && i.status !== "closed").map(i => shortId(i.id));
+    if (k === "is") vals = ["ready", "blocked", "marked", "mine"];
+    if (k === "updated") vals = ["<1d", "<7d", ">30d"];
+    return vals.filter(x => x.startsWith(v)).map(x => ({ t: x, v: true }));
+  }
+  function renderSuggestions() {
+    const val = $("#sIn").value;
+    $("#sSugg").innerHTML = suggestions(val).map(s => `<button class="chip ${s.v ? "v" : ""}" data-sugg="${esc(s.t)}">${esc(s.t)}</button>`).join("") || `<span class="chip" style="color:var(--muted)">no completions</span>`;
+  }
+  function renderSearchResults() {
+    const inp = $("#sIn");
+    const q = inp.value;
+    if (!q.trim()) {
+      const rec = store.get("recent", ["status:open type:bug", "is:ready prio:1", "parent:e5u3 -status:closed", "xray"]);
+      $("#sList").innerHTML = `<div class="sec">Recent queries</div>` + rec.map(r => `<button class="item" data-recent="${esc(r)}"><span class="g">↺</span><span class="x">${esc(r)}</span></button>`).join("")
+        + `<div class="sec">Syntax</div><div class="md" style="padding:0 16px"><p><code>status:open,in_progress</code> <code>type:bug</code> <code>prio:0,1</code> <code>assignee:none</code> <code>label:mobile</code> <code>parent:e5u3</code> <code>is:ready</code> <code>updated:&lt;7d</code>. Prefix <code>-</code> negates. Plain words match ID and title, fuzzy from four letters.</p></div>`;
+      renderSuggestions(); return;
+    }
+    const st = new Set(); let ready = false; const rest = [];
+    for (const t of q.trim().split(/\s+/)) { const m = t.match(/^status:(.+)$/i); if (m) m[1].split(",").forEach(v => st.add(STATUS_ALIAS[v] || v)); else if (/^is:ready$/i.test(t)) ready = true; else rest.push(t); }
+    const qq = { st, ready, text: rest.join(" ") };
+    const res = pool().filter(i => matches(i, qq)).sort(SORTS[S.sort]);
+    $("#sList").innerHTML = `<div class="shead"><span>${res.length} match${res.length === 1 ? "" : "es"}</span><button data-act="applysearch">Apply to tree ›</button></div><div class="${S.wrap ? "wrap" : ""}" id="sRows">${res.slice(0, 200).map(i => rowHTML({ i, d: 0 }, true)).join("")}</div>`;
+    renderSuggestions();
+  }
+
+  /* ================= more / graph ================= */
+  function renderMore() {
+    const it = (act, g, x, sub, v, on) => `<button class="item" data-act="${act}"><span class="g">${g}</span><span class="x">${x}${sub ? `<small>${sub}</small>` : ""}</span>${v != null ? `<span class="v ${on ? "on" : ""}">${v}</span>` : ""}</button>`;
+    $("#moreList").innerHTML =
+      `<div class="sec">Project</div>`
+      + it("projects", "▤", "Projects", "recent 1-9 · 0 all projects", S.proj === "*" ? "all" : S.proj)
+      + it("health", "●", "Data source health", "Dolt server · watcher · fallbacks (D)", "ok", true)
+      + it("identity", "@", "Acting as", "creator on new issues and comments (ADR 0014)", S.identity)
+      + `<div class="sec">Views</div>`
+      + it("graph", "⋔", "Dependency graph", "drill down blocked-by and blocks from the cursor", null)
+      + it("treeopts", "≣", "Tree options", "sort, columns, wrap, expand and collapse all", null)
+      + it("boardopts", "▥", "Board options", "group, epic lanes, folded columns", S.board.group)
+      + it("follow", "F", "Follow mode", "jump to each issue a live change touches", S.follow ? "on" : "off", S.follow)
+      + it("togglechips", "⌄", "Filter chip row", "also: swipe down on the header", S.chips ? "shown" : "hidden", S.chips)
+      + `<div class="sec">Connection</div>`
+      + it("pairing", "⌁", "Paired devices", "b9s web · tailscale serve · token", "1")
+      + it("log", "$", "Write log", "every bd command this session ran", String(S.log.length))
+      + it("simulate", "↯", "Simulate a live change", "an agent writes through bd, SSE pushes it", null)
+      + it("reload", "↻", "Reload", "also: pull down on the tree", null)
+      + it("help", "?", "Gestures", "every gesture and its TUI key", null);
+  }
+  function renderGraph() {
+    const v = $("#vGraph");
+    if (!S.graph.length) { const c = S.cursor || (pool().find(i => i.blockedBy.length) || pool()[0]).id; S.graph = [c]; }
+    const id = S.graph[S.graph.length - 1], i = get(id), st = ST[eff(i)];
+    const sec = (label, ids) => ids.length ? `<div class="gsec">${label} <b>${ids.length}</b></div>` + ids.map(x => rowHTML({ i: get(x), d: 0 }, true)).join("") : "";
+    const up = i.parent && ALL.has(i.parent) ? [i.parent] : [];
+    v.innerHTML = `<div class="crumbs">${S.graph.map((g, n) => `<button data-crumb="${n}">${esc(shortId(g))}</button>`).join("<span style='color:var(--muted)'>›</span>")}</div>
+      <div class="scroll" id="gList"><button class="gnode" data-open="${esc(id)}" style="display:block;width:calc(100% - 24px);text-align:left"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(i.id)}</span></div><div class="t2">${esc(i.title)}</div>${l2HTML(i)}<div class="pager" style="margin-top:4px">tap for detail · tap a row below to drill in</div></button>
+      ${sec("Blocked by", i.blockedBy.filter(x => ALL.has(x)))}${sec("Blocks", blocksOf(i).map(x => x.id))}${sec("Parent", up)}${sec("Children", kids(id))}${sec("Discovered from", i.from.filter(x => ALL.has(x)))}
+      ${!i.blockedBy.length && !blocksOf(i).length ? `<div class="empty">No blocking relations. Parent and children are still listed.</div>` : ""}</div>`;
+  }
+
+  /* ================= detail sheet ================= */
+  function detailHeightPx() {
+    const h = app.clientHeight;
+    return S.detail && S.detail.size === "full" ? h - topInset() - 36 : Math.round(h * 0.52);
+  }
+  function topInset() { return parseFloat(getComputedStyle(app).getPropertyValue("--sat")) || 0; }
+  function md(src) {
+    const out = []; let list = null, code = null;
+    const inline = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\[([^\]]+)\]\([^)]+\)/g, "<u>$1</u>");
+    const flush = () => { if (list) { out.push(`<${list.t}>${list.items.map(x => `<li>${inline(x)}</li>`).join("")}</${list.t}>`); list = null; } };
+    for (const line of src.split("\n")) {
+      if (line.startsWith("```")) { if (code) { out.push(`<pre><code>${esc(code.join("\n"))}</code></pre>`); code = null; } else { flush(); code = []; } continue; }
+      if (code) { code.push(line); continue; }
+      let m;
+      if ((m = line.match(/^#{1,6}\s+(.*)/))) { flush(); out.push(`<h3>${inline(m[1])}</h3>`); }
+      else if ((m = line.match(/^\s*[-*]\s+(.*)/))) { if (!list || list.t !== "ul") { flush(); list = { t: "ul", items: [] }; } list.items.push(m[1]); }
+      else if ((m = line.match(/^\s*\d+[.)]\s+(.*)/))) { if (!list || list.t !== "ol") { flush(); list = { t: "ol", items: [] }; } list.items.push(m[1]); }
+      else if (!line.trim()) flush();
+      else { flush(); out.push(`<p>${inline(line)}</p>`); }
+    }
+    if (code) out.push(`<pre><code>${esc(code.join("\n"))}</code></pre>`);
+    flush();
+    return out.join("");
+  }
+  function siblings(id) {
+    const i = get(id);
+    const { rows } = treeRows();
+    const sib = rows.filter(r => r.i && (r.i.parent || null) === (i.parent || null) && (!i.parent || ALL.has(i.parent) ? true : true)).map(r => r.i.id);
+    return sib.includes(id) ? sib : [id];
+  }
+  function relHTML(x) { const j = get(x); if (!j) return ""; const st = ST[eff(j)]; return `<button class="rel" data-nav="${esc(x)}"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(x))}</span><span class="t">${esc(j.title)}</span></button>`; }
+  function renderDetail() {
+    const host = $("#detailHost");
+    if (!S.detail) { host.innerHTML = ""; return; }
+    const id = S.detail.stack[S.detail.stack.length - 1], i = get(id);
+    if (!i) { S.detail = null; host.innerHTML = ""; return; }
+    const st = ST[eff(i)], [tg, tc] = TY[i.type] || ["·", "var(--muted)"];
+    const sib = siblings(id), pos = sib.indexOf(id);
+    const pr = progress(id);
+    const cms = COMMENTS.get(id) || [];
+    const ob = i.blockedBy.filter(x => ALL.has(x)), bl = blocksOf(i).map(x => x.id);
+    const existing = host.querySelector(".detail");
+    const scrollTop = existing && existing.dataset.id === id ? existing.querySelector(".dbody").scrollTop : 0;
+    host.innerHTML = `<section class="detail ${existing ? "" : "enter"}" data-id="${esc(id)}" style="--h:${detailHeightPx()}px" aria-label="Issue detail">
+      <div class="dhead" id="dhead"><div class="grab"></div>
+        <div class="dtop">${S.detail.stack.length > 1 ? `<button class="back" data-act="dback">‹ ${esc(shortId(S.detail.stack[S.detail.stack.length - 2]))}</button>` : ""}<span class="id">${esc(i.id)}</span><span class="sp"></span><span class="pager">${pos + 1}/${sib.length} ‹ swipe ›</span><button data-act="dsize" aria-label="Resize">${S.detail.size === "full" ? "⌄" : "⌃"}</button><button data-act="dclose" aria-label="Close">✕</button></div>
+        <div class="dtitle">${esc(i.title)}</div>
+        <div class="pills"><span class="pill" style="color:${st.c}">${st.g} ${st.w}</span><span class="pill" style="color:${PC[i.priority]}">P${i.priority}</span><span class="pill" style="color:${tc}">${tg} ${esc(i.type)}</span>${i.labels.map(l => `<span class="pill" style="color:var(--cyan)">#${esc(l)}</span>`).join("")}</div>
+      </div>
+      <div class="dbody" id="dbody">
+        <dl class="meta"><dt>assignee</dt><dd>${i.assignee ? "@" + esc(i.assignee) : "—"}</dd><dt>creator</dt><dd>${esc(i.creator)}</dd><dt>created</dt><dd>${fmtDate(i.created)} · ${age(i.created)}</dd><dt>updated</dt><dd>${fmtDate(i.updated)} · ${age(i.updated)}</dd>${i.closed ? `<dt>closed</dt><dd>${fmtDate(i.closed)}</dd>` : ""}${i.reason ? `<dt>reason</dt><dd>${esc(i.reason)}</dd>` : ""}${S.proj === "*" ? `<dt>project</dt><dd>${esc(i.proj)}</dd>` : ""}</dl>
+        ${i.parent && ALL.has(i.parent) ? `<div class="dsec">Parent</div>${relHTML(i.parent)}` : ""}
+        ${pr ? `<div class="dsec"><span>Children ${pr.done}/${pr.all}</span><button data-act="dfocus">⌖ subtree</button></div><div class="bar2"><i style="width:${Math.round(100 * pr.done / pr.all)}%"></i></div>${kids(id).map(get).sort(SORTS.status).map(k => relHTML(k.id)).join("")}` : ""}
+        ${ob.length ? `<div class="dsec"><span style="color:var(--red)">Blocked by ${ob.length}</span><button data-act="dgraph">⋔ graph</button></div>${ob.map(relHTML).join("")}` : ""}
+        ${bl.length ? `<div class="dsec"><span style="color:var(--orange)">Blocks ${bl.length}</span><button data-act="dgraph">⋔ graph</button></div>${bl.map(relHTML).join("")}` : ""}
+        ${i.from.length ? `<div class="dsec">Discovered from</div>${i.from.filter(x => ALL.has(x)).map(relHTML).join("")}` : ""}
+        <div class="dsec">Description</div><div class="md">${i.desc ? md(i.desc) : "<p>No description.</p>"}${i.desc.length >= 900 ? `<p style="color:var(--muted)">… trimmed in the fixture</p>` : ""}</div>
+        <div class="dsec"><span>Comments ${cms.length}</span><button data-act="comment">+ add</button></div>
+        ${cms.map(c => `<div class="cm"><div class="who"><b>${esc(c.author)}</b> · ${age(c.at)}</div><div class="md">${md(c.text)}</div></div>`).join("") || `<div class="md"><p style="color:var(--muted)">No comments.</p></div>`}
+      </div>
+      <div class="dacts"><button data-act="status"><span class="g">◐</span>Status</button><button data-act="edit"><span class="g">✎</span>Edit</button><button data-act="comment"><span class="g">✉</span>Comment</button><button data-act="dbranch"><span class="g">⎇</span>Branch</button><button data-act="actions"><span class="g">⋯</span>More</button></div>
+    </section>`;
+    const sec = host.querySelector(".detail");
+    sec.querySelector(".dbody").scrollTop = scrollTop;
+    if (!existing) requestAnimationFrame(() => requestAnimationFrame(() => sec.classList.remove("enter")));
+    bindDetailGestures(sec);
+  }
+  function openDetail(id, push) {
+    S.cursor = id;
+    if (S.detail && push) S.detail.stack.push(id);
+    else if (S.detail) S.detail.stack = [id];
+    else S.detail = { stack: [id], size: "half" };
+    revealInTree(id);
+    render();
+    ensureVisible(id);
+  }
+  function closeDetail() {
+    const sec = document.querySelector(".detail");
+    if (sec) { sec.style.transform = "translateY(100%)"; setTimeout(() => { S.detail = null; render(); }, 220); }
+    else { S.detail = null; render(); }
+  }
+  function revealInTree(id) { ancestors(id).forEach(a => S.folded.delete(a)); }
+  function ensureVisible(id) {
+    if (S.view !== "tree") return;
+    const row = treeRowsEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
+    if (!row) return;
+    const avail = treeList.clientHeight - (S.detail ? detailHeightPx() : 0);
+    const top = row.offsetTop - treeList.offsetTop;
+    if (top < treeList.scrollTop || top + row.offsetHeight > treeList.scrollTop + avail) treeList.scrollTo({ top: Math.max(0, top - Math.max(44, avail / 3)), behavior: "smooth" });
+  }
+
+  /* ================= writes through bd (simulated) ================= */
+  let toastTimer = null, undoFn = null;
+  function toast(msg, cmd, undo, ms) {
+    const el = $("#toast");
+    clearTimeout(toastTimer);
+    undoFn = undo || null;
+    ms = ms || (undo ? 5000 : 2600);
+    el.innerHTML = `<span class="m">${esc(msg)}</span>${cmd ? `<span class="c">$ ${esc(cmd)}</span>` : ""}${undo ? `<button data-act="undo">UNDO</button><i class="tm"></i>` : ""}`;
+    el.classList.add("on");
+    const tm = el.querySelector(".tm");
+    if (tm) { tm.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }], { duration: ms, easing: "linear", fill: "forwards" }); }
+    toastTimer = setTimeout(() => { el.classList.remove("on"); undoFn = null; }, ms);
+  }
+  function bd(cmd) { S.log.unshift({ at: Date.now(), cmd, who: S.identity }); }
+  function snapshot(ids) { return ids.map(id => ({ ...get(id), blockedBy: get(id).blockedBy.slice() })); }
+  function restore(snap) { snap.forEach(s => ALL.set(s.id, s)); reindex(); }
+  function setStatus(ids, status, reason) {
+    const snap = snapshot(ids);
+    ids.forEach(id => { const i = get(id); i.status = status; i.updated = Date.now(); if (status === "closed") { i.closed = Date.now(); i.reason = reason || null; } else { i.closed = null; } });
+    const verb = status === "closed" ? `bd close ${ids.join(" ")}${reason ? ` --reason="${reason}"` : ""}` : `bd update ${ids.join(" ")} --status=${status}`;
+    bd(verb);
+    ids.forEach(id => flash(id));
+    render();
+    toast(`${ids.length > 1 ? ids.length + " issues" : shortId(ids[0])} → ${ST[status] ? ST[status].w : status}`, verb, () => {
+      restore(snap); const back = snap.length === 1 ? `bd update ${snap[0].id} --status=${snap[0].status}` : `bd update … (${snap.length} issues restored)`; bd(back); render(); toast("Undone", back);
+    });
+  }
+  function deleteIssues(ids) {
+    ids.forEach(id => { ALL.delete(id); S.marks.delete(id); if (S.cursor === id) S.cursor = null; });
+    for (const i of ALL.values()) i.blockedBy = i.blockedBy.filter(b => !ids.includes(b));
+    reindex();
+    const cmd = `bd delete ${ids.join(" ")} --force`;
+    bd(cmd);
+    if (S.detail && S.detail.stack.some(x => ids.includes(x))) S.detail = null;
+    render();
+    toast(`Deleted ${ids.length} issue${ids.length > 1 ? "s" : ""}`, cmd);
+  }
+  function flash(id) { S.flash.add(id); setTimeout(() => { S.flash.delete(id); }, 2500); }
+  function nextStatus(i) { const e = eff(i); if (e === "in_progress") return "open"; if (e === "closed") return "open"; return "in_progress"; }
+  const swipeRightLabel = i => { const n = nextStatus(i); return eff(i) === "closed" ? "○ reopen" : n === "open" ? "○ stop" : "◐ start"; };
+
+  /* ================= modal sheets ================= */
+  function openSheet(kind, data) { S.sheet = { kind, ...(data || {}) }; renderSheet(); }
+  function closeSheet() {
+    const sh = document.querySelector(".msheet"), bd2 = document.querySelector(".backdrop");
+    if (sh) sh.classList.remove("on"); if (bd2) bd2.classList.remove("on");
+    S.sheet = null;
+    setTimeout(() => { if (!S.sheet) $("#sheetHost").innerHTML = ""; }, 230);
+  }
+  const opt = (act, g, x, sub, extra) => `<button class="opt ${extra && extra.cls || ""}" data-sa="${act}"${extra && extra.val != null ? ` data-val="${esc(extra.val)}"` : ""}><span class="g" ${extra && extra.color ? `style="color:${extra.color}"` : ""}>${g}</span><span class="x">${x}${sub ? `<small>${sub}</small>` : ""}</span>${extra && extra.key ? `<span class="key">${extra.key}</span>` : ""}</button>`;
+  function sheetBody(sh) {
+    const i = sh.id ? get(sh.id) : null;
+    switch (sh.kind) {
+      case "status": {
+        const ids = sh.ids || [sh.id];
+        const cur = ids.length === 1 ? eff(get(ids[0])) : null;
+        return [`${ids.length > 1 ? ids.length + " issues" : "Status"}`, ids.length > 1 ? "bd update --status on every marked issue" : `${shortId(ids[0])} · ${esc(get(ids[0]).title)}`,
+          ["open", "in_progress", "blocked", "deferred", "closed"].map(s => opt("setstatus", ST[s].g, ST[s].w, s === "blocked" ? "stored as blocked; b9s also derives it from open blockers" : s === "closed" ? "asks for a reason" : "", { val: s, color: ST[s].c, cls: cur === s ? "cur" : "" })).join("")];
+      }
+      case "closereason": return ["Close " + (sh.ids.length > 1 ? sh.ids.length + " issues" : shortId(sh.ids[0])), "The reason goes to bd close --reason",
+        `<div class="form"><label>Reason<textarea id="fReason" placeholder="Done: what shipped and where">${esc(sh.reason || "")}</textarea></label></div><div class="fbtns"><button data-sa="cancel">Cancel</button><button class="pri" data-sa="doclose">Close</button></div>`];
+      case "actions": return [`${shortId(i.id)}`, esc(i.title), [
+        opt("edit", "✎", "Edit", "title, status, priority, type, assignee, labels, description", { key: "e" }),
+        opt("comment", "✉", "Comment", "", { key: "c" }),
+        opt("status", "◐", "Set status…", "", { key: "S" }),
+        opt("copy", "⧉", "Copy ID", esc(i.id), { key: "y" }),
+        opt("branch", "⎇", "Focus branch", "ancestors and subtree only", { key: "f" }),
+        opt("subtree", "⌖", "Focus subtree", "this issue and its descendants", { key: "x" }),
+        opt("graph", "⋔", "Dependency graph", "", { key: "g" }),
+        opt("mark", "▪", S.marks.has(i.id) ? "Unmark" : "Mark", "start bulk selection", { key: "Space" }),
+        opt("child", "+", "Create child", "parent " + shortId(i.id), { key: "N" }),
+        opt("delete", "⌫", "Delete", "asks first", { cls: "red", key: "Del" })].join("")];
+      case "confirmdelete": return [`Delete ${sh.ids.length > 1 ? sh.ids.length + " issues" : shortId(sh.ids[0])}?`, "This cannot be undone. Dependencies on it are removed too.",
+        `<div class="cmd">bd delete ${esc(sh.ids.join(" "))} --force</div><div class="fbtns"><button data-sa="cancel">Cancel</button><button class="danger" data-sa="dodelete">Delete</button></div>`];
+      case "edit": case "create": {
+        const e = sh.kind === "edit" ? i : { title: "", status: "open", priority: 2, type: sh.type || "task", assignee: "", labels: [], desc: "", parent: sh.parent || null };
+        const seg = (name, vals, cur, color) => `<div class="segs" data-seg="${name}">${vals.map(([v, l]) => `<button type="button" class="${String(v) === String(cur) ? "on" : ""}" data-v="${v}" style="${color ? "color:" + color(v) : ""}">${l}</button>`).join("")}</div>`;
+        return [sh.kind === "edit" ? "Edit " + shortId(i.id) : "New issue", sh.kind === "edit" ? "Saved with bd update" : "Created with bd create" + (e.parent ? " --parent=" + shortId(e.parent) : ""),
+          `<form class="form" id="fEdit"><label>Title<input id="fTitle" value="${esc(e.title)}" placeholder="Short imperative title" required></label>
+          ${sh.kind === "edit" ? `<label>Status${seg("status", ["open", "in_progress", "blocked", "deferred", "closed"].map(s => [s, ST[s].g + " " + (s === "in_progress" ? "prog" : s)]), e.status, s => ST[s].c)}</label>` : ""}
+          <label>Priority${seg("priority", [0, 1, 2, 3, 4].map(p => [p, "P" + p]), e.priority, p => PC[p])}</label>
+          <label>Type${seg("type", Object.keys(TY).map(t => [t, TY[t][0] + " " + t]), e.type, t => TY[t][1])}</label>
+          <label>Assignee<input id="fAssignee" value="${esc(e.assignee || "")}" placeholder="none" list="dlWho"><datalist id="dlWho">${[ME, ...AGENTS].map(a => `<option value="${a}">`).join("")}</datalist></label>
+          <label>Labels<input id="fLabels" value="${esc(e.labels.join(", "))}" placeholder="comma separated"></label>
+          ${sh.kind === "create" ? `<label>Parent<select id="fParent"><option value="">none</option>${pool().filter(x => x.type === "epic" && x.status !== "closed").map(x => `<option value="${esc(x.id)}" ${x.id === e.parent ? "selected" : ""}>${esc(shortId(x.id) + " " + x.title)}</option>`).join("")}</select></label>` : ""}
+          <label>Description<textarea id="fDesc" placeholder="Why this exists and what done looks like">${esc(e.desc)}</textarea></label></form>
+          <div class="fbtns"><button data-sa="cancel">Cancel</button><button class="pri" data-sa="${sh.kind === "edit" ? "save" : "docreate"}">${sh.kind === "edit" ? "Save" : "Create"}</button></div>`];
+      }
+      case "comment": return ["Comment on " + shortId(i.id), "as " + esc(S.identity) + " · bd comments add",
+        `<div class="form"><label>Comment<textarea id="fComment" placeholder="Markdown works"></textarea></label></div><div class="fbtns"><button data-sa="cancel">Cancel</button><button class="pri" data-sa="docomment">Send</button></div>`];
+      case "projects": {
+        const cnt = p => [...ALL.values()].filter(i => i.proj === p && i.status !== "closed").length;
+        return ["Projects", "Databases this user can read on 127.0.0.1:3306",
+          PROJECTS.map(p => opt("proj", p.recent, p.name, `${cnt(p.name)} not closed${p.sample ? " · sample rows, not in the export" : ""}`, { val: p.name, key: String(p.recent), cls: S.proj === p.name ? "cur" : "", color: "var(--accent)" })).join("")
+          + opt("proj", "0", "All projects", "one tree, grouped by project; writes go to each issue's own database", { val: "*", key: "0", cls: S.proj === "*" ? "cur" : "", color: "var(--accent)" })];
+      }
+      case "health": return ["Data source health", "What b9s web reads, and how it notices changes", `
+        <table class="gtable"><tr><td>Source</td><td><span class="ok">● Dolt server</span> 127.0.0.1:3306</td></tr>
+        <tr><td>Database</td><td>${esc(S.proj === "*" ? "all readable" : S.proj)} · user bd_b9s</td></tr>
+        <tr><td>Credentials</td><td>BEADS_DOLT_PASSWORD stays on the server. The browser gets a session cookie only (ADR 0013).</td></tr>
+        <tr><td>Watcher</td><td>DOLT_HASHOF_DB() every 500 ms · last change ${S.log.length ? age(S.log[0].at) : "41s"} ago</td></tr>
+        <tr><td>Live push</td><td>SSE /api/events · 1 client · reconnects with backoff</td></tr>
+        <tr><td>Fallbacks</td><td>SQLite .beads/beads.db: not used · JSONL export: available</td></tr>
+        <tr><td>Writes</td><td>bd CLI on the server, one process per action</td></tr>
+        <tr><td>Issues</td><td>${pool().length} loaded · ${[...ALL.values()].length} across projects</td></tr></table>`];
+      case "identity": return ["Acting as", "Creator on new issues and author on comments (ADR 0014)",
+        [ME, ...AGENTS].map(a => opt("ident", "@", a, a === ME ? "you, from git config user.name" : "agent identity", { val: a, cls: S.identity === a ? "cur" : "" })).join("")];
+      case "sort": return ["Sort", "Same fields as the TUI sort menu",
+        Object.keys(SORTS).map(k => opt("setsort", "⇅", k, { priority: "P0 first, then most recently updated", updated: "most recent first", created: "newest first", id: "natural ID order", status: "in progress, blocked, open, deferred, closed" }[k], { val: k, cls: S.sort === k ? "cur" : "" })).join("")];
+      case "treeopts": return ["Tree options", "", opt("sortsheet", "⇅", "Sort", S.sort)
+        + opt("wrap", "↩", S.wrap ? "Truncate titles" : "Wrap titles", "TUI v or :wrap", { key: "v" })
+        + opt("expandall", "▾", "Expand all", "", { key: "L" }) + opt("collapseall", "▸", "Collapse all", "", { key: "H" })
+        + `<div class="sec">Second line shows</div>` + [["prio", "Priority"], ["type", "Type"], ["who", "Assignee"], ["age", "Updated age"], ["kids", "Children progress"], ["deps", "Blocked by and blocks"], ["notes", "Comment count"], ["labels", "Labels"]].map(([k, l]) => opt("col", S.cols.has(k) ? "☑" : "☐", l, "", { val: k })).join("")];
+      case "boardopts": return ["Board options", "", `<div class="sec">Group by</div>` + ["status", "priority", "type"].map(g => opt("group", g === S.board.group ? "◉" : "○", g, "", { val: g })).join("")
+        + `<div class="sec">Epic lanes</div>` + [["off", "No lanes", "epics show as cards"], ["rows", "Rows", "cards grouped under each epic"], ["rail", "Rail", "a side rail filters one epic (ADR 0018)"]].map(([v, l, s]) => opt("lanes", v === S.board.lanes ? "◉" : "○", l, s, { val: v })).join("")
+        + `<div class="sec">Columns</div>` + opt("closedcol", S.q.st.has("closed") ? "☑" : "☐", "Show closed", "same as the C chip") + opt("unfoldall", "▭", "Unfold all columns", S.board.folded.size + " folded", { key: "Z" })];
+      case "pairing": return ["Paired devices", "b9s web listens on loopback. Tailscale serve publishes it to your tailnet.", `
+        <div class="qr">${qrCells()}</div>
+        <table class="gtable"><tr><td>URL</td><td>https://laptop.tail1c2d.ts.net</td></tr><tr><td>This phone</td><td>paired 26 Sep, token ····7f3a</td></tr><tr><td>Pair another</td><td>run <b>b9s web --pair</b> and scan the code it prints</td></tr></table>
+        <div class="fbtns"><button data-sa="cancel">Close</button><button class="danger" data-sa="unpair">Unpair this phone</button></div>`];
+      case "log": return ["Write log", "Commands the server ran through bd this session",
+        S.log.length ? S.log.map(l => `<div class="cmd">${esc(fmtDate(l.at).slice(11))} ${esc(l.who)}\n$ ${esc(l.cmd)}</div>`).join("") : `<div class="empty">Nothing written yet. Swipe a row.</div>`];
+      case "help": return ["Gestures", "No gesture starts in the outer 24 px: both OSes use the edges for back and home.", gestureTable()];
+    }
+    return ["", "", ""];
+  }
+  function qrCells() {
+    let h = ""; let seed = 7;
+    for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+      const finder = (x < 7 && y < 7) || (x > 13 && y < 7) || (x < 7 && y > 13);
+      let on;
+      if (finder) { const fx = x > 13 ? x - 14 : x, fy = y > 13 ? y - 14 : y; on = fx === 0 || fx === 6 || fy === 0 || fy === 6 || (fx > 1 && fx < 5 && fy > 1 && fy < 5); }
+      else { seed = (seed * 16807) % 2147483647; on = seed % 3 === 0; }
+      h += `<i class="${on ? "" : "o"}"></i>`;
+    }
+    return h;
+  }
+  const GESTURES = [
+    ["Tap a row", "open detail sheet", "Enter"], ["Tap ▾ / ▸", "fold", "Tab"], ["Double-tap ▾", "fold whole subtree", "h / l"],
+    ["Short swipe →", "start / stop", "S"], ["Long swipe →", "status picker", "S"], ["Short swipe ←", "close, 5 s undo", "K"], ["Long swipe ←", "action sheet", "e c y f x"],
+    ["Long-press a row", "mark; tap more rows", "Space"], ["Long-press while marking", "mark the range", "Ctrl-Space"], ["Pull down on tree", "reload", "Ctrl-R"],
+    ["Swipe ← → on detail", "next / previous sibling", "n p"], ["Drag handle up / down", "full height / close", "Esc"], ["Tap a relation", "go there; ‹ goes back", ""],
+    ["Swipe ← → on board", "next column", "h l"], ["Tap the active column tab", "fold it into a rail", "z"], ["Tap Z unfold", "unfold all", "Z"],
+    ["Long-press a card, drag", "move to a column", ""], ["Tap project name", "project sheet", "1-9 0"], ["Tap the ● dot", "source health", "D"], ["Swipe down on header", "hide or show chips", "Ctrl-E"], ["Tap F", "follow live changes", "F"],
+  ];
+  function gestureTable() { return `<table class="gtable">${GESTURES.map(([g, a, k]) => `<tr><td>${g}</td><td>${a}${k ? ` · <kbd>${k}</kbd>` : ""}</td></tr>`).join("")}</table>`; }
+  function renderSheet() {
+    const sh = S.sheet, host = $("#sheetHost");
+    if (!sh) { host.innerHTML = ""; return; }
+    const [title, sub, body] = sheetBody(sh);
+    const fresh = !host.querySelector(".msheet");
+    host.innerHTML = `<div class="backdrop ${fresh ? "" : "on"}" data-sa="cancel"></div><section class="msheet ${fresh ? "" : "on"}" role="dialog" aria-label="${esc(title)}"><div class="mh" id="mh"><div class="grab"></div><h3>${title}</h3>${sub ? `<p>${sub}</p>` : ""}</div><div class="mb">${body}</div></section>`;
+    if (fresh) requestAnimationFrame(() => requestAnimationFrame(() => { host.querySelector(".backdrop").classList.add("on"); host.querySelector(".msheet").classList.add("on"); }));
+    bindSheetDrag(host.querySelector(".msheet"));
+  }
+
+  function sheetAction(act, val, el) {
+    const sh = S.sheet || {};
+    const i = sh.id ? get(sh.id) : null;
+    switch (act) {
+      case "cancel": closeSheet(); break;
+      case "setstatus": { const ids = sh.ids || [sh.id]; if (val === "closed") { openSheet("closereason", { ids }); } else { closeSheet(); setStatus(ids, val); endMarkingIfBulk(sh); } break; }
+      case "doclose": { const r = $("#fReason").value.trim(); const ids = sh.ids; closeSheet(); setStatus(ids, "closed", r); endMarkingIfBulk(sh); break; }
+      case "edit": openSheet("edit", { id: sh.id }); break;
+      case "comment": openSheet("comment", { id: sh.id }); break;
+      case "status": openSheet("status", { id: sh.id }); break;
+      case "copy": { const id = sh.id; closeSheet(); copyId(id); break; }
+      case "branch": case "subtree": closeSheet(); setFocus(sh.id, act); break;
+      case "graph": closeSheet(); S.graph = [sh.id]; S.detail = null; S.view = "graph"; render(); break;
+      case "mark": closeSheet(); toggleMark(sh.id); break;
+      case "child": openSheet("create", { parent: sh.id }); break;
+      case "delete": openSheet("confirmdelete", { ids: [sh.id] }); break;
+      case "dodelete": { const ids = sh.ids; closeSheet(); deleteIssues(ids); endMarkingIfBulk({ ids }); break; }
+      case "save": {
+        const f = readForm(); const changes = [];
+        if (f.title !== i.title) changes.push(`--title="${f.title}"`);
+        if (f.status !== i.status) changes.push(`--status=${f.status}`);
+        if (f.priority !== i.priority) changes.push(`--priority=${f.priority}`);
+        if (f.type !== i.type) changes.push(`--type=${f.type}`);
+        if ((f.assignee || null) !== i.assignee) changes.push(`--assignee=${f.assignee || '""'}`);
+        if (f.labels.join(",") !== i.labels.join(",")) changes.push(`--set-labels=${f.labels.join(",")}`);
+        if (f.desc !== i.desc) changes.push(`--description=…`);
+        closeSheet();
+        if (!changes.length) { toast("No changes"); break; }
+        const snap = snapshot([i.id]);
+        Object.assign(i, { title: f.title, status: f.status, priority: f.priority, type: f.type, assignee: f.assignee || null, labels: f.labels, desc: f.desc, updated: Date.now() });
+        const cmd = `bd update ${i.id} ${changes.join(" ")}`; bd(cmd); flash(i.id); render();
+        toast("Saved " + shortId(i.id), cmd, () => { restore(snap); bd(`bd update ${i.id} (restored)`); render(); toast("Undone"); });
+        break;
+      }
+      case "docreate": {
+        const f = readForm(); if (!f.title) { $("#fTitle").focus(); break; }
+        const parent = $("#fParent") ? $("#fParent").value || null : null;
+        const pid = parent ? parent + "." + (kids(parent).length + 1) : "bd-" + Math.random().toString(36).slice(2, 6);
+        add({ id: pid, title: `[${shortId(pid)}] ${f.title}`, status: "open", priority: f.priority, type: f.type, assignee: f.assignee || null, creator: S.identity, created: new Date().toISOString(), updated: new Date().toISOString(), desc: f.desc, parent }, S.proj === "*" ? "b9s" : S.proj);
+        get(pid).labels = f.labels; reindex(); closeSheet();
+        const cmd = `bd create --title="${f.title}" --type=${f.type} --priority=${f.priority}${parent ? " --parent=" + parent : ""}${f.assignee ? " --assignee=" + f.assignee : ""}`;
+        bd(cmd); flash(pid); S.cursor = pid; revealInTree(pid);
+        if (!matches(get(pid))) S.q.st.add("open");
+        render(); ensureVisible(pid);
+        toast("Created " + shortId(pid), cmd, () => { deleteIssues([pid]); });
+        break;
+      }
+      case "docomment": {
+        const t = $("#fComment").value.trim(); if (!t) { $("#fComment").focus(); break; }
+        if (!COMMENTS.has(i.id)) COMMENTS.set(i.id, []);
+        COMMENTS.get(i.id).push({ author: S.identity, at: Date.now(), text: t }); i.updated = Date.now();
+        closeSheet(); const cmd = `bd comments add ${i.id} "${t.length > 40 ? t.slice(0, 40) + "…" : t}"`; bd(cmd); render(); toast("Comment added", cmd);
+        requestAnimationFrame(() => { const b = $("#dbody"); if (b) b.scrollTop = b.scrollHeight; });
+        break;
+      }
+      case "proj": closeSheet(); switchProject(val); break;
+      case "ident": S.identity = val; closeSheet(); toast("Acting as " + val); render(); break;
+      case "setsort": S.sort = val; closeSheet(); render(); break;
+      case "sortsheet": openSheet("sort"); break;
+      case "wrap": S.wrap = !S.wrap; store.set("wrap", S.wrap); closeSheet(); render(); toast(S.wrap ? "Titles wrap" : "Titles truncate"); break;
+      case "expandall": S.folded.clear(); closeSheet(); render(); break;
+      case "collapseall": pool().forEach(i => { if (kids(i.id).length) S.folded.add(i.id); }); closeSheet(); render(); break;
+      case "col": S.cols.has(val) ? S.cols.delete(val) : S.cols.add(val); renderSheet(); render(); break;
+      case "group": S.board.group = val; S.board.col = null; S.board.folded.clear(); renderSheet(); render(); break;
+      case "lanes": S.board.lanes = val; S.board.lane = null; renderSheet(); render(); break;
+      case "closedcol": S.q.st.has("closed") ? S.q.st.delete("closed") : S.q.st.add("closed"); renderSheet(); render(); break;
+      case "unfoldall": S.board.folded.clear(); renderSheet(); render(); break;
+      case "unpair": closeSheet(); toast("Unpair is disabled in the mockup", "b9s web --revoke ····7f3a"); break;
+    }
+  }
+  function endMarkingIfBulk(sh) { if (sh.ids && sh.ids.length > 1 || S.marking) { S.marks.clear(); S.marking = false; render(); } }
+  function readForm() {
+    const seg = n => { const b = document.querySelector(`[data-seg="${n}"] .on`); return b ? b.dataset.v : null; };
+    return {
+      title: $("#fTitle").value.trim(), status: seg("status") || "open", priority: +(seg("priority") || 2), type: seg("type") || "task",
+      assignee: $("#fAssignee").value.trim(), labels: $("#fLabels").value.split(",").map(s => s.trim()).filter(Boolean), desc: $("#fDesc").value,
+    };
+  }
+  function copyId(id) {
+    try {
+      navigator.clipboard.writeText(id).then(() => toast("Copied " + id), () => toast("Clipboard refused. ID: " + id));
+    } catch (e) { toast("Clipboard refused. ID: " + id); }
+  }
+  function setFocus(id, mode) {
+    S.focus = { id, mode: mode === "branch" ? "branch" : "subtree" };
+    S.folded.delete(id); revealInTree(id);
+    S.view = S.view === "board" ? "board" : "tree";
+    render(); toast((mode === "branch" ? "Branch " : "Subtree ") + shortId(id) + " · ✕ in the bar clears it");
+  }
+  function switchProject(p) {
+    S.proj = p; S.focus = null; S.detail = null; S.cursor = null; S.marks.clear(); S.marking = false; S.graph = []; S.board.lane = null;
+    render(); treeList.scrollTop = 0;
+    toast(p === "*" ? "All projects" : "Project " + p, p === "*" ? "reading every database this user can see" : `USE ${p}`);
+  }
+  function toggleMark(id) {
+    S.marking = true;
+    S.marks.has(id) ? S.marks.delete(id) : S.marks.add(id);
+    S.lastMark = id;
+    if (!S.marks.size) S.marking = false;
+    render();
+  }
+  function markRange(id) {
+    const ids = [...document.querySelectorAll("#treeRows .row, #sRows .row")].map(r => r.dataset.id);
+    const a = ids.indexOf(S.lastMark), b = ids.indexOf(id);
+    if (a < 0 || b < 0) return toggleMark(id);
+    ids.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => S.marks.add(x));
+    S.lastMark = id; render(); toast(`Marked ${Math.abs(a - b) + 1} rows`);
+  }
+
+  /* ================= actions (taps) ================= */
+  function act(a, el) {
+    switch (a) {
+      case "projects": openSheet("projects"); break;
+      case "health": openSheet("health"); break;
+      case "identity": openSheet("identity"); break;
+      case "help": openSheet("help"); break;
+      case "create": openSheet("create", { parent: S.detail ? (get(S.detail.stack.at(-1)).type === "epic" ? S.detail.stack.at(-1) : get(S.detail.stack.at(-1)).parent) : null }); break;
+      case "follow": S.follow = !S.follow; render(); toast(S.follow ? "Follow on: live changes move the cursor" : "Follow off"); break;
+      case "search": S.view = "search"; $("#sIn").value = queryString(); render(); setTimeout(() => $("#sIn").focus(), 50); break;
+      case "clearq": S.q.text = ""; render(); break;
+      case "allq": S.q = { st: new Set(), ready: false, text: "" }; S.focus = null; render(); break;
+      case "sort": openSheet("sort"); break;
+      case "unfocus": S.focus = null; render(); break;
+      case "markall": { const ids = [...document.querySelectorAll("#treeRows .row, #sRows .row")].map(r => r.dataset.id); const all = ids.every(x => S.marks.has(x)); ids.forEach(x => all ? S.marks.delete(x) : S.marks.add(x)); if (!S.marks.size) S.marking = false; render(); break; }
+      case "bulkstatus": openSheet("status", { ids: [...S.marks] }); break;
+      case "bulkclose": openSheet("closereason", { ids: [...S.marks] }); break;
+      case "bulkdelete": openSheet("confirmdelete", { ids: [...S.marks] }); break;
+      case "unmark": S.marks.clear(); S.marking = false; render(); break;
+      case "undo": if (undoFn) { const f = undoFn; undoFn = null; $("#toast").classList.remove("on"); f(); } break;
+      case "dback": S.detail.stack.pop(); S.cursor = S.detail.stack.at(-1); render(); break;
+      case "dclose": closeDetail(); break;
+      case "dsize": S.detail.size = S.detail.size === "full" ? "half" : "full"; render(); break;
+      case "dfocus": setFocus(S.detail.stack.at(-1), "subtree"); break;
+      case "dbranch": setFocus(S.detail.stack.at(-1), "branch"); break;
+      case "dgraph": S.graph = [S.detail.stack.at(-1)]; S.detail = null; S.view = "graph"; render(); break;
+      case "status": openSheet("status", { id: S.detail.stack.at(-1) }); break;
+      case "edit": openSheet("edit", { id: S.detail.stack.at(-1) }); break;
+      case "comment": openSheet("comment", { id: S.detail.stack.at(-1) }); break;
+      case "actions": openSheet("actions", { id: S.detail.stack.at(-1) }); break;
+      case "unfoldall": S.board.folded.clear(); render(); toast("Unfolded all columns"); break;
+      case "boardopts": openSheet("boardopts"); break;
+      case "treeopts": openSheet("treeopts"); break;
+      case "graph": S.graph = []; S.view = "graph"; render(); break;
+      case "togglechips": S.chips = !S.chips; render(); break;
+      case "pairing": openSheet("pairing"); break;
+      case "log": openSheet("log"); break;
+      case "simulate": liveTick(true); break;
+      case "reload": reload(); break;
+      case "applysearch": { const v = $("#sIn").value; setQueryFromString(v); remember(v); S.view = "tree"; render(); break; }
+    }
+  }
+  function remember(v) { if (!v.trim()) return; const rec = store.get("recent", []).filter(x => x !== v); rec.unshift(v); store.set("recent", rec.slice(0, 8)); }
+  function reload() {
+    ptr.style.height = "36px"; ptr.textContent = "↻ reloading…"; ptr.classList.add("ready");
+    setTimeout(() => { ptr.style.height = "0"; ptr.classList.remove("ready"); render(); toast(`Reloaded ${pool().length} issues`, "GET /api/issues · hash 7f3a9c1e"); }, 650);
+  }
+
+  app.addEventListener("click", e => {
+    const t = e.target;
+    const sa = t.closest("[data-sa]"); if (sa) { e.preventDefault(); sheetAction(sa.dataset.sa, sa.dataset.val, sa); return; }
+    const sg = t.closest("[data-seg] button"); if (sg) { sg.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === sg)); return; }
+    if (t.closest(".row, .card, .bcol, #tabs")) return;
+    const a = t.closest("[data-act]"); if (a) { act(a.dataset.act, a); return; }
+    const v = t.closest("[data-view]"); if (v) { S.view = v.dataset.view; if (S.view === "search") $("#sIn").value = queryString(); render(); if (S.view === "search") renderSearchResults(); return; }
+    const c = t.closest("[data-chip]"); if (c) { chipTap(c.dataset.chip); return; }
+    const nav = t.closest("[data-nav]"); if (nav) { openDetail(nav.dataset.nav, true); return; }
+    const hdr = t.closest("[data-hdr]"); if (hdr) { const k = hdr.dataset.hdr; S.folded.has(k) ? S.folded.delete(k) : S.folded.add(k); render(); return; }
+    const cr = t.closest("[data-crumb]"); if (cr) { S.graph = S.graph.slice(0, +cr.dataset.crumb + 1); render(); return; }
+    const op = t.closest("[data-open]"); if (op) { openDetail(op.dataset.open); return; }
+    const rc = t.closest("[data-recent]"); if (rc) { $("#sIn").value = rc.dataset.recent; renderSearchResults(); return; }
+    const sgg = t.closest("[data-sugg]"); if (sgg) { applySuggestion(sgg.dataset.sugg); return; }
+  });
+  app.addEventListener("contextmenu", e => { if (!e.target.closest("input, textarea, .md")) e.preventDefault(); });
+  function chipTap(k) {
+    if (k === "all") { S.q.st.clear(); S.q.ready = false; }
+    else if (k === "ready") S.q.ready = !S.q.ready;
+    else S.q.st.has(k) ? S.q.st.delete(k) : S.q.st.add(k);
+    render();
+  }
+  function applySuggestion(s) {
+    const inp = $("#sIn"); const parts = inp.value.split(/(\s+)/); let last = parts.pop() || "";
+    const m = last.match(/^(-?\w+:)(.*)$/);
+    if (m && !s.includes(":")) { const vals = m[2].split(","); vals[vals.length - 1] = s; last = m[1] + vals.join(","); }
+    else last = s;
+    inp.value = parts.join("") + last + (s.endsWith(":") ? "" : " ");
+    inp.focus(); renderSearchResults();
+  }
+  $("#sIn").addEventListener("input", renderSearchResults);
+  $("#sIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); act("applysearch"); } });
+
+  /* ================= gestures: rows ================= */
+  const SHORT = 0.2, LONG = 0.55, LP_MS = 450;
+  let G = null, DRAG = null;
+  document.addEventListener("touchmove", e => { if (DRAG) e.preventDefault(); }, { passive: false });
+  function localX(clientX) { const r = app.getBoundingClientRect(); return (clientX - r.left) / scale; }
+  function inDeadZone(clientX) { const x = localX(clientX); return x < 24 || x > appW() - 24; }
+  let lastChev = { id: null, t: 0 };
+
+  function bindRows(container) {
+    container.addEventListener("pointerdown", e => {
+      const row = e.target.closest(".row"); if (!row || e.button > 0) return;
+      const r = row.getBoundingClientRect();
+      G = { row, id: row.dataset.id, x0: e.clientX, y0: e.clientY, mode: null, pid: e.pointerId, chev: !!e.target.closest("[data-chev]"), w: r.width / scale, edge: inDeadZone(e.clientX), type: e.pointerType, container };
+      G.lp = setTimeout(() => { if (G && !G.mode) { G.mode = "press"; if (navigator.vibrate) try { navigator.vibrate(12); } catch (x) {} S.marking && S.marks.size ? markRange(G.id) : toggleMark(G.id); } }, LP_MS);
+    });
+    container.addEventListener("pointermove", e => {
+      if (!G || e.pointerId !== G.pid || G.container !== container) return;
+      const dx = (e.clientX - G.x0) / scale, dy = (e.clientY - G.y0) / scale;
+      if (!G.mode) {
+        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          clearTimeout(G.lp);
+          if (G.edge || S.marking) { G.mode = "none"; return; }
+          G.mode = "swipe"; try { G.row.setPointerCapture(G.pid); } catch (x) {}
+          G.row.classList.remove("snap");
+        } else if (Math.abs(dy) > 8) {
+          clearTimeout(G.lp);
+          G.mode = G.type === "mouse" && dy > 0 && treeList.scrollTop <= 0 && container === treeRowsEl ? "pull" : "scroll";
+        }
+      }
+      if (G.mode === "swipe") swipeMove(dx);
+      if (G.mode === "pull") pullMove(dy);
+    });
+    const end = e => {
+      if (!G || e.pointerId !== G.pid || G.container !== container) return;
+      clearTimeout(G.lp);
+      const g = G; G = null;
+      if (e.type === "pointercancel") { if (g.mode === "swipe") snapBack(g.row); if (g.mode === "pull") pullEnd(false); return; }
+      if (g.mode === "swipe") { swipeEnd(g, (e.clientX - g.x0) / scale); return; }
+      if (g.mode === "pull") { pullEnd(true); return; }
+      if (g.mode) return;
+      if (g.chev && !S.marking) {
+        const now = performance.now(), dbl = lastChev.id === g.id && now - lastChev.t < 320;
+        lastChev = { id: g.id, t: now };
+        if (dbl) { const target = S.folded.has(g.id); [g.id, ...descendants(g.id)].forEach(x => { if (kids(x).length) target ? S.folded.add(x) : S.folded.delete(x); }); toast(target ? "Folded subtree" : "Expanded subtree"); }
+        else S.folded.has(g.id) ? S.folded.delete(g.id) : S.folded.add(g.id);
+        render(); return;
+      }
+      if (S.marking) { toggleMark(g.id); return; }
+      if (S.view === "graph" && container.id === "gList") { S.graph.push(g.id); render(); return; }
+      openDetail(g.id, S.view === "graph");
+    };
+    container.addEventListener("pointerup", end);
+    container.addEventListener("pointercancel", end);
+  }
+  function swipeMove(dx) {
+    const g = G, w = g.w, i = get(g.id);
+    const lim = w * 0.85, x = Math.abs(dx) > lim ? Math.sign(dx) * (lim + (Math.abs(dx) - lim) * 0.25) : dx;
+    g.row.querySelector(".rc").style.transform = `translateX(${x * scale / scale}px)`;
+    const ul = g.row.querySelector(".ul"), ur = g.row.querySelector(".ur");
+    ul.style.visibility = dx > 0 ? "visible" : "hidden"; ur.style.visibility = dx < 0 ? "visible" : "hidden";
+    const f = Math.abs(dx) / w;
+    if (dx > 0) { ul.className = "ul" + (f >= LONG ? " long" : f < SHORT ? " weak" : ""); ul.textContent = f >= LONG ? "◉ status…" : swipeRightLabel(i); }
+    else { const closed = eff(i) === "closed"; ur.className = "ur" + (f >= LONG ? " long" : f < SHORT || closed ? " weak" : ""); ur.textContent = f >= LONG ? "actions ⋯" : closed ? "already closed" : "close ✓"; }
+  }
+  function snapBack(row) { row.classList.add("snap"); row.querySelector(".rc").style.transform = ""; }
+  function swipeEnd(g, dx) {
+    const f = Math.abs(dx) / g.w, i = get(g.id);
+    snapBack(g.row);
+    if (f < SHORT) return;
+    setTimeout(() => {
+      if (dx > 0) { if (f >= LONG) openSheet("status", { id: g.id }); else setStatus([g.id], nextStatus(i)); }
+      else { if (f >= LONG) openSheet("actions", { id: g.id }); else if (eff(i) !== "closed") setStatus([g.id], "closed"); }
+    }, 160);
+  }
+  bindRows(treeRowsEl);
+  bindRows($("#sList"));
+
+  /* pull to reload: touch events keep flowing while the list rests at the top */
+  let P = null;
+  treeList.addEventListener("touchstart", e => { if (treeList.scrollTop <= 0 && !S.marking) P = { y0: e.touches[0].clientY, d: 0 }; }, { passive: true });
+  treeList.addEventListener("touchmove", e => { if (!P || (G && G.mode === "swipe")) return; const d = (e.touches[0].clientY - P.y0) / scale; if (d < 0) { P = null; pullMove(0); return; } P.d = d; pullMove(d); }, { passive: true });
+  treeList.addEventListener("touchend", () => { if (!P) return; const ok = P.d * 0.5 >= 48; P = null; pullEnd(ok); });
+  let pullD = 0;
+  function pullMove(dy) { pullD = dy; const h = Math.min(dy * 0.5, 64); ptr.style.transition = "none"; ptr.style.height = h + "px"; ptr.classList.toggle("ready", h >= 48); ptr.textContent = h >= 48 ? "↻ release to reload" : "↓ pull to reload"; }
+  function pullEnd(commit) { ptr.style.transition = ""; if (commit && pullD * 0.5 >= 48) reload(); else ptr.style.height = "0"; pullD = 0; }
+
+  /* header: swipe down toggles the chip row */
+  (function () {
+    let h = null; const hd = $("#hd");
+    hd.addEventListener("pointerdown", e => { h = { y0: e.clientY, pid: e.pointerId }; });
+    hd.addEventListener("pointermove", e => { if (h && (e.clientY - h.y0) / scale > 26) { h = null; S.chips = !S.chips; render(); toast(S.chips ? "Chips shown" : "Chips hidden · swipe down again"); } });
+    hd.addEventListener("pointerup", () => { h = null; });
+    hd.addEventListener("pointercancel", () => { h = null; });
+  })();
+
+  /* ================= gestures: detail sheet ================= */
+  function bindDetailGestures(sec) {
+    const head = sec.querySelector("#dhead"), body = sec.querySelector("#dbody");
+    let d = null;
+    head.addEventListener("pointerdown", e => { if (e.target.closest("button")) return; d = { y0: e.clientY, h0: sec.getBoundingClientRect().height / scale, pid: e.pointerId, moved: false }; try { head.setPointerCapture(e.pointerId); } catch (x) {} sec.classList.add("drag"); });
+    head.addEventListener("pointermove", e => { if (!d) return; const dy = (e.clientY - d.y0) / scale; if (Math.abs(dy) > 4) d.moved = true; sec.style.height = Math.max(80, d.h0 - dy) + "px"; });
+    const up = e => {
+      if (!d) return; sec.classList.remove("drag");
+      const dy = (e.clientY - d.y0) / scale, h = d.h0 - dy, moved = d.moved; d = null;
+      if (!moved) { S.detail.size = S.detail.size === "full" ? "half" : "full"; render(); return; }
+      const half = app.clientHeight * 0.52, full = app.clientHeight - topInset() - 36;
+      if (h < half * 0.62) { closeDetail(); return; }
+      S.detail.size = h > (half + full) / 2 ? "full" : "half";
+      sec.style.height = ""; render();
+    };
+    head.addEventListener("pointerup", up); head.addEventListener("pointercancel", up);
+
+    let s = null;
+    body.addEventListener("pointerdown", e => { if (e.button > 0) return; s = { x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, edge: inDeadZone(e.clientX) }; });
+    body.addEventListener("pointermove", e => {
+      if (!s || e.pointerId !== s.pid) return;
+      const dx = (e.clientX - s.x0) / scale, dy = (e.clientY - s.y0) / scale;
+      if (!s.mode) { if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3 && !s.edge) { s.mode = "h"; try { body.setPointerCapture(s.pid); } catch (x) {} body.classList.remove("snap"); } else if (Math.abs(dy) > 10) s.mode = "v"; }
+      if (s.mode === "h") { body.style.transform = `translateX(${dx}px)`; body.style.opacity = String(1 - Math.min(Math.abs(dx) / 400, .5)); }
+    });
+    const bup = e => {
+      if (!s) return; const g = s; s = null;
+      if (g.mode !== "h") return;
+      const dx = (e.clientX - g.x0) / scale;
+      body.classList.add("snap");
+      const id = S.detail.stack.at(-1), sib = siblings(id), pos = sib.indexOf(id);
+      const next = dx < 0 ? sib[pos + 1] : sib[pos - 1];
+      if (Math.abs(dx) < appW() * 0.22 || !next) { body.style.transform = ""; body.style.opacity = ""; if (!next && Math.abs(dx) > 40) toast(dx < 0 ? "Last sibling" : "First sibling"); return; }
+      body.style.transform = `translateX(${dx < 0 ? -appW() : appW()}px)`; body.style.opacity = "0";
+      setTimeout(() => {
+        S.detail.stack[S.detail.stack.length - 1] = next; S.cursor = next; render(); ensureVisible(next);
+        const nb = $("#dbody"); if (!nb) return;
+        nb.style.transform = `translateX(${dx < 0 ? appW() : -appW()}px)`; nb.style.opacity = "0";
+        requestAnimationFrame(() => { nb.classList.add("snap"); nb.style.transform = ""; nb.style.opacity = ""; });
+      }, 170);
+    };
+    body.addEventListener("pointerup", bup); body.addEventListener("pointercancel", bup);
+    body.addEventListener("click", e => { const nav = e.target.closest("[data-nav]"); if (nav) { e.stopPropagation(); openDetail(nav.dataset.nav, true); } });
+  }
+  function bindSheetDrag(sh) {
+    const mh = sh.querySelector("#mh"); let d = null;
+    mh.addEventListener("pointerdown", e => { d = { y0: e.clientY, pid: e.pointerId }; try { mh.setPointerCapture(e.pointerId); } catch (x) {} sh.style.transition = "none"; });
+    mh.addEventListener("pointermove", e => { if (!d) return; const dy = Math.max(0, (e.clientY - d.y0) / scale); sh.style.transform = `translateY(${dy}px)`; });
+    const up = e => { if (!d) return; const dy = (e.clientY - d.y0) / scale; d = null; sh.style.transition = ""; sh.style.transform = ""; if (dy > 70) closeSheet(); };
+    mh.addEventListener("pointerup", up); mh.addEventListener("pointercancel", up);
+  }
+
+  /* ================= gestures: board ================= */
+  const vBoard = $("#vBoard");
+  let B = null;
+  vBoard.addEventListener("pointerdown", e => {
+    if (e.button > 0) return;
+    const tab = e.target.closest("[data-tab]");
+    if (tab) { B = { tab: tab.dataset.tab, pid: e.pointerId, x0: e.clientX, y0: e.clientY }; return; }
+    const col = e.target.closest("#bcol"); if (!col) return;
+    const card = e.target.closest("[data-card]");
+    B = { col, card, id: card && card.dataset.card, x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, edge: inDeadZone(e.clientX), lane: e.target.closest("[data-lane]") };
+    if (card) B.lp = setTimeout(() => { if (B && !B.mode) startDrag(e); }, LP_MS);
+  });
+  vBoard.addEventListener("pointermove", e => {
+    if (!B || e.pointerId !== B.pid) return;
+    if (B.mode === "drag") { dragMove(e); return; }
+    if (B.tab) return;
+    const dx = (e.clientX - B.x0) / scale, dy = (e.clientY - B.y0) / scale;
+    if (!B.mode) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3 && !B.edge) { clearTimeout(B.lp); B.mode = "swipe"; try { B.col.setPointerCapture(B.pid); } catch (x) {} B.col.classList.remove("snap"); }
+      else if (Math.abs(dy) > 8 || Math.abs(dx) > 8) { clearTimeout(B.lp); B.mode = "scroll"; }
+    }
+    if (B.mode === "swipe") B.col.style.transform = `translateX(${dx}px)`;
+  });
+  function boardEnd(e) {
+    if (!B || e.pointerId !== B.pid) return;
+    clearTimeout(B.lp);
+    const b = B; B = null;
+    if (b.mode === "drag") { dragEnd(e, e.type === "pointercancel"); return; }
+    if (e.type === "pointercancel") { if (b.col) { b.col.classList.add("snap"); b.col.style.transform = ""; } return; }
+    if (b.tab) { if (Math.abs(e.clientX - b.x0) < 10) tabTap(b.tab); return; }
+    if (b.mode === "swipe") {
+      const dx = (e.clientX - b.x0) / scale;
+      const cols = boardCols().filter(([k]) => !S.board.folded.has(String(k)));
+      const idx = cols.findIndex(([k]) => String(k) === String(S.board.col));
+      const next = cols[idx + (dx < 0 ? 1 : -1)];
+      b.col.classList.add("snap");
+      if (Math.abs(dx) < appW() * 0.22 || !next) { b.col.style.transform = ""; if (!next && Math.abs(dx) > 40) toast(dx < 0 ? "Last column" : "First column"); return; }
+      b.col.style.transform = `translateX(${dx < 0 ? -appW() : appW()}px)`;
+      setTimeout(() => {
+        S.board.col = next[0]; renderBoard();
+        const nc = $("#bcol"); if (!nc) return;
+        nc.style.transform = `translateX(${dx < 0 ? appW() : -appW()}px)`;
+        requestAnimationFrame(() => { nc.classList.add("snap"); nc.style.transform = ""; });
+      }, 160);
+      return;
+    }
+    if (b.mode) return;
+    if (b.lane) { const l = b.lane.dataset.lane; S.board.laneFold.has(l) ? S.board.laneFold.delete(l) : S.board.laneFold.add(l); S.board._keep = true; renderBoard(); return; }
+    const rl = e.target.closest && e.target.closest("[data-rlane]");
+    if (b.card) { S.cursor = b.id; openDetail(b.id); }
+  }
+  vBoard.addEventListener("pointerup", boardEnd);
+  vBoard.addEventListener("pointercancel", boardEnd);
+  vBoard.addEventListener("click", e => {
+    const rl = e.target.closest("[data-rlane]"); if (rl) { S.board.lane = rl.dataset.rlane || null; renderBoard(); return; }
+    const a = e.target.closest("[data-act]"); if (a && !e.target.closest("[data-tab]")) act(a.dataset.act, a);
+  });
+  function tabTap(k) {
+    const cols = boardCols(), key = String(k);
+    if (S.board.folded.has(key)) { S.board.folded.delete(key); S.board.col = k; renderBoard(); toast("Unfolded " + (cols.find(([c]) => String(c) === key) || [, key])[1]); return; }
+    if (String(S.board.col) === key) {
+      const open = cols.filter(([c]) => !S.board.folded.has(String(c)));
+      if (open.length < 2) { toast("The last open column cannot fold"); return; }
+      S.board.folded.add(key);
+      const idx = open.findIndex(([c]) => String(c) === key);
+      const next = open[idx + 1] || open[idx - 1];
+      S.board.col = next[0]; renderBoard();
+      toast("Folded " + (cols.find(([c]) => String(c) === key) || [, key])[1] + " · Z unfolds"); return;
+    }
+    S.board.col = k; renderBoard();
+  }
+  function startDrag(e) {
+    const b = B; b.mode = "drag"; DRAG = true;
+    if (navigator.vibrate) try { navigator.vibrate(15); } catch (x) {}
+    const r = b.card.getBoundingClientRect(), ar = app.getBoundingClientRect();
+    const ghost = b.card.cloneNode(true); ghost.classList.add("ghost"); ghost.style.width = r.width / scale + "px";
+    b.ox = (b.x0 - r.left) / scale; b.oy = (b.y0 - r.top) / scale;
+    ghost.style.left = (r.left - ar.left) / scale + "px"; ghost.style.top = (r.top - ar.top) / scale + "px";
+    app.appendChild(ghost); b.ghost = ghost; b.card.classList.add("lifted");
+    try { b.col.setPointerCapture(b.pid); } catch (x) {}
+    $("#bbody").classList.add("dragging");
+    B = b;
+    toast("Drop on a column tab, or hold at an edge");
+  }
+  function dragMove(e) {
+    const b = B, ar = app.getBoundingClientRect();
+    const x = (e.clientX - ar.left) / scale, y = (e.clientY - ar.top) / scale;
+    b.ghost.style.left = x - b.ox + "px"; b.ghost.style.top = y - b.oy + "px";
+    document.querySelectorAll(".tab.drop").forEach(t => t.classList.remove("drop"));
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const tab = el && el.closest("[data-tab]");
+    let target = tab ? tab.dataset.tab : null;
+    const cols = boardCols();
+    const idx = cols.findIndex(([k]) => String(k) === String(S.board.col));
+    const edge = x < 36 ? -1 : x > appW() - 36 ? 1 : 0;
+    if (!tab && edge) {
+      if (b.edgeDir !== edge) { b.edgeDir = edge; b.edgeT = performance.now(); }
+      if (performance.now() - b.edgeT > 450 && cols[idx + edge]) target = cols[idx + edge][0];
+    } else b.edgeDir = 0;
+    b.target = target;
+    if (target != null) { const t = document.querySelector(`[data-tab="${CSS.escape(String(target))}"]`); if (t) t.classList.add("drop"); }
+  }
+  function dragEnd(e, cancel) {
+    const b = B || {}; DRAG = null;
+    const d = arguments.length ? b : b;
+    const st = dragState; dragState = null;
+    finishDrag(st, cancel);
+  }
+  let dragState = null;
+  // B is cleared by boardEnd before dragEnd runs, so the drag keeps its own handle.
+  const _startDrag = startDrag;
+  startDrag = function (e) { _startDrag(e); dragState = B; };
+  function finishDrag(b, cancel) {
+    if (!b) return;
+    b.ghost && b.ghost.remove(); b.card && b.card.classList.remove("lifted");
+    $("#bbody") && $("#bbody").classList.remove("dragging");
+    document.querySelectorAll(".tab.drop").forEach(t => t.classList.remove("drop"));
+    const target = b.target;
+    if (cancel || target == null || String(target) === String(S.board.col)) { $("#toast").classList.remove("on"); return; }
+    const i = get(b.id), g = S.board.group;
+    if (g === "status" && target === "open" && openBlockers(i).length) { setStatus([i.id], "open"); toast(`${shortId(i.id)} stays in Blocked: ${openBlockers(i).length} open blocker${openBlockers(i).length > 1 ? "s" : ""}`, `bd update ${i.id} --status=open`); }
+    else if (g === "status") setStatus([i.id], target);
+    else {
+      const snap = snapshot([i.id]);
+      if (g === "priority") i.priority = +target; else i.type = target;
+      i.updated = Date.now();
+      const cmd = `bd update ${i.id} --${g}=${target}`; bd(cmd); flash(i.id); render();
+      toast(`${shortId(i.id)} → ${g === "priority" ? "P" + target : target}`, cmd, () => { restore(snap); render(); toast("Undone"); });
+    }
+  }
+
+  /* graph drill-down rows reuse the row gestures */
+  const vGraph = $("#vGraph");
+  vGraph.addEventListener("pointerdown", e => { const gl = e.target.closest("#gList"); if (gl && !gl._bound) { gl._bound = true; } }, true);
+  new MutationObserver(() => { const gl = $("#gList"); if (gl && !gl._bound) { gl._bound = true; bindRows(gl); } }).observe(vGraph, { childList: true });
+
+  /* ================= live changes (SSE, simulated) ================= */
+  function liveTick(manual) {
+    const cand = pool().filter(i => i.status !== "closed" && i.type !== "epic");
+    if (!cand.length) return;
+    const i = cand[Math.floor(Math.random() * cand.length)];
+    const who = AGENTS[Math.floor(Math.random() * AGENTS.length)];
+    const r = Math.random();
+    let cmd;
+    if (r < 0.5) { const n = i.status === "in_progress" ? "open" : "in_progress"; i.status = n; cmd = `bd update ${i.id} --status=${n}`; if (n === "in_progress") i.assignee = who; }
+    else if (r < 0.8) { if (!COMMENTS.has(i.id)) COMMENTS.set(i.id, []); COMMENTS.get(i.id).push({ author: who, at: Date.now(), text: "Picked this up from the lane queue. Running the failing test first." }); cmd = `bd comments add ${i.id} "Picked this up…"`; }
+    else { i.priority = Math.max(0, i.priority - 1); cmd = `bd update ${i.id} --priority=${i.priority}`; }
+    i.updated = Date.now();
+    S.log.unshift({ at: Date.now(), cmd, who });
+    flash(i.id);
+    if (S.follow) { S.cursor = i.id; revealInTree(i.id); if (S.detail) S.detail.stack = [i.id]; }
+    render();
+    const dot = $("#hdot"); if (dot) { dot.classList.remove("pulse"); void dot.offsetWidth; dot.classList.add("pulse"); }
+    if (S.follow) ensureVisible(i.id);
+    toast(`live · ${who} changed ${shortId(i.id)}${S.follow ? " · followed" : ""}`, cmd, null, 3200);
+  }
+  setInterval(() => { if (S.live && !G && !DRAG && !S.sheet && !document.hidden) liveTick(); }, 28000);
+  setInterval(() => { const d = new Date(); $("#clock").textContent = d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); }, 15000);
+
+  /* ================= stage: device frame and panel ================= */
+  const DEVICES = { pixel: { w: 412, h: 915, sat: 44, sab: 16, cls: "pixel" }, ios: { w: 393, h: 852, sat: 59, sab: 34, cls: "ios" }, narrow: { w: 360, h: 780, sat: 36, sab: 16, cls: "pixel" } };
+  function applyDevice() {
+    const d = DEVICES[S.device] || DEVICES.pixel;
+    document.querySelectorAll("[data-dev]").forEach(b => b.classList.toggle("on", b.dataset.dev === S.device));
+    if (phoneMode()) {
+      scale = 1; device.className = "device";
+      app.style.setProperty("--sat", "0px"); app.style.setProperty("--sab", "0px");
+      $("#homebar").hidden = true;
+    } else {
+      device.className = "device " + d.cls;
+      device.style.setProperty("--dw", d.w + 18 + "px"); device.style.setProperty("--dh", d.h + 18 + "px");
+      app.style.setProperty("--sat", d.sat + "px"); app.style.setProperty("--sab", d.sab + "px");
+      $("#homebar").hidden = false;
+      scale = Math.min(1, (innerHeight - 48) / (d.h + 18));
+      device.style.transform = `scale(${scale})`;
+      frameWrap.style.width = (d.w + 18) * scale + "px"; frameWrap.style.height = (d.h + 18) * scale + "px";
+    }
+    render();
+  }
+  function updateDensity() {
+    const el = $("#density"); if (!el || S.view !== "tree") return;
+    const rows = Math.floor((treeList.clientHeight) / 44);
+    const d = DEVICES[S.device];
+    el.innerHTML = `<span>Viewport</span><b>${phoneMode() ? innerWidth + "×" + innerHeight : d.w + "×" + d.h} CSS px</b><span>Tree rows</span><b class="${rows >= 16 ? "ok" : "warn"}">${rows} visible · target ≥ 16</b><span>Row</span><b>2 lines · 44 px · 13/18 mono</b><span>Chrome</span><b>32 header · 34 chips · 48 bar</b>`;
+  }
+  $("#devs").addEventListener("click", e => { const b = e.target.closest("[data-dev]"); if (!b) return; S.device = b.dataset.dev; store.set("device", S.device); applyDevice(); });
+  $("#tZones").addEventListener("click", () => { S.overlay = !S.overlay; $("#zones").hidden = !S.overlay; $("#tZones").classList.toggle("on", S.overlay); });
+  $("#tLive").addEventListener("click", () => { S.live = !S.live; $("#tLive").classList.toggle("on", S.live); });
+  $("#tNow").addEventListener("click", () => liveTick(true));
+  $("#tLive").classList.toggle("on", S.live);
+  $("#tryList").innerHTML = GESTURES.map(([g, a, k]) => `<li><span>${g} → ${a}</span><kbd>${k}</kbd></li>`).join("");
+  addEventListener("resize", applyDevice);
+
+  /* open on a realistic working state: an epic's child selected, detail closed */
+  S.cursor = "bd-foit.1";
+  applyDevice();
+  requestAnimationFrame(() => ensureVisible(S.cursor));
+})();
+</script>
