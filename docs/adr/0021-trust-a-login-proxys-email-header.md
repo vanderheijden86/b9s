@@ -61,6 +61,9 @@ sequenceDiagram
 
 - The hosted image runs `b9s web` instead of ttyd and tmux, so the phone and
   desktop web UI is what a person sees at their board's address.
+- The recent list holds nine projects, and a hosted board serves every
+  database its owner may read. The image passes `--projects-root`, so the
+  project sheet lists every checkout the pod builds after the recent ones.
 - Anyone who can reach the port directly can claim to be the owner. The flag
   is for a server behind a proxy and a NetworkPolicy, never for a laptop on a
   tailnet; the laptop keeps ADR 0020's pairing.
