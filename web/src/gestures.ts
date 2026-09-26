@@ -8,7 +8,7 @@ import {
 } from "./actions";
 import { adoptCursor, onKey } from "./keys";
 import { canGoBack } from "./nav";
-import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, siblings, wide } from "./render";
+import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, scrollToLane, siblings, wide } from "./render";
 import { S } from "./state";
 import { $, haptic, store } from "./util";
 
@@ -366,9 +366,31 @@ function bindBoard(): void {
   };
   v.addEventListener("pointerup", end);
   v.addEventListener("pointercancel", end);
+  // The rail indexes the column: a tap scrolls to a lane, a long press folds it.
+  let railLP = 0, railFolded = false, railXY = [0, 0];
+  v.addEventListener("pointerdown", e => {
+    const rl = (e.target as HTMLElement).closest<HTMLElement>(".brail [data-rlane]");
+    railFolded = false;
+    if (!rl || !rl.dataset.rlane) return;
+    const l = rl.dataset.rlane;
+    railXY = [e.clientX, e.clientY];
+    railLP = window.setTimeout(() => {
+      railFolded = true;
+      haptic(12);
+      if (!S.board.laneFold.delete(l)) S.board.laneFold.add(l);
+      S.board.keep = true;
+      renderBoard();
+    }, LP_MS);
+  });
+  v.addEventListener("pointermove", e => { if (railLP && Math.hypot(e.clientX - railXY[0], e.clientY - railXY[1]) > 8) { clearTimeout(railLP); railLP = 0; } });
+  const railEnd = () => { clearTimeout(railLP); railLP = 0; };
+  v.addEventListener("pointerup", railEnd);
+  v.addEventListener("pointercancel", railEnd);
   v.addEventListener("click", e => {
     const rl = (e.target as HTMLElement).closest<HTMLElement>("[data-rlane]");
-    if (rl) { S.board.lane = rl.dataset.rlane || null; renderBoard(); }
+    if (!rl) return;
+    if (railFolded) { railFolded = false; return; }
+    scrollToLane(rl.dataset.rlane || "");
   });
 }
 

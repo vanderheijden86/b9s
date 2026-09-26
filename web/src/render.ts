@@ -160,13 +160,11 @@ export function boardCols(): [string, string][] {
 export { WIDE, wide };
 
 function boardItems(key: string): Item[] {
-  const lane = S.board.lanes === "rail" && !wide() ? S.board.lane : null;
   const keep = S.focus ? new Set([S.focus.id, ...descendants(S.focus.id)]) : null;
   return pool().filter(i => {
     if (i.type === "epic" && S.board.group !== "type" && S.board.lanes !== "off") return false;
     if (colOf(i) !== key || !matches(i)) return false;
-    if (keep && !keep.has(i.id)) return false;
-    return !lane || (laneOf(i) || "none") === lane;
+    return !keep || keep.has(i.id);
   }).sort(SORTS[S.sort]);
 }
 
@@ -179,10 +177,23 @@ function activeCol(): [string, string] | null {
   return cols.find(([k]) => k === S.board.col) || null;
 }
 
+/** lanesShown says whether cards sit under epic lane headers, so a card's epic is already in view. */
+const lanesShown = () => S.board.lanes !== "off" && S.board.group !== "type";
+
+/**
+ * parentLineHTML names a card's direct parent when its lane header names only
+ * the epic above it, so a grandchild does not read as a child of the epic.
+ */
+function parentLineHTML(i: Item): string {
+  const p = i.parent ? get(i.parent) : undefined;
+  if (!p || !lanesShown() || p.id === laneOf(i)) return "";
+  return `<div class="l3">↳ <span class="e">${esc(shortId(p.id))}</span> ${esc(p.t)}</div>`;
+}
+
 function cardHTML(i: Item): string {
   const st = stOf(eff(i));
   const [, tc] = tyOf(i.type);
-  return `<div class="card ${S.cursor === i.id ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span></div>${l2HTML(i, { proj: true })}</div>`;
+  return `<div class="card ${S.cursor === i.id ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span></div>${l2HTML(i, { proj: true })}${parentLineHTML(i)}</div>`;
 }
 
 /** laneKeys orders epic lanes the way both boards do: biggest first, loose cards last. */
@@ -193,16 +204,49 @@ function laneKeys(items: Item[]): [string, Item[]][] {
 }
 
 function laneHTML(l: string, n: number): string {
-  const f = S.board.laneFold.has(l), e = get(l);
-  return `<button class="lane" data-lane="${esc(l)}" aria-expanded="${!f}"><span>${f ? "▸" : "▾"} ${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span><span class="n">${n}</span></button>`;
+  const f = S.board.laneFold.has(l), e = get(l), pr = e ? progress(l) : null;
+  const bar = pr ? `<span class="bar" title="${pr.done}/${pr.all} done"><i style="width:${Math.round((100 * pr.done) / pr.all)}%"></i></span>` : "";
+  return `<button class="lane" data-lane="${esc(l)}" aria-expanded="${!f}" style="--ec:${epicHue(l)}"><span class="ch">${f ? "▸" : "▾"}</span><span class="ei">${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span>${bar}<span class="n">${n}</span></button>`;
 }
 
-function railHTML(inCols: string[]): string {
-  const counts = new Map<string, number>();
-  pool().filter(i => inCols.includes(colOf(i)) && matches(i) && i.type !== "epic").forEach(i => { const l = laneOf(i) || "none"; counts.set(l, (counts.get(l) || 0) + 1); });
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  return `<div class="brail"><button class="${!S.board.lane ? "on" : ""}" data-rlane="">all<b>${total}</b></button>`
-    + [...counts].sort((a, b) => b[1] - a[1]).map(([l, n]) => `<button class="${S.board.lane === l ? "on" : ""}" data-rlane="${esc(l)}">${l === "none" ? "no epic" : "♦" + esc(shortId(l))}<b>${n}</b></button>`).join("") + `</div>`;
+/**
+ * railHTML is the phone's index of the column's lanes, in the column's order.
+ * A tap scrolls to the lane rather than filtering, and the entry of the lane
+ * in view carries "on" (see spyLane).
+ */
+function railHTML(lanes: [string, Item[]][]): string {
+  const total = lanes.reduce((a, [, arr]) => a + arr.length, 0);
+  const on = S.board.lane && lanes.some(([l]) => l === S.board.lane) ? S.board.lane : lanes[0]?.[0];
+  return `<div class="brail"><button data-rlane="" aria-label="Scroll to the top">all<b>${total}</b></button>`
+    + lanes.map(([l, arr]) => `<button class="${on === l ? "on" : ""}" data-rlane="${esc(l)}" style="--ec:${epicHue(l)}" aria-label="${l === "none" ? "No epic" : esc(shortId(l))}, ${arr.length} cards. Long press folds">${l === "none" ? "no epic" : "♦" + esc(shortId(l))}<b>${arr.length}</b></button>`).join("") + `</div>`;
+}
+
+/**
+ * spyLane marks the rail entry of the lane at the top of the column. Each lane
+ * is a .lgrp group, so its offsetTop is where the lane starts even while its
+ * sticky header is pinned.
+ */
+export function spyLane(): void {
+  const col = document.getElementById("bcol");
+  const rail = document.querySelector(".brail");
+  if (!col || !rail) return;
+  const groups = [...col.querySelectorAll<HTMLElement>(".lgrp")];
+  if (!groups.length) return;
+  let cur = groups[0];
+  if (col.scrollTop > 0 && col.scrollTop + col.clientHeight >= col.scrollHeight - 2) cur = groups[groups.length - 1];
+  else for (const g of groups) if (g.offsetTop <= col.scrollTop + 16) cur = g;
+  const l = cur.dataset.lgrp!;
+  S.board.lane = l;
+  rail.querySelectorAll<HTMLElement>("[data-rlane]").forEach(b => b.classList.toggle("on", b.dataset.rlane === l));
+}
+
+/** scrollToLane brings a lane's header to the top of the column; "" scrolls to the top. */
+export function scrollToLane(l: string): void {
+  const col = document.getElementById("bcol");
+  if (!col) return;
+  const g = l ? col.querySelector<HTMLElement>(`.lgrp[data-lgrp="${CSS.escape(l)}"]`) : null;
+  col.scrollTop = g ? g.offsetTop : 0;
+  spyLane();
 }
 
 const EPIC_HUES = ["var(--red)", "var(--orange)", "var(--yellow)", "var(--green)", "var(--cyan)", "var(--accent)", "var(--blue)", "var(--feat)"];
@@ -288,22 +332,19 @@ export function renderBoard(): void {
   else {
     const items = boardItems(cur[0]);
     let inner = "";
+    const lanes = lanesShown() ? laneKeys(items) : [];
     if (!items.length) inner = `<div class="empty">No cards in ${esc(cur[1])}.</div>`;
-    else if (S.board.lanes === "rows" && S.board.group !== "type") {
-      for (const [l, arr] of laneKeys(items)) {
-        inner += laneHTML(l, arr.length);
-        if (!S.board.laneFold.has(l)) inner += arr.map(cardHTML).join("");
-      }
-    } else inner = items.map(cardHTML).join("");
-    let rail = "";
-    if (S.board.lanes === "rail" && S.board.group !== "type") rail = railHTML([cur[0]]);
-    body = `${rail}<div class="bcol" id="bcol" role="list">${inner}</div><div class="edgehint l">‹</div><div class="edgehint r">›</div>`;
+    else if (lanes.length) inner = lanes.map(([l, arr]) => `<div class="lgrp" data-lgrp="${esc(l)}">${laneHTML(l, arr.length)}${S.board.laneFold.has(l) ? "" : arr.map(cardHTML).join("")}</div>`).join("");
+    else inner = items.map(cardHTML).join("");
+    const rail = S.board.lanes === "rail" && lanes.length ? railHTML(lanes) : "";
+    body = `${rail}<div class="bcol${rail ? " indexed" : ""}" id="bcol" role="list">${inner}</div><div class="edgehint l">‹</div><div class="edgehint r">›</div>`;
   }
   const old = document.getElementById("bcol");
   const keepScroll = old ? old.scrollTop : 0;
   v.innerHTML = `<div class="tabs" id="tabs">${tabs}</div><div class="bbody" id="bbody">${body}</div>`;
   const nc = document.getElementById("bcol");
   if (nc && S.board.keep) nc.scrollTop = keepScroll;
+  if (nc) { nc.addEventListener("scroll", spyLane, { passive: true }); spyLane(); }
   S.board.keep = false;
 }
 
@@ -457,11 +498,10 @@ function renderGraph(): void {
 
 /* ================= detail sheet ================= */
 
-const sat = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
 export const appH = () => $("#app").clientHeight;
 export const appW = () => $("#app").clientWidth;
 export const halfH = () => Math.round(appH() * 0.52);
-export const fullH = () => appH() - sat() - 36;
+export const fullH = () => appH();
 /** detailHeightPx is what the sheet covers of a list; the wide side panel covers none. */
 export const detailHeightPx = () => (wide() ? 0 : S.detail && S.detail.size === "full" ? fullH() : halfH());
 

@@ -135,7 +135,9 @@
   .bbody { flex: 1; min-height: 0; display: flex; position: relative; }
   .brail { flex: none; width: 64px; border-right: 1px solid var(--line); overflow-y: auto; scrollbar-width: none; }
   .brail button { display: block; width: 100%; padding: 8px 6px; text-align: left; font-size: 0.846rem; line-height: 14px; color: var(--muted); border-bottom: 1px solid rgba(45,49,66,.6); }
-  .brail button.on { color: var(--accent); background: rgba(189,147,249,.12); box-shadow: inset 2px 0 var(--accent); }
+  .brail button[style]:not([data-rlane="none"]) { color: var(--ec); }
+  .brail button.on { color: var(--ec, var(--accent)); background: rgba(189,147,249,.12); box-shadow: inset 2px 0 var(--ec, var(--accent)); }
+  .brail button[data-rlane="none"].on { color: var(--dim); box-shadow: inset 2px 0 var(--muted); }
   .brail button b { display: block; color: var(--dim); font-weight: 400; }
   .bcol { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 12px 16px; touch-action: pan-y; }
   .bcol.snap { transition: transform .22s cubic-bezier(.2,.8,.2,1); }
@@ -147,6 +149,16 @@
   .lane { width: 100%; text-align: left; display: flex; gap: 6px; align-items: baseline; color: var(--accent); font-size: 0.923rem; padding: 8px 2px 5px; white-space: nowrap; }
   .lane .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
   .lane .n { color: var(--muted); }
+  .lane .ch { width: 12px; color: var(--muted); }
+  .lane .ei { color: var(--ec, var(--accent)); }
+  .lane .bar { flex: none; align-self: center; width: 44px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .lane .bar i { display: block; height: 100%; background: var(--ec, var(--accent)); }
+  .card .l3 { font-size: 0.885rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .l3 .e { color: var(--accent); }
+  /* On the phone each lane is a group, so its header sticks until the next lane pushes it off. */
+  .bcol { position: relative; }
+  .bcol .lane { position: sticky; top: -8px; z-index: 2; width: calc(100% + 24px); margin: 0 -12px 6px; padding: 8px 12px 6px; background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: inset 3px 0 var(--ec, var(--line)); align-items: center; }
+  .bcol.indexed::after { content: ""; display: block; height: calc(100% - 48px); }
   /* the wide board: every column side by side, epic lanes as rows across them */
   .wboard { flex: 1; min-width: 0; overflow: auto; overscroll-behavior: contain; display: grid; grid-auto-rows: min-content; align-content: start; column-gap: 12px; padding: 0 16px 24px; touch-action: pan-x pan-y; }
   .whead { position: sticky; top: 0; z-index: 3; display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 8px; background: var(--bg); border-bottom: 2px solid var(--hc, var(--line)); color: var(--text); font-weight: 700; text-align: left; }

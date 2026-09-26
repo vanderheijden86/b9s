@@ -319,6 +319,7 @@ export const GESTURES: [string, string, string][] = [
   ["Long-press a row", "mark; tap more rows", "Space"], ["Long-press while marking", "mark the range", "Ctrl-Space"], ["Pull down on tree", "reload", "Ctrl-R"],
   ["Swipe ← → on detail", "next / previous sibling", "n p"], ["Drag handle up / down", "full height / close", "Esc"], ["Tap a relation", "go there; ‹ goes back", ""],
   ["Swipe ← → on board", "next column", "h l"], ["Tap the active column tab", "fold it into a rail", "z"], ["Tap Z unfold", "unfold all", "Z"],
+  ["Tap an epic in the rail", "scroll to its lane", ""], ["Long-press an epic in the rail", "fold its lane", "Tab"],
   ["Long-press a card, drag", "move to a column", ""], ["Tap project name", "project sheet", "1-9 0"], ["Tap the ● dot", "source health", "D"],
   ["Swipe down on header", "hide or show chips", "Ctrl-E"], ["Tap F", "follow live changes", "F"],
 ];

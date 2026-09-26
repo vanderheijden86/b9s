@@ -39,6 +39,7 @@ export const S = {
     folded: new Set<string>(),
     // The wide board opens on the TUI's epic rail; a phone's one column reads better with rows.
     lanes: store.get<"off" | "rows" | "rail">("boardLanes", wide() ? "rail" : "rows"),
+    /** the lane at the top of the phone column, which the rail marks as on */
     lane: null as string | null,
     laneFold: new Set<string>(),
     keep: false,

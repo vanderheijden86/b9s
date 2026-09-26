@@ -73,6 +73,6 @@ test.describe("reading", () => {
   test("gesture help lists every gesture", async ({ page, project }) => {
     await open(page, project);
     await page.locator('[data-act="help"]').click();
-    await expect(page.locator(".msheet .gtable tr")).toHaveCount(21);
+    await expect(page.locator(".msheet .gtable tr")).toHaveCount(23);
   });
 });

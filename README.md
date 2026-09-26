@@ -243,11 +243,15 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Swipe left or right on the board | Next column | `h` / `l` |
 | Tap the active column tab | Fold it into a rail | `z` |
 | Tap `Z unfold` | Unfold every column | `Z` |
+| Tap an epic in the board rail | Scroll to its lane | |
+| Long-press an epic in the rail, or tap a lane's ▾ | Fold or unfold that lane | `Tab` |
 | Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
 | Tap the project name | Project sheet | `1`-`9`, `0` |
 | Tap the ● dot | Data source health | `D` |
 | Swipe down on the header | Hide or show the filter chips | `Ctrl-E` |
 | Tap `F` | Follow live changes | `F` |
+
+On a phone, the board groups each column into epic lanes. A lane's header shows the epic, its completion and the card count, and stays at the top of the column while you scroll through the lane. The rail on the left is an index: the lane in view is highlighted, and a tap on another epic scrolls to it. A card nested below another task names that parent on a third line ([ADR 0022](docs/adr/0022-make-the-phone-epic-rail-an-index.md)).
 
 No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
 
