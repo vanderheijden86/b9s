@@ -19,6 +19,7 @@ b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/b
 - [Data sources](#data-sources)
 - [Configuration](#configuration)
 - [Help and tutorial](#help-and-tutorial)
+- [Phone and browser](#phone-and-browser)
 - [Mouse and tmux](#mouse-and-tmux)
 - [Command-line options](#command-line-options)
 - [Updating b9s](#updating-b9s)
@@ -402,6 +403,70 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 | `?` | The help overlay with every key |
 | `Ctrl-S` in the help overlay | Search the overlay by key or description. `Enter` keeps the filter, `Esc` clears it |
 | `` ` `` | The interactive tutorial. Progress is saved between sessions |
+
+## Phone and browser
+
+`b9s web` serves the project in the current folder to a browser, sized for a phone. It opens the project the same way `b9s` does and never falls back to another one: a server started in the wrong folder exits rather than show other data.
+
+```bash
+b9s web                        # 127.0.0.1:7979, pairing on
+b9s web --filter 'status:open' # start every browser with a query
+```
+
+### Reaching it from a phone
+
+The server listens on loopback. With Tailscale, `tailscale serve --bg 7979` publishes that port to your tailnet over HTTPS, and `b9s web` prints the phone link that matches. With `qrencode` installed the link also prints as a QR code, so the phone camera opens it. Listening on another address with `--listen` works too, but only with pairing on.
+
+### Pairing
+
+Every browser pairs once, by opening the link `b9s web` printed at start. The link sets a session cookie for 90 days. A browser that is not paired sees "This browser is not paired" and nothing else. `b9s web --new-token` replaces the secret and signs every device out. `--no-token` turns pairing off, and only on loopback addresses.
+
+The database password never reaches the browser. The server reads the store and runs `bd`, and the browser only sends requests with its cookie and a CSRF header.
+
+### Screens
+
+| Screen | What it shows |
+|--------|---------------|
+| Tree | The TUI tree: epics, children, status glyphs, a second line with priority, type, assignee, age, progress, blockers, comment count and labels (choose them under Tree options) |
+| Board | One column at a time, grouped by status, priority or type. Columns fold into rails, and epics show as cards, rows or a side rail |
+| Search | The [query language](#search) with completions. Results update as you type, and Apply puts the query on the tree |
+| Detail | A sheet over the list: fields, parent, children, blockers, text sections as Markdown, comments, and Status, Edit, Comment, Branch and More |
+| Graph | The chains of blockers and blocked issues around one issue, with parent, children and discovered-from |
+| More | Projects, health, the write log, identity, pairing, board and tree options |
+
+The chips under the header are the status filters and the Ready filter from the TUI, with counts. The ● dot turns red when the live connection or the data source has a problem, and a banner then says the list shows the last snapshot.
+
+### Gestures
+
+| Gesture | Effect | TUI key |
+|---------|--------|---------|
+| Tap a row | Open the detail sheet | `Enter` |
+| Tap ▾ or ▸ | Fold or unfold | `Tab` |
+| Double-tap ▾ | Fold the whole subtree | `h` / `l` |
+| Short swipe right | Start, or stop when in progress | `S` |
+| Long swipe right | Status picker | `S` |
+| Short swipe left | Close, with 5 s to undo | `K` |
+| Long swipe left | Action sheet: edit, comment, defer, copy, focus, graph, mark, child, delete | `e` `c` `y` `f` `x` |
+| Long-press a row | Mark it; then tap more rows | `Space` |
+| Long-press while marking | Mark the range | `Ctrl-Space` |
+| Pull down on the tree | Reload | `Ctrl-R` |
+| Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
+| Drag the detail handle | Up: full height. Down: close | `Esc` |
+| Tap a relation in the detail | Go there; `‹` goes back | |
+| Swipe left or right on the board | Next column | `h` / `l` |
+| Tap the active column tab | Fold it into a rail | `z` |
+| Tap `Z unfold` | Unfold every column | `Z` |
+| Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
+| Tap the project name | Project sheet | `1`-`9`, `0` |
+| Tap the ● dot | Data source health | `D` |
+| Swipe down on the header | Hide or show the filter chips | `Ctrl-E` |
+| Tap `F` | Follow live changes | `F` |
+
+No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
+
+### Writes
+
+Every write is the same `bd` command the TUI runs, in the project's checkout, as the server's `bd` actor. The row changes at once and a toast shows the command. When `bd` fails, the toast shows its error and the row goes back. A close, a status change and a card move have Undo for 5 seconds. More → Write log lists every command this browser sent.
 
 ## Mouse and tmux
 

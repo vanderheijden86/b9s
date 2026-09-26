@@ -20,6 +20,7 @@ b9s shows a Beads project as a tree of issues under their parents, with a Markdo
 - [Projects](#projects)
 - [Data sources](#data-sources)
 - [Configuration](#configuration)
+- [Phone and browser](#phone-and-browser)
 - [Mouse and tmux](#mouse-and-tmux)
 - [Command-line options](#command-line-options)
 - [Development](#development)
@@ -192,6 +193,63 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 `s` picks another sort for the current session only. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it.
 
+## Phone and browser
+
+`b9s web` serves the same project to a phone browser: the tree, the board, search with the TUI query language, the detail sheet, the dependency graph, and every write the TUI makes, through the same `bd` calls. Changes from anywhere show up live.
+
+```bash
+cd ~/code/my-project       # a folder with .beads, as for b9s itself
+b9s web                    # serves 127.0.0.1:7979 and prints a pairing link
+```
+
+**Reach it from a phone with [Tailscale](https://tailscale.com).** When `tailscale` is on the `PATH`, `b9s web` prints the phone link and the one command that publishes the loopback port to your tailnet over HTTPS:
+
+```bash
+tailscale serve --bg 7979
+```
+
+With `qrencode` installed (`brew install qrencode`), the phone link also prints as a QR code. The server stays on loopback, so nothing outside your tailnet can reach it.
+
+**Pairing.** Open the printed link once on each device. It sets a session cookie that lasts 90 days, and the browser needs nothing else. `b9s web --new-token` replaces the secret and unpairs every device. `--no-token` serves without pairing, on loopback addresses only. The database password stays on the server: the browser only ever holds the cookie. See [ADR 0019](docs/adr/0019-serve-a-mobile-web-ui-from-b9s-web.md) and [ADR 0020](docs/adr/0020-pair-every-browser-with-a-persistent-token.md).
+
+| Option | Effect |
+|--------|--------|
+| `--listen <addr>` | Address to serve on, default `127.0.0.1:7979`. Anything but loopback needs pairing |
+| `--new-token` | Replace the pairing secret, which unpairs every browser |
+| `--no-token` | Serve without pairing, loopback only |
+| `--filter '<query>'` | Open browsers with this [query](#search) applied |
+| `--debug` | Write a debug log to `.b9s/debug.log` |
+
+Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects view and a project without a checkout are read-only, as in the TUI.
+
+### Gestures
+
+| Gesture | Effect | TUI key |
+|---------|--------|---------|
+| Tap a row | Open the detail sheet | `Enter` |
+| Tap ▾ or ▸ | Fold or unfold | `Tab` |
+| Double-tap ▾ | Fold the whole subtree | `h` / `l` |
+| Short swipe right | Start, or stop when in progress | `S` |
+| Long swipe right | Status picker | `S` |
+| Short swipe left | Close, with 5 s to undo | `K` |
+| Long swipe left | Action sheet: edit, comment, defer, copy, focus, graph, mark, child, delete | `e` `c` `y` `f` `x` |
+| Long-press a row | Mark it; then tap more rows | `Space` |
+| Long-press while marking | Mark the range | `Ctrl-Space` |
+| Pull down on the tree | Reload | `Ctrl-R` |
+| Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
+| Drag the detail handle | Up: full height. Down: close | `Esc` |
+| Tap a relation in the detail | Go there; `‹` goes back | |
+| Swipe left or right on the board | Next column | `h` / `l` |
+| Tap the active column tab | Fold it into a rail | `z` |
+| Tap `Z unfold` | Unfold every column | `Z` |
+| Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
+| Tap the project name | Project sheet | `1`-`9`, `0` |
+| Tap the ● dot | Data source health | `D` |
+| Swipe down on the header | Hide or show the filter chips | `Ctrl-E` |
+| Tap `F` | Follow live changes | `F` |
+
+No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
+
 ## Mouse and tmux
 
 The mouse wheel moves through issues and scrolls the detail pane. Because b9s captures the mouse for this, a drag does not select text, and in tmux with `mouse on` the drag goes to b9s instead of starting copy mode.
@@ -223,6 +281,14 @@ Tests named `DoltIntegration` need a Dolt server. The ones that create databases
 ```bash
 mkdir -p /tmp/b9s-dolt && (cd /tmp/b9s-dolt && dolt init && dolt sql-server --port 13306) &
 B9S_TEST_DOLT_SCRATCH_ADDR=127.0.0.1:13306 go test ./internal/datasource/ -run DoltIntegration
+```
+
+The web UI lives in `web/` (TypeScript, no framework) and builds into `pkg/web/dist`, which is committed so `go build` needs no Node:
+
+```bash
+make web        # npm ci, typecheck, build pkg/web/dist
+make web-types  # regenerate web/src/api.gen.ts from the Go API types
+make web-e2e    # browser tests in Chromium and WebKit
 ```
 
 [docs/testing.md](docs/testing.md) describes the test layers and the Dolt rules in full.
