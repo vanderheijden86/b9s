@@ -98,6 +98,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/session", s.paired(s.handleSession))
 	s.mux.HandleFunc("GET /api/snapshot", s.paired(s.handleSnapshot))
 	s.mux.HandleFunc("GET /api/query", s.paired(s.handleQuery))
+	s.mux.HandleFunc("GET /api/issue", s.paired(s.handleIssue))
 	s.mux.HandleFunc("GET /api/health", s.paired(s.handleHealth))
 	s.mux.HandleFunc("GET /api/events", s.paired(s.handleEvents))
 	s.mux.HandleFunc("GET /api/projects", s.paired(s.handleProjects))
@@ -142,6 +143,15 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, r, s.opts.Store.Snapshot(s.opts.Writer.IsAvailable()))
+}
+
+func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
+	issue, ok := s.opts.Store.Issue(r.URL.Query().Get("id"))
+	if !ok {
+		http.Error(w, "no such issue", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, r, issue)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

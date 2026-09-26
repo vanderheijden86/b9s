@@ -1,0 +1,15 @@
+{
+  "name": "b9s-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

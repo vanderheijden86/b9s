@@ -25,6 +25,7 @@ export interface Issue {
   related: string[];
   discovered_from: string[];
   comments: Comment[];
+  comment_count: number;
   project: string;
   blocked: boolean;
   ready: boolean;

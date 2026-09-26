@@ -82,3 +82,8 @@ target-*/
 .beads/dolt-config.log
 .playwright-cli/
 *.err
+
+# web E2E
+/.b9s-e2e/
+/web/test-results/
+/web/playwright-report/

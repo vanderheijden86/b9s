@@ -233,11 +233,23 @@ func (s *Store) Snapshot(bdFound bool) Snapshot {
 	return Snapshot{
 		Version: s.version,
 		Project: s.info,
-		Issues:  convertIssues(s.issues),
+		Issues:  leanIssues(s.issues),
 		Actor:   actor,
 		People:  people(registry, s.issues),
 		Health:  s.healthLocked(bdFound),
 	}
+}
+
+// Issue returns one issue with every field, or false when it does not exist.
+func (s *Store) Issue(id string) (Issue, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for i := range s.issues {
+		if s.issues[i].ID == id {
+			return convertIssue(&s.issues[i], statusByID(s.issues)), true
+		}
+	}
+	return Issue{}, false
 }
 
 // Health reports the data source of the open project.

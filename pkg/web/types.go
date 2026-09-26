@@ -4,34 +4,39 @@ package web
 // TypeScript in web/src/api.gen.ts is generated from them (see tsgen_test.go), so a
 // change here that is not regenerated fails TestGeneratedTypesAreCurrent.
 
-// Issue is one issue as the browser shows it. Blocked, Ready and ClosedLike
+// Issue is one issue as the browser shows it. A snapshot leaves out
+// Description, Design, Acceptance, Notes and Comments, which make up most of
+// its size, and the detail view reads them from GET api/issue. Blocked, Ready and ClosedLike
 // are derived on the server with the TUI's rules, so both UIs count alike.
 type Issue struct {
-	ID             string    `json:"id"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	Design         string    `json:"design"`
-	Acceptance     string    `json:"acceptance"`
-	Notes          string    `json:"notes"`
-	Status         string    `json:"status"`
-	Priority       int       `json:"priority"`
-	Type           string    `json:"type"`
-	Assignee       string    `json:"assignee"`
-	CreatedBy      string    `json:"created_by"`
-	CreatedAt      string    `json:"created_at"`
-	UpdatedAt      string    `json:"updated_at"`
-	ClosedAt       string    `json:"closed_at"`
-	DeferUntil     string    `json:"defer_until"`
-	Labels         []string  `json:"labels"`
-	Parent         string    `json:"parent"`
-	BlockedBy      []string  `json:"blocked_by"`
-	Related        []string  `json:"related"`
-	DiscoveredFrom []string  `json:"discovered_from"`
-	Comments       []Comment `json:"comments"`
-	Project        string    `json:"project"`
-	Blocked        bool      `json:"blocked"`
-	Ready          bool      `json:"ready"`
-	ClosedLike     bool      `json:"closed_like"`
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Description    string   `json:"description"`
+	Design         string   `json:"design"`
+	Acceptance     string   `json:"acceptance"`
+	Notes          string   `json:"notes"`
+	Status         string   `json:"status"`
+	Priority       int      `json:"priority"`
+	Type           string   `json:"type"`
+	Assignee       string   `json:"assignee"`
+	CreatedBy      string   `json:"created_by"`
+	CreatedAt      string   `json:"created_at"`
+	UpdatedAt      string   `json:"updated_at"`
+	ClosedAt       string   `json:"closed_at"`
+	DeferUntil     string   `json:"defer_until"`
+	Labels         []string `json:"labels"`
+	Parent         string   `json:"parent"`
+	BlockedBy      []string `json:"blocked_by"`
+	Related        []string `json:"related"`
+	DiscoveredFrom []string `json:"discovered_from"`
+	// Comments is empty in a snapshot, which carries only CommentCount.
+	// GET api/issue returns them with the other long text fields.
+	Comments     []Comment `json:"comments"`
+	CommentCount int       `json:"comment_count"`
+	Project      string    `json:"project"`
+	Blocked      bool      `json:"blocked"`
+	Ready        bool      `json:"ready"`
+	ClosedLike   bool      `json:"closed_like"`
 }
 
 // Comment is one comment on an issue.

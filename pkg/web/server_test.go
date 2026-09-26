@@ -155,8 +155,8 @@ func TestSnapshotDerivesBlockedReadyAndParentLikeTheTUI(t *testing.T) {
 	if got["t-1.1"].Parent != "t-1" || len(got["t-1.1"].BlockedBy) != 1 || got["t-1.1"].BlockedBy[0] != "t-2" {
 		t.Errorf("t-1.1 links: parent %q blocked_by %v", got["t-1.1"].Parent, got["t-1.1"].BlockedBy)
 	}
-	if c := got["t-5"].Comments; len(c) != 1 || c[0].Author != "bob" {
-		t.Errorf("t-5 comments: %+v", c)
+	if got["t-5"].CommentCount != 1 {
+		t.Errorf("t-5 comment_count %d, want 1", got["t-5"].CommentCount)
 	}
 	if got["t-4"].ClosedAt != "2026-09-02T10:00:00Z" {
 		t.Errorf("closed_at %q", got["t-4"].ClosedAt)
@@ -419,5 +419,30 @@ func TestEmbeddedBundleHasAnIndex(t *testing.T) {
 	}
 	if _, err := assets.Open("index.html"); err != nil {
 		t.Fatalf("embedded bundle: %v", err)
+	}
+}
+
+func TestSnapshotLeavesOutLongTextThatIssueReturns(t *testing.T) {
+	ts := newTestServer(t, testAuth(t), nil)
+	c := ts.pairedClient(t)
+	var snap Snapshot
+	getJSON(t, c, ts.URL+"/api/snapshot", &snap)
+	lean := byID(snap.Issues)["t-5"]
+	if len(lean.Comments) != 0 || lean.CommentCount != 1 {
+		t.Fatalf("snapshot t-5: comments %+v count %d, want none and 1", lean.Comments, lean.CommentCount)
+	}
+
+	var full Issue
+	if code := getJSON(t, c, ts.URL+"/api/issue?id=t-5", &full); code != http.StatusOK {
+		t.Fatalf("issue: %d", code)
+	}
+	if len(full.Comments) != 1 || full.Comments[0].Text != "stuck on review" || full.CommentCount != 1 || !full.Blocked {
+		t.Fatalf("full t-5: %+v", full)
+	}
+	if code := getJSON(t, c, ts.URL+"/api/issue?id=t-404", nil); code != http.StatusNotFound {
+		t.Fatalf("missing issue: %d, want 404", code)
+	}
+	if code := getJSON(t, &http.Client{Timeout: 5 * time.Second}, ts.URL+"/api/issue?id=t-5", nil); code != http.StatusUnauthorized && code != http.StatusForbidden {
+		t.Fatalf("unpaired issue read: %d", code)
 	}
 }
