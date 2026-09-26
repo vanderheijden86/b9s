@@ -85,8 +85,7 @@ fi
 
 if [[ $fail -eq 0 ]]; then
   sha="$(git -C "$ROOT" rev-parse HEAD)"
-  kubeconfig="$(mktemp)"
-  trap 'rm -f "$kubeconfig"' EXIT
+  kubeconfig="$ROOT/go.mod"
   rendered="$(
     PREVIEW_CMD=contract-test \
     B9S_PREVIEW_KUBECONFIG="$kubeconfig" \
@@ -127,6 +126,109 @@ if [[ $fail -eq 0 ]]; then
   if [[ $invalid_tailnet_rc -eq 2 ]]; then ok "unsafe tailnet host stops before cluster access"; else bad "unsafe tailnet host stops before cluster access" "exit $invalid_tailnet_rc"; fi
   contains "unsafe tailnet host reports the boundary" "tailnet host is not valid" "$invalid_tailnet"
 fi
+
+# Model kubectl's partial apply: a denied Namespace does not stop it applying
+# later documents. A server-side preflight must reject that deployment first.
+redeploy_dir="$(mktemp -d "${TMPDIR:-/tmp}/b9s-redeploy-contract.XXXXXX")"
+run_deploy() (
+  export TEST_SHA="$1" TEST_DENY_NAMESPACE="$2" TEST_STATE_DIR="$3"
+  export B9S_PREVIEW_KUBECONFIG="$ROOT/go.mod" B9S_PREVIEW_CONTEXT=preview
+  export B9S_PREVIEW_EVIDENCE_DIR="$TEST_STATE_DIR/evidence"
+  mkdir -p "$TEST_STATE_DIR"
+
+  git() {
+    case "$*" in
+      *'rev-parse HEAD') printf '%s\n' "$TEST_SHA" ;;
+      *'cat-file -e '*|*'status --porcelain '*) return 0 ;;
+      *) command git "$@" ;;
+    esac
+  }
+  kubectl() {
+    [[ $1 == --kubeconfig && $2 == "$B9S_PREVIEW_KUBECONFIG" &&
+       $3 == --context && $4 == preview ]] || return 90
+    shift 4
+    case "$1" in
+      version) return 0 ;;
+      --namespace)
+        [[ $2 == b9s-bd-b6jw-2 && $3 == rollout ]] || return 91
+        return 0 ;;
+      apply)
+        local file='' dry_run=false
+        shift
+        while [[ $# -gt 0 ]]; do
+          case "$1" in
+            --filename) file="$2"; shift 2 ;;
+            --dry-run=server) dry_run=true; shift ;;
+            *) return 92 ;;
+          esac
+        done
+        [[ -f $file ]] || return 93
+        grep -q '^kind: Namespace$' "$file" || return 94
+        if $dry_run; then
+          [[ $(grep -c '^kind:' "$file") == 1 ]] || return 95
+          printf 'preflight\n' >>"$TEST_STATE_DIR/calls"
+        else
+          printf 'apply\n' >>"$TEST_STATE_DIR/calls"
+          if grep -q '^kind: Deployment$' "$file"; then
+            printf '%s\n' "$TEST_SHA" >>"$TEST_STATE_DIR/workloads"
+          fi
+        fi
+        if [[ $TEST_DENY_NAMESPACE == 1 ]]; then
+          printf 'Forbidden: namespace metadata update denied by preview policy\n' >&2
+          return 1
+        fi
+        if ! $dry_run; then
+          awk '/^---$/{exit} {print}' "$file" >"$TEST_STATE_DIR/namespace.yaml"
+        fi ;;
+      *) return 96 ;;
+    esac
+  }
+  export -f git kubectl
+  timeout 10 bash "$PREVIEW/preview-deploy" bd-b6jw.2 "$TEST_SHA"
+)
+
+first_sha=1111111111111111111111111111111111111111
+second_sha=2222222222222222222222222222222222222222
+if run_deploy "$first_sha" 0 "$redeploy_dir/allowed" >"$redeploy_dir/first.log" 2>&1; then
+  ok "restricted first deployment succeeds"
+else
+  bad "restricted first deployment succeeds" "see $redeploy_dir/first.log"
+fi
+if run_deploy "$second_sha" 0 "$redeploy_dir/allowed" >"$redeploy_dir/second.log" 2>&1; then
+  ok "restricted same-task deployment accepts a new SHA"
+else
+  bad "restricted same-task deployment accepts a new SHA" "see $redeploy_dir/second.log"
+fi
+contains "redeploy refreshes namespace commit label" "omnigent.osenco.dev/commit-sha: $second_sha" \
+  "$(cat "$redeploy_dir/allowed/namespace.yaml" 2>/dev/null)"
+if [[ $(cat "$redeploy_dir/allowed/calls" 2>/dev/null) == $'preflight\napply\npreflight\napply' ]]; then
+  ok "each deployment preflights namespace policy before workload apply"
+else
+  bad "each deployment preflights namespace policy before workload apply"
+fi
+if [[ $(cat "$redeploy_dir/allowed/workloads" 2>/dev/null) == "$first_sha"$'\n'"$second_sha" ]]; then
+  ok "redeploy applies the new workload SHA"
+else
+  bad "redeploy applies the new workload SHA"
+fi
+
+if run_deploy "$second_sha" 1 "$redeploy_dir/denied" >"$redeploy_dir/denied.log" 2>&1; then
+  bad "namespace policy denial fails deployment"
+else
+  denied_rc=$?
+  if [[ $denied_rc -eq 1 ]]; then
+    ok "namespace policy denial fails deployment"
+  else
+    bad "namespace policy denial fails deployment" "expected exit 1, got $denied_rc"
+  fi
+fi
+if [[ ! -f $redeploy_dir/denied/workloads ]]; then
+  ok "namespace policy denial prevents partial workload deployment"
+else
+  bad "namespace policy denial prevents partial workload deployment"
+fi
+contains "namespace policy denial identifies the infrastructure prerequisite" 'osenco-infra' \
+  "$(cat "$redeploy_dir/denied.log")"
 
 printf '=== preview-contract DONE pass=%d fail=%d ===\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
