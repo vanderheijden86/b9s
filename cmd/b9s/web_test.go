@@ -2,8 +2,12 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/vanderheijden86/beadwork/pkg/config"
 )
 
 func TestWebRefusesNoTokenOffLoopback(t *testing.T) {
@@ -41,5 +45,30 @@ func TestWebHelpExitsCleanly(t *testing.T) {
 func TestPairURLCarriesTokenOnlyWithAuth(t *testing.T) {
 	if got := pairURL("http://localhost:7979", nil); got != "http://localhost:7979/" {
 		t.Fatalf("no auth: %q", got)
+	}
+}
+
+func TestWithCheckoutsUnderAddsEveryCheckoutOnce(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"beta", "alpha", "gamma"} {
+		if err := os.MkdirAll(filepath.Join(root, name, ".beads"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(root, "no-beads"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	recent := []config.Project{{Name: "gamma", Path: filepath.Join(root, "gamma")}}
+
+	got := withCheckoutsUnder(recent, root)
+	var names []string
+	for _, p := range got {
+		names = append(names, p.Name)
+	}
+	if strings.Join(names, ",") != "gamma,alpha,beta" {
+		t.Fatalf("projects = %v, want the recent one first, then the others by name", names)
+	}
+	if again := withCheckoutsUnder(recent, ""); len(again) != 1 {
+		t.Fatalf("no root added projects: %v", again)
 	}
 }

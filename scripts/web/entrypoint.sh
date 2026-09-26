@@ -57,7 +57,9 @@ sql() {
 sql 'SHOW DATABASES' > "$home/databases" \
   || { printf 'the database refused the credential for %s\n' "$B9S_DOLT_USER" >&2; exit 1; }
 
-printf 'projects:\n' > "$home/.config/b9s/config.yaml"
+# b9s web lists every checkout under projects/ (--projects-root). The config
+# file only keeps the recent projects the owner opens.
+: > "$home/.config/b9s/config.yaml"
 first=''
 count=0
 while IFS= read -r database; do
@@ -71,7 +73,6 @@ while IFS= read -r database; do
   mkdir -p -m 0700 "$dir/.beads"
   printf '{"database":"dolt","backend":"dolt","dolt_mode":"server","dolt_server_host":"%s","dolt_server_port":%s,"dolt_server_user":"%s","dolt_database":"%s"}\n' \
     "$B9S_DOLT_HOST" "$B9S_DOLT_PORT" "$B9S_DOLT_USER" "$database" > "$dir/.beads/metadata.json"
-  printf '  - name: "%s"\n    path: "%s"\n' "$database" "$dir" >> "$home/.config/b9s/config.yaml"
   [ -n "$first" ] || first=$database
   count=$((count + 1))
 done < "$home/databases"
@@ -93,4 +94,5 @@ unset EDITOR VISUAL
 
 cd "$home/projects/$first"
 exec /usr/local/bin/b9s web --listen 0.0.0.0:7681 \
-  --trust-header "$B9S_WEB_AUTH_HEADER" --owner "$B9S_WEB_OWNER_EMAIL"
+  --trust-header "$B9S_WEB_AUTH_HEADER" --owner "$B9S_WEB_OWNER_EMAIL" \
+  --projects-root "$home/projects"

@@ -45,6 +45,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	newToken := fs.Bool("new-token", false, "Replace the pairing secret, which unpairs every browser")
 	trustHeader := fs.String("trust-header", "", "Behind a login proxy: pair requests whose `header` names --owner, instead of a pairing link")
 	owner := fs.String("owner", "", "The `email` --trust-header must carry")
+	projectsRoot := fs.String("projects-root", "", "List every Beads checkout directly under `dir` in the project sheet, after the recent ones")
 	filter := fs.String("filter", "", "Start the browser with this issue query applied")
 	debugFlag := fs.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
 	fs.Usage = func() {
@@ -140,7 +141,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 				cfg = appCfg
 			}
 			target := store.Target()
-			return ui.HeaderProjects(cfg.RecentProjects, target.Name, target.Dir)
+			return withCheckoutsUnder(ui.HeaderProjects(cfg.RecentProjects, target.Name, target.Dir), *projectsRoot)
 		},
 		Opened: func(p config.Project) {
 			if cfgErr == nil {
@@ -178,6 +179,36 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	defer cancel()
 	_ = httpServer.Shutdown(shutdownCtx)
 	return 0
+}
+
+// withCheckoutsUnder appends every Beads checkout directly under root that
+// projects does not already hold, in name order. The recent list keeps at most
+// nine projects, so a board serving every database a person may read needs
+// this to reach the rest.
+func withCheckoutsUnder(projects []config.Project, root string) []config.Project {
+	if root == "" {
+		return projects
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		debug.Log("web: reading projects root %s failed: %v", root, err)
+		return projects
+	}
+	listed := make(map[string]bool, len(projects))
+	for _, p := range projects {
+		listed[p.ResolvedPath()] = true
+	}
+	for _, e := range entries {
+		dir := filepath.Join(root, e.Name())
+		if !e.IsDir() || listed[dir] {
+			continue
+		}
+		if info, err := os.Stat(filepath.Join(dir, ".beads")); err != nil || !info.IsDir() {
+			continue
+		}
+		projects = append(projects, config.Project{Name: e.Name(), Path: dir})
+	}
+	return projects
 }
 
 // startupKey is the project key the header gives the startup checkout.
