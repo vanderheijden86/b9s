@@ -11,77 +11,97 @@ import (
 // the rules of the TUI's counts and its r filter: an issue is blocked by its
 // status or by a blocking dependency on an issue that is not closed.
 func convertIssues(issues []model.Issue) []Issue {
+	status := statusByID(issues)
+	out := make([]Issue, len(issues))
+	for i := range issues {
+		out[i] = convertIssue(&issues[i], status)
+	}
+	return out
+}
+
+// leanIssues is convertIssues without the long text fields, for a snapshot.
+func leanIssues(issues []model.Issue) []Issue {
+	out := convertIssues(issues)
+	for i := range out {
+		out[i].Description, out[i].Design, out[i].Acceptance, out[i].Notes = "", "", "", ""
+		out[i].Comments = []Comment{}
+	}
+	return out
+}
+
+func statusByID(issues []model.Issue) map[string]model.Status {
 	status := make(map[string]model.Status, len(issues))
 	for i := range issues {
 		status[issues[i].ID] = issues[i].Status
 	}
+	return status
+}
 
-	out := make([]Issue, len(issues))
-	for i := range issues {
-		src := &issues[i]
-		dst := Issue{
-			ID:             src.ID,
-			Title:          src.Title,
-			Description:    src.Description,
-			Design:         src.Design,
-			Acceptance:     src.AcceptanceCriteria,
-			Notes:          src.Notes,
-			Status:         string(src.Status),
-			Priority:       src.Priority,
-			Type:           string(src.IssueType),
-			Assignee:       src.Assignee,
-			CreatedBy:      src.CreatedBy,
-			CreatedAt:      formatTime(src.CreatedAt),
-			UpdatedAt:      formatTime(src.UpdatedAt),
-			ClosedAt:       formatTimePtr(src.ClosedAt),
-			DeferUntil:     formatTimePtr(src.DeferUntil),
-			Labels:         nonNil(src.Labels),
-			BlockedBy:      []string{},
-			Related:        []string{},
-			DiscoveredFrom: []string{},
-			Comments:       make([]Comment, 0, len(src.Comments)),
-			Project:        src.SourceRepo,
-			ClosedLike:     ui.IsClosedLike(src.Status),
-		}
-		if dst.Project == "" || dst.Project == "." {
-			dst.Project = ui.ExtractRepoPrefix(src.ID)
-		}
-
-		openBlocker := false
-		for _, dep := range src.Dependencies {
-			if dep == nil || dep.DependsOnID == "" {
-				continue
-			}
-			switch {
-			case dep.Type == model.DepParentChild:
-				if dst.Parent == "" {
-					dst.Parent = dep.DependsOnID
-				}
-			case dep.Type.IsBlocking():
-				dst.BlockedBy = append(dst.BlockedBy, dep.DependsOnID)
-				if s, ok := status[dep.DependsOnID]; ok && !ui.IsClosedLike(s) {
-					openBlocker = true
-				}
-			case dep.Type == model.DepRelated:
-				dst.Related = append(dst.Related, dep.DependsOnID)
-			case dep.Type == model.DepDiscoveredFrom:
-				dst.DiscoveredFrom = append(dst.DiscoveredFrom, dep.DependsOnID)
-			}
-		}
-		for _, c := range src.Comments {
-			if c == nil {
-				continue
-			}
-			dst.Comments = append(dst.Comments, Comment{Author: c.Author, Text: c.Text, CreatedAt: formatTime(c.CreatedAt)})
-		}
-
-		if !dst.ClosedLike {
-			dst.Blocked = src.Status == model.StatusBlocked || openBlocker
-			dst.Ready = !dst.Blocked
-		}
-		out[i] = dst
+// convertIssue needs the status of every issue to tell an open blocker from
+// a closed one.
+func convertIssue(src *model.Issue, status map[string]model.Status) Issue {
+	dst := Issue{
+		ID:             src.ID,
+		Title:          src.Title,
+		Description:    src.Description,
+		Design:         src.Design,
+		Acceptance:     src.AcceptanceCriteria,
+		Notes:          src.Notes,
+		Status:         string(src.Status),
+		Priority:       src.Priority,
+		Type:           string(src.IssueType),
+		Assignee:       src.Assignee,
+		CreatedBy:      src.CreatedBy,
+		CreatedAt:      formatTime(src.CreatedAt),
+		UpdatedAt:      formatTime(src.UpdatedAt),
+		ClosedAt:       formatTimePtr(src.ClosedAt),
+		DeferUntil:     formatTimePtr(src.DeferUntil),
+		Labels:         nonNil(src.Labels),
+		BlockedBy:      []string{},
+		Related:        []string{},
+		DiscoveredFrom: []string{},
+		Comments:       make([]Comment, 0, len(src.Comments)),
+		Project:        src.SourceRepo,
+		ClosedLike:     ui.IsClosedLike(src.Status),
 	}
-	return out
+	if dst.Project == "" || dst.Project == "." {
+		dst.Project = ui.ExtractRepoPrefix(src.ID)
+	}
+
+	openBlocker := false
+	for _, dep := range src.Dependencies {
+		if dep == nil || dep.DependsOnID == "" {
+			continue
+		}
+		switch {
+		case dep.Type == model.DepParentChild:
+			if dst.Parent == "" {
+				dst.Parent = dep.DependsOnID
+			}
+		case dep.Type.IsBlocking():
+			dst.BlockedBy = append(dst.BlockedBy, dep.DependsOnID)
+			if s, ok := status[dep.DependsOnID]; ok && !ui.IsClosedLike(s) {
+				openBlocker = true
+			}
+		case dep.Type == model.DepRelated:
+			dst.Related = append(dst.Related, dep.DependsOnID)
+		case dep.Type == model.DepDiscoveredFrom:
+			dst.DiscoveredFrom = append(dst.DiscoveredFrom, dep.DependsOnID)
+		}
+	}
+	for _, c := range src.Comments {
+		if c == nil {
+			continue
+		}
+		dst.Comments = append(dst.Comments, Comment{Author: c.Author, Text: c.Text, CreatedAt: formatTime(c.CreatedAt)})
+	}
+	dst.CommentCount = len(dst.Comments)
+
+	if !dst.ClosedLike {
+		dst.Blocked = src.Status == model.StatusBlocked || openBlocker
+		dst.Ready = !dst.Blocked
+	}
+	return dst
 }
 
 func formatTime(t time.Time) string {
