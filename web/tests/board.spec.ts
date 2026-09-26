@@ -29,3 +29,10 @@ test("swiping the column moves to the next one", async ({ page, project }) => {
   await expect(page.locator('[data-tab="in_progress"]')).toHaveClass(/on/);
   await expect(page.locator('[data-card="t-1"]')).toBeVisible();
 });
+
+test("the options button in the board toolbar opens board options", async ({ page, project }) => {
+  await open(page, project);
+  await page.locator('#bar [data-view="board"]').click();
+  await page.locator('#tabs [data-act="boardopts"]').click();
+  await expect(page.locator("#sheetHost")).toContainText("Group by");
+});

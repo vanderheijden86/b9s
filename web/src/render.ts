@@ -155,6 +155,13 @@ export function boardCols(): [string, string][] {
   return cols;
 }
 
+/**
+ * wide matches a laptop, desktop browser or tablet: room for every column
+ * side by side. A phone on its side is wide but too short for it.
+ */
+export const WIDE = "(min-width: 720px) and (min-height: 500px)";
+export const wide = () => window.matchMedia(WIDE).matches;
+
 function boardItems(key: string): Item[] {
   const lane = S.board.lanes === "rail" ? S.board.lane : null;
   const keep = S.focus ? new Set([S.focus.id, ...descendants(S.focus.id)]) : null;
@@ -181,8 +188,73 @@ function cardHTML(i: Item): string {
   return `<div class="card ${S.cursor === i.id ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span></div>${l2HTML(i, { proj: true })}</div>`;
 }
 
+/** laneKeys orders epic lanes the way both boards do: biggest first, loose cards last. */
+function laneKeys(items: Item[]): [string, Item[]][] {
+  const lanes = new Map<string, Item[]>();
+  items.forEach(i => { const l = laneOf(i) || "none"; const a = lanes.get(l); if (a) a.push(i); else lanes.set(l, [i]); });
+  return [...lanes].sort((a, b) => Number(a[0] === "none") - Number(b[0] === "none") || b[1].length - a[1].length);
+}
+
+function laneHTML(l: string, n: number): string {
+  const f = S.board.laneFold.has(l), e = get(l);
+  return `<button class="lane" data-lane="${esc(l)}" aria-expanded="${!f}"><span>${f ? "▸" : "▾"} ${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span><span class="n">${n}</span></button>`;
+}
+
+function railHTML(inCols: string[]): string {
+  const counts = new Map<string, number>();
+  pool().filter(i => inCols.includes(colOf(i)) && matches(i) && i.type !== "epic").forEach(i => { const l = laneOf(i) || "none"; counts.set(l, (counts.get(l) || 0) + 1); });
+  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+  return `<div class="brail"><button class="${!S.board.lane ? "on" : ""}" data-rlane="">all<b>${total}</b></button>`
+    + [...counts].sort((a, b) => b[1] - a[1]).map(([l, n]) => `<button class="${S.board.lane === l ? "on" : ""}" data-rlane="${esc(l)}">${l === "none" ? "no epic" : "♦" + esc(shortId(l))}<b>${n}</b></button>`).join("") + `</div>`;
+}
+
+function optsTab(): string {
+  return `<button class="tab" data-act="boardopts" style="color:var(--muted)">⚙ ${S.board.group}${S.board.lanes !== "off" ? " · lanes " + S.board.lanes : ""}</button>`;
+}
+
+/**
+ * renderWideBoard lays every column out side by side in one grid, so an
+ * epic lane is a row across all of them and the columns scroll together.
+ */
+function renderWideBoard(v: HTMLElement): void {
+  const cols = boardCols();
+  const per = new Map(cols.map(([k]) => [k, boardItems(k)]));
+  const lanes = S.board.lanes !== "off" && S.board.group !== "type";
+  const folded = (k: string) => S.board.folded.has(k);
+  const tmpl = cols.map(([k]) => (folded(k) ? "34px" : "minmax(240px, 1fr)")).join(" ");
+  const head = cols.map(([k, l]) => {
+    const n = per.get(k)!.length;
+    return folded(k)
+      ? `<button class="whead rail" data-tab="${esc(k)}" data-dcol="${esc(k)}" aria-label="Unfold ${esc(l)}" title="Unfold ${esc(l)}"><span>${esc(l)}</span><b>${n}</b></button>`
+      : `<button class="whead" data-tab="${esc(k)}" data-dcol="${esc(k)}" style="--hc:${S.board.group === "status" ? stOf(k).c : "var(--line)"}" aria-label="${esc(l)}, ${n} cards. Fold" title="Fold ${esc(l)} (z)"><span>${esc(l)}</span><b>${n}</b></button>`;
+  }).join("");
+  const cell = (k: string, arr: Item[]) => folded(k)
+    ? `<div class="wcell rail" data-dcol="${esc(k)}"></div>`
+    : `<div class="wcell" data-dcol="${esc(k)}" role="list">${arr.map(cardHTML).join("")}</div>`;
+  let rows = "";
+  if (S.board.lanes === "rows" && lanes) {
+    for (const [l, arr] of laneKeys(cols.filter(([k]) => !folded(k)).flatMap(([k]) => per.get(k)!))) {
+      rows += laneHTML(l, arr.length);
+      if (!S.board.laneFold.has(l)) rows += cols.map(([k]) => cell(k, per.get(k)!.filter(i => (laneOf(i) || "none") === l))).join("");
+    }
+  } else rows = cols.map(([k]) => cell(k, per.get(k)!)).join("");
+  const total = cols.reduce((n, [k]) => n + (folded(k) ? 0 : per.get(k)!.length), 0);
+  if (!total) rows += `<div class="empty wempty">No cards match <b>${esc(queryString() || "the filter")}</b>.</div>`;
+  const rail = S.board.lanes === "rail" && lanes ? railHTML(cols.map(([k]) => k)) : "";
+  const tools = optsTab()
+    + (S.board.folded.size ? `<button class="tab unf" data-act="unfoldall">Z unfold</button>` : "")
+    + `<span class="whint">drag cards between columns · h j k l move · z folds</span>`;
+  const old = document.getElementById("wboard");
+  const top = old ? old.scrollTop : 0, left = old ? old.scrollLeft : 0;
+  v.innerHTML = `<div class="tabs" id="tabs">${tools}</div><div class="bbody" id="bbody">${rail}<div class="wboard" id="wboard" style="grid-template-columns:${tmpl}">${head}${rows}</div></div>`;
+  const nb = document.getElementById("wboard")!;
+  nb.scrollTop = top; nb.scrollLeft = left;
+  S.board.keep = false;
+}
+
 export function renderBoard(): void {
   const v = $("#vBoard");
+  if (wide()) { renderWideBoard(v); return; }
   const cols = boardCols();
   const cur = activeCol();
   const folded = cols.filter(([k]) => S.board.folded.has(k));
@@ -192,7 +264,7 @@ export function renderBoard(): void {
     return `<button class="tab ${cur && cur[0] === k ? "on" : ""}" data-tab="${esc(k)}">${esc(l)} <b>${n}</b></button>`;
   }).join("");
   if (folded.length) tabs += `<button class="tab unf" data-act="unfoldall">Z unfold</button>`;
-  tabs += `<button class="tab" data-act="boardopts" style="color:var(--muted)">⚙ ${S.board.group}${S.board.lanes !== "off" ? " · lanes " + S.board.lanes : ""}</button>`;
+  tabs += optsTab();
   let body: string;
   if (!cur) body = `<div class="bcol"><div class="empty">Every column is folded.<br><br><button data-act="unfoldall">Unfold all</button></div></div>`;
   else {
@@ -200,24 +272,13 @@ export function renderBoard(): void {
     let inner = "";
     if (!items.length) inner = `<div class="empty">No cards in ${esc(cur[1])}.</div>`;
     else if (S.board.lanes === "rows" && S.board.group !== "type") {
-      const lanes = new Map<string, Item[]>();
-      items.forEach(i => { const l = laneOf(i) || "none"; const a = lanes.get(l); if (a) a.push(i); else lanes.set(l, [i]); });
-      const sorted = [...lanes].sort((a, b) => Number(a[0] === "none") - Number(b[0] === "none") || b[1].length - a[1].length);
-      for (const [l, arr] of sorted) {
-        const f = S.board.laneFold.has(l);
-        const e = get(l);
-        inner += `<button class="lane" data-lane="${esc(l)}" style="width:100%;text-align:left" aria-expanded="${!f}"><span>${f ? "▸" : "▾"} ${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span><span class="n">${arr.length}</span></button>`;
-        if (!f) inner += arr.map(cardHTML).join("");
+      for (const [l, arr] of laneKeys(items)) {
+        inner += laneHTML(l, arr.length);
+        if (!S.board.laneFold.has(l)) inner += arr.map(cardHTML).join("");
       }
     } else inner = items.map(cardHTML).join("");
     let rail = "";
-    if (S.board.lanes === "rail" && S.board.group !== "type") {
-      const counts = new Map<string, number>();
-      pool().filter(i => colOf(i) === cur[0] && matches(i) && i.type !== "epic").forEach(i => { const l = laneOf(i) || "none"; counts.set(l, (counts.get(l) || 0) + 1); });
-      const total = [...counts.values()].reduce((a, b) => a + b, 0);
-      rail = `<div class="brail"><button class="${!S.board.lane ? "on" : ""}" data-rlane="">all<b>${total}</b></button>`
-        + [...counts].sort((a, b) => b[1] - a[1]).map(([l, n]) => `<button class="${S.board.lane === l ? "on" : ""}" data-rlane="${esc(l)}">${l === "none" ? "no epic" : "♦" + esc(shortId(l))}<b>${n}</b></button>`).join("") + `</div>`;
-    }
+    if (S.board.lanes === "rail" && S.board.group !== "type") rail = railHTML([cur[0]]);
     body = `${rail}<div class="bcol" id="bcol" role="list">${inner}</div><div class="edgehint l">‹</div><div class="edgehint r">›</div>`;
   }
   const old = document.getElementById("bcol");
@@ -383,7 +444,8 @@ export const appH = () => $("#app").clientHeight;
 export const appW = () => $("#app").clientWidth;
 export const halfH = () => Math.round(appH() * 0.52);
 export const fullH = () => appH() - sat() - 36;
-export const detailHeightPx = () => (S.detail && S.detail.size === "full" ? fullH() : halfH());
+/** detailHeightPx is what the sheet covers of a list; the wide side panel covers none. */
+export const detailHeightPx = () => (wide() ? 0 : S.detail && S.detail.size === "full" ? fullH() : halfH());
 
 /** siblings are the rows next to an issue in the current tree, which the detail pages through. */
 export function siblings(id: string): string[] {
@@ -426,9 +488,10 @@ function textSec(label: string, text: string | undefined, loading: boolean): str
 
 export function renderDetail(): void {
   const host = $("#detailHost");
+  $("#app").classList.toggle("hasdetail", !!S.detail);
   if (!S.detail) { host.innerHTML = ""; return; }
   const id = S.detail.stack[S.detail.stack.length - 1], i = get(id);
-  if (!i) { S.detail = null; host.innerHTML = ""; return; }
+  if (!i) { S.detail = null; host.innerHTML = ""; $("#app").classList.remove("hasdetail"); return; }
   const f = fullIssue(id);
   const st = stOf(eff(i)), [tg, tc] = tyOf(i.type);
   const sib = siblings(id), pos = sib.indexOf(id);

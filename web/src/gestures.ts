@@ -6,7 +6,7 @@ import {
   act, applySuggestion, chipTap, closeDetail, closeSheet, foldSubtree, moveCard, nextStatus, openDetail,
   openSheet, reload, setStatus, sheetAction, swipeRightLabel, tabTap, toast, toggleMark, markRange, hideToast,
 } from "./actions";
-import { appW, boardCols, ensureVisible, fullH, halfH, render, renderBoard, renderSearch, siblings } from "./render";
+import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, siblings, wide } from "./render";
 import { S } from "./state";
 import { $, haptic } from "./util";
 
@@ -183,7 +183,7 @@ function bindDetail(): void {
   host.addEventListener("pointerdown", e => {
     const t = e.target as HTMLElement;
     const head = t.closest<HTMLElement>("#dhead");
-    if (head && !t.closest("button")) {
+    if (head && !t.closest("button") && !wide()) {
       const sec = head.closest<HTMLElement>(".detail")!;
       detailDrag = { y0: e.clientY, h0: sec.getBoundingClientRect().height, moved: false, sec };
       try { head.setPointerCapture(e.pointerId); } catch { /* best effort */ }
@@ -287,6 +287,8 @@ function bindSheet(): void {
 interface BoardGesture {
   tab?: string; col?: HTMLElement; card?: HTMLElement | null; id?: string; lane?: HTMLElement | null;
   x0: number; y0: number; pid: number; mode: null | "swipe" | "scroll" | "drag"; edge?: boolean; lp?: number;
+  /** wide is the side-by-side board, where a mouse drags at once and nothing swipes */
+  wide?: boolean; mouse?: boolean;
   ghost?: HTMLElement; ox?: number; oy?: number; target?: string | null; edgeDir?: number; edgeT?: number;
 }
 let B: BoardGesture | null = null;
@@ -299,11 +301,14 @@ function bindBoard(): void {
     const t = e.target as HTMLElement;
     const tab = t.closest<HTMLElement>("[data-tab]");
     if (tab) { B = { tab: tab.dataset.tab, pid: e.pointerId, x0: e.clientX, y0: e.clientY, mode: null }; return; }
-    const col = t.closest<HTMLElement>("#bcol");
+    const col = t.closest<HTMLElement>("#bcol, #wboard");
     if (!col) return;
     const card = t.closest<HTMLElement>("[data-card]");
-    const b: BoardGesture = { col, card, id: card?.dataset.card, x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, edge: inDeadZone(e.clientX), lane: t.closest<HTMLElement>("[data-lane]") };
-    if (card && !D.project.read_only) b.lp = window.setTimeout(() => { if (B === b && !b.mode) startDrag(b, app); }, LP_MS);
+    const b: BoardGesture = {
+      col, card, id: card?.dataset.card, x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, edge: inDeadZone(e.clientX),
+      lane: t.closest<HTMLElement>("[data-lane]"), wide: col.id === "wboard", mouse: e.pointerType === "mouse",
+    };
+    if (card && !D.project.read_only && !(b.wide && b.mouse)) b.lp = window.setTimeout(() => { if (B === b && !b.mode) startDrag(b, app); }, LP_MS);
     B = b;
   });
   v.addEventListener("pointermove", e => {
@@ -311,6 +316,12 @@ function bindBoard(): void {
     if (B.mode === "drag") { dragMove(B, e, app); return; }
     if (B.tab) return;
     const dx = e.clientX - B.x0, dy = e.clientY - B.y0;
+    if (B.wide) {
+      if (B.mode) return;
+      if (B.mouse && B.card && !D.project.read_only && Math.hypot(dx, dy) > 5) { startDrag(B, app); dragMove(B, e, app); return; }
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) { clearTimeout(B.lp); B.mode = "scroll"; }
+      return;
+    }
     if (!B.mode) {
       if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3 && !B.edge) {
         clearTimeout(B.lp); B.mode = "swipe";
@@ -327,7 +338,13 @@ function bindBoard(): void {
     B = null;
     if (b.mode === "drag") { finishDrag(b, e.type === "pointercancel"); return; }
     if (e.type === "pointercancel") { if (b.col) { b.col.classList.add("snap"); b.col.style.transform = ""; } return; }
-    if (b.tab) { if (Math.abs(e.clientX - b.x0) < 10) tabTap(b.tab); return; }
+    if (b.tab) {
+      if (Math.abs(e.clientX - b.x0) >= 10) return;
+      // A wide header folds its own column; a phone tab first selects it.
+      if (wide() && !S.board.folded.has(b.tab)) S.board.col = b.tab;
+      tabTap(b.tab);
+      return;
+    }
     if (b.mode === "swipe") { swipeColumn(b, e.clientX - b.x0); return; }
     if (b.mode) return;
     if (b.lane) {
@@ -385,7 +402,7 @@ function startDrag(b: BoardGesture, app: HTMLElement): void {
   card.classList.add("lifted");
   try { b.col!.setPointerCapture(b.pid); } catch { /* best effort */ }
   document.getElementById("bbody")?.classList.add("dragging");
-  toast("Drop on a column tab, or hold at an edge");
+  toast(b.wide ? "Drop on a column" : "Drop on a column tab, or hold at an edge");
 }
 
 function dragMove(b: BoardGesture, e: PointerEvent, app: HTMLElement): void {
@@ -393,6 +410,7 @@ function dragMove(b: BoardGesture, e: PointerEvent, app: HTMLElement): void {
   const x = e.clientX - ar.left, y = e.clientY - ar.top;
   b.ghost!.style.left = x - b.ox! + "px";
   b.ghost!.style.top = y - b.oy! + "px";
+  if (b.wide) { dragMoveWide(b, e); return; }
   document.querySelectorAll(".tab.drop").forEach(t => t.classList.remove("drop"));
   const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
   const tab = el && el.closest<HTMLElement>("[data-tab]");
@@ -408,14 +426,27 @@ function dragMove(b: BoardGesture, e: PointerEvent, app: HTMLElement): void {
   if (target != null) document.querySelector(`[data-tab="${CSS.escape(target)}"]`)?.classList.add("drop");
 }
 
+/** dragMoveWide targets whichever column is under the pointer, and scrolls the board near its edges. */
+function dragMoveWide(b: BoardGesture, e: PointerEvent): void {
+  document.querySelectorAll("#wboard .drop").forEach(x => x.classList.remove("drop"));
+  const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+  const c = el && el.closest<HTMLElement>("#wboard [data-dcol]");
+  b.target = c ? c.dataset.dcol! : null;
+  if (b.target != null) document.querySelectorAll(`#wboard [data-dcol="${CSS.escape(b.target)}"]`).forEach(x => x.classList.add("drop"));
+  const wb = b.col!, r = wb.getBoundingClientRect(), M = 40, STEP = 16;
+  if (e.clientX > r.right - M) wb.scrollLeft += STEP; else if (e.clientX < r.left + M) wb.scrollLeft -= STEP;
+  if (e.clientY > r.bottom - M) wb.scrollTop += STEP; else if (e.clientY < r.top + M) wb.scrollTop -= STEP;
+}
+
 function finishDrag(b: BoardGesture, cancel: boolean): void {
   DRAG = false;
   b.ghost?.remove();
   b.card?.classList.remove("lifted");
   document.getElementById("bbody")?.classList.remove("dragging");
-  document.querySelectorAll(".tab.drop").forEach(t => t.classList.remove("drop"));
+  document.querySelectorAll(".tab.drop, #wboard .drop").forEach(t => t.classList.remove("drop"));
   const target = b.target;
-  if (cancel || target == null || target === S.board.col || !b.id) { hideToast(); return; }
+  const i = b.id ? get(b.id) : undefined;
+  if (cancel || target == null || !i || target === colOf(i) || !b.id) { hideToast(); return; }
   void moveCard(b.id, target);
 }
 
@@ -431,7 +462,8 @@ function bindClicks(): void {
     if (sg) { sg.parentElement!.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === sg)); return; }
     const nav = t.closest<HTMLElement>("[data-nav]");
     if (nav) { openDetail(nav.dataset.nav!, true); return; }
-    if (t.closest(".row, .card, .bcol, #tabs")) return;
+    // Rows, cards and column tabs act on pointerup; toolbar buttons in #tabs are plain actions.
+    if (t.closest(".row, .card, .bcol, .wboard") || (t.closest("#tabs") && !t.closest("[data-act]"))) return;
     const a = t.closest<HTMLElement>("[data-act]");
     if (a) { void act(a.dataset.act!); return; }
     const v = t.closest<HTMLElement>("[data-view]");
@@ -466,6 +498,7 @@ function bindClicks(): void {
       return;
     }
     if (t.closest("input, textarea, select")) return;
+    if (S.view === "board" && !S.sheet && wide() && !e.metaKey && !e.ctrlKey && !e.altKey && boardKey(e.key)) { e.preventDefault(); return; }
     if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
       const row = t.closest<HTMLElement>("[data-id], [data-card]");
       const id = row && (row.dataset.id || row.dataset.card);
@@ -474,7 +507,51 @@ function bindClicks(): void {
   });
 }
 
+const MOVES: Record<string, [number, number]> = {
+  h: [-1, 0], ArrowLeft: [-1, 0], l: [1, 0], ArrowRight: [1, 0], j: [0, 1], ArrowDown: [0, 1], k: [0, -1], ArrowUp: [0, -1],
+};
+
+/**
+ * boardKey gives the wide board the TUI's keys. h and l land on the card
+ * nearest in height in the next column that has cards, so a move keeps to
+ * the same epic lane where it can. With the detail open, it follows the cursor.
+ */
+function boardKey(key: string): boolean {
+  if (key === "Z") { void act("unfoldall"); return true; }
+  const cur = S.cursor ? document.querySelector<HTMLElement>(`#wboard [data-card="${CSS.escape(S.cursor)}"]`) : null;
+  if (key === "z") {
+    const i = cur && get(S.cursor!);
+    if (!i) return false;
+    S.board.col = colOf(i);
+    tabTap(S.board.col);
+    return true;
+  }
+  if (key === "Enter") { if (!cur) return false; openDetail(S.cursor!); return true; }
+  const d = MOVES[key];
+  if (!d) return false;
+  const grid = openCols()
+    .map(([c]) => [...document.querySelectorAll<HTMLElement>(`#wboard .wcell[data-dcol="${CSS.escape(c)}"] [data-card]`)])
+    .filter(a => a.length);
+  if (!grid.length) return true;
+  let next: HTMLElement;
+  const ci = cur ? grid.findIndex(a => a.includes(cur)) : -1;
+  if (!cur || ci < 0) next = grid[0][0];
+  else if (d[0]) {
+    const to = grid[Math.max(0, Math.min(grid.length - 1, ci + d[0]))], y = cur.getBoundingClientRect().top;
+    next = to.reduce((a, c) => (Math.abs(c.getBoundingClientRect().top - y) < Math.abs(a.getBoundingClientRect().top - y) ? c : a));
+  } else {
+    const a = grid[ci];
+    next = a[Math.max(0, Math.min(a.length - 1, a.indexOf(cur) + d[1]))];
+  }
+  const id = next.dataset.card!;
+  S.cursor = id;
+  if (S.detail) { S.detail.stack = [id]; render(); } else renderBoard();
+  document.querySelector<HTMLElement>(`#wboard [data-card="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  return true;
+}
+
 export function bindAll(): void {
+  window.matchMedia(WIDE).addEventListener("change", () => render());
   bindRows($("#treeRows"));
   bindRows($("#sList"));
   bindRows($("#vGraph"));
