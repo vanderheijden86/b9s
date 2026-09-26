@@ -25,7 +25,7 @@ const mid = (b: { x: number; y: number; width: number; height: number }) => ({ x
 
 test("every column shows side by side", async ({ page, project }) => {
   await board(page, project);
-  const heads = page.locator('#wboard .whead');
+  const heads = page.locator('#wboard .whead[data-tab]');
   await expect(heads).toHaveCount(3);
   const boxes = await Promise.all(["open", "in_progress", "blocked"].map(k => page.locator(`#wboard .whead[data-tab="${k}"]`).boundingBox()));
   expect(boxes[0]!.y).toBe(boxes[1]!.y);
@@ -39,6 +39,7 @@ test("every column shows side by side", async ({ page, project }) => {
 
 test("epic lanes are swimlanes across the columns", async ({ page, project }) => {
   await board(page, project);
+  await page.keyboard.press("v");
   const lane = page.locator('#wboard [data-lane="t-epic"]');
   await expect(lane).toContainText("Mobile web");
   const lb = (await lane.boundingBox())!, wb = (await page.locator("#wboard").boundingBox())!;
@@ -144,4 +145,73 @@ test("Back closes the side detail and Backspace steps back too", async ({ page, 
   await page.keyboard.press("Backspace");
   await expect(page.locator("#vTree")).toBeVisible();
   expect(page.url()).toContain(project.url);
+});
+
+const epic = (page: Page, id: string) => page.locator(`#wboard .wepic[data-epic="${id}"]`);
+
+test("the epic rail is the default: epics form the first column, level with their lane", async ({ page, project }) => {
+  await board(page, project);
+  const head = page.locator("#wboard .whead.epich");
+  await expect(head).toContainText("EPIC");
+  const e = epic(page, "t-epic");
+  await expect(e).toContainText("Mobile web");
+  await expect(e).toContainText("0/3");
+  await expect(e).toContainText("3 issues");
+  const eb = (await e.boundingBox())!, ob = (await page.locator('#wboard .whead[data-tab="open"]').boundingBox())!;
+  expect(eb.x + eb.width).toBeLessThanOrEqual(ob.x);
+  // The epic's cards start on the epic's row; the loose chore sits in the No epic row below it.
+  const c2 = (await card(page, "t-2").boundingBox())!;
+  expect(Math.abs(c2.y - eb.y)).toBeLessThan(20);
+  const none = (await epic(page, "none").boundingBox())!;
+  expect(none.y).toBeGreaterThanOrEqual(eb.y + eb.height - 1);
+  expect(Math.abs((await card(page, "t-5").boundingBox())!.y - none.y)).toBeLessThan(20);
+  await expect(page.locator("#wboard .lane")).toHaveCount(0);
+  await expect(page.locator(".brail")).toHaveCount(0);
+});
+
+test("v switches between the epic rail and epic rows, and the choice stays", async ({ page, project }) => {
+  await board(page, project);
+  await expect(epic(page, "t-epic")).toBeVisible();
+  await page.keyboard.press("v");
+  await expect(page.locator('#wboard .lane[data-lane="t-epic"]')).toBeVisible();
+  await expect(page.locator("#wboard .wepic")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("#boot")).toBeHidden({ timeout: 10000 });
+  await page.locator('#bar [data-view="board"]').click();
+  await expect(page.locator('#wboard .lane[data-lane="t-epic"]')).toBeVisible();
+  await page.keyboard.press("v");
+  await expect(epic(page, "t-epic")).toBeVisible();
+});
+
+test("an epic cell opens the epic, and its arrow folds the lane", async ({ page, project }) => {
+  await board(page, project);
+  await epic(page, "t-epic").locator(".t").click();
+  await expect(page.locator(".detail")).toHaveAttribute("data-id", "t-epic");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".detail")).toHaveCount(0);
+  await epic(page, "t-epic").locator("[data-lane]").click();
+  await expect(card(page, "t-2")).toHaveCount(0);
+  await expect(epic(page, "t-epic")).toContainText("▸");
+  await expect(card(page, "t-5")).toBeVisible();
+});
+
+test("h from the first column selects the epic; Enter opens it and Tab folds its lane", async ({ page, project }) => {
+  await board(page, project);
+  await card(page, "t-2").click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("h");
+  await expect(epic(page, "t-epic")).toHaveClass(/sel/);
+  await page.keyboard.press("l");
+  await expect(card(page, "t-2")).toHaveClass(/sel/);
+  await page.keyboard.press("h");
+  await page.keyboard.press("j");
+  await expect(epic(page, "none")).toHaveClass(/sel/);
+  await page.keyboard.press("k");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".detail")).toHaveAttribute("data-id", "t-epic");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Tab");
+  await expect(card(page, "t-2")).toHaveCount(0);
+  await page.keyboard.press("Tab");
+  await expect(card(page, "t-2")).toBeVisible();
 });

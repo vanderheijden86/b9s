@@ -64,6 +64,13 @@ export function md(src: string): string {
 }
 
 /** store keeps per-browser conveniences. Storage may be absent or refuse. */
+/**
+ * WIDE matches a laptop, desktop browser or tablet: room for every column
+ * side by side. A phone on its side is wide but too short for it.
+ */
+export const WIDE = "(min-width: 720px) and (min-height: 500px)";
+export const wide = (): boolean => window.matchMedia(WIDE).matches;
+
 export const store = {
   get<T>(k: string, d: T): T {
     try { const v = localStorage.getItem("b9s." + k); return v == null ? d : (JSON.parse(v) as T); } catch { return d; }

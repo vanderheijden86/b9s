@@ -7,7 +7,7 @@ import type { Issue } from "./api.gen";
 import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, openBlockers, pool, progress, projectOf, shortId, type Item } from "./data";
 import { PC, S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
-import { $, age, esc, fmtDate, md, store } from "./util";
+import { $, WIDE, age, esc, fmtDate, md, store, wide } from "./util";
 
 export function l2HTML(i: Item, opts: { proj?: boolean } = {}): string {
   const bits: string[] = [];
@@ -157,15 +157,10 @@ export function boardCols(): [string, string][] {
   return cols;
 }
 
-/**
- * wide matches a laptop, desktop browser or tablet: room for every column
- * side by side. A phone on its side is wide but too short for it.
- */
-export const WIDE = "(min-width: 720px) and (min-height: 500px)";
-export const wide = () => window.matchMedia(WIDE).matches;
+export { WIDE, wide };
 
 function boardItems(key: string): Item[] {
-  const lane = S.board.lanes === "rail" ? S.board.lane : null;
+  const lane = S.board.lanes === "rail" && !wide() ? S.board.lane : null;
   const keep = S.focus ? new Set([S.focus.id, ...descendants(S.focus.id)]) : null;
   return pool().filter(i => {
     if (i.type === "epic" && S.board.group !== "type" && S.board.lanes !== "off") return false;
@@ -210,6 +205,21 @@ function railHTML(inCols: string[]): string {
     + [...counts].sort((a, b) => b[1] - a[1]).map(([l, n]) => `<button class="${S.board.lane === l ? "on" : ""}" data-rlane="${esc(l)}">${l === "none" ? "no epic" : "♦" + esc(shortId(l))}<b>${n}</b></button>`).join("") + `</div>`;
 }
 
+const EPIC_HUES = ["var(--red)", "var(--orange)", "var(--yellow)", "var(--green)", "var(--cyan)", "var(--accent)", "var(--blue)", "var(--feat)"];
+const epicHue = (l: string) => (l === "none" ? "var(--line)" : EPIC_HUES[[...l].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % EPIC_HUES.length]);
+
+/** epicCellHTML is one epic in the rail's first column, the TUI's epic card. */
+function epicCellHTML(l: string, n: number): string {
+  const f = S.board.laneFold.has(l), e = get(l), pr = e ? progress(l) : null;
+  const pct = pr ? Math.round((100 * pr.done) / pr.all) : 0;
+  const label = l === "none" ? "No epic" : `${shortId(l)} ${e ? e.t : l}`;
+  return `<div class="wepic lt ${S.cursor === l ? "sel" : ""}" data-epic="${esc(l)}" style="--ec:${epicHue(l)}" tabindex="0" aria-label="${esc(label)}, ${n} issues">`
+    + `<div class="eh"><button data-lane="${esc(l)}" aria-expanded="${!f}" aria-label="${f ? "Unfold" : "Fold"} lane">${f ? "▸" : "▾"}</button>${l === "none" ? "<span>·</span>" : `<span class="ei">♦ ${esc(shortId(l))}</span>`}</div>`
+    + `<div class="t">${esc(l === "none" ? "No epic" : e ? e.t : l)}</div>`
+    + (pr ? `<div class="ep"><i style="width:${pct}%"></i></div><div class="en">${pr.done}/${pr.all}</div>` : "")
+    + `<div class="ec">${n} issue${n === 1 ? "" : "s"}</div></div>`;
+}
+
 function optsTab(): string {
   return `<button class="tab" data-act="boardopts" style="color:var(--muted)">⚙ ${S.board.group}${S.board.lanes !== "off" ? " · lanes " + S.board.lanes : ""}</button>`;
 }
@@ -223,7 +233,7 @@ function renderWideBoard(v: HTMLElement): void {
   const per = new Map(cols.map(([k]) => [k, boardItems(k)]));
   const lanes = S.board.lanes !== "off" && S.board.group !== "type";
   const folded = (k: string) => S.board.folded.has(k);
-  const tmpl = cols.map(([k]) => (folded(k) ? "34px" : "minmax(240px, 1fr)")).join(" ");
+  const tmpl = (S.board.lanes === "rail" && lanes ? "200px " : "") + cols.map(([k]) => (folded(k) ? "34px" : "minmax(240px, 1fr)")).join(" ");
   const head = cols.map(([k, l]) => {
     const n = per.get(k)!.length;
     return folded(k)
@@ -233,8 +243,15 @@ function renderWideBoard(v: HTMLElement): void {
   const cell = (k: string, arr: Item[]) => folded(k)
     ? `<div class="wcell rail" data-dcol="${esc(k)}"></div>`
     : `<div class="wcell" data-dcol="${esc(k)}" role="list">${arr.map(cardHTML).join("")}</div>`;
+  const rail = S.board.lanes === "rail" && lanes;
   let rows = "";
-  if (S.board.lanes === "rows" && lanes) {
+  if (rail) {
+    const hidden = (k: string, arr: Item[]) => `<div class="wcell lt" data-dcol="${esc(k)}">${!folded(k) && arr.length ? `<span class="hid">${arr.length} hidden</span>` : ""}</div>`;
+    for (const [l, arr] of laneKeys(cols.filter(([k]) => !folded(k)).flatMap(([k]) => per.get(k)!))) {
+      const inLane = (k: string) => per.get(k)!.filter(i => (laneOf(i) || "none") === l);
+      rows += epicCellHTML(l, arr.length) + cols.map(([k]) => (S.board.laneFold.has(l) ? hidden(k, inLane(k)) : cell(k, inLane(k)).replace('class="wcell', 'class="wcell lt'))).join("");
+    }
+  } else if (S.board.lanes === "rows" && lanes) {
     for (const [l, arr] of laneKeys(cols.filter(([k]) => !folded(k)).flatMap(([k]) => per.get(k)!))) {
       rows += laneHTML(l, arr.length);
       if (!S.board.laneFold.has(l)) rows += cols.map(([k]) => cell(k, per.get(k)!.filter(i => (laneOf(i) || "none") === l))).join("");
@@ -242,13 +259,12 @@ function renderWideBoard(v: HTMLElement): void {
   } else rows = cols.map(([k]) => cell(k, per.get(k)!)).join("");
   const total = cols.reduce((n, [k]) => n + (folded(k) ? 0 : per.get(k)!.length), 0);
   if (!total) rows += `<div class="empty wempty">No cards match <b>${esc(queryString() || "the filter")}</b>.</div>`;
-  const rail = S.board.lanes === "rail" && lanes ? railHTML(cols.map(([k]) => k)) : "";
   const tools = optsTab()
     + (S.board.folded.size ? `<button class="tab unf" data-act="unfoldall">Z unfold</button>` : "")
-    + `<span class="whint">drag cards between columns · h j k l move · z folds</span>`;
+    + `<span class="whint">drag cards between columns · h j k l move · z folds · Tab folds a lane · v ${S.board.lanes === "rail" ? "epic rows" : "epic rail"}</span>`;
   const old = document.getElementById("wboard");
   const top = old ? old.scrollTop : 0, left = old ? old.scrollLeft : 0;
-  v.innerHTML = `<div class="tabs" id="tabs">${tools}</div><div class="bbody" id="bbody">${rail}<div class="wboard" id="wboard" style="grid-template-columns:${tmpl}">${head}${rows}</div></div>`;
+  v.innerHTML = `<div class="tabs" id="tabs">${tools}</div><div class="bbody" id="bbody"><div class="wboard" id="wboard" style="grid-template-columns:${tmpl}">${rail ? `<div class="whead epich"><span>EPIC</span><b>${new Set(cols.flatMap(([k]) => per.get(k)!).map(i => laneOf(i) || "none")).size}</b></div>` : ""}${head}${rows}</div></div>`;
   const nb = document.getElementById("wboard")!;
   nb.scrollTop = top; nb.scrollLeft = left;
   S.board.keep = false;

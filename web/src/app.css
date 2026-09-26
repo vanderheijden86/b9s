@@ -160,6 +160,20 @@
   .wboard .card:hover:not(.sel) { border-color: var(--muted); border-left-color: var(--c, var(--line)); }
   .wempty { grid-column: 1 / -1; }
   .whint { margin-left: auto; align-self: center; color: var(--muted); font-size: 0.846rem; white-space: nowrap; }
+  .whead.epich { color: var(--accent); border-bottom-color: var(--accent); cursor: default; }
+  .wboard .lt { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 10px; }
+  .wepic { align-self: start; margin: 16px 0 10px; padding: 8px 10px 10px; border: 1px solid var(--line); border-left: 3px solid var(--ec); border-radius: 6px; background: var(--bg); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 0.923rem; }
+  .wepic:hover:not(.sel) { border-color: var(--muted); border-left-color: var(--ec); }
+  .wepic.sel { background: rgba(139,233,253,.14); border-color: var(--cyan); border-left-color: var(--ec); }
+  .wepic .eh { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; color: var(--ec); }
+  .wepic .eh button { color: var(--muted); padding: 0 2px; }
+  .wepic .ei { font-weight: 700; }
+  .wepic .t { grid-column: 1 / -1; color: var(--text); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .wepic .ep { align-self: center; height: 2px; background: var(--line); border-radius: 1px; overflow: hidden; }
+  .wepic .ep i { display: block; height: 100%; background: var(--ec); }
+  .wepic .en { color: var(--dim); font-variant-numeric: tabular-nums; }
+  .wepic .ec { grid-column: 1 / -1; color: var(--muted); }
+  .wcell .hid { color: var(--muted); font-size: 0.846rem; }
   .edgehint { position: absolute; top: 0; bottom: 0; width: 36px; z-index: 5; display: none; align-items: center; justify-content: center; color: var(--yellow); background: rgba(241,250,140,.08); pointer-events: none; }
   .dragging .edgehint { display: flex; }
   .edgehint.l { left: 0; } .edgehint.r { right: 0; }

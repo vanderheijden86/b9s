@@ -1,7 +1,7 @@
 // Pointer gestures. Every handler is bound once, on a host element that
 // survives re-renders, and finds its target by delegation.
 
-import { D, eff, get } from "./data";
+import { D, eff, get, laneOf } from "./data";
 import {
   act, applySuggestion, chipTap, closeDetail, closeSheet, foldSubtree, moveCard, nextStatus, openDetail,
   openSheet, reload, setStatus, sheetAction, swipeRightLabel, tabTap, toast, toggleMark, markRange, hideToast,
@@ -9,7 +9,7 @@ import {
 import { canGoBack } from "./nav";
 import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, siblings, wide } from "./render";
 import { S } from "./state";
-import { $, haptic } from "./util";
+import { $, haptic, store } from "./util";
 
 export const SHORT = 0.2, LONG = 0.55, LP_MS = 450, EDGE = 24;
 
@@ -286,7 +286,7 @@ function bindSheet(): void {
 /* ================= board ================= */
 
 interface BoardGesture {
-  tab?: string; col?: HTMLElement; card?: HTMLElement | null; id?: string; lane?: HTMLElement | null;
+  tab?: string; col?: HTMLElement; card?: HTMLElement | null; id?: string; lane?: HTMLElement | null; epic?: HTMLElement | null;
   x0: number; y0: number; pid: number; mode: null | "swipe" | "scroll" | "drag"; edge?: boolean; lp?: number;
   /** wide is the side-by-side board, where a mouse drags at once and nothing swipes */
   wide?: boolean; mouse?: boolean;
@@ -307,7 +307,7 @@ function bindBoard(): void {
     const card = t.closest<HTMLElement>("[data-card]");
     const b: BoardGesture = {
       col, card, id: card?.dataset.card, x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, edge: inDeadZone(e.clientX),
-      lane: t.closest<HTMLElement>("[data-lane]"), wide: col.id === "wboard", mouse: e.pointerType === "mouse",
+      lane: t.closest<HTMLElement>("[data-lane]"), epic: t.closest<HTMLElement>("[data-epic]"), wide: col.id === "wboard", mouse: e.pointerType === "mouse",
     };
     if (card && !D.project.read_only && !(b.wide && b.mouse)) b.lp = window.setTimeout(() => { if (B === b && !b.mode) startDrag(b, app); }, LP_MS);
     B = b;
@@ -353,6 +353,12 @@ function bindBoard(): void {
       if (S.board.laneFold.has(l)) S.board.laneFold.delete(l); else S.board.laneFold.add(l);
       S.board.keep = true;
       renderBoard();
+      return;
+    }
+    if (b.epic) {
+      const l = b.epic.dataset.epic!;
+      if (l !== "none") openDetail(l);
+      else { S.cursor = l; renderBoard(); }
       return;
     }
     if (b.card && b.id) openDetail(b.id);
@@ -522,39 +528,65 @@ const MOVES: Record<string, [number, number]> = {
 /**
  * boardKey gives the wide board the TUI's keys. h and l land on the card
  * nearest in height in the next column that has cards, so a move keeps to
- * the same epic lane where it can. With the detail open, it follows the cursor.
+ * the same epic lane where it can. In the epic rail, h from the first column
+ * selects the lane's epic, and l from an epic goes to the lane's card in the
+ * first column that has one. With the detail open, it follows the cursor.
  */
 function boardKey(key: string): boolean {
   if (key === "Z") { void act("unfoldall"); return true; }
-  const cur = S.cursor ? document.querySelector<HTMLElement>(`#wboard [data-card="${CSS.escape(S.cursor)}"]`) : null;
+  if (key === "v") {
+    S.board.lanes = S.board.lanes === "rail" ? "rows" : "rail";
+    store.set("boardLanes", S.board.lanes);
+    toast(S.board.lanes === "rail" ? "Epic rail" : "Epic rows");
+    renderBoard();
+    return true;
+  }
+  const cur = S.cursor ? document.querySelector<HTMLElement>(`#wboard [data-card="${CSS.escape(S.cursor)}"], #wboard [data-epic="${CSS.escape(S.cursor)}"]`) : null;
+  const laneKey = (id: string) => (id === "none" ? "none" : laneOf(get(id)!) || "none");
+  if (key === "Tab") {
+    // The cursor's card may be inside the folded lane, so the lane comes from the id, not the DOM.
+    if (!S.cursor || S.board.lanes === "off" || (S.cursor !== "none" && !get(S.cursor))) return false;
+    const l = laneKey(S.cursor);
+    if (S.board.laneFold.has(l)) S.board.laneFold.delete(l); else S.board.laneFold.add(l);
+    S.board.keep = true;
+    renderBoard();
+    return true;
+  }
   if (key === "z") {
-    const i = cur && get(S.cursor!);
+    const i = cur?.dataset.card && get(S.cursor!);
     if (!i) return false;
     S.board.col = colOf(i);
     tabTap(S.board.col);
     return true;
   }
-  if (key === "Enter") { if (!cur) return false; openDetail(S.cursor!); return true; }
+  if (key === "Enter") { if (!cur || S.cursor === "none") return false; openDetail(S.cursor!); return true; }
   const d = MOVES[key];
   if (!d) return false;
   const grid = openCols()
     .map(([c]) => [...document.querySelectorAll<HTMLElement>(`#wboard .wcell[data-dcol="${CSS.escape(c)}"] [data-card]`)])
     .filter(a => a.length);
-  if (!grid.length) return true;
-  let next: HTMLElement;
-  const ci = cur ? grid.findIndex(a => a.includes(cur)) : -1;
-  if (!cur || ci < 0) next = grid[0][0];
-  else if (d[0]) {
-    const to = grid[Math.max(0, Math.min(grid.length - 1, ci + d[0]))], y = cur.getBoundingClientRect().top;
-    next = to.reduce((a, c) => (Math.abs(c.getBoundingClientRect().top - y) < Math.abs(a.getBoundingClientRect().top - y) ? c : a));
+  const epics = [...document.querySelectorAll<HTMLElement>("#wboard .wepic")];
+  const clamp = <T>(a: T[], n: number) => a[Math.max(0, Math.min(a.length - 1, n))];
+  let next: HTMLElement | undefined;
+  if (cur?.dataset.epic) {
+    const l = cur.dataset.epic;
+    if (d[1]) next = clamp(epics, epics.indexOf(cur) + d[1]);
+    else if (d[0] > 0) next = grid.map(a => a.find(c => laneKey(c.dataset.card!) === l)).find(Boolean);
+    next ??= cur;
   } else {
-    const a = grid[ci];
-    next = a[Math.max(0, Math.min(a.length - 1, a.indexOf(cur) + d[1]))];
+    if (!grid.length) return true;
+    const ci = cur ? grid.findIndex(a => a.includes(cur)) : -1;
+    if (!cur || ci < 0) next = grid[0][0];
+    else if (d[0] < 0 && ci === 0) next = epics.find(e => e.dataset.epic === laneKey(S.cursor!)) ?? cur;
+    else if (d[0]) {
+      const to = clamp(grid, ci + d[0]), y = cur.getBoundingClientRect().top;
+      next = to.reduce((a, c) => (Math.abs(c.getBoundingClientRect().top - y) < Math.abs(a.getBoundingClientRect().top - y) ? c : a));
+    } else next = clamp(grid[ci], grid[ci].indexOf(cur) + d[1]);
   }
-  const id = next.dataset.card!;
+  const id = (next.dataset.card || next.dataset.epic)!;
   S.cursor = id;
-  if (S.detail) { S.detail.stack = [id]; render(); } else renderBoard();
-  document.querySelector<HTMLElement>(`#wboard [data-card="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (S.detail && id !== "none") { S.detail.stack = [id]; render(); } else renderBoard();
+  document.querySelector<HTMLElement>(`#wboard [data-card="${CSS.escape(id)}"], #wboard [data-epic="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   return true;
 }
 

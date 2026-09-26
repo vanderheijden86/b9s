@@ -2,7 +2,7 @@
 // which rows show. The text query itself is evaluated on the server.
 
 import { D, ancestors, descendants, eff, get, isReady, kids, pool, projectOf, type Item } from "./data";
-import { store } from "./util";
+import { store, wide } from "./util";
 
 export type View = "tree" | "board" | "search" | "more" | "graph";
 export type SortKey = "priority" | "updated" | "created" | "id" | "status";
@@ -35,7 +35,8 @@ export const S = {
     group: store.get<"status" | "priority" | "type">("boardGroup", "status"),
     col: null as string | null,
     folded: new Set<string>(),
-    lanes: store.get<"off" | "rows" | "rail">("boardLanes", "rows"),
+    // The wide board opens on the TUI's epic rail; a phone's one column reads better with rows.
+    lanes: store.get<"off" | "rows" | "rail">("boardLanes", wide() ? "rail" : "rows"),
     lane: null as string | null,
     laneFold: new Set<string>(),
     keep: false,

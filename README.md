@@ -255,14 +255,17 @@ The address shows the view and the open issue, for example `#/board/bd-12`. A re
 
 ### Laptop, desktop and iPad
 
-A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. The detail opens as a panel on the right, so the board stays in view beside it. A phone keeps the one-column board.
+A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. As in the TUI, the board opens on the epic rail: the first column holds one cell per epic, with its completion and issue count, level with its lane. `v` switches to epic rows, a header row above each lane, and the choice stays. The detail opens as a panel on the right, so the board stays in view beside it. A phone keeps the one-column board.
 
 | Input | Effect |
 |-------|--------|
 | Drag a card with the mouse | Move it to the column under the pointer. The board scrolls when the pointer is near an edge |
 | Click a column header | Fold it into a rail; click the rail to unfold it |
-| Click a lane header | Fold or unfold that epic's lane |
-| `h` `l`, `Left` `Right` | Move the cursor to the nearest card in the previous or next column |
+| Click an epic cell | Open the epic. Its ▾ arrow folds the lane |
+| Click a lane header (epic rows) | Fold or unfold that epic's lane |
+| `h` `l`, `Left` `Right` | Move the cursor to the nearest card in the previous or next column. `h` from the first column selects the lane's epic |
+| `Tab` | Fold or unfold the lane of the selected card or epic |
+| `v` | Switch between the epic rail and epic rows |
 | `j` `k`, `Down` `Up` | Move the cursor through the column |
 | `Enter` | Open the detail panel. With it open, the cursor keys change the issue it shows |
 | `z`, `Z` | Fold the cursor's column into a rail, unfold every column |
