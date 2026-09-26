@@ -120,10 +120,10 @@ code=$(status '' '/pair?t=anything')
 snapshot=$(as_owner /api/snapshot)
 case "$snapshot" in *'seeded in alpha_proj'*) ok "the owner sees their first project's issues, email matched without case" ;; *) bad "snapshot: ${snapshot:0:200}" ;; esac
 
-cfg=$(docker exec "$RUN_ID-web" cat /data/home/.config/b9s/config.yaml)
-case "$cfg" in *alpha_proj*shared_proj*|*shared_proj*alpha_proj*) ok "projects are alpha_proj and shared_proj" ;; *) bad "config: $cfg" ;; esac
-case "$cfg" in *beta_proj*) bad "a project without a grant is listed" ;; *) ok "a project without a grant is not listed" ;; esac
-case "$cfg" in *not_beads*) bad "a database without issues became a project" ;; *) ok "a database without an issues table is not a project" ;; esac
+projects=$(as_owner /api/projects)
+case "$projects" in *'"name":"alpha_proj"'*'"name":"shared_proj"'*) ok "the project sheet lists alpha_proj and shared_proj" ;; *) bad "projects: ${projects:0:300}" ;; esac
+case "$projects" in *beta_proj*) bad "a project without a grant is listed" ;; *) ok "a project without a grant is not listed" ;; esac
+case "$projects" in *not_beads*) bad "a database without issues became a project" ;; *) ok "a database without an issues table is not a project" ;; esac
 
 env_of_b9s=$(docker exec "$RUN_ID-web" sh -c "tr '\0' '\n' < /proc/1/environ")
 case "$env_of_b9s" in *BEADS_DOLT_PASSWORD=alice-pw*) ok "b9s holds the owner's password" ;; *) bad "b9s lacks the password" ;; esac
