@@ -1,0 +1,11 @@
+.git
+.worktrees
+.beads
+.bv
+.idea
+benchmarks
+dist
+docs
+screenshots
+testdata
+tests
