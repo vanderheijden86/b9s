@@ -507,6 +507,32 @@ A window at least 720 px wide and 500 px high shows the whole board at once. Eve
 
 On a touch screen, a long press on a card still starts the drag.
 
+### Keyboard
+
+With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive meaning. `?` shows the list in the app. Keys do nothing while a text field has focus, and with a sheet open only `Esc` works: it closes the sheet.
+
+| Keys | Effect |
+|------|--------|
+| `j` `k`, `Down` `Up`, `Ctrl-F` `Ctrl-B`, `Ctrl-D` `Ctrl-U`, `Home` `End` | Move the tree cursor, by a row, a page or half a page, or to the top or bottom |
+| `h` `l`, `Tab`, `Shift-Tab`, `X` `Z` `Ctrl-A` | Collapse or expand, fold the issue, fold the whole tree, expand all, collapse all, switch |
+| `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
+| `o` `C` `r` `a` | Show open, closed, ready or all issues |
+| `/`, `n` `N`, `O` | Search, next or previous match, only the matches without their ancestors |
+| `f`, `x` | Show only the cursor's branch or subtree; again undoes it |
+| `s`, `\|`, `v`, `F` | Sort, columns, wrap titles, follow live changes |
+| `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |
+| `Enter` `d`, `e`, `S`, `K`, `Delete`, `c` | Open the detail, edit, status, close, delete, copy the ID and title |
+| `Ctrl-N` | Create an issue |
+| `b`, `g`, `Esc` | Board, dependency graph of the cursor, back |
+| `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
+| `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
+| Detail: `n` `p`, `c`, `d` | Next or previous sibling, copy as Markdown, close |
+| Board: `o` `i` `C`, `r`, `c` | Toggle open, in progress, closed; ready; the closed column |
+| Board: `s`, `v`, `e` | Group by status, priority or type; epic rows or rail; hide empty columns |
+| Board: `y`, `f`, `{` `}`, `Tab`, `Shift-Tab` | Copy the ID, show the branch, previous or next epic, fold the lane, fold every lane |
+
+The browser keeps a few keys, so the web UI does not use them. `Ctrl-C` copies instead of quitting, and `Ctrl-W` closes the tab. `\` `<` `>` lay out TUI panes, which the web UI does not have. Chrome on Windows and Linux takes `Ctrl-N` for a new window: use the `+` button there.
+
 ### Writes
 
 Every write is the same `bd` command the TUI runs, in the project's checkout, as the server's `bd` actor. The row changes at once and a toast shows the command. When `bd` fails, the toast shows its error and the row goes back. A close, a status change and a card move have Undo for 5 seconds. More → Write log lists every command this browser sent.

@@ -23,6 +23,8 @@ export const S = {
   textSize: store.get("textSize", 100),
   folded: new Set<string>(),
   focus: null as null | { id: string; mode: "branch" | "subtree" },
+  /** O: the tree shows only matching issues, without the parents that give them context */
+  onlyMatches: false,
   cursor: null as string | null,
   marks: new Set<string>(),
   marking: false,
@@ -40,6 +42,7 @@ export const S = {
     lane: null as string | null,
     laneFold: new Set<string>(),
     keep: false,
+    hideEmpty: false,
   },
   graph: [] as string[],
   flash: new Set<string>(),
@@ -114,7 +117,7 @@ export function treeRows(): { rows: TreeRow[]; matchCount: number } {
   const P = pool();
   const match = new Set(P.filter(matches).map(i => i.id));
   let show = new Set(match);
-  for (const id of match) for (const a of ancestors(id)) show.add(a);
+  if (!S.onlyMatches) for (const id of match) for (const a of ancestors(id)) show.add(a);
   if (S.focus && get(S.focus.id)) {
     const keep = new Set([S.focus.id, ...descendants(S.focus.id)]);
     if (S.focus.mode === "branch") ancestors(S.focus.id).forEach(a => keep.add(a));

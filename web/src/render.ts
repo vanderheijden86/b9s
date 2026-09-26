@@ -229,7 +229,7 @@ function optsTab(): string {
  * epic lane is a row across all of them and the columns scroll together.
  */
 function renderWideBoard(v: HTMLElement): void {
-  const cols = boardCols();
+  const cols = boardCols().filter(([k]) => !S.board.hideEmpty || boardItems(k).length > 0);
   const per = new Map(cols.map(([k]) => [k, boardItems(k)]));
   const lanes = S.board.lanes !== "off" && S.board.group !== "type";
   const folded = (k: string) => S.board.folded.has(k);

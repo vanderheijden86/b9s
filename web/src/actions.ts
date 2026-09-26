@@ -323,6 +323,23 @@ export const GESTURES: [string, string, string][] = [
   ["Swipe down on header", "hide or show chips", "Ctrl-E"], ["Tap F", "follow live changes", "F"],
 ];
 
+export const KEYS: [string, string][] = [
+  ["j k, ↑ ↓", "move the cursor"], ["h l", "collapse or expand, or go to the parent or child"],
+  ["Tab, Shift-Tab", "fold the issue, or the whole tree"], ["X, Z, Ctrl-A", "expand all, collapse all, switch"],
+  ["v", "wrap titles"], ["p { }", "parent, first sibling, last sibling"], ["Ctrl-F Ctrl-B, Ctrl-D Ctrl-U", "page, half page"],
+  ["Home, End", "top, bottom"], ["Enter, d", "open the detail; d closes it again"], ["/, n N, O", "search, next or previous match, only matches"],
+  ["o C r a", "open, closed, ready or all issues"], ["f, x", "only the branch or the subtree; again undoes it"], ["F", "follow live changes"],
+  ["s, |", "sort, columns"], ["Space, V, u, Ctrl-\\", "mark, mark a range, unmark, clear the marks"],
+  ["e, S, K, Delete", "edit, status, close, delete"], ["Ctrl-N, c", "create, copy ID and title"],
+  ["b, g, Esc", "board, dependency graph, back"], ["1-9, 0", "open a recent project, all projects"],
+  ["L, A, P", "put labels, assignees or projects on 1-9"], ["Ctrl-E H, D", "hide the header, source health"],
+  ["Ctrl-R, F5", "reload"], ["Detail: n p, c", "next or previous sibling, copy as Markdown"],
+  ["Board: h j k l, z Z", "move, fold the column, unfold all"], ["Board: o i C, r, c", "toggle open, in progress, closed; ready; closed column"],
+  ["Board: s, v, e", "group by, epic rows or rail, hide empty columns"], ["Board: y, f, { }, Tab", "copy ID, branch, previous or next epic, fold the lane"],
+];
+
+const keyTable = () => `<table class="gtable">${KEYS.map(([k, a]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(a)}</td></tr>`).join("")}</table>`;
+
 const gestureTable = () => `<table class="gtable">${GESTURES.map(([g, a, k]) => `<tr><td>${g}</td><td>${a}${k ? ` · <kbd>${k}</kbd>` : ""}</td></tr>`).join("")}</table>`;
 
 let projectList: ProjectEntry[] | null = null;
@@ -430,6 +447,7 @@ function sheetBody(sh: Sheet): [string, string, string] {
       `<table class="gtable"><tr><td>This browser</td><td>paired: it holds a session cookie</td></tr><tr><td>Pair another</td><td>open the link <b>b9s web</b> printed at start on the other device</td></tr><tr><td>Revoke</td><td>restart with <b>b9s web --new-token</b> to unpair every device</td></tr></table>`];
     case "log": return ["Write log", "Commands this browser asked the server to run through bd",
       S.log.length ? S.log.map(l => `<div class="cmd ${l.ok ? "" : "err"}">${esc(fmtDate(l.at).slice(11))} ${l.ok ? "" : "failed "}\n$ ${esc(l.cmd)}</div>`).join("") : `<div class="empty">Nothing written yet. Swipe a row.</div>`];
+    case "keys": return ["Keys", "The TUI's keys. ? shows this, Esc closes it.", keyTable()];
     case "help": return ["Gestures", "No gesture starts in the outer 24 px: both OSes use the edges for back and home.", gestureTable()];
   }
   return ["", "", ""];
@@ -543,7 +561,7 @@ export async function sheetAction(a: string, val: string | undefined): Promise<v
     case "comment": openSheet("comment", { id: sh.id }); break;
     case "status": openSheet("status", { id: sh.id }); break;
     case "copy": { const id = sh.id!; closeSheet(); toast(await copyText(id) ? "Copied " + id : "Clipboard refused. ID: " + id); break; }
-    case "copymd": { const id = sh.id!; closeSheet(); toast(await copyText(await markdownOf(id)) ? "Copied " + shortId(id) + " as Markdown" : "Clipboard refused"); break; }
+    case "copymd": closeSheet(); await copyIssueMarkdown(sh.id!); break;
     case "branch": case "subtree": closeSheet(); setFocus(sh.id!, a); break;
     case "graph": closeSheet(); S.graph = [sh.id!]; S.detail = null; S.view = "graph"; render(); break;
     case "mark": closeSheet(); toggleMark(sh.id!); break;
@@ -595,6 +613,10 @@ async function openEdit(id: string): Promise<void> {
   } catch (e) {
     toast("Could not load " + shortId(id) + ": " + (e instanceof Error ? e.message : String(e)));
   }
+}
+
+export async function copyIssueMarkdown(id: string): Promise<void> {
+  toast(await copyText(await markdownOf(id)) ? "Copied " + shortId(id) + " as Markdown" : "Clipboard refused");
 }
 
 async function markdownOf(id: string): Promise<string> {
@@ -669,7 +691,9 @@ export async function act(a: string): Promise<void> {
     case "reload": await reload(); break;
     case "retrylive": retryLive(); break;
     case "applysearch": {
-      const v = $<HTMLInputElement>("#sIn").value;
+      const inp = $<HTMLInputElement>("#sIn"), v = inp.value;
+      // A focused input inside a hidden view would still take every key.
+      inp.blur();
       setText(v); remember(v.trim());
       S.view = "tree";
       render();
