@@ -8,6 +8,7 @@ b9s has three test layers. Unit tests cover packages, integration tests cover th
 - [Layers](#layers)
 - [Dolt rules](#dolt-rules)
 - [End-to-end tests](#end-to-end-tests)
+- [Browser tests](#browser-tests)
 - [Writing tests](#writing-tests)
 - [Continuous integration](#continuous-integration)
 
@@ -31,6 +32,7 @@ go test ./... -short -skip DoltIntegration   # skips the slow cases
 | Unit | `*_test.go` beside the code in `pkg/` and `internal/` | Nothing |
 | Dolt integration | `internal/datasource/*_test.go`, names contain `DoltIntegration` | A Dolt server, see below |
 | End-to-end | `tests/e2e/` | The `script` command and a terminal |
+| Browser | `web/tests/*.spec.ts` | Node, `npx playwright install chromium webkit` |
 | Shell | `tests/preview_contract_test.sh`, `tests/mobile_*_e2e.sh` | A deployed preview, see [preview-contract.md](preview-contract.md) |
 
 Unit tests in `pkg/ui` build a `Model` with fixture issues and send it key messages. Accessors such as `TreeSelectedID()` and `TreeNodeCount()` in `pkg/ui/model.go` expose the state a test needs without rendering.
@@ -78,6 +80,16 @@ The tests in `tests/e2e` build the binary once, then run it under the Unix `scri
 The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.jsonl` are the common ones. A test that needs a Dolt server uses the same rules as the integration tests.
 
 The mobile and preview shell scripts in `tests/` are not Go tests. They check a deployed preview through the URL a reviewer uses and take the base URL, task ID and commit SHA as arguments, so a run against the wrong build fails instead of passing on a sibling.
+
+## Browser tests
+
+`make web-e2e` (or `npm --prefix web run test:e2e`) runs the web UI in Playwright, as a Pixel 7 in Chromium and an iPhone 14 in WebKit. Global setup builds the bundle and `.b9s-e2e/b9s` from the working tree. Set `B9S_WEB_BIN` to test another binary.
+
+- Each test gets its own temp folder with `.beads/issues.jsonl`, an isolated `XDG_CONFIG_HOME`, and its own `b9s web --no-token` on a free loopback port (`web/tests/harness.ts`). No test reaches a Beads database.
+- `web/tests/fake-bd.mjs` stands in for `bd` on the `PATH`. It applies `update`, `close`, `delete`, `defer`, `comments add` and `create` to the JSONL, and logs each call to `.beads/bd-calls.log`, so a test checks both the command and its effect. `FAKE_BD_FAIL=<command>` makes that command fail.
+- Gestures use real pointer events through `page.mouse`, so swipes, long-presses and drags run the same handlers as a finger.
+- `perf.spec.ts` loads 1000 issues and checks load, a full re-render and a swipe deep in the list. Emulated phones on a laptop are faster than real ones, so this catches a render path that went quadratic, not a slow handset.
+- A failed test attaches the `bd` call log and the server output.
 
 ## Writing tests
 
