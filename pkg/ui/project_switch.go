@@ -89,12 +89,16 @@ func (m Model) beginProjectSwitch(project config.Project) (Model, tea.Cmd) {
 // otherwise from its database as the startup project's Dolt user, the only
 // credential b9s holds for it.
 func (m Model) openTargetFor(project config.Project) datasource.OpenTarget {
+	return openTargetFor(project, m.startupDoltUser)
+}
+
+func openTargetFor(project config.Project, startupDoltUser string) datasource.OpenTarget {
 	path := project.ResolvedPath()
 	if _, ok := NewCheckout(path); ok {
 		return datasource.OpenTarget{Name: project.Name, Dir: path}
 	}
 	if project.Database != "" {
-		source := databaseSource(project, m.startupDoltUser)
+		source := databaseSource(project, startupDoltUser)
 		return datasource.OpenTarget{Name: project.Name, Dolt: &source}
 	}
 	return datasource.OpenTarget{Name: project.Name, Dir: path}

@@ -292,6 +292,16 @@ func pickerRefreshTickCmd() tea.Cmd {
 func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd {
 	projects = append([]config.Project(nil), projects...)
 	return func() tea.Msg {
+		counts, reach := probeProjects(projects, startupUser)
+		return projectCountsLoadedMsg{counts: counts, reach: reach}
+	}
+}
+
+// probeProjects loads every project's issues in parallel and reports their
+// counts and how reachable each one is. A project with neither a checkout nor
+// a database has no entry in either map.
+func probeProjects(projects []config.Project, startupUser string) (map[string]projectCounts, map[string]datasource.Reachability) {
+	{
 		type result struct {
 			key    string
 			counts projectCounts
@@ -334,7 +344,7 @@ func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd
 			}
 			counts[loaded.key] = loaded.counts
 		}
-		return projectCountsLoadedMsg{counts: counts, reach: reach}
+		return counts, reach
 	}
 }
 

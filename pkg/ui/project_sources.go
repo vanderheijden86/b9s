@@ -96,9 +96,13 @@ func projectKey(project config.Project) string {
 // checkouts' metadata, and those of projects opened without a checkout, read
 // as the startup user.
 func (m Model) allProjectsDBs() []datasource.DoltDBInfo {
-	checkoutPaths := make(map[string]string, len(m.allProjects))
+	return allProjectsDBsFor(m.allProjects, m.startupDoltUser)
+}
+
+func allProjectsDBsFor(projects []config.Project, startupDoltUser string) []datasource.DoltDBInfo {
+	checkoutPaths := make(map[string]string, len(projects))
 	var withoutCheckout []datasource.DoltDBInfo
-	for _, p := range m.allProjects {
+	for _, p := range projects {
 		if _, ok := projectBeadsDir(p.ResolvedPath()); ok {
 			checkoutPaths[p.Name] = p.ResolvedPath()
 			continue
@@ -107,7 +111,7 @@ func (m Model) allProjectsDBs() []datasource.DoltDBInfo {
 			withoutCheckout = append(withoutCheckout, datasource.DoltDBInfo{
 				Name:     p.Name,
 				Host:     p.Host,
-				User:     m.startupDoltUser,
+				User:     startupDoltUser,
 				Database: p.Database,
 			})
 		}
