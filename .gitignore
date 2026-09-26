@@ -8,6 +8,8 @@ cmd/bw/bw
 
 # Build artifacts
 dist/
+# The web UI bundle is committed so go build needs no Node (ADR 0019).
+!/pkg/web/dist/
 a.out
 coverage.out
 cover*.out

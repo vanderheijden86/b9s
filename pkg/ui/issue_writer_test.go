@@ -226,3 +226,22 @@ func joinArgs(args []string) string {
 	}
 	return result
 }
+
+func TestIssueWriter_AddComment_PassesTextAfterSeparator(t *testing.T) {
+	// echo as bd prints the arguments it received.
+	w := &IssueWriter{bdPath: "/bin/echo", available: true}
+	w.SetCheckout(testCheckout(t))
+
+	msg := w.AddComment("bd-1", "--status=closed looks like a flag")()
+	result := msg.(BdResultMsg)
+	if !result.Success {
+		t.Fatalf("comment failed: %v", result.Error)
+	}
+	want := "comments add bd-1 -- --status=closed looks like a flag"
+	if result.Output != want {
+		t.Errorf("bd args = %q, want %q", result.Output, want)
+	}
+	if result.Operation != BdOpComment {
+		t.Errorf("operation = %v, want BdOpComment", result.Operation)
+	}
+}

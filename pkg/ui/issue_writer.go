@@ -22,6 +22,7 @@ const (
 	BdOpSetStatus
 	BdOpSetPriority
 	BdOpDefer // bd-j7mx
+	BdOpComment
 )
 
 // BdResultMsg is returned after a bd CLI operation completes
@@ -143,6 +144,15 @@ func (w *IssueWriter) runBatch(op BdOperation, ids []string, args []string) tea.
 		}
 		return msg
 	}
+}
+
+// AddComment runs bd comments add <id> -- <text>. The separator keeps text
+// that starts with a dash from being read as a flag.
+func (w *IssueWriter) AddComment(id, text string) tea.Cmd {
+	if !w.available {
+		return w.unavailableCmd(BdOpComment, id)
+	}
+	return w.runBdCmd(BdOpComment, id, []string{"comments", "add", id, "--", text})
 }
 
 // DeferIssue runs bd defer <id> with optional --until flag (bd-j7mx).
