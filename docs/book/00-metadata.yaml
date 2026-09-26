@@ -1,0 +1,14 @@
+---
+title: How b9s Works
+subtitle: The architecture and design of a terminal UI for Beads
+author: The b9s project
+lang: en-GB
+date: 2026-09-26
+rights: MIT
+description: >
+  A short book on the design of b9s, the k9s-inspired terminal and web UI for
+  Beads issues. It covers the data sources, the Bubble Tea model, the query
+  state, the write path through the bd CLI, projects and identities, the
+  kanban board, the browser app, the tests, and the decision records that
+  hold it all together.
+---

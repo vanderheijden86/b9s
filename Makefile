@@ -2,7 +2,7 @@
 #
 # Build with SQLite FTS5 (full-text search) support enabled
 
-.PHONY: build install clean test web web-types web-e2e
+.PHONY: build install clean test web web-types web-e2e book
 
 # Enable FTS5 for full-text search in SQLite exports
 export CGO_CFLAGS := -DSQLITE_ENABLE_FTS5
@@ -34,3 +34,8 @@ web-types:
 # Browser tests: a real b9s web per test, a fake bd, Chromium and WebKit.
 web-e2e:
 	npm --prefix web run test:e2e
+
+# The book on the architecture (docs/book). Needs pandoc; the EPUB is committed.
+book:
+	cd docs/book && pandoc 00-metadata.yaml [0-9][0-9]-*.md --from markdown --to epub3 \
+	  --toc --toc-depth=1 --number-sections --css=style.css -o how-b9s-works.epub

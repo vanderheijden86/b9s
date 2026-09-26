@@ -326,6 +326,7 @@ make web-e2e    # browser tests in Chromium and WebKit
 - [Testing](docs/testing.md): unit, integration and end-to-end tests.
 - [Migrating embedded Dolt to a server](docs/embedded-to-server-migration.md): what to do when `D` reports embedded Dolt.
 - [Decision records](docs/adr/): why b9s works the way it does.
+- [How b9s Works](docs/book/how-b9s-works.epub): a short book on the architecture and design, built from [docs/book](docs/book/) with `make book`.
 
 ## Acknowledgments
 
