@@ -43,6 +43,8 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	listen := fs.String("listen", defaultWebListen, "Address to serve on. Anything but loopback needs the pairing token")
 	noToken := fs.Bool("no-token", false, "Serve without pairing (loopback addresses only)")
 	newToken := fs.Bool("new-token", false, "Replace the pairing secret, which unpairs every browser")
+	trustHeader := fs.String("trust-header", "", "Behind a login proxy: pair requests whose `header` names --owner, instead of a pairing link")
+	owner := fs.String("owner", "", "The `email` --trust-header must carry")
 	filter := fs.String("filter", "", "Start the browser with this issue query applied")
 	debugFlag := fs.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
 	fs.Usage = func() {
@@ -65,6 +67,15 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	if (*trustHeader == "") != (*owner == "") {
+		fmt.Fprintln(stderr, "b9s web: --trust-header and --owner go together")
+		return 2
+	}
+	if *trustHeader != "" && *noToken {
+		fmt.Fprintln(stderr, "b9s web: --trust-header cannot be combined with --no-token")
+		return 2
+	}
+
 	var auth *web.Auth
 	if !*noToken {
 		secret, err := web.LoadOrCreateSecret(webSecretPath(), *newToken)
@@ -72,7 +83,12 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "b9s web: pairing secret: %v\n", err)
 			return 1
 		}
-		if auth, err = web.NewAuth(secret); err != nil {
+		if *trustHeader != "" {
+			auth, err = web.NewHeaderAuth(secret, *trustHeader, *owner)
+		} else {
+			auth, err = web.NewAuth(secret)
+		}
+		if err != nil {
 			fmt.Fprintf(stderr, "b9s web: %v\n", err)
 			return 1
 		}
@@ -192,6 +208,11 @@ func pairURL(base string, auth *web.Auth) string {
 }
 
 func printWebBanner(w io.Writer, project, addr string, auth *web.Auth) {
+	if auth.TrustsHeader() {
+		fmt.Fprintf(w, "b9s web is serving %s on %s behind a login proxy\n", project, addr)
+		fmt.Fprintln(w, "Only requests the proxy signed in as the owner are served.")
+		return
+	}
 	host, port, _ := net.SplitHostPort(addr)
 	local := "http://" + net.JoinHostPort(host, port)
 	if host == "::" || host == "0.0.0.0" || host == "" {

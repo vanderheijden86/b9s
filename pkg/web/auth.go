@@ -24,8 +24,16 @@ const (
 // Auth derives the pairing token, the session cookie and the CSRF value from
 // one secret. Keeping the secret in a file means a paired phone stays paired
 // across restarts, and replacing the file unpairs every device at once.
+//
+// With a trusted header, a login proxy in front has already signed the person
+// in, and a request is paired when that header names the owner. The pairing
+// cookie is then never issued or accepted, so the proxy's sign-in is the only
+// way in. The header is only as trustworthy as the network path: nothing but
+// the proxy may reach the server.
 type Auth struct {
 	secret []byte
+	header string
+	owner  string
 }
 
 // NewAuth returns an Auth for secret. A nil Auth accepts every request; only
@@ -36,6 +44,29 @@ func NewAuth(secret []byte) (*Auth, error) {
 	}
 	return &Auth{secret: append([]byte(nil), secret...)}, nil
 }
+
+// NewHeaderAuth returns an Auth that pairs a request when header carries
+// owner's email. The secret still derives the CSRF value.
+func NewHeaderAuth(secret []byte, header, owner string) (*Auth, error) {
+	a, err := NewAuth(secret)
+	if err != nil {
+		return nil, err
+	}
+	if header == "" || strings.ContainsFunc(header, func(r rune) bool {
+		return !(r == '-' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z')
+	}) {
+		return nil, fmt.Errorf("trusted header %q is not a header name", header)
+	}
+	owner = strings.ToLower(strings.TrimSpace(owner))
+	if !strings.Contains(owner, "@") {
+		return nil, fmt.Errorf("owner %q is not an email address", owner)
+	}
+	a.header, a.owner = header, owner
+	return a, nil
+}
+
+// TrustsHeader reports whether a login proxy's header pairs requests.
+func (a *Auth) TrustsHeader() bool { return a != nil && a.header != "" }
 
 // LoadOrCreateSecret reads the secret at path, or writes a new random one
 // readable only by the owner. renew replaces an existing secret.
@@ -89,6 +120,10 @@ func (a *Auth) paired(r *http.Request) bool {
 	if a == nil {
 		return true
 	}
+	if a.header != "" {
+		// Email addresses compare without case, and the owner is lowercase.
+		return equal(strings.ToLower(strings.TrimSpace(r.Header.Get(a.header))), a.owner)
+	}
 	c, err := r.Cookie(sessionCookie)
 	return err == nil && equal(c.Value, a.sessionValue())
 }
@@ -105,6 +140,16 @@ func (a *Auth) csrfOK(r *http.Request) bool {
 // the app.
 func (a *Auth) pair(w http.ResponseWriter, r *http.Request) {
 	if a == nil {
+		redirectToApp(w)
+		return
+	}
+	if a.header != "" {
+		// An old pairing link still lands on the app, but only after the
+		// proxy's sign-in.
+		if !a.paired(r) {
+			http.Error(w, "Sign in through the login page first.", http.StatusForbidden)
+			return
+		}
 		redirectToApp(w)
 		return
 	}

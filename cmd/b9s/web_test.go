@@ -17,6 +17,20 @@ func TestWebRefusesNoTokenOffLoopback(t *testing.T) {
 	}
 }
 
+func TestWebTrustHeaderNeedsOwnerAndAToken(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	for _, args := range [][]string{
+		{"--trust-header", "X-Forwarded-Email"},
+		{"--owner", "a@b.c"},
+		{"--trust-header", "X-Forwarded-Email", "--owner", "a@b.c", "--no-token"},
+	} {
+		var out, errOut bytes.Buffer
+		if code := runWeb(args, &out, &errOut); code != 2 {
+			t.Errorf("%v: exit %d, stderr %q", args, code, errOut.String())
+		}
+	}
+}
+
 func TestWebHelpExitsCleanly(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := runWeb([]string{"--help"}, &out, &errOut); code != 0 || !strings.Contains(errOut.String(), "pairing link") {

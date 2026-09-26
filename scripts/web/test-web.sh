@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the web image and checks one person's board against a throwaway Dolt
 # server: which projects it shows, that it writes as the owner's Dolt user and
-# bd actor, and that it refuses every other signed-in email.
+# bd actor, and that b9s web refuses every email but the owner's.
 #
 #   scripts/web/test-web.sh            build from the working tree, then test
 #   B9S_WEB_IMAGE=<tag> scripts/web/test-web.sh   test an image already built
@@ -81,85 +81,78 @@ docker run -d --name "$RUN_ID-web" --network "$RUN_ID" --user 65532:65532 \
     -v "$WORK/dolt:/etc/b9s-web/dolt:ro" \
     "$IMAGE" >/dev/null
 
-deadline=$((SECONDS + 30))
-until docker exec "$RUN_ID-web" wget -qO- http://127.0.0.1:7682/__version >/dev/null 2>&1; do
-    [ "$SECONDS" -lt "$deadline" ] || { docker logs "$RUN_ID-web"; echo "web did not start in 30s"; exit 1; }
+# status EMAIL PATH prints the HTTP status b9s web answers, sending EMAIL in
+# the login proxy's header unless it is empty.
+status() {
+    local hdr=''
+    [ -z "$1" ] || hdr="--header 'X-Forwarded-Email: $1'"
+    docker exec "$RUN_ID-web" sh -c "wget -S -O /dev/null $hdr 'http://127.0.0.1:7681$2' 2>&1 | sed -n 's/^ *HTTP\/[0-9.]* \([0-9]*\).*/\1/p' | tail -1"
+}
+# as_owner PATH [POST-BODY CSRF] prints the body b9s web returns to the owner.
+as_owner() {
+    if [ $# -eq 1 ]; then
+        docker exec "$RUN_ID-web" wget -qO- --header 'X-Forwarded-Email: Alice@Example.com' "http://127.0.0.1:7681$1"
+    else
+        docker exec "$RUN_ID-web" wget -qO- --header 'X-Forwarded-Email: Alice@Example.com' \
+            --header "X-B9s-CSRF: $3" --header 'Content-Type: application/json' \
+            --post-data "$2" "http://127.0.0.1:7681$1"
+    fi
+}
+
+deadline=$((SECONDS + 60))
+until [ "$(status '' /api/health)" = 401 ]; do
+    [ "$SECONDS" -lt "$deadline" ] || { docker logs "$RUN_ID-web"; echo "web did not start in 60s"; exit 1; }
     sleep 1
 done
 
 version=$(docker exec "$RUN_ID-web" wget -qO- http://127.0.0.1:7682/__version)
 case "$version" in *'"commit":"test-sha"'*) ok "version endpoint names the commit" ;; *) bad "version: $version" ;; esac
 
-code=$(docker exec "$RUN_ID-web" sh -c 'wget -S -O /dev/null http://127.0.0.1:7681/ 2>&1 | sed -n "s/^ *HTTP\/[0-9.]* \([0-9]*\).*/\1/p" | tail -1')
-[ "$code" = 407 ] && ok "ttyd answers 407 without the auth header" || bad "ttyd answered '$code' without the auth header"
-
-refused() {
-    local email=$1 want=$2 out
-    out=$(docker exec -t -e B9S_WEB_REFUSE_HOLD=0 -e TTYD_USER="$email" "$RUN_ID-web" /usr/local/bin/b9s-web-session 2>&1 || true)
-    case "$out" in *"$want"*) ok "refused '$email'" ;; *) bad "for '$email' expected '$want', got: $out" ;; esac
-}
-refused mallory@example.com 'has no access to this board'
-refused '' 'No signed-in user'
-refused 'alice@example.com.evil' 'has no access to this board'
-if docker exec "$RUN_ID-web" tmux has-session -t '=b9s' 2>/dev/null; then bad "a refused email started a session"; else ok "a refused email starts no session"; fi
-
-# The owner's session: started detached, the way a browser tab starts it.
-docker exec -d -t -e TTYD_USER=Alice@Example.com "$RUN_ID-web" /usr/local/bin/b9s-web-session
-started=no
-end=$((SECONDS + 30))
-while [ "$SECONDS" -lt "$end" ]; do
-    if docker exec "$RUN_ID-web" tmux capture-pane -p -t '=b9s:' 2>/dev/null | grep -q 'seeded in'; then started=yes; break; fi
-    sleep 1
+for email in '' mallory@example.com alice@example.com.evil; do
+    code=$(status "$email" /api/snapshot)
+    [ "$code" = 401 ] && ok "refused '$email' with 401" || bad "'$email' got $code, want 401"
 done
-[ "$started" = yes ] && ok "the owner's session shows their issues, email matched without case" \
-    || bad "no b9s screen for the owner: $(docker exec "$RUN_ID-web" tmux capture-pane -p -t '=b9s:' 2>&1 | head -5)"
+code=$(status alice@example.com /api/snapshot)
+[ "$code" = 200 ] && ok "the owner is served" || bad "the owner got $code"
+code=$(status '' '/pair?t=anything')
+[ "$code" = 403 ] && ok "a pairing link without the header is refused" || bad "pair without header: $code"
+
+snapshot=$(as_owner /api/snapshot)
+case "$snapshot" in *'seeded in alpha_proj'*) ok "the owner sees their first project's issues, email matched without case" ;; *) bad "snapshot: ${snapshot:0:200}" ;; esac
 
 cfg=$(docker exec "$RUN_ID-web" cat /data/home/.config/b9s/config.yaml)
 case "$cfg" in *alpha_proj*shared_proj*|*shared_proj*alpha_proj*) ok "projects are alpha_proj and shared_proj" ;; *) bad "config: $cfg" ;; esac
 case "$cfg" in *beta_proj*) bad "a project without a grant is listed" ;; *) ok "a project without a grant is not listed" ;; esac
 case "$cfg" in *not_beads*) bad "a database without issues became a project" ;; *) ok "a database without an issues table is not a project" ;; esac
 
-pid=$(docker exec "$RUN_ID-web" tmux display-message -p -t '=b9s:' '#{pane_pid}')
-env_of_b9s=$(docker exec "$RUN_ID-web" sh -c "tr '\0' '\n' < /proc/$pid/environ")
+env_of_b9s=$(docker exec "$RUN_ID-web" sh -c "tr '\0' '\n' < /proc/1/environ")
 case "$env_of_b9s" in *BEADS_DOLT_PASSWORD=alice-pw*) ok "b9s holds the owner's password" ;; *) bad "b9s lacks the password" ;; esac
 case "$env_of_b9s" in *BD_ACTOR=alice-actor*) ok "b9s writes as the owner's bd actor" ;; *) bad "actor missing" ;; esac
 case "$env_of_b9s" in *BEADS_DOLT_SERVER_PORT=3306*) ok "bd gets the port without the metadata.json warning" ;; *) bad "BEADS_DOLT_SERVER_PORT missing" ;; esac
-case "$env_of_b9s" in *TTYD_USER*) bad "TTYD_USER reached b9s" ;; *) ok "TTYD_USER does not reach b9s" ;; esac
+case "$env_of_b9s" in *BEADS_DIR=*) bad "BEADS_DIR would send every write to one project" ;; *) ok "BEADS_DIR is unset, so writes follow the open project" ;; esac
 
 args=$(docker exec "$RUN_ID-web" sh -c 'cat /proc/*/cmdline 2>/dev/null | tr "\0" " "')
 case "$args" in *alice-pw*) bad "the password appears in a command line" ;; *) ok "no password in any command line" ;; esac
 
-# A write runs bd the way b9s runs it: from a project checkout, with the
-# session's environment.
-bd_as_b9s() {
-    local project=$1; shift
-    docker exec -w "/data/home/projects/$project" \
-        -e HOME=/data/home -e BEADS_DOLT_PASSWORD=alice-pw -e BD_ACTOR=alice-actor -e BD_DISABLE_METRICS=1 -e BEADS_DOLT_SERVER_PORT=3306 \
-        -e B9S_TRUSTED_DOLT_ENDPOINTS="$RUN_ID-dolt:3306" \
-        "$RUN_ID-web" bd "$@"
-}
-if created=$(bd_as_b9s alpha_proj create --title 'written from the web' --silent 2>&1); then
-    ok "bd creates an issue in alpha_proj"
-    # b9s shows bd's stderr after a write, so a warning here is noise on screen.
-    [ "$(printf '%s\n' "$created" | wc -l)" -eq 1 ] && ok "bd prints only the new id" || bad "bd printed more than the id: $created"
-    who=$(sql "SELECT created_by FROM alpha_proj.issues WHERE title = 'written from the web';" | tail -1)
-    [ "$who" = alice-actor ] && ok "the new issue's creator is the owner's actor" || bad "creator is '$who'"
-else
-    bad "bd create failed in alpha_proj: $created"
-fi
+# A write goes through the API the way the browser sends it.
+csrf=$(as_owner /api/session | sed -n 's/.*"csrf":"\([^"]*\)".*/\1/p')
+[ -n "$csrf" ] && ok "the session hands the owner a CSRF value" || bad "no CSRF value"
+code=$(docker exec "$RUN_ID-web" sh -c "wget -S -O /dev/null --header 'X-Forwarded-Email: alice@example.com' --header 'Content-Type: application/json' --post-data '{\"op\":\"create\",\"fields\":{\"title\":\"no csrf\"}}' http://127.0.0.1:7681/api/write 2>&1 | sed -n 's/^ *HTTP\/[0-9.]* \([0-9]*\).*/\1/p' | tail -1")
+[ "$code" = 403 ] && ok "a write without the CSRF header is refused" || bad "write without CSRF: $code"
+result=$(as_owner /api/write '{"op":"create","fields":{"title":"written from the web"}}' "$csrf" 2>&1 || true)
+case "$result" in *'"ok":true'*) ok "the API creates an issue in alpha_proj" ;; *) bad "create: $result" ;; esac
+who=$(sql "SELECT created_by FROM alpha_proj.issues WHERE title = 'written from the web';" | tail -1)
+[ "$who" = alice-actor ] && ok "the new issue's creator is the owner's actor" || bad "creator is '$who'"
 end=$((SECONDS + 20))
 seen=no
 while [ "$SECONDS" -lt "$end" ]; do
-    if docker exec "$RUN_ID-web" tmux capture-pane -p -t '=b9s:' | grep -q 'written from the web'; then seen=yes; break; fi
+    case "$(as_owner /api/snapshot)" in *'written from the web'*) seen=yes; break ;; esac
     sleep 1
 done
-[ "$seen" = yes ] && ok "b9s shows the new issue without a restart" || bad "b9s did not show the new issue"
+[ "$seen" = yes ] && ok "the snapshot shows the new issue without a restart" || bad "the snapshot did not show the new issue"
 
 denied=$(docker exec "$RUN_ID-web" sh -c "MYSQL_PWD=alice-pw mariadb --protocol=TCP -h $RUN_ID-dolt -P 3306 -u alice -e 'INSERT INTO beta_proj.issues (id) VALUES (\"x\")' 2>&1" || true)
 case "$denied" in *denied*) ok "the owner's user cannot write a project it has no grant on" ;; *) bad "write to beta_proj: $denied" ;; esac
-
-binds=$(docker exec "$RUN_ID-web" sh -c 'tmux list-keys 2>/dev/null | wc -l')
-[ "$binds" = 0 ] && ok "tmux has no key bindings a browser could reach" || bad "tmux still has $binds key bindings"
 
 docker rmi "$SEED_IMAGE" >/dev/null 2>&1 || true
 echo "=== B9S WEB DONE pass=$pass fail=$fail ==="
