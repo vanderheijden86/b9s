@@ -1,6 +1,8 @@
-// The phone detail sheet opens at full height, and a double tap on the sheet
-// switches it between half and full height. A single tap on the sheet's text
-// changes nothing, and a tap on a relation still acts at once.
+// The phone detail sheet has two detents, half and full, and opens at half.
+// Scrolling the half sheet's text up raises it to full; pulling the text down
+// from its top lowers full to half and closes half. A tap on the head, the
+// handle and title above the text, switches the detents, and taps on the text
+// change nothing, so a relation acts at once.
 
 import type { Page } from "@playwright/test";
 import { expect, open, row, test } from "./harness";
@@ -17,50 +19,79 @@ async function boxOf(page: Page, selector: string) {
   return b!;
 }
 
-/** doubleTap taps twice at the centre of a locator, fast enough to count as a double tap. */
-async function doubleTap(page: Page, selector: string): Promise<void> {
-  const b = await boxOf(page, selector);
-  const x = b.x + b.width / 2, y = b.y + Math.min(b.height / 2, 10);
-  await page.touchscreen.tap(x, y);
-  await page.touchscreen.tap(x, y);
+/**
+ * drag sends a vertical touch drag over the sheet's text. WebKit cannot
+ * construct a Touch, so each event is a plain Event that carries the one
+ * touch list the sheet reads.
+ */
+async function drag(page: Page, dy: number): Promise<void> {
+  const b = await boxOf(page, "#dbody");
+  await page.evaluate(({ x, y, dy }) => {
+    const el = document.querySelector("#dbody .meta") || document.getElementById("dbody")!;
+    const fire = (type: string, cy: number) => {
+      const ev = new Event(type, { bubbles: true });
+      Object.defineProperty(ev, "touches", { value: type === "touchend" ? [] : [{ clientX: x, clientY: cy }] });
+      el.dispatchEvent(ev);
+    };
+    fire("touchstart", y);
+    for (let s = 1; s <= 8; s++) fire("touchmove", y + (dy * s) / 8);
+    fire("touchend", y + dy);
+  }, { x: b.x + b.width / 2, y: b.y + 20, dy });
 }
 
-test("the detail opens full screen and a double tap toggles half and full", async ({ page, project }) => {
-  await open(page, project);
+async function openT3(page: Page) {
   const d = page.locator(".detail");
   await row(page, "t-3").click();
   await expect(d).toHaveAttribute("data-id", "t-3");
+  return d;
+}
+
+test("the detail opens at half height", async ({ page, project }) => {
+  await open(page, project);
+  const d = await openT3(page);
+  await expect(d).not.toHaveClass(/\bfull\b/);
+  await expect.poll(() => sheetShare(page)).toBeLessThan(0.6);
+});
+
+test("scrolling the half sheet up raises it, and pulling down lowers it and then closes it", async ({ page, project }) => {
+  await open(page, project);
+  const d = await openT3(page);
+
+  await drag(page, -40);
   await expect(d).toHaveClass(/\bfull\b/);
   await expect.poll(() => sheetShare(page)).toBeGreaterThan(0.97);
 
-  await doubleTap(page, ".detail .meta");
+  await drag(page, 100);
   await expect(d).not.toHaveClass(/\bfull\b/);
   await expect.poll(() => sheetShare(page)).toBeLessThan(0.6);
 
-  await doubleTap(page, ".detail .dtitle");
-  await expect(d).toHaveClass(/\bfull\b/);
-  await expect.poll(() => sheetShare(page)).toBeGreaterThan(0.97);
+  await drag(page, 100);
+  await expect(d).toHaveCount(0);
 });
 
-test("single taps on the sheet keep its size, and a relation tap navigates at once", async ({ page, project }) => {
+test("a tap on the head switches the detents", async ({ page, project }) => {
   await open(page, project);
-  const d = page.locator(".detail");
-  await row(page, "t-3").click();
-  await expect(d).toHaveClass(/\bfull\b/);
-
-  const b = await boxOf(page, ".detail .dtitle");
-  await page.touchscreen.tap(b.x + 20, b.y + 8);
-  await page.waitForTimeout(450);
-  await page.touchscreen.tap(b.x + 20, b.y + 8);
-  await page.waitForTimeout(450);
-  await expect(d).toHaveClass(/\bfull\b/);
+  const d = await openT3(page);
 
   const grab = await boxOf(page, ".detail .grab");
   await page.touchscreen.tap(grab.x + grab.width / 2, grab.y + grab.height / 2);
-  await page.waitForTimeout(450);
   await expect(d).toHaveClass(/\bfull\b/);
+  const g2 = await boxOf(page, ".detail .grab");
+  await page.touchscreen.tap(g2.x + g2.width / 2, g2.y + g2.height / 2);
+  await expect(d).not.toHaveClass(/\bfull\b/);
+});
+
+test("taps on the text keep the sheet's size, and a relation tap navigates at once", async ({ page, project }) => {
+  await open(page, project);
+  const d = await openT3(page);
+
+  const b = await boxOf(page, ".detail .meta");
+  await page.touchscreen.tap(b.x + 20, b.y + 8);
+  await page.touchscreen.tap(b.x + 20, b.y + 8);
+  await page.waitForTimeout(450);
+  await expect(d).not.toHaveClass(/\bfull\b/);
+  await expect(d).toHaveCount(1);
 
   await d.locator('.rel[data-nav="t-1"]').tap();
   await expect(d).toHaveAttribute("data-id", "t-1", { timeout: 250 });
-  await expect(d).toHaveClass(/\bfull\b/);
 });

@@ -178,34 +178,50 @@ function bindHeader(): void {
 /* ================= detail sheet ================= */
 
 let detailDrag: { y0: number; h0: number; moved: boolean; sec: HTMLElement } | null = null;
-/** lastTap is the previous tap on the detail sheet, which a second tap close in time and place makes a double tap. */
-let lastTap = { t: 0, x: 0, y: 0 };
-const DBL_MS = 320, DBL_PX = 30;
+/** setDetent moves the phone sheet to the half or the full detent. */
+function setDetent(size: "half" | "full"): void {
+  if (!S.detail || S.detail.size === size) return;
+  S.detail.size = size;
+  haptic(8);
+  render();
+}
 
 /**
- * sheetTap resizes the phone sheet on the second of two quick taps. Buttons and
- * relations never reach it, so their single tap acts at once instead of
- * waiting to learn whether a second tap follows.
+ * bindDetents moves the phone sheet between its detents from the text: a
+ * scroll up in the half sheet raises it, and a pull down from the top of the
+ * text lowers full to half and closes half. Touch events keep firing while
+ * the browser scrolls natively, which cancels the pointer events, so the
+ * drag is read from them.
  */
-function sheetTap(e: PointerEvent): void {
-  if (wide() || !S.detail) return;
-  if ((e.target as HTMLElement).closest("button, a, input, textarea, select, [data-nav], [data-act]")) { lastTap.t = 0; return; }
-  const now = performance.now();
-  if (now - lastTap.t < DBL_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < DBL_PX) {
-    lastTap.t = 0;
-    S.detail.size = S.detail.size === "full" ? "half" : "full";
-    window.getSelection()?.removeAllRanges();
-    haptic(8);
-    render();
-    return;
-  }
-  lastTap = { t: now, x: e.clientX, y: e.clientY };
+function bindDetents(host: HTMLElement): void {
+  let t: { y0: number; top: number; body: HTMLElement; done: boolean } | null = null;
+  host.addEventListener("touchstart", e => {
+    const body = (e.target as HTMLElement).closest<HTMLElement>("#dbody");
+    t = body && S.detail && !wide() ? { y0: e.touches[0].clientY, top: body.scrollTop, body, done: false } : null;
+  }, { passive: true });
+  host.addEventListener("touchmove", e => {
+    if (!t || t.done || !S.detail) return;
+    const dy = e.touches[0].clientY - t.y0;
+    if (S.detail.size === "half" && dy < -16) { t.done = true; setDetent("full"); return; }
+    if (t.top <= 0 && t.body.scrollTop <= 0 && dy > 70) {
+      t.done = true;
+      if (S.detail.size === "full") setDetent("half"); else closeDetail();
+    }
+  }, { passive: true });
+  host.addEventListener("touchend", () => { t = null; }, { passive: true });
+  host.addEventListener("wheel", e => {
+    const body = (e.target as HTMLElement).closest<HTMLElement>("#dbody");
+    if (!body || !S.detail || wide()) return;
+    if (S.detail.size === "half" && e.deltaY > 6) setDetent("full");
+    else if (S.detail.size === "full" && body.scrollTop <= 0 && e.deltaY < -30) setDetent("half");
+  }, { passive: true });
 }
 
 let bodySwipe: { x0: number; y0: number; pid: number; mode: null | "h" | "v"; edge: boolean; body: HTMLElement } | null = null;
 
 function bindDetail(): void {
   const host = $("#detailHost");
+  bindDetents(host);
   host.addEventListener("pointerdown", e => {
     const t = e.target as HTMLElement;
     const head = t.closest<HTMLElement>("#dhead");
@@ -245,7 +261,7 @@ function bindDetail(): void {
       d.sec.classList.remove("drag");
       if (!S.detail) return;
       const h = d.h0 - (e.clientY - d.y0);
-      if (!d.moved) { d.sec.style.height = ""; if (e.type === "pointerup") sheetTap(e); return; }
+      if (!d.moved) { d.sec.style.height = ""; if (e.type === "pointerup") setDetent(S.detail.size === "full" ? "half" : "full"); return; }
       if (h < halfH() * 0.62) { closeDetail(); return; }
       S.detail.size = h > (halfH() + fullH()) / 2 ? "full" : "half";
       d.sec.style.height = "";
@@ -254,7 +270,6 @@ function bindDetail(): void {
     }
     const g = bodySwipe;
     bodySwipe = null;
-    if (g && !g.mode && e.type === "pointerup") { sheetTap(e); return; }
     if (!g || g.mode !== "h" || !S.detail) return;
     const dx = e.clientX - g.x0, body = g.body;
     body.classList.add("snap");

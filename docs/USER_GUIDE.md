@@ -452,7 +452,7 @@ The database password never reaches the browser. The server reads the store and 
 | Tree | The TUI tree: epics, children, status glyphs, a second line with priority, type, assignee, age, progress, blockers, comment count and labels (choose them under Tree options) |
 | Board | One column at a time on a phone, every column side by side on a wider screen, grouped by status, priority or type. Columns fold into rails, and epics show as cards, rows or a side rail |
 | Search | The [query language](#search) with completions. Results update as you type, and Apply puts the query on the tree |
-| Detail | A sheet over the list, full height on a phone until a double tap halves it: fields, parent, children, blockers, text sections as Markdown, comments, and Status, Edit, Comment, Branch and More |
+| Detail | A sheet over the list, half height on a phone until you scroll its text or tap its head: fields, parent, children, blockers, text sections as Markdown, comments, and Status, Edit, Comment, Branch and More |
 | Graph | The chains of blockers and blocked issues around one issue, with parent, children and discovered-from |
 | More | Projects, health, the write log, identity, pairing, board and tree options |
 
@@ -473,7 +473,8 @@ The chips under the header are the status filters and the Ready filter from the 
 | Long-press while marking | Mark the range | `Ctrl-Space` |
 | Pull down on the tree | Reload | `Ctrl-R` |
 | Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
-| Double-tap the detail | Switch between full and half height | `\` |
+| Scroll the detail up, or tap its head | Raise the half sheet to full height; a tap on the head switches back | `\` |
+| Pull the detail down from its top | Full height goes to half, half closes | `Esc` |
 | Drag the detail handle | Up: full height. Down: half height, then close | `Esc` |
 | Tap a relation in the detail | Go there; `‹` goes back | |
 | Browser Back, or `Backspace` | Step back: an open sheet closes first, then the previous issue, the closed detail and the previous view. Forward redoes it, but never reopens a sheet | `Esc` |

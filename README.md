@@ -237,7 +237,8 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Long-press while marking | Mark the range | `Ctrl-Space` |
 | Pull down on the tree | Reload | `Ctrl-R` |
 | Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
-| Double-tap the detail | Switch between full and half height | `\` |
+| Scroll the detail up, or tap its head | Raise the half sheet to full height; a tap on the head switches back | `\` |
+| Pull the detail down from its top | Full height goes to half, half closes | `Esc` |
 | Drag the detail handle | Up: full height. Down: half height, then close | `Esc` |
 | Tap a relation in the detail | Go there; `‹` goes back | |
 | Browser Back, or `Backspace` | Step back: an open sheet closes first, then the previous issue, the closed detail and the previous view. Forward redoes it, but never reopens a sheet | `Esc` |
