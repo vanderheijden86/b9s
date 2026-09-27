@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 
@@ -15,12 +16,30 @@ import (
 	"github.com/vanderheijden86/beadwork/internal/blobstore"
 )
 
-// Download fetches att's blob from h into a temp file created in dir,
-// verifying its sha256 against att.SHA256 before returning. The caller owns
-// the returned temp file: move or read it, then remove it. A hash mismatch
-// removes the temp file here and returns an error, rather than handing the
-// caller bytes it has not verified.
-func Download(ctx context.Context, h *blobstore.Handle, att attachref.Attachment, dir string) (tempPath string, err error) {
+// DownloadMode selects the permission bits Download requests when it
+// creates its temp file.
+type DownloadMode os.FileMode
+
+const (
+	// DownloadModeNormal asks for 0666, the same request an ordinary file
+	// create would make: the kernel's own umask (and any default ACL)
+	// narrows it from there, so a file Download places directly at its
+	// destination ends up with the same permissions a plain create in
+	// that directory would have produced.
+	DownloadModeNormal DownloadMode = 0666
+	// DownloadModeRestricted asks for 0600, matching os.CreateTemp. The
+	// caller passes this when dir is a directory other users on the
+	// machine can also write to (os.TempDir()), and the bytes have not
+	// yet been verified against att.SHA256.
+	DownloadModeRestricted DownloadMode = 0600
+)
+
+// Download fetches att's blob from h into a temp file created in dir with
+// the given mode, verifying its sha256 against att.SHA256 before returning.
+// The caller owns the returned temp file: move or read it, then remove it.
+// A hash mismatch removes the temp file here and returns an error, rather
+// than handing the caller bytes it has not verified.
+func Download(ctx context.Context, h *blobstore.Handle, att attachref.Attachment, dir string, mode DownloadMode) (tempPath string, err error) {
 	key, err := h.Key(att.SHA256)
 	if err != nil {
 		return "", err
@@ -31,7 +50,7 @@ func Download(ctx context.Context, h *blobstore.Handle, att attachref.Attachment
 	}
 	defer rc.Close()
 
-	tmp, err := os.CreateTemp(dir, ".b9s-attach-download-*")
+	tmp, err := createExclusive(dir, os.FileMode(mode))
 	if err != nil {
 		return "", err
 	}
@@ -53,10 +72,12 @@ func Download(ctx context.Context, h *blobstore.Handle, att attachref.Attachment
 		os.Remove(tempPath)
 		return "", fmt.Errorf("downloading %s: %w", att.Name, err)
 	}
-	// The size check runs before the hash comparison: bytes truncated or
-	// padded to the wrong length can still coincidentally hash to the
-	// claimed sha256 over the bytes actually read, which would otherwise
-	// report success on a corrupt or truncated download.
+	// The size check runs before the hash comparison, not because a wrong
+	// length could produce the right hash (that would need a SHA-256
+	// collision), but because limit already bounds how many bytes this
+	// read ever consumes, and reporting the size actually written against
+	// the size claimed is a more specific error than a hash mismatch
+	// would be for the common case of a truncated or padded download.
 	if written != att.Size {
 		os.Remove(tempPath)
 		return "", fmt.Errorf("downloaded %d bytes for %s, want %d (attachment size mismatch)", written, att.Name, att.Size)
@@ -94,4 +115,25 @@ func URL(ctx context.Context, h *blobstore.Handle, att attachref.Attachment) (st
 		return "", err
 	}
 	return h.Store.URL(ctx, key, h.URLTTL, att.Name)
+}
+
+// createExclusive creates a new, empty file in dir with a randomly
+// generated name and the given mode, retrying on a name collision the way
+// os.CreateTemp does. Unlike os.CreateTemp, which always requests 0600,
+// this lets a caller ask for 0666 so the kernel's own umask (or a default
+// ACL) produces the same permissions a normal file create in dir would,
+// with no chmod call and no need to read the umask back out afterward.
+func createExclusive(dir string, mode os.FileMode) (*os.File, error) {
+	const attempts = 10000
+	for i := 0; i < attempts; i++ {
+		name := filepath.Join(dir, fmt.Sprintf(".b9s-attach-download-%x", rand.Uint64()))
+		f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, mode)
+		if err == nil {
+			return f, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, err
+		}
+	}
+	return nil, fmt.Errorf("%s: could not create a temp file after %d attempts", dir, attempts)
 }

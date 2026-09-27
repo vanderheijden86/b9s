@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -55,18 +54,17 @@ func runAttach(args []string, stdout, stderr io.Writer) int {
 }
 
 // runAttachAddOrDetach handles the two forms that share a flag set: adding
-// one or more files, and detaching a hash with --detach.
+// one or more files, and detaching a hash with --detach. Both go through
+// parseFlags, like every other subcommand, so --detach is recognized
+// wherever it appears among the positional arguments, not only before them.
 func runAttachAddOrDetach(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("attach", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	detach := fs.Bool("detach", false, "detach an attachment instead of adding one")
-	if err := fs.Parse(args); err != nil {
+	_, bools, rest, err := parseFlags(args, []string{"--detach"}, nil)
+	if err != nil {
 		fmt.Fprint(stderr, attachUsage)
 		return 2
 	}
-	rest := fs.Args()
 
-	if *detach {
+	if bools["--detach"] {
 		if len(rest) != 2 {
 			fmt.Fprint(stderr, attachUsage)
 			return 2
@@ -292,7 +290,7 @@ func runAttachGet(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if out == "-" {
-		tempPath, err := attach.Download(ctx, env.handle, found, os.TempDir())
+		tempPath, err := attach.Download(ctx, env.handle, found, os.TempDir(), attach.DownloadModeRestricted)
 		if err != nil {
 			fmt.Fprintf(stderr, "b9s attach: %v\n", err)
 			return 1
@@ -318,8 +316,10 @@ func runAttachGet(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// The temp file must land in destPath's directory: placeDownloadedFile's
-	// os.Link and os.Rename do not cross filesystems.
-	tempPath, err := attach.Download(ctx, env.handle, found, filepath.Dir(destPath))
+	// os.Link and os.Rename do not cross filesystems. DownloadModeNormal
+	// asks for it to be created with the permissions a normal create in
+	// that directory would get, so placing it needs no chmod afterward.
+	tempPath, err := attach.Download(ctx, env.handle, found, filepath.Dir(destPath), attach.DownloadModeNormal)
 	if err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
 		return 1
@@ -348,14 +348,11 @@ func resolveGetDestPath(out, name string) (string, error) {
 	return out, nil
 }
 
-// placeDownloadedFile moves tempPath (created by attach.Download, mode 0600
-// like every os.CreateTemp file) to destPath with the permissions a normal
-// file create would produce, either refusing to replace an existing file at
-// destPath or, with force, replacing it outright.
+// placeDownloadedFile moves tempPath (created by attach.Download with the
+// permissions a normal file create in destPath's directory would get) to
+// destPath, either refusing to replace an existing file there or, with
+// force, replacing it outright.
 func placeDownloadedFile(tempPath, destPath string, force bool) error {
-	if err := os.Chmod(tempPath, normalFileMode()); err != nil {
-		return err
-	}
 	if force {
 		return os.Rename(tempPath, destPath)
 	}
@@ -378,41 +375,56 @@ func placeByExclusiveCreate(tempPath, destPath string) error {
 		if openErr := placeByExclusiveOpen(tempPath, destPath); openErr != nil {
 			return openErr
 		}
-		return os.Remove(tempPath)
+		os.Remove(tempPath)
+		return nil
 	}
-	return os.Remove(tempPath)
+	// destPath now has its own directory entry for the bytes, so a failure
+	// to remove tempPath here does not make this a failed placement: the
+	// caller's own deferred os.Remove(tempPath) retries the same cleanup.
+	os.Remove(tempPath)
+	return nil
 }
 
 // placeByExclusiveOpen copies tempPath's bytes into a file newly created at
 // destPath with O_EXCL, the fallback placeByExclusiveCreate uses when Link
-// cannot place the file directly.
+// cannot place the file directly. The requested mode is 0666, the same
+// request a normal file create would make; the kernel's own umask narrows
+// it from there.
 func placeByExclusiveOpen(tempPath, destPath string) error {
-	dst, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, normalFileMode())
+	dst, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("%s already exists; use --force to overwrite", destPath)
 		}
 		return err
 	}
-	defer dst.Close()
 	src, err := os.Open(tempPath)
 	if err != nil {
-		return err
-	}
-	defer src.Close()
-	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
 		os.Remove(destPath)
 		return err
+	}
+	_, copyErr := io.Copy(dst, src)
+	src.Close()
+	closeErr := dst.Close()
+	if copyErr != nil {
+		os.Remove(destPath)
+		return copyErr
+	}
+	if closeErr != nil {
+		os.Remove(destPath)
+		return closeErr
 	}
 	return nil
 }
 
 func runAttachURL(args []string, stdout, stderr io.Writer) int {
-	if len(args) != 2 {
+	_, _, rest, err := parseFlags(args, nil, nil)
+	if err != nil || len(rest) != 2 {
 		fmt.Fprint(stderr, attachUsage)
 		return 2
 	}
-	issueID, query := args[0], args[1]
+	issueID, query := rest[0], rest[1]
 
 	ctx := context.Background()
 	env, err := newAttachEnv(ctx)
@@ -467,6 +479,9 @@ func parseFlags(args []string, boolFlags, valueFlags []string) (values map[strin
 	setValue := func(name, value string) error {
 		if seen[name] {
 			return fmt.Errorf("flag %s given more than once", name)
+		}
+		if value == "" {
+			return fmt.Errorf("flag %s needs a value", name)
 		}
 		if value != "-" || name != "-o" {
 			if strings.HasPrefix(value, "-") {

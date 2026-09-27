@@ -67,7 +67,7 @@ func TestDownload_FetchesAndVerifiesAStoredBlob(t *testing.T) {
 	att := attachref.Attachment{Ref: results[0].Ref}
 	destDir := t.TempDir()
 
-	tempPath, err := Download(context.Background(), h, att, destDir)
+	tempPath, err := Download(context.Background(), h, att, destDir, DownloadModeNormal)
 
 	if err != nil {
 		t.Fatalf("Download: %v", err)
@@ -121,7 +121,7 @@ func TestDownload_RejectsAndRemovesOnHashMismatch(t *testing.T) {
 	rc.Close()
 	destDir := t.TempDir()
 
-	_, err = Download(context.Background(), h, att, destDir)
+	_, err = Download(context.Background(), h, att, destDir, DownloadModeNormal)
 
 	if err == nil {
 		t.Fatal("Download: err = nil, want a hash-mismatch error")
@@ -149,7 +149,7 @@ func TestDownload_RejectsSizeMismatchBeforeHash(t *testing.T) {
 	}}
 	destDir := t.TempDir()
 
-	_, err := Download(context.Background(), h, att, destDir)
+	_, err := Download(context.Background(), h, att, destDir, DownloadModeNormal)
 
 	// The hash of the bytes actually returned matches att.SHA256, so a check
 	// that ran the hash comparison first would let this through; the size
@@ -187,7 +187,7 @@ func TestDownload_ReadsAtMostSizePlusOneBytes(t *testing.T) {
 	}}
 	destDir := t.TempDir()
 
-	Download(context.Background(), h, att, destDir)
+	Download(context.Background(), h, att, destDir, DownloadModeNormal)
 
 	if cr.n > att.Size+1 {
 		t.Errorf("bytes read from the store = %d, want at most %d (att.Size+1)", cr.n, att.Size+1)

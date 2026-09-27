@@ -326,6 +326,31 @@ func TestAttachDetach_WritesADetachComment(t *testing.T) {
 	}
 }
 
+// TestAttachDetach_FlagRecognizedAfterPositionals covers item 6: --detach
+// must be recognized wherever it appears among the arguments, not only
+// before the positionals. Before parseFlags was wired into add/detach,
+// "--detach" here was consumed as a second file argument to add instead.
+func TestAttachDetach_FlagRecognizedAfterPositionals(t *testing.T) {
+	beadsDir, recordPath, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"bd-1", ref.SHA256, "--detach"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	calls := readBdCalls(t, recordPath)
+	if len(calls) != 1 || calls[0][0] != "comments" || calls[0][1] != "add" || calls[0][2] != "bd-1" {
+		t.Fatalf("bd calls = %v", calls)
+	}
+	_, detaches := attachref.Parse(calls[0][3])
+	if len(detaches) != 1 || detaches[0] != ref.SHA256 {
+		t.Errorf("detaches = %v, want [%s]: --detach after positionals must not be treated as a file", detaches, ref.SHA256)
+	}
+}
+
 func TestAttachList_HumanAndJSON(t *testing.T) {
 	beadsDir, _, _ := attachTestProject(t, 0)
 	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
@@ -587,12 +612,62 @@ func TestAttachGet_WritesWithNormalCreatePermissions(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, stderr.String())
 	}
-	info, err := os.Stat(destPath)
+	got, err := os.Stat(destPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := info.Mode().Perm(), normalFileMode().Perm(); got != want {
-		t.Errorf("mode = %o, want %o (0666 masked by umask, not CreateTemp's 0600)", got, want)
+	// A plain 0666 create in the same directory, masked by the same umask
+	// and any default ACL, is what "the permissions of a normal create"
+	// means; this reference file shows the value independent of any
+	// production code that might compute (or fail to compute) it.
+	refPath := filepath.Join(destDir, "reference")
+	refFile, err := os.OpenFile(refPath, os.O_CREATE|os.O_WRONLY, 0o666)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refFile.Close()
+	want, err := os.Stat(refPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := got.Mode().Perm(), want.Mode().Perm(); got != want {
+		t.Errorf("mode = %o, want %o (a plain 0666 create masked by umask, not os.CreateTemp's 0600)", got, want)
+	}
+}
+
+// TestAttachGet_TempRemoveFailureAfterLinkDoesNotFailTheCommand covers item
+// 4: a Link that already placed the bytes at destPath must not be reported
+// as a command failure just because the follow-up cleanup of tempPath could
+// not remove it. tempPath is put in a directory with its write bit removed,
+// so unlink(2) fails on it while link(2) (which does not modify tempPath's
+// directory) still succeeds.
+func TestAttachGet_TempRemoveFailureAfterLinkDoesNotFailTheCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permission bits don't block unlink the same way on windows")
+	}
+
+	tempDir := t.TempDir()
+	tempPath := filepath.Join(tempDir, "temp-download")
+	if err := os.WriteFile(tempPath, []byte("hello world"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "notes.txt")
+
+	if err := os.Chmod(tempDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(tempDir, 0o755) })
+
+	if err := placeByExclusiveCreate(tempPath, destPath); err != nil {
+		t.Fatalf("placeByExclusiveCreate: %v, want nil: a Link that succeeded must not fail on a later Remove error", err)
+	}
+	got, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "hello world" {
+		t.Errorf("destPath content = %q, want %q", got, "hello world")
 	}
 }
 
@@ -609,6 +684,23 @@ func TestAttachURL_RefusedForLocalBackend(t *testing.T) {
 	}
 	if strings.Contains(stderr.String(), "file://") {
 		t.Errorf("stderr = %q, must not suggest a file:// link", stderr.String())
+	}
+}
+
+// TestAttachURL_DoubleDashEndsFlagScanning covers item 6: url must go
+// through parseFlags too, so "--" ends flag scanning there exactly as it
+// does for the other subcommands. Before this, url counted args directly
+// and required exactly two, so "--" itself consumed one of the two slots.
+func TestAttachURL_DoubleDashEndsFlagScanning(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"url", "--", "bd-1", ref.SHA256}, &stdout, &stderr)
+
+	if code == 2 {
+		t.Fatalf("exit = 2 (usage/argument error), stderr %q: -- must end flag scanning, leaving exactly two positionals", stderr.String())
 	}
 }
 
@@ -712,6 +804,14 @@ func TestParseFlags_UnknownFlagIsAnErrorNotAPositional(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("parseFlags: err = nil, want an error for an unknown flag")
+	}
+}
+
+func TestParseFlags_EmptyInlineValueIsAnError(t *testing.T) {
+	_, _, _, err := parseFlags([]string{"-o="}, nil, []string{"-o"})
+
+	if err == nil {
+		t.Fatal("parseFlags: err = nil, want an error for -o= with an empty value")
 	}
 }
 
