@@ -307,6 +307,7 @@ func (m *Model) openAttachAddModal() {
 		m.attachAddModal.SetSize(m.width, m.height-1)
 	}
 	m.showAttachAddModal = true
+	m.attachAddGeneration = m.projectGeneration
 }
 
 // attachAddResultMsg carries the outcome of attachAddCmd back into Update.

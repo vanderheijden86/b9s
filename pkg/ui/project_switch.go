@@ -104,13 +104,14 @@ func (m Model) isCurrentSwitch(generation uint64) bool {
 	return m.projectSwitch.state == SwitchOpening && generation == m.projectSwitch.generation
 }
 
-// modalRefusedBySwitch reports whether a writing modal (edit, create or
-// attach) must stay closed because a project switch is in flight, setting
-// the footer message a refused key shows. A projectOpenedMsg landing while
-// the modal was still open would let its eventual save or attach dispatch
-// against the newly switched IssueWriter while still carrying the old
-// project's issue ID (bd-grtt); since projects share the bd- id prefix,
-// that would silently write to the wrong project's issue.
+// modalRefusedBySwitch reports whether a writing overlay (edit, create,
+// attach, the status picker, or a close/delete confirmation) must stay
+// closed because a project switch is in flight, setting the footer message
+// a refused key shows. A projectOpenedMsg landing while the overlay was
+// still open would let its eventual write dispatch against the newly
+// switched IssueWriter while still carrying the old project's issue ID
+// (bd-grtt, bd-l66t); since projects share the bd- id prefix, that would
+// silently write to (or delete) the wrong project's issue.
 func (m *Model) modalRefusedBySwitch() bool {
 	if m.projectSwitch.state != SwitchOpening {
 		return false
@@ -120,19 +121,55 @@ func (m *Model) modalRefusedBySwitch() bool {
 	return true
 }
 
-// discardOpenModals closes any writing modal left open by the project being
-// replaced and reports whether one was open. This is the second half of the
-// bd-grtt fix: modalRefusedBySwitch stops a modal from opening once a switch
-// is in flight, but a modal opened before the switch began is untouched by
-// that guard, so applyProjectSwitch calls this to close it the moment the
-// new project actually replaces the old one.
+// discardOpenModals closes any writing overlay left open by the project
+// being replaced and reports whether one was open. This is the second half
+// of the bd-grtt/bd-l66t fix: modalRefusedBySwitch stops an overlay from
+// opening once a switch is in flight, but one opened before the switch began
+// is untouched by that guard, so applyProjectSwitch calls this to close it
+// the moment the new project actually replaces the old one. The status
+// picker and confirmation are closed here too, in addition to being covered
+// by writeAllowedForGeneration on their own write paths, so the footer never
+// shows a stale picker/confirmation for a project no longer on screen.
 func (m *Model) discardOpenModals() bool {
-	if !m.showEditModal && !m.showAttachAddModal {
+	discarded := m.showEditModal || m.showAttachAddModal || m.showStatusPicker || m.issueConfirm.action != issueConfirmNone
+	if !discarded {
 		return false
+	}
+	if m.focused == focusEditModal {
+		// List-mode "e" (model.go) is the only path that moves focus here;
+		// cancelling the edit modal restores the same value, so a discard
+		// must do it too or list mode is stuck unable to receive keys.
+		m.focused = focusList
 	}
 	m.showEditModal = false
 	m.showAttachAddModal = false
+	m.showStatusPicker = false
+	m.statusTargets = nil
+	m.issueConfirm = issueConfirmation{}
 	return true
+}
+
+// writeAllowedForGeneration reports whether generation still matches the
+// active project, refusing the write and setting the footer message
+// otherwise. Every write path fed by an overlay that captured an issue ID
+// against a specific project (edit modal, attach form, status picker,
+// close/delete confirmation) must call this with the generation the overlay
+// stamped at open time before dispatching. Without it, an overlay opened
+// before a project switch began and still open when the switch lands would
+// dispatch its write against the newly switched IssueWriter while carrying
+// the old project's issue ID; since projects share the bd- id prefix, that
+// silently writes to (or deletes) the wrong project's issue (bd-l66t).
+// discardOpenModals already closes the overlay itself the moment a switch
+// completes, so this is the second line of defense for a write already in
+// flight when that happens, and the only defense for an overlay type a
+// future change forgets to add to discardOpenModals.
+func (m *Model) writeAllowedForGeneration(generation uint64) bool {
+	if generation == m.projectGeneration {
+		return true
+	}
+	m.statusMsg = "project changed; action discarded"
+	m.statusIsError = false
+	return false
 }
 
 func (m *Model) settleSwitch() {
@@ -194,6 +231,11 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	// Switch to a different project (bd-q5z, bd-ey3, bd-87w)
 	m.activeProjectName = project.Name
 	m.activeProjectPath = project.ResolvedPath()
+	// Every overlay open against the previous project stamped the generation
+	// this bump invalidates; discardOpenModals above already closed the ones
+	// it knows about, and writeAllowedForGeneration refuses any write from
+	// one still in flight (bd-l66t).
+	m.projectGeneration++
 	checkout, hasCheckout := NewCheckout(project.ResolvedPath())
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(project.Name)

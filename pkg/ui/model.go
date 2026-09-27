@@ -72,6 +72,9 @@ type issueConfirmation struct {
 	// ids holds the marked issues a bulk action targets; empty means the
 	// single issue named by id.
 	ids []string
+	// generation is the projectGeneration in effect when the confirmation was
+	// opened (bd-l66t); its y/Y path refuses through writeAllowedForGeneration.
+	generation uint64
 }
 
 // SortMode represents the current list sorting mode (bv-3ita)
@@ -554,6 +557,10 @@ type Model struct {
 	statusPicker     StatusPickerModel
 	// statusTargets holds the issues the open status picker applies to.
 	statusTargets []string
+	// statusPickerGeneration is the projectGeneration in effect when the
+	// picker opened (bd-l66t); its write path refuses through
+	// writeAllowedForGeneration.
+	statusPickerGeneration uint64
 
 	// Attachment picker (bd-t8j5.9)
 	showAttachmentPicker bool
@@ -587,6 +594,10 @@ type Model struct {
 	// for one or more paths, then runs internal/attach.Add for them.
 	showAttachAddModal bool
 	attachAddModal     AttachAddModal
+	// attachAddGeneration is the projectGeneration in effect when the form
+	// opened (bd-l66t); its submit path refuses through
+	// writeAllowedForGeneration.
+	attachAddGeneration uint64
 
 	// Repo picker (workspace mode)
 	showRepoPicker bool
@@ -641,13 +652,24 @@ type Model struct {
 	// Edit modal for full issue editing (bd-a83)
 	showEditModal bool
 	editModal     EditModal
-	commandPrompt CommandPrompt
+	// editModalGeneration is the projectGeneration in effect when editModal
+	// opened (bd-l66t); its save path refuses through writeAllowedForGeneration.
+	editModalGeneration uint64
+	commandPrompt       CommandPrompt
 	// mouseReleased is true after :mouse hands the mouse to the terminal.
 	mouseReleased bool
 
 	// Project switching (bd-q5z, bd-ey3)
-	activeProjectName string           // Name of the currently loaded project
-	activeProjectPath string           // Path to the project directory
+	activeProjectName string // Name of the currently loaded project
+	activeProjectPath string // Path to the project directory
+	// projectGeneration counts every time activeProjectPath actually changes.
+	// Every overlay that captures an issue ID against the current project
+	// (edit modal, attach form, status picker, close/delete confirmation)
+	// stamps this value when it opens; the write path it eventually feeds
+	// checks it through writeAllowedForGeneration before dispatching, so an
+	// overlay left open across a project switch can never write into the new
+	// project under the old project's issue ID (bd-l66t).
+	projectGeneration uint64
 	appConfig         config.Config    // Loaded app configuration
 	allProjects       []config.Project // All known projects
 	projectPicker     ProjectPickerModel
@@ -1283,10 +1305,19 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, isKey := msg.(tea.KeyMsg); isKey {
 			if m.editModal.IsCancelRequested() {
 				m.showEditModal = false
+				if m.focused == focusEditModal {
+					m.focused = focusList
+				}
 				return m, tea.Batch(cmds...)
 			}
 			if m.editModal.IsSaveRequested() {
 				m.showEditModal = false
+				if m.focused == focusEditModal {
+					m.focused = focusList
+				}
+				if !m.writeAllowedForGeneration(m.editModalGeneration) {
+					return m, tea.Batch(cmds...)
+				}
 				if m.editModal.isCreateMode {
 					args := m.editModal.BuildCreateArgs()
 					debug.Log("edit-modal: CREATE save requested, args=%v", args)
@@ -1330,6 +1361,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if m.attachAddModal.IsSubmitRequested() {
 				m.showAttachAddModal = false
+				if !m.writeAllowedForGeneration(m.attachAddGeneration) {
+					return m, tea.Batch(cmds...)
+				}
 				issueID := m.attachAddModal.issueID
 				paths, err := parseAttachPaths(m.attachAddModal.RawPaths())
 				if err != nil {
@@ -2170,7 +2204,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 						targets = []string{issue.ID}
 					}
 				}
-				if selected != "" && len(targets) > 0 {
+				if selected != "" && len(targets) > 0 && m.writeAllowedForGeneration(m.statusPickerGeneration) {
 					m.tree.Unmark(targets...)
 					if len(targets) > 1 {
 						cmds = append(cmds, m.issueWriter.SetStatuses(targets, selected))
@@ -2292,6 +2326,9 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				confirmation := m.issueConfirm
 				m.issueConfirm = issueConfirmation{}
 				m.tree.Unmark(confirmation.targetIDs()...)
+				if !m.writeAllowedForGeneration(confirmation.generation) {
+					return m, nil
+				}
 				switch confirmation.action {
 				case issueConfirmClose:
 					if len(confirmation.ids) > 0 {
@@ -2877,6 +2914,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 						m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())
 						m.editModal.SetSize(m.width, m.height)
 						m.showEditModal = true
+						m.editModalGeneration = m.projectGeneration
 						return m, m.editModal.Init()
 					}
 					return m, nil
@@ -2896,12 +2934,16 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.editModal = NewCreateModalFor(m.theme, m.currentActor(), m.collectEditSuggestions())
 				m.editModal.SetSize(m.width, m.height)
 				m.showEditModal = true
+				m.editModalGeneration = m.projectGeneration
 				return m, m.editModal.Init()
 
 			case "K":
 				if m.allProjectsMode {
 					m.statusMsg = "Closing disabled in all-projects view"
 					m.statusIsError = false
+					return m, nil
+				}
+				if m.modalRefusedBySwitch() {
 					return m, nil
 				}
 				if confirm, ok := m.issueConfirmationFor(issueConfirmClose); ok {
@@ -2913,6 +2955,9 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				if m.allProjectsMode {
 					m.statusMsg = "Deleting disabled in all-projects view"
 					m.statusIsError = false
+					return m, nil
+				}
+				if m.modalRefusedBySwitch() {
 					return m, nil
 				}
 				if confirm, ok := m.issueConfirmationFor(issueConfirmDelete); ok {
@@ -3621,6 +3666,9 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		if m.allProjectsMode {
 			m.statusMsg = "Editing disabled in all-projects view (press 1-9 to select a project)"
 			m.statusIsError = false
+			break
+		}
+		if m.modalRefusedBySwitch() {
 			break
 		}
 		m.openStatusPicker()
@@ -7496,9 +7544,9 @@ func (m *Model) issueConfirmationFor(action issueConfirmAction) (issueConfirmati
 	case 0:
 		return issueConfirmation{}, false
 	case 1:
-		return issueConfirmation{action: action, id: targets[0].ID, title: targets[0].Title}, true
+		return issueConfirmation{action: action, id: targets[0].ID, title: targets[0].Title, generation: m.projectGeneration}, true
 	}
-	return issueConfirmation{action: action, ids: targetIssueIDs(targets)}, true
+	return issueConfirmation{action: action, ids: targetIssueIDs(targets), generation: m.projectGeneration}, true
 }
 
 // openStatusPicker opens the status picker over actionTargets, starting at the
@@ -7515,6 +7563,7 @@ func (m *Model) openStatusPicker() {
 	}
 	m.statusTargets = targetIssueIDs(targets)
 	m.showStatusPicker = true
+	m.statusPickerGeneration = m.projectGeneration
 }
 
 func targetIssueIDs(issues []*model.Issue) []string {
