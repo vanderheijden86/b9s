@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -98,7 +99,10 @@ func TestSQLiteReader_LoadsCreator(t *testing.T) {
 	}
 	defer r.Close()
 	issues, err := r.LoadIssues()
-	if err != nil {
+	// This fixture has no comments table; the fallback schema load still
+	// reports that as ErrCommentsUnavailable rather than silently returning
+	// no comments (bd-t8j5.18), so it is the one error this test tolerates.
+	if err != nil && !errors.Is(err, ErrCommentsUnavailable) {
 		t.Fatal(err)
 	}
 	if len(issues) != 1 || issues[0].CreatedBy != "ubuntu" || issues[0].Owner != "u@example.com" {

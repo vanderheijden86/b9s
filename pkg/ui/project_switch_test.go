@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -210,6 +211,23 @@ func TestOpenedProjectRecordsOpenedAt(t *testing.T) {
 		}
 	}
 	t.Errorf("beta missing from recent projects %+v", m.appConfig.RecentProjects)
+}
+
+// TestSwitchingProjectsClearsCommentsLoadErr guards bd-t8j5.18: a comments
+// failure recorded against one Dolt project must not linger and be shown
+// against the next project switched to, the same leak doltFailure was
+// already cleared for.
+func TestSwitchingProjectsClearsCommentsLoadErr(t *testing.T) {
+	m, _, beta := switchModel(t)
+	m.commentsLoadErr = errors.New("alpha: comments unavailable")
+	m, _ = requestSwitch(t, m, beta)
+
+	updated, _ := m.Update(projectOpenedMsg{generation: m.projectSwitch.generation, project: beta})
+	m = updated.(Model)
+
+	if m.commentsLoadErr != nil {
+		t.Errorf("commentsLoadErr = %v after switching to beta, want nil: alpha's error must not leak into beta", m.commentsLoadErr)
+	}
 }
 
 func TestStartupFailurePopupNamesFallbackProject(t *testing.T) {

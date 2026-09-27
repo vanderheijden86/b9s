@@ -35,6 +35,9 @@ const (
 	// Dolt reports a database the user may not read as this generic error,
 	// with an "Access denied" message.
 	mysqlErrUnknown = 1105
+	// mysqlErrUnknownColumn is the only signal that legitimately means "try
+	// the older, narrower issues schema" (see doltMissingColumnError).
+	mysqlErrUnknownColumn = 1054
 )
 
 const catalogQueryTimeout = 10 * time.Second
@@ -57,10 +60,18 @@ func (r Reachability) String() string {
 }
 
 // ClassifyConnError maps a connection or query error to a Reachability.
-// A server error number is checked first: a refused login arrives over a
-// working connection and must not be mistaken for a network failure.
+// ErrCommentsUnavailable is checked before the MySQL error is unwrapped: it
+// can itself wrap an underlying MySQL error (e.g. "no such table: comments"
+// -> 1146), which errors.As would otherwise find and misclassify as
+// ReachNoIssuesTable, when the source itself is reachable and only its
+// comments are unavailable. A server error number is checked next: a
+// refused login arrives over a working connection and must not be mistaken
+// for a network failure.
 func ClassifyConnError(err error) Reachability {
 	if err == nil {
+		return ReachReachable
+	}
+	if errors.Is(err, ErrCommentsUnavailable) {
 		return ReachReachable
 	}
 	var mysqlErr *mysql.MySQLError

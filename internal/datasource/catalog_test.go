@@ -24,6 +24,15 @@ func TestClassifyConnError(t *testing.T) {
 		{name: "dolt database access denied", err: &mysql.MySQLError{Number: 1105, Message: "Access denied for user 'bd_b9s'@'%' to database 'LP_Team'"}, want: ReachDenied},
 		{name: "other dolt generic error", err: &mysql.MySQLError{Number: 1105, Message: "branch not found"}, want: ReachUnknown},
 		{name: "missing issues table", err: &mysql.MySQLError{Number: 1146}, want: ReachNoIssuesTable},
+		{
+			name: "comments unavailable wrapping a no-such-table error",
+			// The nested MySQL 1146 would classify as ReachNoIssuesTable on
+			// its own, but the source itself is reachable: only its comments
+			// table is missing. ErrCommentsUnavailable must be checked before
+			// errors.As unwraps to the MySQL error underneath it.
+			err:  fmt.Errorf("%w: query comments: %w", ErrCommentsUnavailable, &mysql.MySQLError{Number: 1146}),
+			want: ReachReachable,
+		},
 		{name: "dial failure", err: &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}, want: ReachServerDown},
 		{name: "deadline", err: fmt.Errorf("ping: %w", context.DeadlineExceeded), want: ReachServerDown},
 		{name: "anything else", err: errors.New("boom"), want: ReachUnknown},

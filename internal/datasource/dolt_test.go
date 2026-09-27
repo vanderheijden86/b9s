@@ -1,9 +1,13 @@
 package datasource
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 // doltTestDSN returns the DSN for the Dolt test server from an environment variable.
@@ -122,4 +126,29 @@ func TestDoltReader_ConnectFailure(t *testing.T) {
 		t.Errorf("error message should reference the target address; got: %s", errMsg)
 	}
 	t.Logf("Got expected error: %v", err)
+}
+
+// TestDoltMissingColumnError_OnlyMatchesMySQLUnknownColumn is the
+// discriminator LoadIssuesFiltered's fallback gate relies on: it must fire
+// only for MySQL error 1054 ("Unknown column"), never for an unrelated
+// server error that happens to arrive over the same connection.
+func TestDoltMissingColumnError_OnlyMatchesMySQLUnknownColumn(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil", err: nil, want: false},
+		{name: "unknown column", err: &mysql.MySQLError{Number: 1054, Message: "Unknown column 'defer_until' in 'field list'"}, want: true},
+		{name: "wrapped unknown column", err: fmt.Errorf("query issues: %w", &mysql.MySQLError{Number: 1054}), want: true},
+		{name: "no such table", err: &mysql.MySQLError{Number: 1146}, want: false},
+		{name: "connection refused", err: errors.New("dial tcp: connection refused")}, // want defaults to false
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := doltMissingColumnError(tt.err); got != tt.want {
+				t.Errorf("doltMissingColumnError(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
+	}
 }

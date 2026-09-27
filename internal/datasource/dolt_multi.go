@@ -1,6 +1,7 @@
 package datasource
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -87,7 +88,11 @@ func NewMultiDoltReader(dbs []DoltDBInfo) (*MultiDoltReader, error) {
 
 // LoadAllIssues loads issues from all connected databases concurrently.
 // Returns a merged slice. Each issue's SourceRepo is set to the database name
-// for identification. Returns partial results if some databases fail.
+// for identification. A database whose comments query failed keeps its
+// issues in the merged result (the rest of the load is complete); its error
+// is joined into the returned error so the caller can show a note instead of
+// dropping the database entirely (bd-t8j5.18). A database that genuinely
+// failed to load is still dropped, as before.
 func (m *MultiDoltReader) LoadAllIssues() ([]model.Issue, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -107,13 +112,18 @@ func (m *MultiDoltReader) LoadAllIssues() ([]model.Issue, error) {
 	}
 
 	var all []model.Issue
-	var errors []string
+	var failures []string
+	var commentErrs []error
 	for range m.readers {
 		res := <-ch
-		if res.err != nil {
+		if res.err != nil && !errors.Is(res.err, ErrCommentsUnavailable) {
 			debug.Log("multi-dolt: load %s failed: %v", res.db, res.err)
-			errors = append(errors, fmt.Sprintf("%s: %v", res.db, res.err))
+			failures = append(failures, fmt.Sprintf("%s: %v", res.db, res.err))
 			continue
+		}
+		if res.err != nil {
+			debug.Log("multi-dolt: comments unavailable for %s: %v", res.db, res.err)
+			commentErrs = append(commentErrs, fmt.Errorf("%s: %w", res.db, res.err))
 		}
 		// Tag each issue with its source database
 		for i := range res.issues {
@@ -125,10 +135,10 @@ func (m *MultiDoltReader) LoadAllIssues() ([]model.Issue, error) {
 		debug.Log("multi-dolt: loaded %d issues from %s", len(res.issues), res.db)
 	}
 
-	debug.Log("multi-dolt: total %d issues from %d databases (%d errors)",
-		len(all), len(m.readers)-len(errors), len(errors))
+	debug.Log("multi-dolt: total %d issues from %d databases (%d failures, %d comments errors)",
+		len(all), len(m.readers)-len(failures), len(failures), len(commentErrs))
 
-	return all, nil
+	return all, errors.Join(commentErrs...)
 }
 
 // GetDatabaseHashes returns the working-set content hash for each database.

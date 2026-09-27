@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -124,6 +125,13 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 	debug.Log("dolt: SQL: %s", strings.TrimSpace(query))
 	rows, err := r.db.Query(query)
 	if err != nil {
+		if !doltMissingColumnError(err) {
+			// A transient failure (a dropped connection, a permissions
+			// change) must be reported, not quietly downgraded to a
+			// partial load by treating it the same as a schema mismatch.
+			debug.Log("dolt: full query FAILED (%v), not a missing-column error, returning it unchanged", err)
+			return nil, fmt.Errorf("query issues: %w", err)
+		}
 		// Fall back to minimal schema if some columns are absent.
 		debug.Log("dolt: full query FAILED (%v), falling back to simple query", err)
 		return r.loadIssuesSimple(filter)
@@ -186,6 +194,15 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 	return result, commentsErr
 }
 
+// doltMissingColumnError reports whether err is a MySQL "Unknown column"
+// error (1054), the only signal that legitimately means "try the older,
+// narrower schema." Any other failure must propagate unchanged rather than
+// quietly downgrading to a partial load.
+func doltMissingColumnError(err error) bool {
+	var mysqlErr *mysql.MySQLError
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlErrUnknownColumn
+}
+
 // loadIssuesSimple is a fallback for Dolt databases with fewer columns.
 func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.Issue, error) {
 	query := `
@@ -239,7 +256,22 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 	}
 
 	applyCreators(r.db, issues)
-	return issues, nil
+
+	// The simple fallback must load comments too, and report a failure
+	// rather than silently returning nil error with no comments at all
+	// (bd-t8j5.18): a caller that must not mistake "unknown" for "none"
+	// (internal/attach's CommentLoader) needs this signal from every load
+	// path, not just the full-schema one.
+	allComments, commentsErr := r.loadAllComments()
+	if commentsErr != nil {
+		debug.Log("dolt: simple query: comments unavailable: %v", commentsErr)
+	}
+	for i := range issues {
+		if allComments != nil {
+			issues[i].Comments = allComments[issues[i].ID]
+		}
+	}
+	return issues, commentsErr
 }
 
 // scanIssue scans a full-schema row from the issues table into a model.Issue.
@@ -374,39 +406,6 @@ func (r *DoltReader) loadDependencies(issueID string) []*model.Dependency {
 	return deps
 }
 
-// loadComments loads the comments for a single issue, reporting a query or
-// scan failure wrapped in ErrCommentsUnavailable rather than returning nil:
-// nil must mean "no comments," never "couldn't ask" (see ErrCommentsUnavailable).
-// bd v0.63 uses CHAR(36) UUID for comment IDs; our model's ID is a string, so
-// it round-trips either the UUID or a legacy integer ID unchanged. attachref
-// needs the ID to break ties between comments sharing one created_at.
-func (r *DoltReader) loadComments(issueID string) ([]*model.Comment, error) {
-	query := `SELECT id, author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
-	rows, err := r.db.Query(query, issueID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: query comments for %s: %w", ErrCommentsUnavailable, issueID, err)
-	}
-	defer rows.Close()
-
-	var comments []*model.Comment
-	for rows.Next() {
-		var comment model.Comment
-		var createdAt sql.NullTime
-		if err := rows.Scan(&comment.ID, &comment.Author, &comment.Text, &createdAt); err != nil {
-			return nil, fmt.Errorf("%w: scan comment for %s: %w", ErrCommentsUnavailable, issueID, err)
-		}
-		if createdAt.Valid {
-			comment.CreatedAt = createdAt.Time
-		}
-		comment.IssueID = issueID
-		comments = append(comments, &comment)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate comments for %s: %w", ErrCommentsUnavailable, issueID, err)
-	}
-	return comments, nil
-}
-
 // loadAllLabels loads labels for all issues in a single query.
 // Returns a map from issue ID to label slice.
 func (r *DoltReader) loadAllLabels() map[string][]string {
@@ -470,24 +469,7 @@ func (r *DoltReader) loadAllComments() (map[string][]*model.Comment, error) {
 		debug.Log("dolt: batch comments query failed: %v", err)
 		return nil, fmt.Errorf("%w: query comments: %w", ErrCommentsUnavailable, err)
 	}
-	defer rows.Close()
-
-	result := make(map[string][]*model.Comment)
-	for rows.Next() {
-		var comment model.Comment
-		var createdAt sql.NullTime
-		if err := rows.Scan(&comment.ID, &comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
-			return nil, fmt.Errorf("%w: scan comment: %w", ErrCommentsUnavailable, err)
-		}
-		if createdAt.Valid {
-			comment.CreatedAt = createdAt.Time
-		}
-		result[comment.IssueID] = append(result[comment.IssueID], &comment)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate comments: %w", ErrCommentsUnavailable, err)
-	}
-	return result, nil
+	return scanAllComments(rows)
 }
 
 // AllComments loads every comment in the database in one all-or-nothing

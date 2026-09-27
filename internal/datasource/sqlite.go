@@ -81,6 +81,12 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 
 	rows, err := r.db.Query(query)
 	if err != nil {
+		if !sqliteMissingColumnError(err) {
+			// A transient failure (a locked or closed database) must be
+			// reported, not quietly downgraded to a partial load by
+			// treating it the same as a schema mismatch.
+			return nil, fmt.Errorf("query failed: %w", err)
+		}
 		// Try simpler query if some columns don't exist
 		return r.loadIssuesSimple(filter)
 	}
@@ -204,6 +210,14 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 	return issues, commentsErr
 }
 
+// sqliteMissingColumnError reports whether err is SQLite's own "no such
+// column" failure, the only signal that legitimately means "try the older,
+// narrower schema." Any other failure must propagate unchanged rather than
+// quietly downgrading to a partial load.
+func sqliteMissingColumnError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "no such column")
+}
+
 // loadIssuesSimple is a fallback for databases with fewer columns
 func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.Issue, error) {
 	query := `
@@ -220,6 +234,7 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 	defer rows.Close()
 
 	var issues []model.Issue
+	var commentsErr error
 	for rows.Next() {
 		var issue model.Issue
 		var description sql.NullString
@@ -245,6 +260,18 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 			issue.UpdatedAt = updatedAt.Time
 		}
 
+		// Load comments for this issue, the same as the full-schema query
+		// does: the simple fallback must not silently return no comments
+		// at all (bd-t8j5.18).
+		comments, cErr := r.loadComments(issue.ID)
+		if cErr != nil {
+			if commentsErr == nil {
+				commentsErr = cErr
+			}
+			debug.Log("sqlite: simple query: comments unavailable for %s: %v", issue.ID, cErr)
+		}
+		issue.Comments = comments
+
 		if filter != nil && !filter(&issue) {
 			continue
 		}
@@ -256,7 +283,7 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 	}
 
 	applyCreators(r.db, issues)
-	return issues, nil
+	return issues, commentsErr
 }
 
 // loadDependencies loads dependencies for an issue
@@ -326,24 +353,7 @@ func (r *SQLiteReader) AllComments() (map[string][]*model.Comment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: query comments: %w", ErrCommentsUnavailable, err)
 	}
-	defer rows.Close()
-
-	result := make(map[string][]*model.Comment)
-	for rows.Next() {
-		var comment model.Comment
-		var createdAt sql.NullTime
-		if err := rows.Scan(&comment.ID, &comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
-			return nil, fmt.Errorf("%w: scan comment: %w", ErrCommentsUnavailable, err)
-		}
-		if createdAt.Valid {
-			comment.CreatedAt = createdAt.Time
-		}
-		result[comment.IssueID] = append(result[comment.IssueID], &comment)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate comments: %w", ErrCommentsUnavailable, err)
-	}
-	return result, nil
+	return scanAllComments(rows)
 }
 
 // CountIssues returns the count of non-tombstone issues

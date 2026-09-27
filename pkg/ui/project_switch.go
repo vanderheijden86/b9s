@@ -289,6 +289,9 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	m.sourceType = datasource.SourceTypeJSONLLocal
 	m.doltSource = datasource.DataSource{}
 	m.doltFailure = nil
+	// The previous project's comments error must not bleed into the new
+	// project's view; the first load of the new project sets its own value.
+	m.commentsLoadErr = nil
 	m.sourceInfo = fmt.Sprintf("jsonl %s", filepath.Base(newPath))
 	if discErr == nil {
 		for _, s := range sources {

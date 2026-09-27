@@ -334,7 +334,9 @@ func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd
 				continue
 			}
 			reach[loaded.key] = datasource.ClassifyConnError(loaded.err)
-			if loaded.err != nil {
+			// A comments-only failure still reaches the source and loads real
+			// issue counts; only a genuine load failure drops the entry.
+			if loaded.err != nil && !errors.Is(loaded.err, datasource.ErrCommentsUnavailable) {
 				debug.Log("project counts: load %s failed: %v", loaded.key, loaded.err)
 				continue
 			}
@@ -1526,10 +1528,14 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		debug.Log("AllProjectsLoadMsg: loading from multi-reader")
 		allIssues, err := m.multiDoltReader.LoadAllIssues()
-		if err != nil {
+		if err != nil && !errors.Is(err, datasource.ErrCommentsUnavailable) {
 			m.statusMsg = fmt.Sprintf("All-projects load error: %v", err)
 			m.statusIsError = true
 		} else {
+			// A comments-only failure still has a complete issue list from
+			// every reachable database: keep it and surface the error via
+			// commentsLoadErr instead of dropping the whole load (bd-t8j5.18).
+			m.commentsLoadErr = err
 			m.issues = allIssues
 			m.graph.SetIssues(allIssues)
 			m.isLoading = false
@@ -1562,8 +1568,14 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			m.tree.Build(m.issues)
 			m.tree.SetSize(m.treeLayoutSize())
 			m.tree.SetGlobalIssueMap(m.issueMap)
-			m.statusMsg = fmt.Sprintf("All projects: %d issues", len(allIssues))
-			m.statusIsError = false
+			if err != nil {
+				debug.Log("AllProjectsLoadMsg: comments unavailable: %v", err)
+				m.statusMsg = fmt.Sprintf("All projects: %d issues (comments unavailable)", len(allIssues))
+				m.statusIsError = true
+			} else {
+				m.statusMsg = fmt.Sprintf("All projects: %d issues", len(allIssues))
+				m.statusIsError = false
+			}
 			debug.Log("AllProjectsLoadMsg: %d issues loaded, rebuilding views", len(allIssues))
 		}
 		// Re-queue watcher
