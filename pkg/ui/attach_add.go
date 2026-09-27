@@ -347,8 +347,8 @@ func bdRunnerForAttach(w *IssueWriter) (attach.BdRunner, error) {
 		return nil, fmt.Errorf("read-only: no local checkout for this project")
 	}
 	bdPath := w.bdPath
-	return attach.RunnerFunc(func(args ...string) (string, error) {
-		return bdrun.Run(bdPath, dir, args...)
+	return attach.RunnerFunc(func(ctx context.Context, args ...string) (string, error) {
+		return bdrun.Run(ctx, bdPath, dir, args...)
 	}), nil
 }
 

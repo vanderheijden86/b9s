@@ -1,6 +1,7 @@
 package attach
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/vanderheijden86/beadwork/internal/attachref"
@@ -9,8 +10,9 @@ import (
 // Detach appends a detach comment for sha256, provided it is currently
 // attached to issueID. Beads has no verb to edit or delete a comment, so
 // this never touches the earlier attach comment: the attachment list is a
-// fold of both kinds of comment in time order (ADR 0024).
-func Detach(bd BdRunner, cl CommentLoader, issueID, sha256Hash string) error {
+// fold of both kinds of comment in time order (ADR 0024). ctx bounds the bd
+// call (bd-t8j5.20), so a hung bd cannot block the caller indefinitely.
+func Detach(ctx context.Context, bd BdRunner, cl CommentLoader, issueID, sha256Hash string) error {
 	if !isSHA256(sha256Hash) {
 		return fmt.Errorf("%q is not a 64 character lowercase hex sha256", sha256Hash)
 	}
@@ -34,7 +36,7 @@ func Detach(bd BdRunner, cl CommentLoader, issueID, sha256Hash string) error {
 	if err != nil {
 		return err
 	}
-	if output, err := bd.Run("comments", "add", issueID, text); err != nil {
+	if output, err := bd.Run(ctx, "comments", "add", issueID, text); err != nil {
 		return fmt.Errorf("bd comments add: %s: %w", output, err)
 	}
 	return nil

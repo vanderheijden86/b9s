@@ -66,7 +66,7 @@ func addOne(ctx context.Context, h *blobstore.Handle, bd BdRunner, issueID, path
 	if err != nil {
 		return AddResult{Path: path, Ref: ref, Skipped: skipped, Err: fmt.Errorf("%s: %w", path, err)}
 	}
-	if output, err := bd.Run("comments", "add", issueID, text); err != nil {
+	if output, err := bd.Run(ctx, "comments", "add", issueID, text); err != nil {
 		return AddResult{Path: path, Ref: ref, Skipped: skipped, Err: fmt.Errorf("%s: bd comments add: %s: %w", path, output, err)}
 	}
 	return AddResult{Path: path, Ref: ref, Skipped: skipped}

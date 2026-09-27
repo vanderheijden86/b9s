@@ -31,6 +31,11 @@ reference comment that attaches it (ADR 0024). Needs an "attachments:"
 section in b9s's config file; see README.md, section "Attachments".
 `
 
+// attachCmdTimeout bounds every b9s attach subcommand end to end (bd-t8j5.20):
+// a hung bd or a stalled blob store call must fail the command rather than
+// block the CLI forever.
+const attachCmdTimeout = 2 * time.Minute
+
 // runAttach implements `b9s attach` and returns the process exit code.
 func runAttach(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -133,8 +138,8 @@ func newAttachEnv(ctx context.Context) (*attachEnv, error) {
 		return nil, err
 	}
 
-	bd := attach.RunnerFunc(func(args ...string) (string, error) {
-		return bdrun.Run(bdPath, projectDir, args...)
+	bd := attach.RunnerFunc(func(ctx context.Context, args ...string) (string, error) {
+		return bdrun.Run(ctx, bdPath, projectDir, args...)
 	})
 	cl := attach.CommentLoaderFunc(func(issueID string) ([]*model.Comment, error) {
 		issues, err := datasource.LoadFromSource(opened.Source)
@@ -163,7 +168,8 @@ func attachEnvExitCode(err error) int {
 }
 
 func runAttachAdd(issueID string, paths []string, stdout, stderr io.Writer) int {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), attachCmdTimeout)
+	defer cancel()
 	env, err := newAttachEnv(ctx)
 	if err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
@@ -188,13 +194,15 @@ func runAttachAdd(issueID string, paths []string, stdout, stderr io.Writer) int 
 }
 
 func runAttachDetach(issueID, sha256Hash string, stdout, stderr io.Writer) int {
-	env, err := newAttachEnv(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), attachCmdTimeout)
+	defer cancel()
+	env, err := newAttachEnv(ctx)
 	if err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
 		return attachEnvExitCode(err)
 	}
 
-	if err := attach.Detach(env.bd, env.cl, issueID, sha256Hash); err != nil {
+	if err := attach.Detach(ctx, env.bd, env.cl, issueID, sha256Hash); err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
 		return 1
 	}
@@ -211,7 +219,9 @@ func runAttachList(args []string, stdout, stderr io.Writer) int {
 	jsonOut := bools["--json"]
 	issueID := rest[0]
 
-	env, err := newAttachEnv(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), attachCmdTimeout)
+	defer cancel()
+	env, err := newAttachEnv(ctx)
 	if err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
 		return attachEnvExitCode(err)
@@ -276,7 +286,8 @@ func runAttachGet(args []string, stdout, stderr io.Writer) int {
 	out := values["-o"]
 	force := bools["--force"]
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), attachCmdTimeout)
+	defer cancel()
 	env, err := newAttachEnv(ctx)
 	if err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
@@ -426,7 +437,8 @@ func runAttachURL(args []string, stdout, stderr io.Writer) int {
 	}
 	issueID, query := rest[0], rest[1]
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), attachCmdTimeout)
+	defer cancel()
 	env, err := newAttachEnv(ctx)
 	if err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)

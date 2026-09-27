@@ -1,9 +1,12 @@
 package ui
 
 import (
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -177,6 +180,47 @@ func TestIssueWriter_RunBdCmd_RunsInCheckout(t *testing.T) {
 	reportedDir, _ := filepath.EvalSymlinks(strings.TrimSpace(result.Output))
 	if reportedDir != wantDir {
 		t.Errorf("expected command to run in checkout %q, but ran in %q", wantDir, reportedDir)
+	}
+}
+
+// TestIssueWriter_RunBdCmd_HungBdReturnsErroredResult proves runBdCmd's
+// bounded ctx (bd-t8j5.20): a bd that never exits must not leave the footer
+// busy forever, but return a BdResultMsg carrying the timeout error within
+// bdRunTimeout plus bdrun's WaitDelay.
+func TestIssueWriter_RunBdCmd_HungBdReturnsErroredResult(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	original := bdRunTimeout
+	bdRunTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { bdRunTimeout = original })
+
+	w := &IssueWriter{bdPath: filepath.Join(binDir, "bd"), available: true}
+	w.SetCheckout(testCheckout(t))
+
+	start := time.Now()
+	cmd := w.runBdCmd(BdOpUpdate, "bd-1", []string{"update", "bd-1", "--status=closed"})
+	msg := cmd()
+	elapsed := time.Since(start)
+
+	if elapsed > 5*time.Second {
+		t.Fatalf("runBdCmd took %v, want it bounded by bdRunTimeout plus WaitDelay, not the 30s sleep", elapsed)
+	}
+	result, ok := msg.(BdResultMsg)
+	if !ok {
+		t.Fatalf("expected BdResultMsg, got %T", msg)
+	}
+	if result.Success {
+		t.Error("expected failure for a hung bd")
+	}
+	if result.Error == nil || !strings.Contains(result.Error.Error(), "timed out") {
+		t.Errorf("result.Error = %v, want it to name the timeout clearly", result.Error)
 	}
 }
 

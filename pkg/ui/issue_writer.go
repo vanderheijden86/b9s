@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,13 @@ import (
 	"github.com/vanderheijden86/beadwork/internal/bdrun"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
 )
+
+// bdRunTimeout bounds a single bd invocation from IssueWriter (bd-t8j5.20): a
+// hung bd must fail the write rather than leave the TUI's footer busy
+// forever. attach_add.go's attachAddTimeout plays the same role for uploads,
+// which can legitimately take longer than a plain bd write. A var, not a
+// const, so a test can shrink it rather than waiting out the real deadline.
+var bdRunTimeout = 60 * time.Second
 
 // BdOperation represents the type of bd operation performed
 type BdOperation int
@@ -217,7 +225,9 @@ func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) te
 		debug.Log("bd-cmd: exec %s %s (dir=%s)", bdPath, strings.Join(args, " "), dir)
 		start := time.Now()
 
-		outStr, err := bdrun.Run(bdPath, dir, args...)
+		ctx, cancel := context.WithTimeout(context.Background(), bdRunTimeout)
+		defer cancel()
+		outStr, err := bdrun.Run(ctx, bdPath, dir, args...)
 		elapsed := time.Since(start)
 
 		if err != nil {

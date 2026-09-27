@@ -6,6 +6,8 @@
 package attach
 
 import (
+	"context"
+
 	"github.com/vanderheijden86/beadwork/internal/attachref"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
@@ -17,16 +19,19 @@ type Attachment = attachref.Attachment
 
 // BdRunner runs `bd <args...>` bound to one project's checkout and returns
 // its combined output. internal/bdrun.Run, bound to a resolved path and
-// directory, satisfies it in production.
+// directory, satisfies it in production. ctx bounds the run (bd-t8j5.20): a
+// hung bd must not block Add or Detach, and every caller has a ctx of its
+// own to pass through (attach.Add's, the CLI's per-command deadline,
+// IssueWriter's per-call one).
 type BdRunner interface {
-	Run(args ...string) (output string, err error)
+	Run(ctx context.Context, args ...string) (output string, err error)
 }
 
 // RunnerFunc adapts a plain function to BdRunner.
-type RunnerFunc func(args ...string) (string, error)
+type RunnerFunc func(ctx context.Context, args ...string) (string, error)
 
 // Run calls f.
-func (f RunnerFunc) Run(args ...string) (string, error) { return f(args...) }
+func (f RunnerFunc) Run(ctx context.Context, args ...string) (string, error) { return f(ctx, args...) }
 
 // CommentLoader loads an issue's current comments, in the same order and
 // from the same data source b9s reads (Dolt, SQLite or JSONL). Every

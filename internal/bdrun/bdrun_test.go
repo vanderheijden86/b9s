@@ -1,11 +1,14 @@
 package bdrun
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // writeFakeBd installs a shell script named bd in a fresh PATH-only
@@ -73,7 +76,7 @@ func TestRun_PassesEachArgIntact(t *testing.T) {
 	bdPath := filepath.Join(binDir, "bd")
 	dir := t.TempDir()
 
-	out, err := Run(bdPath, dir, "comments", "add", "bd-1", "line one\nline two with spaces")
+	out, err := Run(context.Background(), bdPath, dir, "comments", "add", "bd-1", "line one\nline two with spaces")
 
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -92,7 +95,7 @@ func TestRun_RunsInDir(t *testing.T) {
 	}
 	dir := t.TempDir()
 
-	out, err := Run(filepath.Join(binDir, "bd"), dir, "list")
+	out, err := Run(context.Background(), filepath.Join(binDir, "bd"), dir, "list")
 
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -114,9 +117,98 @@ func TestRun_ReturnsErrorOnNonZeroExit(t *testing.T) {
 	binDir := writeFakeBd(t, 1)
 	bdPath := filepath.Join(binDir, "bd")
 
-	_, err := Run(bdPath, t.TempDir(), "close", "bd-1")
+	_, err := Run(context.Background(), bdPath, t.TempDir(), "close", "bd-1")
 
 	if err == nil {
 		t.Fatal("Run() err = nil, want an error for exit code 1")
+	}
+}
+
+// TestRun_TimesOutOnAHungProcess proves the deadline itself, not only the
+// process-group kill below: a fake bd that sleeps past ctx's deadline must
+// return a clear timeout error within the deadline plus WaitDelay, never
+// hang for the sleep's full duration.
+func TestRun_TimesOutOnAHungProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	_, err := Run(ctx, filepath.Join(binDir, "bd"), t.TempDir(), "list")
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Run() err = nil, want a timeout error")
+	}
+	if !strings.Contains(err.Error(), "timed out") {
+		t.Errorf("err = %v, want it to name the timeout clearly", err)
+	}
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want it bounded by the 200ms deadline plus WaitDelay, not the 30s sleep", elapsed)
+	}
+}
+
+// TestRun_KillsWholeProcessGroupOnTimeout proves the process-group half of
+// the fix: a fake bd that forks a grandchild holding stdout open (a
+// backgrounded sh that never exits) must not block Run past its deadline.
+// Killing only the direct bd process would leave that grandchild holding the
+// CombinedOutput pipe open, and Wait would then block on it indefinitely.
+func TestRun_KillsWholeProcessGroupOnTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	// The backgrounded child inherits bd's stdout pipe and outlives bd
+	// itself; only a process-group kill reaches it.
+	script := "#!/bin/sh\n(sleep 30) &\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	_, err := Run(ctx, filepath.Join(binDir, "bd"), t.TempDir(), "list")
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Run() err = nil, want a timeout error")
+	}
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want the grandchild's pipe hold to be bounded by WaitDelay, not the 30s sleep", elapsed)
+	}
+}
+
+// TestRun_ContextCancellationIsReportedAsTimeout guards the error-shaping
+// branch specifically: errors.Is(ctx.Err(), context.DeadlineExceeded) must
+// be the check Run uses, not a bare ctx.Err() != nil, since a deliberate
+// cancellation (not a deadline) should surface as the underlying exec error
+// rather than "bd timed out".
+func TestRun_ContextCancellationIsReportedAsTimeout(t *testing.T) {
+	binDir := writeFakeBd(t, 0)
+	bdPath := filepath.Join(binDir, "bd")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := Run(ctx, bdPath, t.TempDir(), "list")
+
+	if err == nil {
+		t.Fatal("Run() err = nil, want an error for an already-cancelled context")
+	}
+	if strings.Contains(err.Error(), "timed out") {
+		t.Errorf("err = %v, want cancellation (not a deadline) to not claim a timeout", err)
+	}
+	if !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "context canceled") {
+		t.Errorf("err = %v, want it to reflect context cancellation", err)
 	}
 }

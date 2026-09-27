@@ -1,6 +1,7 @@
 package attach
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -35,7 +36,7 @@ func TestDetach_AppendsDetachCommentForALiveAttachment(t *testing.T) {
 	}
 	bd := &fakeBd{}
 
-	err := Detach(bd, comments, "bd-1", testSHA)
+	err := Detach(context.Background(), bd, comments, "bd-1", testSHA)
 
 	if err != nil {
 		t.Fatalf("Detach: %v", err)
@@ -60,7 +61,7 @@ func TestDetach_BdFailureErrorIncludesBdOutput(t *testing.T) {
 	}
 	bd := &fakeBd{err: errCommandFailed, output: "bd: issue bd-1 not found"}
 
-	err := Detach(bd, comments, "bd-1", testSHA)
+	err := Detach(context.Background(), bd, comments, "bd-1", testSHA)
 
 	if err == nil {
 		t.Fatal("Detach: err = nil, want the bd failure reported")
@@ -71,7 +72,7 @@ func TestDetach_BdFailureErrorIncludesBdOutput(t *testing.T) {
 }
 
 func TestDetach_RejectsMalformedHash(t *testing.T) {
-	err := Detach(&fakeBd{}, fakeComments{}, "bd-1", "not-a-hash")
+	err := Detach(context.Background(), &fakeBd{}, fakeComments{}, "bd-1", "not-a-hash")
 
 	if err == nil {
 		t.Fatal("Detach: err = nil, want a malformed-hash error")
@@ -79,7 +80,7 @@ func TestDetach_RejectsMalformedHash(t *testing.T) {
 }
 
 func TestDetach_RejectsHashNotCurrentlyAttached(t *testing.T) {
-	err := Detach(&fakeBd{}, fakeComments{}, "bd-1", testSHA)
+	err := Detach(context.Background(), &fakeBd{}, fakeComments{}, "bd-1", testSHA)
 
 	if err == nil {
 		t.Fatal("Detach: err = nil, want an error for a hash never attached")
@@ -99,7 +100,7 @@ func TestDetach_RejectsAnAlreadyDetachedHash(t *testing.T) {
 		},
 	}
 
-	err = Detach(&fakeBd{}, comments, "bd-1", testSHA)
+	err = Detach(context.Background(), &fakeBd{}, comments, "bd-1", testSHA)
 
 	if err == nil {
 		t.Fatal("Detach: err = nil, want an error: already detached")

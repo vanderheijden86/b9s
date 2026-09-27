@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/vanderheijden86/beadwork/internal/attachref"
+	"github.com/vanderheijden86/beadwork/internal/bdrun"
 	"github.com/vanderheijden86/beadwork/internal/blobstore"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 )
@@ -32,7 +33,7 @@ type fakeBd struct {
 	output string
 }
 
-func (f *fakeBd) Run(args ...string) (string, error) {
+func (f *fakeBd) Run(_ context.Context, args ...string) (string, error) {
 	f.calls = append(f.calls, append([]string(nil), args...))
 	return f.output, f.err
 }
@@ -327,5 +328,57 @@ func TestAdd_CrashOrder_BlobSurvivesAFailedComment(t *testing.T) {
 	}
 	if _, err := h.Store.Stat(context.Background(), key); err != nil {
 		t.Errorf("blob missing after a failed bd comments add: %v", err)
+	}
+}
+
+// TestAdd_HungBd_ReturnsTimeoutAndKeepsTheBlobWithoutAComment exercises Add
+// through a real bdrun.Run, not fakeBd, so bd's own hang and bdrun's timeout
+// bound are both on the path under test (bd-t8j5.20). Put lands before the
+// bd call, so a timed-out comment must leave the blob in the store with no
+// comment written, the same crash-order guarantee
+// TestAdd_CrashOrder_BlobSurvivesAFailedComment checks for a plain failure.
+func TestAdd_HungBd_ReturnsTimeoutAndKeepsTheBlobWithoutAComment(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	path := writeTempFile(t, srcDir, "notes.txt", []byte("hello world"))
+
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bdPath := filepath.Join(binDir, "bd")
+	bd := RunnerFunc(func(ctx context.Context, args ...string) (string, error) {
+		return bdrun.Run(ctx, bdPath, t.TempDir(), args...)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	results := Add(ctx, h, bd, "bd-1", []string{path})
+	elapsed := time.Since(start)
+
+	if elapsed > 5*time.Second {
+		t.Fatalf("Add took %v, want it bounded by the 200ms deadline plus WaitDelay, not the 30s sleep", elapsed)
+	}
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("Add results = %+v, want the timeout reported", results)
+	}
+	if !strings.Contains(results[0].Err.Error(), "timed out") {
+		t.Errorf("error = %v, want it to name the timeout clearly", results[0].Err)
+	}
+
+	// Put ran before the hung bd call, so the blob is not lost: a retried
+	// Add for the same bytes would find it already present.
+	key, err := h.Key(results[0].Ref.SHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Store.Stat(context.Background(), key); err != nil {
+		t.Errorf("blob missing after a hung bd comments add: %v", err)
 	}
 }
