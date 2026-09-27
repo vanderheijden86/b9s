@@ -2,7 +2,6 @@ package blobstore
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/vanderheijden86/beadwork/internal/datasource"
 )
@@ -16,17 +15,12 @@ import (
 func SourceInfoFromDataSource(source datasource.DataSource, beadsDir, projectName string) (SourceInfo, error) {
 	switch source.Type {
 	case datasource.SourceTypeDolt:
-		host, _, err := net.SplitHostPort(source.Path)
-		if err != nil {
-			return SourceInfo{}, fmt.Errorf("attachments: parse dolt server address %q: %w", source.Path, err)
-		}
 		database := source.Database
 		if database == "" {
 			database = "beads"
 		}
 		return SourceInfo{
 			Kind:        SourceDolt,
-			DoltHost:    host,
 			Database:    database,
 			BeadsDir:    beadsDir,
 			ProjectName: projectName,

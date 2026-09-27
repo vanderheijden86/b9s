@@ -180,14 +180,34 @@ func (a *AttachmentsConfig) UnmarshalYAML(node *yaml.Node) error {
 		return fmt.Errorf("attachments.s3.url_ttl %s exceeds the 7 day S3 presign limit", time.Duration(decoded.S3.URLTTL))
 	}
 	if decoded.S3.Endpoint != "" {
-		if u, err := url.Parse(decoded.S3.Endpoint); err == nil && u.User != nil {
-			// The endpoint is never included here, quoted or otherwise: a
-			// userinfo-bearing endpoint carries the credential it names in
-			// the very string that would be echoed back.
-			return fmt.Errorf("attachments.s3.endpoint must not embed a username or password; use B9S_ATTACHMENTS_S3_ACCESS_KEY_ID and B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY, or attachments.s3.credential_command")
+		if err := validateAttachmentEndpoint(decoded.S3.Endpoint); err != nil {
+			return err
 		}
 	}
 	*a = AttachmentsConfig(decoded)
+	return nil
+}
+
+// validateAttachmentEndpoint rejects anything url.Parse cannot make sense of,
+// a scheme other than http or https, an empty host, or embedded userinfo. The
+// endpoint is never included in a returned error, quoted or otherwise: a
+// malformed or userinfo-bearing endpoint can carry the credential it names in
+// the very string that would be echoed back.
+func validateAttachmentEndpoint(endpoint string) error {
+	invalid := fmt.Errorf("attachments.s3.endpoint must be an http or https URL with a host and no embedded username or password; use B9S_ATTACHMENTS_S3_ACCESS_KEY_ID and B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY, or attachments.s3.credential_command")
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return invalid
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return invalid
+	}
+	if u.Hostname() == "" {
+		return invalid
+	}
+	if u.User != nil {
+		return invalid
+	}
 	return nil
 }
 

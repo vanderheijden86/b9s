@@ -40,9 +40,6 @@ const (
 // SourceInfoFromDataSource.
 type SourceInfo struct {
 	Kind SourceKind
-	// DoltHost is the Dolt server's host, with no port. Set only for
-	// SourceDolt; Open refuses the local backend unless this is loopback.
-	DoltHost string
 	// Database is the Dolt database name. Empty for SQLite and JSONL.
 	Database string
 	// BeadsDir is the project's .beads directory, used for the local
@@ -114,9 +111,18 @@ func Open(ctx context.Context, cfg *config.AttachmentsConfig, src SourceInfo) (*
 	if prefix == "" {
 		prefix = src.databaseSegment()
 	}
+	// Key trims and re-splits prefix on every call, so ListPrefix must be
+	// built from these same normalised segments rather than the raw prefix:
+	// otherwise "x/" and Key's "x" disagree, and ListPrefix's naive
+	// concatenation produces a double slash that List then rejects.
+	prefixSegs, err := NormalizePrefixSegments(prefix)
+	if err != nil {
+		return nil, fmt.Errorf("attachments: invalid prefix or database for this project: %w", err)
+	}
+	normalizedPrefix := strings.Join(prefixSegs, "/")
 	database := src.databaseSegment()
 	keyFunc := func(hash string) (string, error) {
-		return Key(prefix, database, "sha256", hash)
+		return Key(normalizedPrefix, database, "sha256", hash)
 	}
 	if _, err := keyFunc(dummyValidationHash); err != nil {
 		return nil, fmt.Errorf("attachments: invalid prefix or database for this project: %w", err)
@@ -149,7 +155,7 @@ func Open(ctx context.Context, cfg *config.AttachmentsConfig, src SourceInfo) (*
 		MaxBytes: cfg.MaxBytesOrDefault(),
 		URLTTL:   cfg.URLTTLOrDefault(),
 		GCGrace:  cfg.GCGraceOrDefault(),
-		prefix:   prefix,
+		prefix:   normalizedPrefix,
 		database: database,
 	}, nil
 }
@@ -239,6 +245,10 @@ func runCredentialCommand(ctx context.Context, command string) (accessKeyID, sec
 	cmd.Cancel = func() error {
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
+	// A grandchild that outlives WaitDelay still holding the pipe makes
+	// Cmd.Wait return an error instead of hanging, which is exactly what
+	// callers here already treat as failure: this bounds the wait rather
+	// than needing to distinguish that case from any other command failure.
 	cmd.WaitDelay = time.Second
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout

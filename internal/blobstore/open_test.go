@@ -79,7 +79,6 @@ func TestOpen_LocalRefusedForDoltByDefault(t *testing.T) {
 		t.Run(host, func(t *testing.T) {
 			_, err := Open(context.Background(), cfg, SourceInfo{
 				Kind:     SourceDolt,
-				DoltHost: host,
 				Database: "b9s",
 			})
 			if err == nil || !strings.Contains(err.Error(), "local_with_dolt_server") {
@@ -95,7 +94,6 @@ func TestOpen_LocalAllowedForDoltWithExplicitOptIn(t *testing.T) {
 		t.Run(host, func(t *testing.T) {
 			_, err := Open(context.Background(), cfg, SourceInfo{
 				Kind:     SourceDolt,
-				DoltHost: host,
 				Database: "b9s",
 			})
 			if err != nil {
@@ -121,7 +119,7 @@ func TestOpen_KeyUsesPrefixAndDatabaseSegment(t *testing.T) {
 
 	t.Run("dolt uses database name, default prefix falls back to it", func(t *testing.T) {
 		cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
-		h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, DoltHost: "127.0.0.1", Database: "b9s"})
+		h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, Database: "b9s"})
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
@@ -138,7 +136,7 @@ func TestOpen_KeyUsesPrefixAndDatabaseSegment(t *testing.T) {
 	t.Run("explicit prefix wins over the default", func(t *testing.T) {
 		cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
 		cfg.Prefix = "osenco"
-		h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, DoltHost: "127.0.0.1", Database: "b9s"})
+		h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, Database: "b9s"})
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
@@ -182,13 +180,54 @@ func TestOpen_ValidatesKeyEarly(t *testing.T) {
 
 func TestHandle_ListPrefix(t *testing.T) {
 	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
-	h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, DoltHost: "127.0.0.1", Database: "b9s"})
+	h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, Database: "b9s"})
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	want := "b9s/b9s/sha256"
 	if got := h.ListPrefix(); got != want {
 		t.Errorf("ListPrefix() = %q, want %q", got, want)
+	}
+}
+
+func TestHandle_ListPrefixMatchesKeyForEveryPrefixSpelling(t *testing.T) {
+	const hash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+	cases := []struct {
+		name   string
+		prefix string
+	}{
+		{"empty", ""},
+		{"bare", "x"},
+		{"trailing slash", "x/"},
+		{"leading and trailing slash", "/x/"},
+		{"two segments with trailing slash", "a/b/"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), Prefix: c.prefix}
+			h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceSQLite, ProjectName: "b9s"})
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			key, err := h.Key(hash)
+			if err != nil {
+				t.Fatalf("Key: %v", err)
+			}
+			if err := h.Store.Put(context.Background(), key, strings.NewReader("data"), 4, "text/plain"); err != nil {
+				t.Fatalf("Put: %v", err)
+			}
+			var got []string
+			err = h.Store.List(context.Background(), h.ListPrefix(), func(info Info) error {
+				got = append(got, info.Key)
+				return nil
+			})
+			if err != nil {
+				t.Fatalf("List(%q): %v", h.ListPrefix(), err)
+			}
+			if len(got) != 1 || got[0] != key {
+				t.Fatalf("List(%q) = %v, want exactly [%q]", h.ListPrefix(), got, key)
+			}
+		})
 	}
 }
 

@@ -19,7 +19,6 @@ func TestSourceInfoFromDataSource_Dolt(t *testing.T) {
 	}
 	want := SourceInfo{
 		Kind:        SourceDolt,
-		DoltHost:    "127.0.0.1",
 		Database:    "b9s",
 		BeadsDir:    "/repo/.beads",
 		ProjectName: "b9s",
@@ -30,23 +29,16 @@ func TestSourceInfoFromDataSource_Dolt(t *testing.T) {
 }
 
 func TestSourceInfoFromDataSource_DoltDefaultsMissingDatabase(t *testing.T) {
-	source := datasource.DataSource{Type: datasource.SourceTypeDolt, Path: "203.0.113.5:3306"}
+	// Path is not parsed at all: a Dolt server reachable only as "::1" (no
+	// port split needed here, but a real host can be) must not fail just
+	// because SourceInfo no longer has anywhere to put a host.
+	source := datasource.DataSource{Type: datasource.SourceTypeDolt, Path: "::1"}
 	info, err := SourceInfoFromDataSource(source, "/repo/.beads", "b9s")
 	if err != nil {
 		t.Fatalf("SourceInfoFromDataSource: %v", err)
 	}
 	if info.Database != "beads" {
 		t.Errorf("Database = %q, want the metadata.json default %q", info.Database, "beads")
-	}
-	if info.DoltHost != "203.0.113.5" {
-		t.Errorf("DoltHost = %q, want the host without its port", info.DoltHost)
-	}
-}
-
-func TestSourceInfoFromDataSource_DoltRejectsUnparsableAddress(t *testing.T) {
-	source := datasource.DataSource{Type: datasource.SourceTypeDolt, Path: "not-a-host-port"}
-	if _, err := SourceInfoFromDataSource(source, "/repo/.beads", "b9s"); err == nil {
-		t.Fatal("SourceInfoFromDataSource succeeded on an unparsable address")
 	}
 }
 
@@ -72,8 +64,8 @@ func TestSourceInfoFromDataSource_SQLiteAndJSONL(t *testing.T) {
 			if info.BeadsDir != "/repo/.beads" || info.ProjectName != "b9s" {
 				t.Errorf("info = %+v", info)
 			}
-			if info.DoltHost != "" || info.Database != "" {
-				t.Errorf("info = %+v, want no Dolt fields for a non-Dolt source", info)
+			if info.Database != "" {
+				t.Errorf("info = %+v, want no Database for a non-Dolt source", info)
 			}
 		})
 	}

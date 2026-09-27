@@ -43,6 +43,25 @@ var (
 	hexHash     = regexp.MustCompile(`^[0-9a-f]{7,128}$`)
 )
 
+// NormalizePrefixSegments splits prefix on "/", trims a leading or trailing
+// slash, and validates each segment against safeSegment. Key and Open's
+// ListPrefix both call this rather than each trimming prefix on their own, so
+// "x", "x/" and "/x/" always normalise to the identical "x": a prefix Key
+// accepted with a trailing slash previously produced a ListPrefix with a
+// double slash that Local.List's cleanRelPath then rejected outright.
+func NormalizePrefixSegments(prefix string) ([]string, error) {
+	if prefix == "" {
+		return nil, nil
+	}
+	segs := strings.Split(strings.Trim(prefix, "/"), "/")
+	for _, seg := range segs {
+		if !safeSegment.MatchString(seg) {
+			return nil, fmt.Errorf("prefix segment %q is not safe", seg)
+		}
+	}
+	return segs, nil
+}
+
 // Key builds <prefix>/<database>/<algo>/<first two hex>/<hash>. prefix is the
 // workspace and may be empty or contain slashes; every segment must be safe so
 // a crafted database name cannot escape the workspace prefix.
@@ -56,25 +75,18 @@ func Key(prefix, database, algo, hash string) (string, error) {
 	if !safeSegment.MatchString(database) {
 		return "", fmt.Errorf("database name %q is not a safe key segment", database)
 	}
-	parts := []string{}
-	if prefix != "" {
-		for _, seg := range strings.Split(strings.Trim(prefix, "/"), "/") {
-			if !safeSegment.MatchString(seg) {
-				return "", fmt.Errorf("prefix segment %q is not safe", seg)
-			}
-			parts = append(parts, seg)
-		}
+	segs, err := NormalizePrefixSegments(prefix)
+	if err != nil {
+		return "", err
 	}
-	parts = append(parts, database, algo, hash[:2], hash)
+	parts := append(segs, database, algo, hash[:2], hash)
 	return strings.Join(parts, "/"), nil
 }
 
 // isLoopbackHost reports whether host names only the local machine: a bare
 // "localhost" or a loopback IP literal, never a hostname that merely
-// resolves there today. Both the S3 backend's CreateBucket guard and the
-// local backend's Dolt-server guard need this same check, since both exist
-// to stop a config mistake from acting on a remote endpoint or leaving
-// files invisible to other readers of that server.
+// resolves there today. The S3 backend's CreateBucket guard uses this to
+// stop a config mistake from creating a bucket against a remote endpoint.
 func isLoopbackHost(host string) bool {
 	if strings.EqualFold(host, "localhost") {
 		return true

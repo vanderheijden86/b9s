@@ -230,3 +230,36 @@ func TestAttachments_EndpointWithUserinfoIsRejected(t *testing.T) {
 		t.Fatalf("error = %v, want the endpoint never echoed back", err)
 	}
 }
+
+func TestAttachments_InvalidEndpointsAreRejected(t *testing.T) {
+	cases := []struct {
+		name     string
+		endpoint string
+	}{
+		{"userinfo without scheme", "AKIA:SECRET@host"},
+		{"userinfo with unparsable path", "https://AKIA:SECRET@host/%zz"},
+		{"non-http scheme", "ftp://host"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			content := "attachments:\n  backend: s3\n  s3:\n    endpoint: \"" + c.endpoint + "\"\n"
+			_, err := writeConfigAndLoad(t, content)
+			if err == nil {
+				t.Fatalf("LoadFrom succeeded for endpoint %q, want it rejected", c.endpoint)
+			}
+			if strings.Contains(err.Error(), c.endpoint) {
+				t.Fatalf("error = %v, want the endpoint never echoed back", err)
+			}
+		})
+	}
+}
+
+func TestAttachments_ValidEndpointIsAccepted(t *testing.T) {
+	cfg, err := writeConfigAndLoad(t, "attachments:\n  backend: s3\n  s3:\n    endpoint: https://nbg1.your-objectstorage.com\n")
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if cfg.Attachments.S3.Endpoint != "https://nbg1.your-objectstorage.com" {
+		t.Errorf("S3.Endpoint = %q", cfg.Attachments.S3.Endpoint)
+	}
+}
