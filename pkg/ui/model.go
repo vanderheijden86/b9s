@@ -1262,7 +1262,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-	var listKeyConsumed bool // set by handleListKeys when key was handled (bd-kob)
 
 	if m.backgroundWorker != nil {
 		switch msg.(type) {
@@ -1356,6 +1355,23 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 	}
+
+	m, dispatchCmd := m.dispatchMsg(msg)
+	return m, tea.Batch(append(cmds, dispatchCmd)...)
+}
+
+// dispatchMsg runs the main message switch and the trailing list/viewport
+// handling, batching whatever it returns into one cmd. update() batches that
+// cmd together with any cmd already accumulated from an open modal's own
+// Update call, so an early return from inside the switch below (a
+// SwitchProjectMsg landing, a projectOpenedMsg applying, tea.MouseMsg, and
+// several others) can no longer silently drop the modal's cmd the way a bare
+// "return m, cmd" used to when this switch still lived directly inside
+// update() (bd-grtt).
+func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+	var listKeyConsumed bool // set by handleListKeys when key was handled (bd-kob)
 
 	switch msg := msg.(type) {
 	case UpdateMsg:
@@ -2852,6 +2868,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.statusIsError = false
 					return m, nil
 				}
+				if m.modalRefusedBySwitch() {
+					return m, nil
+				}
 				if m.focused == focusTree && !m.tree.IsSearchMode() {
 					// Edit in tree view (skip during search, bd-9k90)
 					if issue := m.getSelectedIssue(); issue != nil {
@@ -2868,6 +2887,9 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.allProjectsMode {
 					m.statusMsg = "Creating disabled in all-projects view"
 					m.statusIsError = false
+					return m, nil
+				}
+				if m.modalRefusedBySwitch() {
 					return m, nil
 				}
 				// Create new issue (bd-a83)
@@ -3025,7 +3047,12 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseMsg:
-		m = m.handleMouseWheel(msg)
+		// A modal already received this message in its own Update call
+		// above; routing it into the tree/list/board behind the modal too
+		// would move the pane the modal is covering (bd-grtt).
+		if !m.showEditModal && !m.showAttachAddModal {
+			m = m.handleMouseWheel(msg)
+		}
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -3033,6 +3060,12 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.isSplitView = msg.Width > SplitViewThreshold
 		m.ready = true
+		if m.showEditModal {
+			m.editModal.SetSize(m.width, m.height)
+		}
+		if m.showAttachAddModal && m.height > 1 {
+			m.attachAddModal.SetSize(m.width, m.height-1)
+		}
 		bodyHeight := m.bodyHeight() // accounts for picker header + footer (bd-ins4)
 		if bodyHeight < 5 {
 			bodyHeight = 5
@@ -3848,6 +3881,9 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 		// Skip if filtering is active
 		if m.list.SettingFilter() || m.list.FilterState() == list.Filtering {
 			return m, false
+		}
+		if m.modalRefusedBySwitch() {
+			return m, true
 		}
 		if issue := m.getSelectedIssue(); issue != nil {
 			m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())

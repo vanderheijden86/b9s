@@ -104,6 +104,37 @@ func (m Model) isCurrentSwitch(generation uint64) bool {
 	return m.projectSwitch.state == SwitchOpening && generation == m.projectSwitch.generation
 }
 
+// modalRefusedBySwitch reports whether a writing modal (edit, create or
+// attach) must stay closed because a project switch is in flight, setting
+// the footer message a refused key shows. A projectOpenedMsg landing while
+// the modal was still open would let its eventual save or attach dispatch
+// against the newly switched IssueWriter while still carrying the old
+// project's issue ID (bd-grtt); since projects share the bd- id prefix,
+// that would silently write to the wrong project's issue.
+func (m *Model) modalRefusedBySwitch() bool {
+	if m.projectSwitch.state != SwitchOpening {
+		return false
+	}
+	m.statusMsg = fmt.Sprintf("Opening %s… try again once it opens", m.projectSwitch.project.Name)
+	m.statusIsError = false
+	return true
+}
+
+// discardOpenModals closes any writing modal left open by the project being
+// replaced and reports whether one was open. This is the second half of the
+// bd-grtt fix: modalRefusedBySwitch stops a modal from opening once a switch
+// is in flight, but a modal opened before the switch began is untouched by
+// that guard, so applyProjectSwitch calls this to close it the moment the
+// new project actually replaces the old one.
+func (m *Model) discardOpenModals() bool {
+	if !m.showEditModal && !m.showAttachAddModal {
+		return false
+	}
+	m.showEditModal = false
+	m.showAttachAddModal = false
+	return true
+}
+
 func (m *Model) settleSwitch() {
 	m.projectSwitch.state = SwitchIdle
 	m.issueWriter.SetOpening("")
@@ -156,6 +187,7 @@ func (m Model) cancelProjectSwitch() Model {
 // It is the only place that swaps the active project's data and watchers.
 func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	discardedModal := m.discardOpenModals()
 	if m.allProjectsMode {
 		m.leaveAllProjectsMode()
 	}
@@ -284,7 +316,11 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 		}
 		cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
 	}
-	m.statusMsg = fmt.Sprintf("Switched to %s", project.Name)
+	if discardedModal {
+		m.statusMsg = fmt.Sprintf("Switched to %s (edit discarded: project switched)", project.Name)
+	} else {
+		m.statusMsg = fmt.Sprintf("Switched to %s", project.Name)
+	}
 	m.statusIsError = false
 	// Rebuild picker entries to reflect new active project (bd-ey3)
 	entries := m.buildProjectEntries()

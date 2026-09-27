@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
@@ -146,5 +148,104 @@ func TestAttachAddResultAppliesWhileSecondFormOpen(t *testing.T) {
 	}
 	if cmd == nil {
 		t.Fatal("attachAddResultMsg with reload=true must dispatch a cmd (the FileChangedMsg reload trigger)")
+	}
+}
+
+// TestMouseWheelDoesNotFallThroughWhileEditModalOpen is bd-grtt issue B: the
+// edit modal already received this tea.MouseMsg in its own Update call
+// before the main switch runs, so letting it reach handleMouseWheel too
+// moves the tree pane the modal is covering.
+func TestMouseWheelDoesNotFallThroughWhileEditModalOpen(t *testing.T) {
+	m, beadsPath := modalRoutingFixture(t)
+	if m.watcher != nil {
+		defer m.watcher.Stop()
+	}
+	addSecondIssueToFixture(t, beadsPath)
+	updated, _ := m.Update(FileChangedMsg{})
+	m = updated.(Model)
+	if got := m.tree.NodeCount(); got != 2 {
+		t.Fatalf("tree node count = %d, want 2 before opening the modal", got)
+	}
+
+	m, _ = pressBulkKey(t, m, runeKey("e"))
+	if !m.showEditModal {
+		t.Fatal("e from tree focus must open the edit modal")
+	}
+	before := m.tree.GetSelectedID()
+
+	updated, _ = m.Update(tea.MouseMsg{Button: tea.MouseButtonWheelDown, Action: tea.MouseActionPress})
+	m = updated.(Model)
+
+	if got := m.tree.GetSelectedID(); got != before {
+		t.Fatalf("tree selection moved from %q to %q: mouse wheel fell through to the tree behind the open edit modal", before, got)
+	}
+}
+
+// TestMouseWheelDoesNotFallThroughWhileAttachModalOpen is the attach-form
+// half of TestMouseWheelDoesNotFallThroughWhileEditModalOpen.
+func TestMouseWheelDoesNotFallThroughWhileAttachModalOpen(t *testing.T) {
+	m, beadsPath := modalRoutingFixture(t)
+	if m.watcher != nil {
+		defer m.watcher.Stop()
+	}
+	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true, checkout: testCheckout(t)}
+	addSecondIssueToFixture(t, beadsPath)
+	updated, _ := m.Update(FileChangedMsg{})
+	m = updated.(Model)
+	m.tree.SelectByID("parent")
+
+	m, _ = pressBulkKey(t, m, runeKey("I"))
+	if !m.showAttachAddModal {
+		t.Fatal("I must open the attach-files form")
+	}
+	before := m.tree.GetSelectedID()
+
+	updated, _ = m.Update(tea.MouseMsg{Button: tea.MouseButtonWheelDown, Action: tea.MouseActionPress})
+	m = updated.(Model)
+
+	if got := m.tree.GetSelectedID(); got != before {
+		t.Fatalf("tree selection moved from %q to %q: mouse wheel fell through to the tree behind the open attach form", before, got)
+	}
+}
+
+// TestWindowSizeResizesOpenEditModal is bd-grtt issue D: a terminal resize
+// while the edit modal is open must resize the modal too, or lipgloss.Place
+// inside its View() centers it against the terminal's old dimensions.
+func TestWindowSizeResizesOpenEditModal(t *testing.T) {
+	m, _ := modalRoutingFixture(t)
+	if m.watcher != nil {
+		defer m.watcher.Stop()
+	}
+	m, _ = pressBulkKey(t, m, runeKey("e"))
+	if !m.showEditModal {
+		t.Fatal("e from tree focus must open the edit modal")
+	}
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
+	m = updated.(Model)
+
+	if m.editModal.width != 200 || m.editModal.height != 60 {
+		t.Fatalf("editModal size = %dx%d, want 200x60 after the resize", m.editModal.width, m.editModal.height)
+	}
+}
+
+// TestWindowSizeResizesOpenAttachModal is the attach-form half of
+// TestWindowSizeResizesOpenEditModal.
+func TestWindowSizeResizesOpenAttachModal(t *testing.T) {
+	m, _ := modalRoutingFixture(t)
+	if m.watcher != nil {
+		defer m.watcher.Stop()
+	}
+	m.issueWriter = &IssueWriter{bdPath: "/bin/echo", available: true, checkout: testCheckout(t)}
+	m, _ = pressBulkKey(t, m, runeKey("I"))
+	if !m.showAttachAddModal {
+		t.Fatal("I must open the attach-files form")
+	}
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
+	m = updated.(Model)
+
+	if m.attachAddModal.width != 200 || m.attachAddModal.height != 59 {
+		t.Fatalf("attachAddModal size = %dx%d, want 200x59 after the resize", m.attachAddModal.width, m.attachAddModal.height)
 	}
 }

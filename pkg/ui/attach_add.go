@@ -290,6 +290,9 @@ func expandHomePath(p string) string {
 // where attachAddCmd resolves the blob store the same way attachmentOpenCmd
 // does.
 func (m *Model) openAttachAddModal() {
+	if m.modalRefusedBySwitch() {
+		return
+	}
 	if m.allProjectsMode {
 		m.statusMsg = "attachments: not available in all-projects mode; switch to one project (0 or :project) first"
 		m.statusIsError = false
