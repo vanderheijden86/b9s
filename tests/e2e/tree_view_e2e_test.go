@@ -189,6 +189,10 @@ func runTreeTUI(t *testing.T, dir string, autoCloseMs int, keys []keyStep) ([]by
 	return runTreeTUIWithEnv(t, dir, autoCloseMs, keys)
 }
 
+// treeTUIDeadline bounds one PTY run. A run auto-closes after a few seconds,
+// and the margin covers a slow start on a loaded machine.
+const treeTUIDeadline = 15 * time.Second
+
 // runTreeTUIWithEnv runs the TUI like runTreeTUI; env entries are appended
 // after the inherited environment, so they override it.
 func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep, env ...string) ([]byte, error) {
@@ -196,7 +200,7 @@ func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep
 	skipIfNoScript(t)
 	bv := buildBvBinary(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), treeTUIDeadline)
 	defer cancel()
 
 	cmd := sizedScriptTUICommand(ctx, bv)
@@ -249,7 +253,7 @@ func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep
 
 	out, err := runCmdToFile(t, cmd)
 	if ctx.Err() == context.DeadlineExceeded {
-		t.Skipf("skipping: timed out (likely TTY/OS mismatch); output:\n%s", out)
+		t.Fatalf("b9s did not exit within %s; output:\n%s", treeTUIDeadline, out)
 	}
 	return out, err
 }

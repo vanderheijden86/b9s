@@ -20,6 +20,10 @@ var bvBinaryDir string
 var (
 	scriptTUISupported      = true
 	scriptTUIDisabledReason string
+	// scriptTUIProbeHung reports that the capability probe started b9s under
+	// script but b9s never exited. That is a hang, not a missing harness, so
+	// PTY tests fail on it instead of skipping.
+	scriptTUIProbeHung bool
 )
 
 func TestMain(m *testing.M) {
@@ -44,7 +48,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	scriptTUISupported, scriptTUIDisabledReason = detectScriptTUICapability(bvBinaryPath)
+	scriptTUISupported, scriptTUIDisabledReason, scriptTUIProbeHung = detectScriptTUICapability(bvBinaryPath)
 
 	code := m.Run()
 	if bvBinaryDir != "" {
@@ -68,30 +72,30 @@ func TestE2EUsesIsolatedConfigHome(t *testing.T) {
 	}
 }
 
-func detectScriptTUICapability(bvPath string) (bool, string) {
+func detectScriptTUICapability(bvPath string) (supported bool, reason string, hung bool) {
 	if _, err := exec.LookPath("script"); err != nil {
-		return false, "script command not available"
+		return false, "script command not available", false
 	}
 	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-		return false, "script TUI harness unsupported on this OS"
+		return false, "script TUI harness unsupported on this OS", false
 	}
 	if bvPath == "" {
-		return false, "bv binary path is empty"
+		return false, "bv binary path is empty", false
 	}
 
 	tempDir, err := os.MkdirTemp("", "bv-e2e-tui-cap-*")
 	if err != nil {
-		return false, fmt.Sprintf("failed to create temp dir: %v", err)
+		return false, fmt.Sprintf("failed to create temp dir: %v", err), false
 	}
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	beadsDir := filepath.Join(tempDir, ".beads")
 	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
-		return false, fmt.Sprintf("failed to create beads dir: %v", err)
+		return false, fmt.Sprintf("failed to create beads dir: %v", err), false
 	}
 	beads := `{"id":"cap-1","title":"Capability check","status":"open","priority":1,"issue_type":"task"}`
 	if err := os.WriteFile(filepath.Join(beadsDir, "beads.jsonl"), []byte(beads), 0o644); err != nil {
-		return false, fmt.Sprintf("failed to write beads.jsonl: %v", err)
+		return false, fmt.Sprintf("failed to write beads.jsonl: %v", err), false
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -99,7 +103,7 @@ func detectScriptTUICapability(bvPath string) (bool, string) {
 
 	cmd := sizedScriptTUICommand(ctx, bvPath)
 	if cmd == nil {
-		return false, "script command unavailable"
+		return false, "script command unavailable", false
 	}
 	cmd.Dir = tempDir
 	cmd.Stdin = strings.NewReader("")
@@ -111,7 +115,7 @@ func detectScriptTUICapability(bvPath string) (bool, string) {
 	outFile := filepath.Join(tempDir, "script.out")
 	f, err := os.Create(outFile)
 	if err != nil {
-		return false, fmt.Sprintf("failed to create output file: %v", err)
+		return false, fmt.Sprintf("failed to create output file: %v", err), false
 	}
 	cmd.Stdout = f
 	cmd.Stderr = f
@@ -120,13 +124,13 @@ func detectScriptTUICapability(bvPath string) (bool, string) {
 	_ = f.Close()
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return false, "bv did not auto-exit under script (PTY/CI mismatch)"
+		return false, "b9s did not auto-exit under script within 10s", true
 	}
 	if runErr != nil {
-		return false, fmt.Sprintf("script TUI run failed: %v", runErr)
+		return false, fmt.Sprintf("script TUI run failed: %v", runErr), false
 	}
 
-	return true, ""
+	return true, "", false
 }
 
 func buildBvOnce() error {
@@ -165,6 +169,9 @@ func skipIfNoScript(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("script"); err != nil {
 		t.Skip("skipping: script command not available")
+	}
+	if scriptTUIProbeHung {
+		t.Fatalf("PTY capability probe: %s", scriptTUIDisabledReason)
 	}
 	if !scriptTUISupported {
 		if scriptTUIDisabledReason != "" {
