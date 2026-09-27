@@ -240,7 +240,7 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Double-tap the detail | Switch between full and half height | `\` |
 | Drag the detail handle | Up: full height. Down: half height, then close | `Esc` |
 | Tap a relation in the detail | Go there; `‹` goes back | |
-| Browser Back, or `Backspace` | Step back: the previous issue, then the closed detail, then the previous view. Forward redoes it | `Esc` |
+| Browser Back, or `Backspace` | Step back: an open sheet closes first, then the previous issue, the closed detail and the previous view. Forward redoes it, but never reopens a sheet | `Esc` |
 | Swipe left or right on the board | Next column | `h` / `l` |
 | Tap the active column tab | Fold it into a rail | `z` |
 | Tap the phone board's **All** tab | Show every unfolded column in one list, under the epic lanes, so open and in-progress cards sit together. The chips choose the statuses | `h` from the first column |

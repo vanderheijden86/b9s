@@ -67,3 +67,49 @@ test("a link with a view and an issue opens them", async ({ page, project }) => 
   await expect(page.locator("#vTree")).toBeVisible();
   await expect(page.locator(".detail")).toHaveCount(0);
 });
+
+// A sheet is a step of its own: Back closes it and nothing else, as Android
+// users expect. A sheet's form state cannot come back, so Forward skips it.
+test.describe("sheets and history", () => {
+  const sheet = (page: import("@playwright/test").Page) => page.locator("#sheetHost .msheet");
+
+  test("Back with a sheet open closes only the sheet", async ({ page, project }) => {
+    await open(page, project);
+    const d = page.locator(".detail");
+    await row(page, "t-3").click();
+    await expect(d).toHaveAttribute("data-id", "t-3");
+    await d.locator(".dacts [data-act=\"status\"]").click();
+    await expect(sheet(page)).toBeVisible();
+    await page.goBack();
+    await expect(sheet(page)).toHaveCount(0);
+    await expect(d).toHaveAttribute("data-id", "t-3");
+    await page.goBack();
+    await expect(d).toHaveCount(0);
+  });
+
+  test("Forward does not reopen a sheet", async ({ page, project }) => {
+    await open(page, project);
+    const d = page.locator(".detail");
+    await row(page, "t-3").click();
+    await d.locator(".dacts [data-act=\"status\"]").click();
+    await expect(sheet(page)).toBeVisible();
+    await page.goBack();
+    await expect(sheet(page)).toHaveCount(0);
+    await page.goForward();
+    await expect(d).toHaveAttribute("data-id", "t-3");
+    await expect(sheet(page)).toHaveCount(0);
+    await page.goBack();
+    await expect(d).toHaveCount(0);
+  });
+
+  test("a sheet closed in the app leaves no step behind", async ({ page, project }) => {
+    await open(page, project);
+    const d = page.locator(".detail");
+    await row(page, "t-3").click();
+    await d.locator(".dacts [data-act=\"status\"]").click();
+    await page.keyboard.press("Escape");
+    await expect(sheet(page)).toHaveCount(0);
+    await page.goBack();
+    await expect(d).toHaveCount(0);
+  });
+});

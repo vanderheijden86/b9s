@@ -7,6 +7,7 @@ import type { ProjectEntry, WriteRequest, WriteResult } from "./api.gen";
 import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type Item } from "./data";
 import { ALL, boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, treeList, wide } from "./render";
 import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveChips, stOf, type Sheet, type SortKey } from "./state";
+import { syncSoon } from "./nav";
 import { $, $opt, copyText, esc, fmtDate, haptic, store } from "./util";
 
 /* ================= toast ================= */
@@ -299,6 +300,7 @@ export async function reload(): Promise<void> {
 export function openSheet(kind: string, data: Partial<Sheet> = {}): void {
   S.sheet = { ...data, kind };
   renderSheet();
+  syncSoon();
 }
 
 export function closeSheet(): void {
@@ -306,6 +308,7 @@ export function closeSheet(): void {
   $opt(".backdrop")?.classList.remove("on");
   S.sheet = null;
   setTimeout(() => { if (!S.sheet) $("#sheetHost").innerHTML = ""; }, 230);
+  syncSoon();
 }
 
 const opt = (a: string, g: string, x: string, sub: string, extra: { val?: string | number; cls?: string; color?: string; key?: string } = {}) =>

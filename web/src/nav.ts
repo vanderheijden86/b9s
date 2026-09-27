@@ -11,11 +11,17 @@
 // The URL carries the view and the top issue, #/board/bd-12, so a reload or a
 // shared link opens the same place. The detail stack itself lives only in
 // history.state.
+//
+// An open sheet is part of the place, so Back closes the sheet and nothing
+// else. A sheet's form state cannot be rebuilt, so a step that lands on a
+// sheet's entry with no sheet open walks on past it. Leaving a sheet for
+// another place takes over the sheet's entry, so no entry ever follows a
+// sheet's, and Forward onto one has nowhere further to go.
 
 import { get } from "./data";
 import { S, defaultDetailSize, type View } from "./state";
 
-interface Place { v: View; d: string[] | null; g: string[] }
+interface Place { v: View; d: string[] | null; g: string[]; s?: boolean }
 interface Entry { place: Place; n: number; prev: Place | null }
 
 const VIEWS: View[] = ["tree", "board", "search", "more", "graph"];
@@ -25,7 +31,7 @@ let restoring = false;
 let backing = 0;
 
 function here(): Place {
-  return { v: S.view, d: S.detail ? [...S.detail.stack] : null, g: S.view === "graph" ? [...S.graph] : [] };
+  return { v: S.view, d: S.detail ? [...S.detail.stack] : null, g: S.view === "graph" ? [...S.graph] : [], ...(S.sheet ? { s: true } : {}) };
 }
 
 const same = (a: Place | null, b: Place | null) => JSON.stringify(a) === JSON.stringify(b);
@@ -62,12 +68,19 @@ export function syncHistory(): void {
     return;
   }
   const p = cur.place;
-  if (p.v === now.v && !p.d === !now.d && (p.d?.length ?? 0) === (now.d?.length ?? 0) && p.g.length === now.g.length) {
+  if (p.s || (p.v === now.v && !p.d === !now.d && (p.d?.length ?? 0) === (now.d?.length ?? 0) && p.g.length === now.g.length && !now.s)) {
     history.replaceState({ ...cur, place: now } satisfies Entry, "", hashOf(now));
     return;
   }
   history.pushState({ place: now, n: cur.n + 1, prev: p } satisfies Entry, "", hashOf(now));
 }
+
+/**
+ * syncSoon records the place once the code that opened or closed a sheet has
+ * run on, so an action that closes its sheet and then opens an issue records
+ * one step, not a Back followed by a lost open.
+ */
+export function syncSoon(): void { queueMicrotask(syncHistory); }
 
 /** canGoBack is false on the entry the app opened on, where Back would leave the app. */
 export const canGoBack = (): boolean => (entry()?.n ?? 0) > 0;
@@ -88,6 +101,7 @@ export function bindHistory(render: () => void, closeSheet: () => void): void {
   window.addEventListener("popstate", () => {
     if (backing) { clearTimeout(backing); backing = 0; }
     const e = entry();
+    if (e?.place.s && !S.sheet) { history.back(); return; }
     restoring = true;
     try {
       if (S.sheet) closeSheet();
