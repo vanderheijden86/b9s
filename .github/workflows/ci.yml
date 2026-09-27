@@ -51,3 +51,43 @@ jobs:
         ' coverage.out)
         echo "pkg/* coverage: ${total}% (threshold 65%)"
         awk -v c="$total" 'BEGIN { if (c < 65.0) { printf("FAIL: pkg/* coverage %.2f%% is below 65%%\n", c); exit 1 } }'
+
+  # The web UI's Playwright suite: Chromium (Pixel 7, desktop) and WebKit
+  # (iPhone 14, iPad). globalSetup builds the bundle and the binary itself.
+  web-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: '1.25.5'
+
+    - name: Set up Node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: '22'
+        cache: npm
+        cache-dependency-path: web/package-lock.json
+
+    - name: Install web dependencies
+      run: npm --prefix web ci
+
+    - name: Install browsers
+      working-directory: web
+      run: npx playwright install --with-deps chromium webkit
+
+    - name: Web E2E
+      run: make web-e2e
+
+    - name: Upload traces
+      if: failure()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: playwright-traces
+        path: web/test-results
+        retention-days: 7
