@@ -359,7 +359,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 		cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
 	}
 	if discardedModal {
-		m.statusMsg = fmt.Sprintf("Switched to %s (edit discarded: project switched)", project.Name)
+		m.statusMsg = fmt.Sprintf("Switched to %s (open dialog discarded)", project.Name)
 	} else {
 		m.statusMsg = fmt.Sprintf("Switched to %s", project.Name)
 	}

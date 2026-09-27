@@ -151,6 +151,62 @@ func TestProjectSwitchDiscardsOpenAttachModal(t *testing.T) {
 	}
 }
 
+// TestProjectSwitchDiscardsOpenStatusPicker is the status-picker half of
+// TestProjectSwitchDiscardsOpenEditModal: without this, removing the
+// m.showStatusPicker = false line from discardOpenModals leaves the suite
+// green (bd-l66t).
+func TestProjectSwitchDiscardsOpenStatusPicker(t *testing.T) {
+	m, _, beta, recordPath := switchModelWithFakeBd(t)
+
+	m, _ = pressBulkKey(t, m, runeKey("S"))
+	if !m.showStatusPicker {
+		t.Fatal("S must open the status picker while idle")
+	}
+
+	m, _ = m.beginProjectSwitch(beta)
+	if !m.showStatusPicker {
+		t.Fatal("beginning a switch must not itself close an already-open picker")
+	}
+
+	updated, _ := m.Update(projectOpenedMsg{generation: m.projectSwitch.generation, project: beta})
+	m = updated.(Model)
+
+	if m.showStatusPicker {
+		t.Fatal("applyProjectSwitch must discard the status picker left open by the previous project")
+	}
+	if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
+		t.Fatalf("bd calls = %v, want none: no picker was open to submit", calls)
+	}
+}
+
+// TestProjectSwitchDiscardsOpenCloseConfirmation is the close-confirmation
+// half of TestProjectSwitchDiscardsOpenEditModal: without this, removing the
+// m.issueConfirm = issueConfirmation{} line from discardOpenModals leaves
+// the suite green (bd-l66t).
+func TestProjectSwitchDiscardsOpenCloseConfirmation(t *testing.T) {
+	m, _, beta, recordPath := switchModelWithFakeBd(t)
+
+	m, _ = pressBulkKey(t, m, runeKey("K"))
+	if m.issueConfirm.action != issueConfirmClose {
+		t.Fatal("K must open the close confirmation while idle")
+	}
+
+	m, _ = m.beginProjectSwitch(beta)
+	if m.issueConfirm.action != issueConfirmClose {
+		t.Fatal("beginning a switch must not itself close an already-open confirmation")
+	}
+
+	updated, _ := m.Update(projectOpenedMsg{generation: m.projectSwitch.generation, project: beta})
+	m = updated.(Model)
+
+	if m.issueConfirm.action != issueConfirmNone {
+		t.Fatal("applyProjectSwitch must discard the confirmation left open by the previous project")
+	}
+	if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
+		t.Fatalf("bd calls = %v, want none: no confirmation was open to submit", calls)
+	}
+}
+
 // TestOverlayKeysRefusedWhileProjectOpening is the reviewer's scenario from
 // TestOpeningProjectRefusesEditKey/AttachKey, run for every overlay that
 // writes against a captured issue ID: e, I, S, K and delete must all be
@@ -160,17 +216,23 @@ func TestOverlayKeysRefusedWhileProjectOpening(t *testing.T) {
 	cases := []struct {
 		name   string
 		key    tea.KeyMsg
+		setup  func(m Model) Model
 		isOpen func(m Model) bool
 	}{
-		{"edit", runeKey("e"), func(m Model) bool { return m.showEditModal }},
-		{"attach", runeKey("I"), func(m Model) bool { return m.showAttachAddModal }},
-		{"status", runeKey("S"), func(m Model) bool { return m.showStatusPicker }},
-		{"close", runeKey("K"), func(m Model) bool { return m.issueConfirm.action == issueConfirmClose }},
-		{"delete", tea.KeyMsg{Type: tea.KeyDelete}, func(m Model) bool { return m.issueConfirm.action == issueConfirmDelete }},
+		{"edit", runeKey("e"), nil, func(m Model) bool { return m.showEditModal }},
+		{"edit-list-mode", runeKey("e"), func(m Model) Model { m.focused = focusList; return m }, func(m Model) bool { return m.showEditModal }},
+		{"create", tea.KeyMsg{Type: tea.KeyCtrlN}, nil, func(m Model) bool { return m.showEditModal }},
+		{"attach", runeKey("I"), nil, func(m Model) bool { return m.showAttachAddModal }},
+		{"status", runeKey("S"), nil, func(m Model) bool { return m.showStatusPicker }},
+		{"close", runeKey("K"), nil, func(m Model) bool { return m.issueConfirm.action == issueConfirmClose }},
+		{"delete", tea.KeyMsg{Type: tea.KeyDelete}, nil, func(m Model) bool { return m.issueConfirm.action == issueConfirmDelete }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			m, _, beta, recordPath := switchModelWithFakeBd(t)
+			if tc.setup != nil {
+				m = tc.setup(m)
+			}
 			m, _ = requestSwitch(t, m, beta)
 			if m.projectSwitch.state != SwitchOpening {
 				t.Fatalf("switch state = %v, want opening", m.projectSwitch.state)
@@ -213,12 +275,16 @@ func TestOverlayWriteRefusedOnGenerationMismatch(t *testing.T) {
 		*m.editModal.title = "changed while opening"
 		m.projectGeneration++
 
-		m, _ = pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyCtrlS})
+		m, cmd := pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyCtrlS})
 		if m.showEditModal {
 			t.Fatal("ctrl+s must still close the modal")
 		}
 		if !strings.Contains(m.statusMsg, "discarded") {
 			t.Fatalf("statusMsg = %q, want it to report the discard", m.statusMsg)
+		}
+		if cmd != nil {
+			updated, _ := m.Update(cmd())
+			m = updated.(Model)
 		}
 		if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
 			t.Fatalf("bd calls = %v, want none: the generation mismatch must refuse the save", calls)
@@ -260,12 +326,16 @@ func TestOverlayWriteRefusedOnGenerationMismatch(t *testing.T) {
 		}
 		m.projectGeneration++
 
-		m, _ = pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+		m, cmd := pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyEnter})
 		if m.showStatusPicker {
 			t.Fatal("enter must still close the picker")
 		}
 		if !strings.Contains(m.statusMsg, "discarded") {
 			t.Fatalf("statusMsg = %q, want it to report the discard", m.statusMsg)
+		}
+		if cmd != nil {
+			updated, _ := m.Update(cmd())
+			m = updated.(Model)
 		}
 		if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
 			t.Fatalf("bd calls = %v, want none: the generation mismatch must refuse the status change", calls)
@@ -280,12 +350,16 @@ func TestOverlayWriteRefusedOnGenerationMismatch(t *testing.T) {
 		}
 		m.projectGeneration++
 
-		m, _ = pressBulkKey(t, m, runeKey("y"))
+		m, cmd := pressBulkKey(t, m, runeKey("y"))
 		if m.issueConfirm.action != issueConfirmNone {
 			t.Fatal("y must still close the confirmation")
 		}
 		if !strings.Contains(m.statusMsg, "discarded") {
 			t.Fatalf("statusMsg = %q, want it to report the discard", m.statusMsg)
+		}
+		if cmd != nil {
+			updated, _ := m.Update(cmd())
+			m = updated.(Model)
 		}
 		if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
 			t.Fatalf("bd calls = %v, want none: the generation mismatch must refuse the close", calls)
@@ -300,15 +374,56 @@ func TestOverlayWriteRefusedOnGenerationMismatch(t *testing.T) {
 		}
 		m.projectGeneration++
 
-		m, _ = pressBulkKey(t, m, runeKey("y"))
+		m, cmd := pressBulkKey(t, m, runeKey("y"))
 		if m.issueConfirm.action != issueConfirmNone {
 			t.Fatal("y must still close the confirmation")
 		}
 		if !strings.Contains(m.statusMsg, "discarded") {
 			t.Fatalf("statusMsg = %q, want it to report the discard", m.statusMsg)
 		}
+		if cmd != nil {
+			updated, _ := m.Update(cmd())
+			m = updated.(Model)
+		}
 		if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
 			t.Fatalf("bd calls = %v, want none: the generation mismatch must refuse the delete", calls)
 		}
 	})
+}
+
+// TestListModeEditSavesAfterProjectSwitch is the positive counterpart to the
+// refusal tests above: a list-mode "e" opened with no switch in flight must
+// stamp the current (non-zero) generation and let its save through, proving
+// handleListKeys' opener is not left behind by a future change to the other
+// two edit-modal openers (bd-l66t regression: handleListKeys used to open
+// the modal directly and skip the stamp, so every list-mode edit after any
+// project switch was refused as stale even though nothing was).
+func TestListModeEditSavesAfterProjectSwitch(t *testing.T) {
+	m, _, _, recordPath := switchModelWithFakeBd(t)
+	m.projectGeneration = 3
+	m.focused = focusList
+
+	m, _ = pressBulkKey(t, m, runeKey("e"))
+	if !m.showEditModal {
+		t.Fatal("list-mode e must open the edit modal")
+	}
+	if m.editModalGeneration != 3 {
+		t.Fatalf("editModalGeneration = %d, want 3: the opener must stamp the current generation", m.editModalGeneration)
+	}
+	*m.editModal.title = "edited from list mode"
+
+	m, cmd := pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyCtrlS})
+	if m.showEditModal {
+		t.Fatal("ctrl+s must close the modal")
+	}
+	if strings.Contains(m.statusMsg, "discarded") {
+		t.Fatalf("statusMsg = %q, want the save to go through: the generation matches", m.statusMsg)
+	}
+	if cmd != nil {
+		updated, _ := m.Update(cmd())
+		m = updated.(Model)
+	}
+	if calls := readBdCallsUI(t, recordPath); len(calls) == 0 {
+		t.Fatal("bd calls = none, want the list-mode edit to write through")
+	}
 }

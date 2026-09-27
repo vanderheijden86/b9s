@@ -2911,10 +2911,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				if m.focused == focusTree && !m.tree.IsSearchMode() {
 					// Edit in tree view (skip during search, bd-9k90)
 					if issue := m.getSelectedIssue(); issue != nil {
-						m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())
-						m.editModal.SetSize(m.width, m.height)
-						m.showEditModal = true
-						m.editModalGeneration = m.projectGeneration
+						m.openEditModal(issue)
 						return m, m.editModal.Init()
 					}
 					return m, nil
@@ -2931,10 +2928,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 				// Create new issue (bd-a83)
-				m.editModal = NewCreateModalFor(m.theme, m.currentActor(), m.collectEditSuggestions())
-				m.editModal.SetSize(m.width, m.height)
-				m.showEditModal = true
-				m.editModalGeneration = m.projectGeneration
+				m.openCreateModal()
 				return m, m.editModal.Init()
 
 			case "K":
@@ -3934,9 +3928,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 			return m, true
 		}
 		if issue := m.getSelectedIssue(); issue != nil {
-			m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())
-			m.editModal.SetSize(m.width, m.height)
-			m.showEditModal = true
+			m.openEditModal(issue)
 			m.focused = focusEditModal
 		}
 		return m, true
@@ -7547,6 +7539,27 @@ func (m *Model) issueConfirmationFor(action issueConfirmAction) (issueConfirmati
 		return issueConfirmation{action: action, id: targets[0].ID, title: targets[0].Title, generation: m.projectGeneration}, true
 	}
 	return issueConfirmation{action: action, ids: targetIssueIDs(targets), generation: m.projectGeneration}, true
+}
+
+// openEditModal opens the edit modal over issue and stamps the current
+// project generation. Every call site that opens the edit modal for editing
+// must go through here rather than constructing EditModal directly, or it
+// silently skips the generation stamp that the save path's staleness check
+// depends on (bd-l66t).
+func (m *Model) openEditModal(issue *model.Issue) {
+	m.editModal = NewEditModal(issue, m.theme, m.collectEditSuggestions())
+	m.editModal.SetSize(m.width, m.height)
+	m.showEditModal = true
+	m.editModalGeneration = m.projectGeneration
+}
+
+// openCreateModal opens the edit modal in create mode and stamps the current
+// project generation, for the same reason as openEditModal.
+func (m *Model) openCreateModal() {
+	m.editModal = NewCreateModalFor(m.theme, m.currentActor(), m.collectEditSuggestions())
+	m.editModal.SetSize(m.width, m.height)
+	m.showEditModal = true
+	m.editModalGeneration = m.projectGeneration
 }
 
 // openStatusPicker opens the status picker over actionTargets, starting at the
