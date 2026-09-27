@@ -48,21 +48,19 @@ func TestAttachments_Defaults(t *testing.T) {
 }
 
 func TestAttachments_FullyPopulated(t *testing.T) {
-	content := `
-attachments:
-  backend: s3
-  max_bytes: 1048576
-  gc_grace: 48h
-  local_dir: /tmp/should-be-ignored-for-s3
-  s3:
-    endpoint: https://nbg1.your-objectstorage.com
-    region: nbg1
-    bucket: osenco-beads-attachments
-    prefix: osenco
-    path_style: true
-    url_ttl: 5m
-    credential_command: "print-creds.sh"
-`
+	content := "attachments:\n" +
+		"  backend: s3\n" +
+		"  max_bytes: 1048576\n" +
+		"  gc_grace: 48h\n" +
+		"  local_dir: /tmp/should-be-ignored-for-s3\n" +
+		"  prefix: osenco\n" +
+		"  s3:\n" +
+		"    endpoint: https://nbg1.your-objectstorage.com\n" +
+		"    region: nbg1\n" +
+		"    bucket: osenco-beads-attachments\n" +
+		"    path_style: true\n" +
+		"    url_ttl: 5m\n" +
+		"    credential_command: \"print-creds.sh\"\n"
 	cfg, err := writeConfigAndLoad(t, content)
 	if err != nil {
 		t.Fatalf("LoadFrom: %v", err)
@@ -83,10 +81,13 @@ attachments:
 	if a.URLTTLOrDefault() != 5*time.Minute {
 		t.Errorf("URLTTLOrDefault() = %s, want 5m", a.URLTTLOrDefault())
 	}
+	if a.Prefix != "osenco" {
+		t.Errorf("Prefix = %q, want osenco", a.Prefix)
+	}
 	if a.S3.Endpoint != "https://nbg1.your-objectstorage.com" {
 		t.Errorf("S3.Endpoint = %q", a.S3.Endpoint)
 	}
-	if a.S3.Region != "nbg1" || a.S3.Bucket != "osenco-beads-attachments" || a.S3.Prefix != "osenco" {
+	if a.S3.Region != "nbg1" || a.S3.Bucket != "osenco-beads-attachments" {
 		t.Errorf("S3 = %+v", a.S3)
 	}
 	if !a.S3.PathStyle {
@@ -125,6 +126,13 @@ func TestAttachments_BadDuration(t *testing.T) {
 	}
 }
 
+func TestAttachments_DurationRejectsNonScalarNode(t *testing.T) {
+	_, err := writeConfigAndLoad(t, "attachments:\n  backend: local\n  gc_grace: [1h, 2h]\n")
+	if err == nil || !strings.Contains(err.Error(), "scalar") {
+		t.Fatalf("LoadFrom error = %v, want an error naming a non-scalar duration node", err)
+	}
+}
+
 func TestAttachments_NegativeDuration(t *testing.T) {
 	_, err := writeConfigAndLoad(t, "attachments:\n  backend: local\n  s3:\n    url_ttl: -5m\n")
 	if err == nil || !strings.Contains(err.Error(), "negative") {
@@ -132,26 +140,93 @@ func TestAttachments_NegativeDuration(t *testing.T) {
 	}
 }
 
-func TestAttachments_RejectsSecretKeys(t *testing.T) {
+func TestAttachments_URLTTLAboveSevenDaysIsAnError(t *testing.T) {
+	_, err := writeConfigAndLoad(t, "attachments:\n  backend: s3\n  s3:\n    url_ttl: 169h\n")
+	if err == nil || !strings.Contains(err.Error(), "url_ttl") || !strings.Contains(err.Error(), "7 day") {
+		t.Fatalf("LoadFrom error = %v, want an error naming url_ttl and the 7 day S3 presign limit", err)
+	}
+}
+
+func TestAttachments_URLTTLAtSevenDaysIsAllowed(t *testing.T) {
+	cfg, err := writeConfigAndLoad(t, "attachments:\n  backend: s3\n  s3:\n    url_ttl: 168h\n")
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if got := cfg.Attachments.URLTTLOrDefault(); got != 168*time.Hour {
+		t.Errorf("URLTTLOrDefault() = %s, want 168h", got)
+	}
+}
+
+func TestAttachments_RejectsUnknownKeys(t *testing.T) {
 	cases := []struct {
-		name    string
-		content string
+		name      string
+		content   string
+		wantInErr string
 	}{
-		{"top-level access_key_id", "attachments:\n  backend: s3\n  access_key_id: AKIA...\n"},
-		{"top-level secret", "attachments:\n  backend: s3\n  secret: shh\n"},
-		{"nested secret_access_key", "attachments:\n  backend: s3\n  s3:\n    secret_access_key: shh\n"},
-		{"nested password", "attachments:\n  backend: s3\n  s3:\n    password: shh\n"},
-		{"nested token, hyphenated", "attachments:\n  backend: s3\n  s3:\n    access-key-id: AKIA...\n"},
+		{
+			"top-level unknown key",
+			"attachments:\n  backend: s3\n  aws_secret_access_key: AKIA...\n",
+			"aws_secret_access_key",
+		},
+		{
+			"nested unknown key, camelCase",
+			"attachments:\n  backend: s3\n  s3:\n    secretAccessKey: shh\n",
+			"secretAccessKey",
+		},
+		{
+			"nested unknown key",
+			"attachments:\n  backend: s3\n  s3:\n    session_token: shh\n",
+			"session_token",
+		},
+		{
+			"unknown key whose value is a sequence",
+			"attachments:\n  backend: s3\n  s3:\n    endpoint: https://x\n    bucket: b\n    extra:\n      - secret_access_key\n      - shh\n",
+			"extra",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := writeConfigAndLoad(t, c.content)
 			if err == nil {
-				t.Fatal("LoadFrom succeeded, want a rejected secret key")
+				t.Fatal("LoadFrom succeeded, want a rejected unknown key")
 			}
-			if !strings.Contains(err.Error(), "B9S_ATTACHMENTS_S3_ACCESS_KEY_ID") {
-				t.Errorf("error = %v, want it to name the env var alternative", err)
+			if !strings.Contains(err.Error(), c.wantInErr) {
+				t.Errorf("error = %v, want it to name %q", err, c.wantInErr)
 			}
 		})
+	}
+}
+
+func TestAttachments_RejectsAliasAndMergeNodes(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+	}{
+		{
+			"s3 value is an alias",
+			"shared: &c\n  bucket: evil\nattachments:\n  backend: s3\n  s3: *c\n",
+		},
+		{
+			"merge key under s3",
+			"shared: &c\n  bucket: evil\nattachments:\n  backend: s3\n  s3:\n    <<: *c\n    endpoint: https://x\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := writeConfigAndLoad(t, c.content)
+			if err == nil {
+				t.Fatal("LoadFrom succeeded, want a rejected alias or merge node")
+			}
+		})
+	}
+}
+
+func TestAttachments_EndpointWithUserinfoIsRejected(t *testing.T) {
+	_, err := writeConfigAndLoad(t, "attachments:\n  backend: s3\n  s3:\n    endpoint: https://AKIA:S@host\n")
+	if err == nil {
+		t.Fatal("LoadFrom succeeded, want an error rejecting userinfo in the endpoint")
+	}
+	if strings.Contains(err.Error(), "AKIA:S@host") || strings.Contains(err.Error(), "AKIA:S") {
+		t.Fatalf("error = %v, want the endpoint never echoed back", err)
 	}
 }

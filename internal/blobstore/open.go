@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/vanderheijden86/beadwork/pkg/config"
@@ -32,12 +33,11 @@ const (
 )
 
 // SourceInfo describes the project a blob store is being opened for. It is
-// defined here, rather than accepted as an internal/datasource type,
-// because pkg/config already imports internal/datasource (for the recent
-// projects list); blobstore importing datasource too would close a cycle
-// back through config, which blobstore also needs for AttachmentsConfig. A
-// caller that already holds a datasource.DataSource converts it to a
-// SourceInfo itself.
+// defined here, rather than reused as an internal/datasource type, so that
+// pkg/ui (which cannot import cmd/b9s) has a stable, minimal shape to build
+// from without needing every field datasource.DataSource carries. A caller
+// that already holds a datasource.DataSource gets one from
+// SourceInfoFromDataSource.
 type SourceInfo struct {
 	Kind SourceKind
 	// DoltHost is the Dolt server's host, with no port. Set only for
@@ -71,7 +71,26 @@ type Handle struct {
 	MaxBytes int64
 	URLTTL   time.Duration
 	GCGrace  time.Duration
+
+	// prefix and database back ListPrefix; they are exactly the segments
+	// Key already validated, so gc lists precisely the tree Key ever wrote
+	// into rather than a hand-assembled path that could drift from it.
+	prefix, database string
 }
+
+// ListPrefix returns the store prefix under which every blob Key produces
+// for this project lives: gc lists this, never a path it assembles itself,
+// so a gc run can never wander into another project's blobs.
+func (h *Handle) ListPrefix() string {
+	if h.prefix == "" {
+		return h.database + "/sha256"
+	}
+	return h.prefix + "/" + h.database + "/sha256"
+}
+
+// dummyValidationHash is a syntactically valid sha256 hex string used only
+// to exercise Key during Open, never to address a real blob.
+const dummyValidationHash = "0000000000000000000000000000000000000000000000000000000000000000"
 
 // credentialCommandTimeout bounds how long Open waits for
 // attachments.s3.credential_command. It is a var, not a const, so a test can
@@ -91,13 +110,16 @@ func Open(ctx context.Context, cfg *config.AttachmentsConfig, src SourceInfo) (*
 		return nil, ErrNotConfigured
 	}
 
-	prefix := cfg.S3.Prefix
+	prefix := cfg.Prefix
 	if prefix == "" {
 		prefix = src.databaseSegment()
 	}
 	database := src.databaseSegment()
 	keyFunc := func(hash string) (string, error) {
 		return Key(prefix, database, "sha256", hash)
+	}
+	if _, err := keyFunc(dummyValidationHash); err != nil {
+		return nil, fmt.Errorf("attachments: invalid prefix or database for this project: %w", err)
 	}
 
 	var store Store
@@ -127,18 +149,21 @@ func Open(ctx context.Context, cfg *config.AttachmentsConfig, src SourceInfo) (*
 		MaxBytes: cfg.MaxBytesOrDefault(),
 		URLTTL:   cfg.URLTTLOrDefault(),
 		GCGrace:  cfg.GCGraceOrDefault(),
+		prefix:   prefix,
+		database: database,
 	}, nil
 }
 
-// openLocal refuses a Dolt server that is not on loopback: files the local
-// backend writes live only on this machine, so any other reader of that
-// server (another operator's b9s, a CI job) would see the reference comment
-// but never find the bytes.
+// openLocal refuses a Dolt source unless the operator has explicitly opted
+// in with attachments.local_with_dolt_server. b9s's own shared Dolt server
+// runs behind an SSH tunnel, so every project reaches it as 127.0.0.1: a
+// host-based loopback check cannot tell that setup apart from Dolt genuinely
+// running solo on this machine, and the wrong guess leaves files the local
+// backend writes invisible to every other operator sharing that server.
 func openLocal(cfg *config.AttachmentsConfig, src SourceInfo) (*Local, error) {
-	if src.Kind == SourceDolt && !isLoopbackHost(src.DoltHost) {
+	if src.Kind == SourceDolt && !cfg.LocalWithDoltServer {
 		return nil, fmt.Errorf(
-			"attachments: local backend refused for Dolt server %q, which is not on loopback; other readers of that server cannot see local files",
-			src.DoltHost)
+			"attachments: local backend refused for a Dolt server source; set attachments.local_with_dolt_server: true if Dolt is not shared with other operators")
 	}
 	dir := cfg.LocalDir
 	if dir == "" {
@@ -196,11 +221,25 @@ func resolveS3Credentials(ctx context.Context, cfg config.S3AttachmentsConfig) (
 // access key. Stderr is discarded rather than folded into the returned
 // error, since a credential helper's diagnostic output can itself contain a
 // secret, and that error can end up in a log.
+//
+// The command runs in its own process group, and cmd.Cancel kills the whole
+// group rather than only the sh process exec.CommandContext started. sh's
+// stdout pipe is inherited by every descendant it forks, including a
+// backgrounded or foreground child sh is still waiting on, so killing sh
+// alone leaves that child holding the pipe open and Cmd.Wait blocked on it
+// until the child exits by itself. WaitDelay bounds that same wait for a
+// process group member that ignores SIGKILL's stdio side effect (a rare
+// case where a resource, not a signal, still holds a copy of the write end).
 func runCredentialCommand(ctx context.Context, command string) (accessKeyID, secretAccessKey string, err error) {
 	runCtx, cancel := context.WithTimeout(ctx, credentialCommandTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(runCtx, "sh", "-c", command)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
+	cmd.WaitDelay = time.Second
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	runErr := cmd.Run()
@@ -213,10 +252,10 @@ func runCredentialCommand(ctx context.Context, command string) (accessKeyID, sec
 	}
 
 	lines := strings.Split(strings.TrimRight(stdout.String(), "\n"), "\n")
-	if len(lines) != 2 || lines[0] == "" || lines[1] == "" {
+	if len(lines) != 2 || strings.TrimSpace(lines[0]) == "" || strings.TrimSpace(lines[1]) == "" {
 		return "", "", fmt.Errorf(
 			"attachments.s3.credential_command must print exactly two non-empty lines (access key id, then secret access key), got %d",
 			len(lines))
 	}
-	return lines[0], lines[1], nil
+	return strings.TrimSpace(lines[0]), strings.TrimSpace(lines[1]), nil
 }

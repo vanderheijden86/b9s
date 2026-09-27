@@ -80,21 +80,29 @@ attachments:
   max_bytes: 26214400      # 25 MiB
   gc_grace: 24h
   local_dir: ""            # local backend only; default <beads dir>/attachments
+  prefix: osenco            # the workspace; default is the project's database name; applies to both backends
+  local_with_dolt_server: false # required true to use the local backend when the source is a Dolt server
   s3:
     endpoint: https://nbg1.your-objectstorage.com
     region: nbg1
     bucket: osenco-beads-attachments
-    prefix: osenco         # the workspace; default is the project's database name
     path_style: false
-    url_ttl: 15m
+    url_ttl: 15m            # at most 168h (7 days): the S3 presign limit
     credential_command: "" # prints two lines: access key id, secret
 ```
 
-Secrets never go in the file. They come from `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and
-`B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or from `credential_command`. The database
-segment of the key is the Dolt database name, or the project name for SQLite and
-JSONL sources. The `local` backend is refused when the source is a Dolt server that
-is not on loopback, because other readers of that server cannot see the files.
+Secrets never go in the file: `backend`, `max_bytes`, `gc_grace`, `local_dir`,
+`prefix`, `local_with_dolt_server` and `s3` are the only keys an `attachments`
+mapping accepts, and `endpoint`, `region`, `bucket`, `path_style`, `url_ttl` and
+`credential_command` are the only keys under `s3`; any other key, or a YAML alias
+or merge node anywhere in the section, fails to load. Secrets come from
+`B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or
+from `credential_command`. The database segment of the key is the Dolt database
+name, or the project name for SQLite and JSONL sources. The `local` backend is
+refused for a Dolt server source unless `local_with_dolt_server: true` is set:
+b9s's shared Dolt server is reached through an SSH tunnel and looks like loopback
+locally even when other operators share it, so a host-based loopback check cannot
+tell the two apart.
 
 ## Task 1: blob store package in b9s
 
@@ -140,9 +148,10 @@ Commit: `feat(attach): versioned attachment reference format`.
 `internal/blobstore/open.go` (`Open(cfg, source) (Store, KeyFunc, error)`).
 
 Tests: defaults; secrets from env and from `credential_command` (fake command
-script in `t.TempDir()`); the local backend refused for a non-loopback Dolt
-server; `max_bytes` and `url_ttl` parsing; a config file with a secret key field
-is rejected with a clear error.
+script in `t.TempDir()`); the local backend refused for a Dolt server source
+without `local_with_dolt_server: true`; `max_bytes` and `url_ttl` parsing; a
+config file with an unknown key, or a YAML alias or merge node, under
+`attachments` is rejected with a clear error.
 
 Commit: `feat(attach): attachment settings and blob store selection`.
 

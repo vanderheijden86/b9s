@@ -70,21 +70,28 @@ func TestOpen_LocalWithoutDirOrBeadsDirFails(t *testing.T) {
 	}
 }
 
-func TestOpen_LocalRefusedForNonLoopbackDolt(t *testing.T) {
+func TestOpen_LocalRefusedForDoltByDefault(t *testing.T) {
 	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir()}
-	_, err := Open(context.Background(), cfg, SourceInfo{
-		Kind:     SourceDolt,
-		DoltHost: "203.0.113.5",
-		Database: "b9s",
-	})
-	if err == nil || !strings.Contains(err.Error(), "loopback") {
-		t.Fatalf("Open err = %v, want an error naming loopback", err)
+	// A Dolt server reached through an SSH tunnel looks like loopback from
+	// here even when other operators share it, so this must be refused
+	// regardless of host: only the explicit opt-in makes it safe.
+	for _, host := range []string{"203.0.113.5", "127.0.0.1", "localhost", "::1"} {
+		t.Run(host, func(t *testing.T) {
+			_, err := Open(context.Background(), cfg, SourceInfo{
+				Kind:     SourceDolt,
+				DoltHost: host,
+				Database: "b9s",
+			})
+			if err == nil || !strings.Contains(err.Error(), "local_with_dolt_server") {
+				t.Fatalf("Open err = %v, want an error naming local_with_dolt_server", err)
+			}
+		})
 	}
 }
 
-func TestOpen_LocalAllowedForLoopbackDolt(t *testing.T) {
-	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir()}
-	for _, host := range []string{"127.0.0.1", "localhost", "::1"} {
+func TestOpen_LocalAllowedForDoltWithExplicitOptIn(t *testing.T) {
+	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
+	for _, host := range []string{"203.0.113.5", "127.0.0.1"} {
 		t.Run(host, func(t *testing.T) {
 			_, err := Open(context.Background(), cfg, SourceInfo{
 				Kind:     SourceDolt,
@@ -113,7 +120,7 @@ func TestOpen_KeyUsesPrefixAndDatabaseSegment(t *testing.T) {
 	const hash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 
 	t.Run("dolt uses database name, default prefix falls back to it", func(t *testing.T) {
-		cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir()}
+		cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
 		h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, DoltHost: "127.0.0.1", Database: "b9s"})
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -129,8 +136,8 @@ func TestOpen_KeyUsesPrefixAndDatabaseSegment(t *testing.T) {
 	})
 
 	t.Run("explicit prefix wins over the default", func(t *testing.T) {
-		cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir()}
-		cfg.S3.Prefix = "osenco"
+		cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
+		cfg.Prefix = "osenco"
 		h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, DoltHost: "127.0.0.1", Database: "b9s"})
 		if err != nil {
 			t.Fatalf("Open: %v", err)
@@ -160,6 +167,29 @@ func TestOpen_KeyUsesPrefixAndDatabaseSegment(t *testing.T) {
 			t.Errorf("Key() = %q, want %q", got, want)
 		}
 	})
+}
+
+func TestOpen_ValidatesKeyEarly(t *testing.T) {
+	// A prefix segment containing a slash-unsafe character (here a space)
+	// would only surface as a Key error on the first real attach; Open must
+	// catch it immediately and name the bad segment.
+	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), Prefix: "bad prefix"}
+	_, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceSQLite, ProjectName: "b9s"})
+	if err == nil || !strings.Contains(err.Error(), "bad prefix") {
+		t.Fatalf("Open err = %v, want an error naming the bad prefix segment", err)
+	}
+}
+
+func TestHandle_ListPrefix(t *testing.T) {
+	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), LocalWithDoltServer: true}
+	h, err := Open(context.Background(), cfg, SourceInfo{Kind: SourceDolt, DoltHost: "127.0.0.1", Database: "b9s"})
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	want := "b9s/b9s/sha256"
+	if got := h.ListPrefix(); got != want {
+		t.Errorf("ListPrefix() = %q, want %q", got, want)
+	}
 }
 
 func TestOpen_UnknownBackend(t *testing.T) {
@@ -213,6 +243,17 @@ func TestResolveS3Credentials_CredentialCommandSuccess(t *testing.T) {
 	}
 }
 
+func TestResolveS3Credentials_CredentialCommandTrimsCRLFAndSpaces(t *testing.T) {
+	script := writeScript(t, "#!/bin/sh\nprintf 'AKIAEXAMPLE \\r\\n  command-secret  \\r\\n'\n")
+	id, secret, err := resolveS3Credentials(context.Background(), config.S3AttachmentsConfig{CredentialCommand: script})
+	if err != nil {
+		t.Fatalf("resolveS3Credentials: %v", err)
+	}
+	if id != "AKIAEXAMPLE" || secret != "command-secret" {
+		t.Fatalf("got (%q, %q), want trimmed values with no CR or spaces", id, secret)
+	}
+}
+
 func TestResolveS3Credentials_CredentialCommandWrongLineCount(t *testing.T) {
 	script := writeScript(t, "#!/bin/sh\necho only-one-line\n")
 	_, _, err := resolveS3Credentials(context.Background(), config.S3AttachmentsConfig{CredentialCommand: script})
@@ -245,6 +286,42 @@ func TestResolveS3Credentials_CredentialCommandTimeout(t *testing.T) {
 	}
 	if elapsed := time.Since(start); elapsed > 2*time.Second {
 		t.Fatalf("resolveS3Credentials took %s, want it bounded by the shortened timeout", elapsed)
+	}
+}
+
+func TestResolveS3Credentials_CredentialCommandKillsOrphanedGrandchild(t *testing.T) {
+	old := credentialCommandTimeout
+	credentialCommandTimeout = 500 * time.Millisecond
+	defer func() { credentialCommandTimeout = old }()
+
+	// The backgrounded "sleep 30" inherits the stdout pipe. A context that
+	// only kills the "sh" process (not its process group) leaves that
+	// grandchild holding the pipe open, so exec.Cmd.Wait blocks until it
+	// exits on its own: this is the hang the fix must close.
+	script := writeScript(t, "#!/bin/sh\nsleep 30 &\nwait\n")
+	start := time.Now()
+	_, _, err := resolveS3Credentials(context.Background(), config.S3AttachmentsConfig{CredentialCommand: script})
+	if err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("err = %v, want a timeout error", err)
+	}
+	if elapsed := time.Since(start); elapsed > credentialCommandTimeout+1500*time.Millisecond {
+		t.Fatalf("resolveS3Credentials took %s, want it bounded by timeout + ~1.5s", elapsed)
+	}
+}
+
+func TestResolveS3Credentials_CredentialCommandKillsSleepThenEcho(t *testing.T) {
+	old := credentialCommandTimeout
+	credentialCommandTimeout = 500 * time.Millisecond
+	defer func() { credentialCommandTimeout = old }()
+
+	script := writeScript(t, "#!/bin/sh\nsleep 30\necho x\n")
+	start := time.Now()
+	_, _, err := resolveS3Credentials(context.Background(), config.S3AttachmentsConfig{CredentialCommand: script})
+	if err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("err = %v, want a timeout error", err)
+	}
+	if elapsed := time.Since(start); elapsed > credentialCommandTimeout+1500*time.Millisecond {
+		t.Fatalf("resolveS3Credentials took %s, want it bounded by timeout + ~1.5s", elapsed)
 	}
 }
 

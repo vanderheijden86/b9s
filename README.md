@@ -193,13 +193,14 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 #   max_bytes: 26214400   # 25 MiB
 #   gc_grace: 24h
 #   local_dir: ""         # local backend only; default <beads dir>/attachments
+#   prefix: osenco         # the workspace; default is the project's database name; applies to both backends
+#   local_with_dolt_server: false # required true to use the local backend when the project is a Dolt server
 #   s3:
 #     endpoint: https://nbg1.your-objectstorage.com
 #     region: nbg1
 #     bucket: osenco-beads-attachments
-#     prefix: osenco       # the workspace; default is the project's database name
 #     path_style: false
-#     url_ttl: 15m
+#     url_ttl: 15m         # at most 168h (7 days): the S3 presign limit
 #     credential_command: "" # prints two lines: access key id, secret
 ```
 
@@ -207,7 +208,7 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 ### Attachments
 
-The `attachments` section configures the blob store b9s uses to attach files to issues (see [ADR 0024](docs/adr/0024-attach-files-through-reference-comments.md)). It never holds credentials: the `s3` backend reads them from `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or from `s3.credential_command`, which must print exactly two lines (access key id, then secret) within 10 seconds. A key that looks like a credential (`access_key_id`, `secret_access_key`, `secret`, `password`, `token`) anywhere in this section makes the whole file fail to load. The `local` backend is refused when the current project is a Dolt server that is not on loopback, because other readers of that server cannot see files on this machine.
+The `attachments` section configures the blob store b9s uses to attach files to issues (see [ADR 0024](docs/adr/0024-attach-files-through-reference-comments.md)). It never holds credentials: the `s3` backend reads them from `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or from `s3.credential_command`, which must print exactly two lines (access key id, then secret) within 10 seconds. Only the fields shown above are accepted under `attachments` and `attachments.s3`; any other key, and any YAML alias or merge (`<<`) node anywhere in the section, makes the whole file fail to load, naming the key it rejected. The `local` backend is refused for a project whose data source is a Dolt server unless `local_with_dolt_server: true` is set: b9s's own shared Dolt server runs through an SSH tunnel and looks like loopback from every machine that reaches it, so a host-based check cannot tell that apart from Dolt genuinely running solo, and files the local backend writes are invisible to every other operator sharing that server.
 
 ## Mouse and tmux
 
