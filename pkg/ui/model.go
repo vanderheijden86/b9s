@@ -1273,75 +1273,83 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle edit modal before type switch: huh.Form needs to receive ALL
 	// message types (not just tea.KeyMsg) for internal navigation (nextFieldMsg,
-	// updateFieldMsg, etc.) to work correctly.
+	// updateFieldMsg, etc.) to work correctly. Only a KeyMsg stops here
+	// (bd-grtt): every other message also falls through to the main switch
+	// below, so FileChangedMsg, BdResultMsg, attach results and the periodic
+	// ticks still reach their handlers, and live refresh does not stop for
+	// the rest of the session while the modal is open.
 	if m.showEditModal {
 		m.editModal, cmd = m.editModal.Update(msg)
 		cmds = append(cmds, cmd)
-		if m.editModal.IsCancelRequested() {
-			m.showEditModal = false
-			return m, tea.Batch(cmds...)
-		}
-		if m.editModal.IsSaveRequested() {
-			m.showEditModal = false
-			if m.editModal.isCreateMode {
-				args := m.editModal.BuildCreateArgs()
-				debug.Log("edit-modal: CREATE save requested, args=%v", args)
-				if len(args) > 0 {
-					cmds = append(cmds, m.issueWriter.CreateIssue(args))
+		if _, isKey := msg.(tea.KeyMsg); isKey {
+			if m.editModal.IsCancelRequested() {
+				m.showEditModal = false
+				return m, tea.Batch(cmds...)
+			}
+			if m.editModal.IsSaveRequested() {
+				m.showEditModal = false
+				if m.editModal.isCreateMode {
+					args := m.editModal.BuildCreateArgs()
+					debug.Log("edit-modal: CREATE save requested, args=%v", args)
+					if len(args) > 0 {
+						cmds = append(cmds, m.issueWriter.CreateIssue(args))
+					} else {
+						debug.Log("edit-modal: CREATE skipped (no args)")
+					}
 				} else {
-					debug.Log("edit-modal: CREATE skipped (no args)")
+					// If status changed to "deferred", use bd defer (bd-j7mx)
+					if m.editModal.IsDeferring() {
+						deferUntil := m.editModal.DeferUntil()
+						debug.Log("edit-modal: DEFER %s until=%q", m.editModal.issueID, deferUntil)
+						cmds = append(cmds, m.issueWriter.DeferIssue(m.editModal.issueID, deferUntil))
+					}
+					// Apply any other changed fields (title, priority, etc.) via update
+					args := m.editModal.BuildUpdateArgs()
+					debug.Log("edit-modal: UPDATE save for %s, changed=%v", m.editModal.issueID, args)
+					if len(args) > 0 {
+						cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
+					} else if !m.editModal.IsDeferring() {
+						debug.Log("edit-modal: UPDATE skipped (no changes)")
+					}
 				}
-			} else {
-				// If status changed to "deferred", use bd defer (bd-j7mx)
-				if m.editModal.IsDeferring() {
-					deferUntil := m.editModal.DeferUntil()
-					debug.Log("edit-modal: DEFER %s until=%q", m.editModal.issueID, deferUntil)
-					cmds = append(cmds, m.issueWriter.DeferIssue(m.editModal.issueID, deferUntil))
-				}
-				// Apply any other changed fields (title, priority, etc.) via update
-				args := m.editModal.BuildUpdateArgs()
-				debug.Log("edit-modal: UPDATE save for %s, changed=%v", m.editModal.issueID, args)
-				if len(args) > 0 {
-					cmds = append(cmds, m.issueWriter.UpdateIssue(m.editModal.issueID, args))
-				} else if !m.editModal.IsDeferring() {
-					debug.Log("edit-modal: UPDATE skipped (no changes)")
-				}
+				return m, tea.Batch(cmds...)
 			}
 			return m, tea.Batch(cmds...)
 		}
-		return m, tea.Batch(cmds...)
 	}
 
 	// Handle the attach-add modal before the type switch for the same reason
-	// as the edit modal above: huh.Form needs every message type, not just
-	// tea.KeyMsg, to drive its own internal navigation.
+	// and under the same KeyMsg-only-stops rule as the edit modal above
+	// (bd-grtt).
 	if m.showAttachAddModal {
 		m.attachAddModal, cmd = m.attachAddModal.Update(msg)
 		cmds = append(cmds, cmd)
-		if m.attachAddModal.IsCancelRequested() {
-			m.showAttachAddModal = false
-			return m, tea.Batch(cmds...)
-		}
-		if m.attachAddModal.IsSubmitRequested() {
-			m.showAttachAddModal = false
-			issueID := m.attachAddModal.issueID
-			paths, err := parseAttachPaths(m.attachAddModal.RawPaths())
-			if err != nil {
-				m.statusMsg = fmt.Sprintf("attach: %v", err)
-				m.statusIsError = true
+		if _, isKey := msg.(tea.KeyMsg); isKey {
+			if m.attachAddModal.IsCancelRequested() {
+				m.showAttachAddModal = false
 				return m, tea.Batch(cmds...)
 			}
-			if len(paths) == 0 {
-				m.statusMsg = "attach: no file paths given"
+			if m.attachAddModal.IsSubmitRequested() {
+				m.showAttachAddModal = false
+				issueID := m.attachAddModal.issueID
+				paths, err := parseAttachPaths(m.attachAddModal.RawPaths())
+				if err != nil {
+					m.statusMsg = fmt.Sprintf("attach: %v", err)
+					m.statusIsError = true
+					return m, tea.Batch(cmds...)
+				}
+				if len(paths) == 0 {
+					m.statusMsg = "attach: no file paths given"
+					m.statusIsError = false
+					return m, tea.Batch(cmds...)
+				}
+				m.statusMsg = fmt.Sprintf("attaching %d file(s)...", len(paths))
 				m.statusIsError = false
+				cmds = append(cmds, m.attachAddCmd(issueID, paths))
 				return m, tea.Batch(cmds...)
 			}
-			m.statusMsg = fmt.Sprintf("attaching %d file(s)...", len(paths))
-			m.statusIsError = false
-			cmds = append(cmds, m.attachAddCmd(issueID, paths))
 			return m, tea.Batch(cmds...)
 		}
-		return m, tea.Batch(cmds...)
 	}
 
 	switch msg := msg.(type) {
