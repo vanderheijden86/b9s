@@ -1,6 +1,7 @@
 package attachref
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +65,7 @@ func TestFormatParseRoundTrip(t *testing.T) {
 		{"plain", Ref{SHA256: sha, Size: 42, Type: "text/plain", Name: "notes.txt"}},
 		{"spaces", Ref{SHA256: sha, Size: 1, Type: "image/png", Name: "my screenshot.png"}},
 		{"percent", Ref{SHA256: sha, Size: 1, Type: "image/png", Name: "100% done.png"}},
-		{"unicode", Ref{SHA256: sha, Size: 1, Type: "image/png", Name: "écran.png"}},
+		{"unicode", Ref{SHA256: sha, Size: 1, Type: "image/png", Name: "\u00e9cran.png"}},
 		{"quotes", Ref{SHA256: sha, Size: 1, Type: "image/png", Name: `he said "hi".txt`}},
 		{"zero size", Ref{SHA256: sha, Size: 0, Type: "application/octet-stream", Name: "empty"}},
 	}
@@ -103,8 +104,8 @@ func TestFormatRejectsInvalid(t *testing.T) {
 		{"type with space", func() Ref { r := base; r.Type = "text/plain; charset=utf-8"; return r }()},
 		{"type with vertical tab", func() Ref { r := base; r.Type = "image/png\v"; return r }()},
 		{"type with form feed", func() Ref { r := base; r.Type = "image/png\f"; return r }()},
-		{"type with nbsp", func() Ref { r := base; r.Type = "image/png "; return r }()},
-		{"type with leading em space", func() Ref { r := base; r.Type = " image/png"; return r }()},
+		{"type with nbsp", func() Ref { r := base; r.Type = "image/png\u00a0"; return r }()},
+		{"type with leading em space", func() Ref { r := base; r.Type = "\u2003image/png"; return r }()},
 		{"type with nel", func() Ref { r := base; r.Type = "image/png\u0085"; return r }()},
 		{"type with two slashes", func() Ref { r := base; r.Type = "image/png/extra"; return r }()},
 		{"type with tspecial", func() Ref { r := base; r.Type = "image/png;q=1"; return r }()},
@@ -117,17 +118,26 @@ func TestFormatRejectsInvalid(t *testing.T) {
 		{"name with control char", func() Ref { r := base; r.Name = "a\x01b.png"; return r }()},
 		{"name too long", func() Ref { r := base; r.Name = strings.Repeat("a", 256); return r }()},
 		{"name with invalid UTF-8", func() Ref { r := base; r.Name = "a\xffb.png"; return r }()},
-		{"name with LRM", func() Ref { r := base; r.Name = "a‎b.png"; return r }()},
-		{"name with RLM", func() Ref { r := base; r.Name = "a‏b.png"; return r }()},
-		{"name with Arabic letter mark", func() Ref { r := base; r.Name = "a؜b.png"; return r }()},
-		{"name with LRO", func() Ref { r := base; r.Name = "a‭b.png"; return r }()},
-		{"name with RLO", func() Ref { r := base; r.Name = "a‮b.png"; return r }()},
-		{"name with LRI", func() Ref { r := base; r.Name = "a⁦b.png"; return r }()},
-		{"name with PDI", func() Ref { r := base; r.Name = "a⁩b.png"; return r }()},
-		{"name with zero-width space", func() Ref { r := base; r.Name = "a​b.png"; return r }()},
-		{"name with zero-width non-joiner", func() Ref { r := base; r.Name = "a‌b.png"; return r }()},
+		{"name with LRM", func() Ref { r := base; r.Name = "a\u200eb.png"; return r }()},
+		{"name with RLM", func() Ref { r := base; r.Name = "a\u200fb.png"; return r }()},
+		{"name with Arabic letter mark", func() Ref { r := base; r.Name = "a\u061cb.png"; return r }()},
+		{"name with LRO", func() Ref { r := base; r.Name = "a\u202db.png"; return r }()},
+		{"name with RLO", func() Ref { r := base; r.Name = "a\u202eb.png"; return r }()},
+		{"name with LRI", func() Ref { r := base; r.Name = "a\u2066b.png"; return r }()},
+		{"name with PDI", func() Ref { r := base; r.Name = "a\u2069b.png"; return r }()},
+		{"name with zero-width space", func() Ref { r := base; r.Name = "a\u200bb.png"; return r }()},
+		{"name with zero-width non-joiner", func() Ref { r := base; r.Name = "a\u200cb.png"; return r }()},
 		{"name with BOM", func() Ref { r := base; r.Name = "a" + "\xef\xbb\xbf" + "b.png"; return r }()},
 		{"name starting with dash", func() Ref { r := base; r.Name = "-rf.png"; return r }()},
+		{"name with line separator", func() Ref { r := base; r.Name = "a\u2028b.png"; return r }()},
+		{"name with paragraph separator", func() Ref { r := base; r.Name = "a\u2029b.png"; return r }()},
+		{"name with tag character", func() Ref { r := base; r.Name = "a\U000E0020b.png"; return r }()},
+		{"name with hangul filler", func() Ref { r := base; r.Name = "a\u3164b.png"; return r }()},
+		{"name with hangul choseong filler", func() Ref { r := base; r.Name = "a\u115fb.png"; return r }()},
+		{"name with hangul jungseong filler", func() Ref { r := base; r.Name = "a\u1160b.png"; return r }()},
+		{"name ending in space", func() Ref { r := base; r.Name = "screenshot.png "; return r }()},
+		{"name ending in dot", func() Ref { r := base; r.Name = "screenshot.png."; return r }()},
+		{"name only whitespace", func() Ref { r := base; r.Name = "   "; return r }()},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -143,7 +153,7 @@ func TestFormatAllowsZeroWidthJoiner(t *testing.T) {
 	// so a name built from one must not be treated the same as the other,
 	// visually similar zero-width and bidi formatting characters that are rejected.
 	r := validRef()
-	r.Name = "a‍b.png"
+	r.Name = "a\u200db.png"
 	text, err := Format(r)
 	if err != nil {
 		t.Fatalf("Format with a ZWJ in the name failed: %v", err)
@@ -448,6 +458,45 @@ func TestCollectOrdersNumericIDsNumerically(t *testing.T) {
 	}
 }
 
+// TestCollectCommentIDOrderIsTransitive guards a 3-cycle in lessCommentID:
+// "9" < "10" numerically, but "10" < "1a2b..." and "1a2b..." < "9" lexically.
+// A cycle makes sort.SliceStable's result depend on the input order, so every
+// permutation of the same three same-second comments must fold to the same
+// attachments.
+func TestCollectCommentIDOrderIsTransitive(t *testing.T) {
+	shaA := strings.Repeat("a", 64)
+	shaB := strings.Repeat("b", 64)
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	attachA, _ := Format(Ref{SHA256: shaA, Size: 1, Type: "image/png", Name: "a.png"})
+	detachA, _ := FormatDetach(Ref{SHA256: shaA, Name: "a.png"})
+	attachB, _ := Format(Ref{SHA256: shaB, Size: 1, Type: "image/png", Name: "b.png"})
+
+	base := []*model.Comment{
+		{ID: "9", IssueID: "i1", Author: "alice", Text: attachA, CreatedAt: t0},
+		{ID: "10", IssueID: "i1", Author: "alice", Text: detachA, CreatedAt: t0},
+		{ID: "1a2b3c4d", IssueID: "i1", Author: "alice", Text: attachB, CreatedAt: t0},
+	}
+
+	permutations := [][3]int{
+		{0, 1, 2}, {0, 2, 1}, {1, 0, 2},
+		{1, 2, 0}, {2, 0, 1}, {2, 1, 0},
+	}
+
+	var want []Attachment
+	for i, perm := range permutations {
+		comments := []*model.Comment{base[perm[0]], base[perm[1]], base[perm[2]]}
+		got := Collect(comments)
+		if i == 0 {
+			want = got
+			continue
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("permutation %v gave %+v, want the same result as permutation %v: %+v", perm, got, permutations[0], want)
+		}
+	}
+}
+
 // FuzzFormat covers the direction FuzzParse does not: for any Ref that Format
 // accepts (however it was constructed), the text it produces must read back
 // through Parse as that exact Ref, not merely as some valid Ref.
@@ -455,8 +504,8 @@ func FuzzFormat(f *testing.F) {
 	sha := strings.Repeat("a", 64)
 	f.Add(sha, int64(120832), "image/png", "screenshot.png")
 	f.Add(sha, int64(0), "text/plain", "notes.txt")
-	f.Add(sha, int64(1), "image/png ", "a.png")
-	f.Add(sha, int64(1), "image/png", "a‎b.png")
+	f.Add(sha, int64(1), "image/png\u00a0", "a.png")
+	f.Add(sha, int64(1), "image/png", "a\u200eb.png")
 	f.Add(sha, int64(1), "image/png", "-rf")
 	f.Fuzz(func(t *testing.T, sha string, size int64, typ string, name string) {
 		r := Ref{SHA256: sha, Size: size, Type: typ, Name: name}

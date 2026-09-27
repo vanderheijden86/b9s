@@ -208,15 +208,26 @@ func Collect(comments []*model.Comment) []Attachment {
 }
 
 // lessCommentID orders two comment IDs numerically when both parse as
-// integers (the common case for legacy Beads IDs), and lexically otherwise
-// (bd v0.63 UUID IDs, or a mix of the two forms).
+// integers (the common case for legacy Beads IDs), lexically when neither
+// does (bd v0.63 UUID IDs), and with the numeric one first when only one
+// does. That last case matters for transitivity: comparing "10" and "1a2b"
+// lexically would put "10" first ('0' < 'a'), while "1a2b" and "9" lexically
+// put "1a2b" first ('1' < '9'), so together with "9" < "10" numerically the
+// three would form a cycle. Numeric-first for a mixed pair breaks the cycle
+// by giving every legacy integer id a lower rank than every non-numeric one.
 func lessCommentID(a, b string) bool {
 	ai, aErr := strconv.ParseInt(a, 10, 64)
 	bi, bErr := strconv.ParseInt(b, 10, 64)
-	if aErr == nil && bErr == nil {
+	switch {
+	case aErr == nil && bErr == nil:
 		return ai < bi
+	case aErr == nil:
+		return true
+	case bErr == nil:
+		return false
+	default:
+		return a < b
 	}
-	return a < b
 }
 
 // removeString returns s with the first occurrence of v removed, preserving
@@ -338,6 +349,11 @@ func validateType(t string) error {
 // invisible. U+200D ZERO WIDTH JOINER is deliberately excluded: it is what
 // composes emoji sequences, so a name built from one is legitimate text
 // rather than a spoofing attempt, unlike its zero-width relatives here.
+//
+// This list is named explicitly, in addition to the general category check
+// in isDisallowedNameRune, because it gives a clearer, more specific error
+// for the most common spoofing characters rather than the generic "format or
+// separator character" message.
 func isDisallowedNameFormatChar(r rune) bool {
 	// Written as hex code points, not rune literals: several of these
 	// (notably U+FEFF) are invisible or actively hostile to render in a
@@ -364,12 +380,43 @@ func isDisallowedNameFormatChar(r rune) bool {
 	}
 }
 
+// isDisallowedNameRune reports whether r belongs to a Unicode category that
+// lets a name render differently from how it reads, or that renders as
+// nothing at all: Cf (Format, the broader family isDisallowedNameFormatChar
+// only partially names), Zl (Line Separator) and Zp (Paragraph Separator),
+// the tag character block U+E0000-U+E007F (invisible modifiers once used for
+// subdivision-flag emoji, a use this rejection deliberately gives up), and
+// three Hangul filler characters that render as blank space. U+200D ZERO
+// WIDTH JOINER is exempted for the same reason isDisallowedNameFormatChar
+// exempts it: it legitimately composes emoji sequences.
+func isDisallowedNameRune(r rune) bool {
+	if r == 0x200D { // ZERO WIDTH JOINER, exempted
+		return false
+	}
+	if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Zl, r) || unicode.Is(unicode.Zp, r) {
+		return true
+	}
+	if r >= 0xE0000 && r <= 0xE007F {
+		return true
+	}
+	switch r {
+	case 0x3164, // HANGUL FILLER
+		0x115F, // HANGUL CHOSEONG FILLER
+		0x1160: // HANGUL JUNGSEONG FILLER
+		return true
+	}
+	return false
+}
+
 func validateName(name string) error {
 	if name == "" {
 		return fmt.Errorf("name must not be empty")
 	}
 	if !utf8.ValidString(name) {
 		return fmt.Errorf("name must be valid UTF-8: %q", name)
+	}
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("name must not be only whitespace: %q", name)
 	}
 	if name == "." || name == ".." {
 		return fmt.Errorf("name must not be %q", name)
@@ -380,6 +427,10 @@ func validateName(name string) error {
 	if strings.HasPrefix(name, "-") {
 		return fmt.Errorf("name must not start with '-': %q", name)
 	}
+	// Windows cannot use a name that ends in a space or a dot as a file name.
+	if strings.HasSuffix(name, " ") || strings.HasSuffix(name, ".") {
+		return fmt.Errorf("name must not end with a space or a dot: %q", name)
+	}
 	if len(name) > maxNameBytes {
 		return fmt.Errorf("name must be at most %d bytes, got %d", maxNameBytes, len(name))
 	}
@@ -389,6 +440,9 @@ func validateName(name string) error {
 		}
 		if isDisallowedNameFormatChar(r) {
 			return fmt.Errorf("name must not contain a bidi or zero-width formatting character: %q", name)
+		}
+		if isDisallowedNameRune(r) {
+			return fmt.Errorf("name must not contain a format, line, paragraph, tag or filler character: %q", name)
 		}
 	}
 	return nil
