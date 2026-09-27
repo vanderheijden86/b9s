@@ -132,6 +132,12 @@ type OpenedProject struct {
 	// DoltFailure is set when the configured Dolt server failed and a local
 	// export was read instead.
 	DoltFailure *OpenFailure
+	// CommentsErr is set, wrapping ErrCommentsUnavailable, when every other
+	// column loaded but comments did not. The source still opened and
+	// Issues is still complete, so this is a note for the caller to show
+	// (a status line, a debug log), not a reason to treat the open as
+	// failed or to fall back to a lower-priority source.
+	CommentsErr error
 }
 
 // OpenProject loads a project's issues from its most authoritative readable
@@ -147,8 +153,12 @@ func OpenProject(target OpenTarget) (OpenedProject, *OpenFailure) {
 	var doltFailure, lastFailure *OpenFailure
 	for _, source := range sources {
 		issues, err := LoadFromSource(source)
-		if err == nil {
-			return OpenedProject{Issues: issues, Source: source, DoltFailure: doltFailure}, nil
+		if err == nil || errors.Is(err, ErrCommentsUnavailable) {
+			// A comments-only failure means the source itself opened and every
+			// other column loaded; treating it like a source failure would
+			// fall back to a lower-priority, possibly stale source over a
+			// live connection with one broken table.
+			return OpenedProject{Issues: issues, Source: source, DoltFailure: doltFailure, CommentsErr: err}, nil
 		}
 		f := &OpenFailure{Reason: OpenUnreadable, Project: target.Name, Dir: target.Dir, Err: err}
 		if source.Type == SourceTypeDolt {

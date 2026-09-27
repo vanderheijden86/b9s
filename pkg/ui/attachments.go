@@ -148,6 +148,14 @@ func (m *Model) openAttachmentPicker() {
 	if issue == nil {
 		return
 	}
+	if m.commentsLoadErr != nil {
+		// Comments failed to load, so issue.Comments is whatever the last
+		// good load had (or nil); reporting "no attachments" here would be
+		// indistinguishable from a project that genuinely has none.
+		m.statusMsg = "attachments: comments could not be loaded: " + m.commentsLoadErr.Error()
+		m.statusIsError = true
+		return
+	}
 	atts := attachref.Collect(issue.Comments)
 	if len(atts) == 0 {
 		m.statusMsg = "no attachments on " + issue.ID

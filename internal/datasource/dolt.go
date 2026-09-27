@@ -153,14 +153,27 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 	if err != nil {
 		return nil, err
 	}
-	allComments := r.loadAllComments()
+	// A failed comments batch degrades the result rather than failing the
+	// whole load: allComments stays nil and every issue's Comments field
+	// with it, but the issues themselves, their labels and their
+	// dependencies are still real and still returned. commentsErr is
+	// reported alongside them so a caller that must not treat "unknown" as
+	// "none" (internal/attach's CommentLoader, in turn OpenProject) can
+	// fail on it, while one that can tolerate a degraded comments view (the
+	// TUI reload path) keeps the issues and shows a note instead.
+	allComments, commentsErr := r.loadAllComments()
+	if commentsErr != nil {
+		debug.Log("dolt: comments unavailable, issues will report no comments: %v", commentsErr)
+	}
 	applyCreators(r.db, issues)
 
 	var result []model.Issue
 	for i := range issues {
 		issues[i].Labels = allLabels[issues[i].ID]
 		issues[i].Dependencies = allDeps[issues[i].ID]
-		issues[i].Comments = allComments[issues[i].ID]
+		if allComments != nil {
+			issues[i].Comments = allComments[issues[i].ID]
+		}
 
 		if filter != nil && !filter(&issues[i]) {
 			continue
@@ -170,7 +183,7 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 
 	debug.Log("dolt: RESULT: %d issues loaded (labels=%d deps=%d comments=%d batches)",
 		len(result), len(allLabels), len(allDeps), len(allComments))
-	return result, nil
+	return result, commentsErr
 }
 
 // loadIssuesSimple is a fallback for Dolt databases with fewer columns.
@@ -361,16 +374,17 @@ func (r *DoltReader) loadDependencies(issueID string) []*model.Dependency {
 	return deps
 }
 
-// loadComments loads the comments for a single issue. Returns nil on any error;
-// this is a best-effort helper.
+// loadComments loads the comments for a single issue, reporting a query or
+// scan failure wrapped in ErrCommentsUnavailable rather than returning nil:
+// nil must mean "no comments," never "couldn't ask" (see ErrCommentsUnavailable).
 // bd v0.63 uses CHAR(36) UUID for comment IDs; our model's ID is a string, so
 // it round-trips either the UUID or a legacy integer ID unchanged. attachref
 // needs the ID to break ties between comments sharing one created_at.
-func (r *DoltReader) loadComments(issueID string) []*model.Comment {
+func (r *DoltReader) loadComments(issueID string) ([]*model.Comment, error) {
 	query := `SELECT id, author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
 	rows, err := r.db.Query(query, issueID)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("%w: query comments for %s: %w", ErrCommentsUnavailable, issueID, err)
 	}
 	defer rows.Close()
 
@@ -379,7 +393,7 @@ func (r *DoltReader) loadComments(issueID string) []*model.Comment {
 		var comment model.Comment
 		var createdAt sql.NullTime
 		if err := rows.Scan(&comment.ID, &comment.Author, &comment.Text, &createdAt); err != nil {
-			continue
+			return nil, fmt.Errorf("%w: scan comment for %s: %w", ErrCommentsUnavailable, issueID, err)
 		}
 		if createdAt.Valid {
 			comment.CreatedAt = createdAt.Time
@@ -387,7 +401,10 @@ func (r *DoltReader) loadComments(issueID string) []*model.Comment {
 		comment.IssueID = issueID
 		comments = append(comments, &comment)
 	}
-	return comments
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate comments for %s: %w", ErrCommentsUnavailable, issueID, err)
+	}
+	return comments, nil
 }
 
 // loadAllLabels loads labels for all issues in a single query.
@@ -442,13 +459,16 @@ func (r *DoltReader) loadAllDependencies() (map[string][]*model.Dependency, erro
 	return result, nil
 }
 
-// loadAllComments loads comments for all issues in a single query.
+// loadAllComments loads comments for all issues in a single query, all or
+// nothing: a query, scan or iteration failure returns a nil map and an
+// error wrapping ErrCommentsUnavailable instead of whatever rows it already
+// scanned, so a caller can never mistake a partial batch for a complete one.
 // Returns a map from issue ID to comment slice.
-func (r *DoltReader) loadAllComments() map[string][]*model.Comment {
+func (r *DoltReader) loadAllComments() (map[string][]*model.Comment, error) {
 	rows, err := r.db.Query(`SELECT id, issue_id, author, text, created_at FROM comments ORDER BY created_at`)
 	if err != nil {
 		debug.Log("dolt: batch comments query failed: %v", err)
-		return nil
+		return nil, fmt.Errorf("%w: query comments: %w", ErrCommentsUnavailable, err)
 	}
 	defer rows.Close()
 
@@ -457,14 +477,28 @@ func (r *DoltReader) loadAllComments() map[string][]*model.Comment {
 		var comment model.Comment
 		var createdAt sql.NullTime
 		if err := rows.Scan(&comment.ID, &comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
-			continue
+			return nil, fmt.Errorf("%w: scan comment: %w", ErrCommentsUnavailable, err)
 		}
 		if createdAt.Valid {
 			comment.CreatedAt = createdAt.Time
 		}
 		result[comment.IssueID] = append(result[comment.IssueID], &comment)
 	}
-	return result
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate comments: %w", ErrCommentsUnavailable, err)
+	}
+	return result, nil
+}
+
+// AllComments loads every comment in the database in one all-or-nothing
+// call, for a consumer that must see every attachment reference or none at
+// all (b9s attach gc, bd-t8j5.16): unlike loadAllComments as used from
+// LoadIssuesFiltered, which degrades to a nil map on failure so the issue
+// list keeps rendering, a gc walking this map for live references must
+// never see a partial one - that would make a real reference look garbage
+// and delete a blob still in use.
+func (r *DoltReader) AllComments() (map[string][]*model.Comment, error) {
+	return r.loadAllComments()
 }
 
 // GetHeadHash returns the Dolt commit hash for HEAD.

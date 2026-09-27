@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -458,6 +459,7 @@ type Model struct {
 	identities       *identity.Registry      // alias registry from b9s.identities and claim.pools (ADR 0014)
 	identityConfig   datasource.IdentityConfig
 	identityErr      error // last identity load or parse error, shown in the health popup
+	commentsLoadErr  error // last comments query/scan error; issues still loaded, R picker must not read this as "no attachments"
 	actorLookup      actorLookup
 	doltFailure      *DoltFailure // Non-nil when Dolt was detected but connection failed
 	startupDoltUser  string       // User the startup project connects as; projects without a checkout reuse it
@@ -1216,6 +1218,19 @@ func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	return m
 }
 
+// WithCommentsLoadErr records that the startup load's comments query or scan
+// failed. The issue list is already complete (OpenProject only returns this
+// alongside a full load), so this only adds a status note; it does not
+// change what issues the model shows.
+func (m Model) WithCommentsLoadErr(err error) Model {
+	m.commentsLoadErr = err
+	if err != nil {
+		m.statusMsg = "comments could not be loaded: " + err.Error()
+		m.statusIsError = true
+	}
+	return m
+}
+
 // WithDoltFailure records a failed Dolt connection attempt so the health popup
 // can show what was tried and why it failed, even when the source fell back to JSONL.
 func (m Model) WithDoltFailure(f *DoltFailure) Model {
@@ -1939,7 +1954,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		if profileRefresh {
 			recordTiming("load_issues", time.Since(loadStart))
 		}
-		if err != nil {
+		if err != nil && !errors.Is(err, datasource.ErrCommentsUnavailable) {
 			m.isLoading = false
 			m.statusMsg = fmt.Sprintf("Reload error: %v", err)
 			m.statusIsError = true
@@ -1949,6 +1964,15 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				cmds = append(cmds, WatchFileCmd(m.watcher))
 			}
 			return m, tea.Batch(cmds...)
+		}
+		// A comments-only failure still has a complete issue list: keep
+		// reloading (below) instead of the early return above, and let the
+		// warning surface in the reload status rather than the R picker
+		// silently reading a failed load as "no attachments" (bd-t8j5.18).
+		m.commentsLoadErr = err
+		if err != nil {
+			debug.Log("FileChangedMsg: comments unavailable: %v", err)
+			reloadWarnings = append(reloadWarnings, "comments could not be loaded: "+err.Error())
 		}
 
 		// Store selected issue ID to restore position after reload

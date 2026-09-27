@@ -9,6 +9,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/vanderheijden86/beadwork/pkg/debug"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
@@ -86,6 +87,7 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 	defer rows.Close()
 
 	var issues []model.Issue
+	var commentsErr error
 	for rows.Next() {
 		var issue model.Issue
 		var estimatedMinutes, compactionLevel, originalSize sql.NullInt64
@@ -171,8 +173,21 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 		// Load dependencies for this issue
 		issue.Dependencies = r.loadDependencies(issue.ID)
 
-		// Load comments for this issue
-		issue.Comments = r.loadComments(issue.ID)
+		// Load comments for this issue. A failure degrades this one issue's
+		// Comments field rather than aborting the scan: commentsErr (the
+		// first one seen) is still reported below, alongside the fully
+		// populated issue slice, so a caller that must not mistake
+		// "unknown" for "none" (internal/attach's CommentLoader) can fail
+		// on it while one that tolerates a degraded view (the TUI) keeps
+		// the issues.
+		comments, cErr := r.loadComments(issue.ID)
+		if cErr != nil {
+			if commentsErr == nil {
+				commentsErr = cErr
+			}
+			debug.Log("sqlite: comments unavailable for %s: %v", issue.ID, cErr)
+		}
+		issue.Comments = comments
 
 		// Apply filter
 		if filter != nil && !filter(&issue) {
@@ -186,7 +201,7 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 	}
 
 	applyCreators(r.db, issues)
-	return issues, nil
+	return issues, commentsErr
 }
 
 // loadIssuesSimple is a fallback for databases with fewer columns
@@ -269,12 +284,14 @@ func (r *SQLiteReader) loadDependencies(issueID string) []*model.Dependency {
 	return deps
 }
 
-// loadComments loads comments for an issue
-func (r *SQLiteReader) loadComments(issueID string) []*model.Comment {
+// loadComments loads comments for an issue, reporting a query or scan
+// failure wrapped in ErrCommentsUnavailable rather than returning nil: nil
+// must mean "no comments," never "couldn't ask" (see ErrCommentsUnavailable).
+func (r *SQLiteReader) loadComments(issueID string) ([]*model.Comment, error) {
 	query := `SELECT id, author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
 	rows, err := r.db.Query(query, issueID)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("%w: query comments for %s: %w", ErrCommentsUnavailable, issueID, err)
 	}
 	defer rows.Close()
 
@@ -283,7 +300,7 @@ func (r *SQLiteReader) loadComments(issueID string) []*model.Comment {
 		var comment model.Comment
 		var createdAt sql.NullTime
 		if err := rows.Scan(&comment.ID, &comment.Author, &comment.Text, &createdAt); err != nil {
-			continue
+			return nil, fmt.Errorf("%w: scan comment for %s: %w", ErrCommentsUnavailable, issueID, err)
 		}
 		if createdAt.Valid {
 			comment.CreatedAt = createdAt.Time
@@ -291,9 +308,42 @@ func (r *SQLiteReader) loadComments(issueID string) []*model.Comment {
 		comment.IssueID = issueID
 		comments = append(comments, &comment)
 	}
-	// Note: rows.Err() not checked here since loadComments is a
-	// best-effort helper that returns nil on any error.
-	return comments
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate comments for %s: %w", ErrCommentsUnavailable, issueID, err)
+	}
+	return comments, nil
+}
+
+// AllComments loads every comment in the database in one all-or-nothing
+// query, keyed by issue ID, for a consumer that must see every attachment
+// reference or none at all (b9s attach gc, bd-t8j5.16). Unlike loadComments
+// as used from LoadIssuesFiltered, which degrades one issue's Comments field
+// on failure so the issue list keeps rendering, a gc walking this map for
+// live references must never see a partial one - that would make a real
+// reference look garbage and delete a blob still in use.
+func (r *SQLiteReader) AllComments() (map[string][]*model.Comment, error) {
+	rows, err := r.db.Query(`SELECT id, issue_id, author, text, created_at FROM comments ORDER BY created_at`)
+	if err != nil {
+		return nil, fmt.Errorf("%w: query comments: %w", ErrCommentsUnavailable, err)
+	}
+	defer rows.Close()
+
+	result := make(map[string][]*model.Comment)
+	for rows.Next() {
+		var comment model.Comment
+		var createdAt sql.NullTime
+		if err := rows.Scan(&comment.ID, &comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
+			return nil, fmt.Errorf("%w: scan comment: %w", ErrCommentsUnavailable, err)
+		}
+		if createdAt.Valid {
+			comment.CreatedAt = createdAt.Time
+		}
+		result[comment.IssueID] = append(result[comment.IssueID], &comment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate comments: %w", ErrCommentsUnavailable, err)
+	}
+	return result, nil
 }
 
 // CountIssues returns the count of non-tombstone issues

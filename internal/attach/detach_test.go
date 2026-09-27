@@ -87,6 +87,22 @@ func TestDetach_RejectsHashNotCurrentlyAttached(t *testing.T) {
 	}
 }
 
+// TestDetach_SurfacesTheCommentLoaderError guards the fail-closed contract
+// bd-t8j5.18 depends on: a comments load failure must be reported as an
+// error, never read as "this hash was never attached" (TestDetach_RejectsHashNotCurrentlyAttached's
+// empty case), because that message is indistinguishable from success for a
+// caller checking only the exit code.
+func TestDetach_SurfacesTheCommentLoaderError(t *testing.T) {
+	err := Detach(context.Background(), &fakeBd{}, erroringCommentLoader{}, "bd-1", testSHA)
+
+	if err == nil {
+		t.Fatal("Detach: err = nil, want the loader's error surfaced")
+	}
+	if strings.Contains(err.Error(), "not currently attached") {
+		t.Errorf("error = %v, must not read as \"not currently attached\" when the load itself failed", err)
+	}
+}
+
 func TestDetach_RejectsAnAlreadyDetachedHash(t *testing.T) {
 	ref := attachref.Ref{SHA256: testSHA, Size: 3, Type: "text/plain", Name: "notes.txt"}
 	detachText, err := attachref.FormatDetach(ref)

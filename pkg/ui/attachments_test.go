@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -154,6 +155,27 @@ func TestRKeyOnIssueWithNoAttachmentsShowsStatusAndNoPicker(t *testing.T) {
 	}
 	if m.statusMsg == "" || m.statusIsError {
 		t.Fatalf("expected a non-error status message, got %q (isError=%v)", m.statusMsg, m.statusIsError)
+	}
+}
+
+// TestRKeyWithFailedCommentsLoadShowsErrorNotNoAttachments guards bd-t8j5.18:
+// a comments load failure must not look like "this issue genuinely has no
+// attachments" (attachref.Collect(nil) returns none either way), because a
+// future b9s attach gc reads "no attachments" as "delete every blob".
+func TestRKeyWithFailedCommentsLoadShowsErrorNotNoAttachments(t *testing.T) {
+	m, _ := attachmentTestModel(t, nil, false)
+	m.commentsLoadErr = errors.New("query comments: SQL logic error: no such table: comments")
+
+	m, _ = pressBulkKey(t, m, runeKey("R"))
+
+	if m.ShowAttachmentPicker() {
+		t.Fatal("R must not open the picker when comments failed to load")
+	}
+	if !m.statusIsError {
+		t.Fatalf("expected an error status, got isError=false (%q)", m.statusMsg)
+	}
+	if !strings.Contains(m.statusMsg, "comments could not be loaded") {
+		t.Fatalf("status message = %q, want it to mention the comments load failure", m.statusMsg)
 	}
 }
 

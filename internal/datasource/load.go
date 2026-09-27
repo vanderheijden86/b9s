@@ -1,6 +1,7 @@
 package datasource
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/vanderheijden86/beadwork/pkg/debug"
@@ -25,9 +26,13 @@ func LoadIssues(repoPath string) ([]model.Issue, error) {
 	debug.Log("load: LoadIssues repoPath=%q beadsDir=%q", repoPath, beadsDir)
 
 	issues, smartErr := loadSmart(beadsDir, repoPath)
-	if smartErr == nil {
-		debug.Log("load: loadSmart returned %d issues", len(issues))
-		return issues, nil
+	if smartErr == nil || errors.Is(smartErr, ErrCommentsUnavailable) {
+		// A comments-only failure still means the best source opened and
+		// every other column loaded: falling back to JSONL here would trade
+		// a live, mostly-complete source for a possibly stale export, over
+		// nothing worse than a degraded comments view.
+		debug.Log("load: loadSmart returned %d issues (smartErr=%v)", len(issues), smartErr)
+		return issues, smartErr
 	}
 
 	// Fall back to legacy JSONL-only loading
@@ -41,8 +46,8 @@ func LoadIssues(repoPath string) ([]model.Issue, error) {
 // This is useful when the caller already knows the .beads path.
 func LoadIssuesFromDir(beadsDir string) ([]model.Issue, error) {
 	issues, smartErr := loadSmart(beadsDir, "")
-	if smartErr == nil {
-		return issues, nil
+	if smartErr == nil || errors.Is(smartErr, ErrCommentsUnavailable) {
+		return issues, smartErr
 	}
 
 	// Fall back to JSONL

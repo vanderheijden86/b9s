@@ -1,6 +1,8 @@
 package datasource
 
 import (
+	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -98,5 +100,48 @@ func TestLoadIssuesFromCanonicalSourceReportsDoltFailureInsteadOfJSONL(t *testin
 	}
 	if got := ClassifyConnError(err); got != ReachServerDown {
 		t.Errorf("ClassifyConnError = %v, want server down", got)
+	}
+}
+
+// TestLoadIssuesFromDirToleratesCommentsUnavailable guards the same
+// regression as TestOpenProject_ToleratesCommentsUnavailableAndKeepsTheSource,
+// through a different call path: LoadIssuesFromDir is what the TUI's
+// FileChangedMsg reload calls for a project opened with a checkout
+// (bd-t8j5.18). Before this fix, loadSmart treated any non-nil error from
+// LoadFromSource - including a comments-only failure - as "this source
+// failed", and silently served the stale auxiliary JSONL export instead of
+// the SQLite database's own, otherwise-complete issues.
+func TestLoadIssuesFromDirToleratesCommentsUnavailable(t *testing.T) {
+	beadsDir := filepath.Join(t.TempDir(), ".beads")
+	if err := os.MkdirAll(beadsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(beadsDir, "beads.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		sqliteIssuesSchema,
+		`INSERT INTO issues (id, title, status, priority, issue_type) VALUES ('bd-1', 'live', 'open', 2, 'task')`,
+		// No comments table.
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("exec %q: %v", stmt, err)
+		}
+	}
+	db.Close()
+	stale := `{"id":"old-1","title":"Stale export","status":"open","issue_type":"task","priority":2}` + "\n"
+	if err := os.WriteFile(filepath.Join(beadsDir, "issues.jsonl"), []byte(stale), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	issues, err := LoadIssuesFromDir(beadsDir)
+
+	if !errors.Is(err, ErrCommentsUnavailable) {
+		t.Fatalf("LoadIssuesFromDir err = %v, want it to wrap ErrCommentsUnavailable", err)
+	}
+	if len(issues) != 1 || issues[0].ID != "bd-1" {
+		t.Fatalf("issues = %+v, want the live SQLite issue bd-1, not a fallback to the stale JSONL export", issues)
 	}
 }

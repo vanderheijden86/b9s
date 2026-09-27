@@ -319,7 +319,8 @@ func main() {
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath).
 		WithInitialQuery(*initialFilter).
-		WithStartupFailure(choice.StartupFailure)
+		WithStartupFailure(choice.StartupFailure).
+		WithCommentsLoadErr(choice.Opened.CommentsErr)
 	defer m.Stop()
 
 	if err := runTUIProgram(m); err != nil {
