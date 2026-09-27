@@ -188,9 +188,26 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
     database: b9s
     host: 127.0.0.1:3306
     path: /Users/me/src/b9s   # empty for a database without a local checkout
+# attachments:            # absent by default; issue attachments are opt-in
+#   backend: s3           # s3 or local
+#   max_bytes: 26214400   # 25 MiB
+#   gc_grace: 24h
+#   local_dir: ""         # local backend only; default <beads dir>/attachments
+#   s3:
+#     endpoint: https://nbg1.your-objectstorage.com
+#     region: nbg1
+#     bucket: osenco-beads-attachments
+#     prefix: osenco       # the workspace; default is the project's database name
+#     path_style: false
+#     url_ttl: 15m
+#     credential_command: "" # prints two lines: access key id, secret
 ```
 
 `s` picks another sort for the current session only. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it.
+
+### Attachments
+
+The `attachments` section configures the blob store b9s uses to attach files to issues (see [ADR 0024](docs/adr/0024-attach-files-through-reference-comments.md)). It never holds credentials: the `s3` backend reads them from `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or from `s3.credential_command`, which must print exactly two lines (access key id, then secret) within 10 seconds. A key that looks like a credential (`access_key_id`, `secret_access_key`, `secret`, `password`, `token`) anywhere in this section makes the whole file fail to load. The `local` backend is refused when the current project is a Dolt server that is not on loopback, because other readers of that server cannot see files on this machine.
 
 ## Mouse and tmux
 

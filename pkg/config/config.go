@@ -115,6 +115,11 @@ type Config struct {
 	UI             UIConfig           `yaml:"ui,omitempty"`
 	Refresh        RefreshConfig      `yaml:"refresh,omitempty"`
 	Experimental   ExperimentalConfig `yaml:"experimental,omitempty"`
+	// Attachments is nil when the project has not opted into attachments at
+	// all, which is distinct from an AttachmentsConfig zero value: Load
+	// never produces the latter, because a decoded section always has a
+	// validated Backend.
+	Attachments *AttachmentsConfig `yaml:"attachments,omitempty"`
 }
 
 // legacyConfig holds the projects and numbered favorites older versions kept.

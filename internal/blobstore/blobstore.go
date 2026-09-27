@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"strings"
 	"time"
@@ -66,4 +67,20 @@ func Key(prefix, database, algo, hash string) (string, error) {
 	}
 	parts = append(parts, database, algo, hash[:2], hash)
 	return strings.Join(parts, "/"), nil
+}
+
+// isLoopbackHost reports whether host names only the local machine: a bare
+// "localhost" or a loopback IP literal, never a hostname that merely
+// resolves there today. Both the S3 backend's CreateBucket guard and the
+// local backend's Dolt-server guard need this same check, since both exist
+// to stop a config mistake from acting on a remote endpoint or leaving
+// files invisible to other readers of that server.
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }

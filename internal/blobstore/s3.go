@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"mime"
-	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -108,11 +107,7 @@ func requireLoopbackEndpoint(endpoint string) error {
 	if err != nil {
 		return fmt.Errorf("s3 blob store: parse endpoint %q: %w", endpoint, err)
 	}
-	host := u.Hostname()
-	if host == "localhost" {
-		return nil
-	}
-	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+	if isLoopbackHost(u.Hostname()) {
 		return nil
 	}
 	return fmt.Errorf("s3 blob store: CreateBucket refuses non-loopback endpoint %q", endpoint)
