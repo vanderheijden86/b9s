@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/vanderheijden86/beadwork/internal/attachref"
@@ -241,6 +242,34 @@ func TestAttachAdd_CrashOrder_BlobSurvivesAFailedBdCall(t *testing.T) {
 	// a retried add for the same bytes finds it already present.
 	if _, err := h.Store.Stat(context.Background(), key); err != nil {
 		t.Errorf("blob missing after a failed bd comments add: %v", err)
+	}
+}
+
+// TestAttachAdd_RejectsFIFO is the CLI-level guard for the regular-file
+// check internal/attach.Add now applies (bd-t8j5.10 review): a named pipe
+// must be rejected with a clear error, not left to block os.Open forever.
+func TestAttachAdd_RejectsFIFO(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes need syscall.Mkfifo, POSIX-only")
+	}
+	_, recordPath, _ := attachTestProject(t, 0)
+	srcDir := t.TempDir()
+	fifoPath := filepath.Join(srcDir, "pipe")
+	if err := syscall.Mkfifo(fifoPath, 0o600); err != nil {
+		t.Fatalf("Mkfifo: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"bd-1", fifoPath}, &stdout, &stderr)
+
+	if code == 0 {
+		t.Fatal("exit = 0, want a failure reported for a FIFO path")
+	}
+	if !strings.Contains(stderr.String(), "not a regular file") {
+		t.Fatalf("stderr = %q, want it to say the path is not a regular file", stderr.String())
+	}
+	if len(readBdCalls(t, recordPath)) != 0 {
+		t.Fatalf("bd calls = %v, want none: a FIFO must never reach bd", readBdCalls(t, recordPath))
 	}
 }
 

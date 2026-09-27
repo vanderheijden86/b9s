@@ -91,6 +91,19 @@ func checkName(name string) error {
 // On success the temp file is left on disk for the caller to Put and
 // remove; on any error it removes the temp file itself.
 func hashAndSniff(h *blobstore.Handle, path, name string) (attachref.Ref, string, error) {
+	// os.Stat follows symlinks, so a symlink to a regular file is accepted
+	// and a symlink to a FIFO or directory is rejected the same as the real
+	// thing. Checked before os.Open because os.Open on a FIFO with no writer
+	// blocks indefinitely, and ctx does not bound that call: a network
+	// timeout does nothing for a local open that never returns.
+	info, err := os.Stat(path)
+	if err != nil {
+		return attachref.Ref{}, "", fmt.Errorf("%s: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return attachref.Ref{}, "", fmt.Errorf("%s: not a regular file (%s)", path, fileKindDescription(info.Mode()))
+	}
+
 	src, err := os.Open(path)
 	if err != nil {
 		return attachref.Ref{}, "", fmt.Errorf("%s: %w", path, err)
@@ -134,6 +147,26 @@ func hashAndSniff(h *blobstore.Handle, path, name string) (attachref.Ref, string
 	sum := hex.EncodeToString(hasher.Sum(nil))
 	ref := attachref.Ref{SHA256: sum, Size: written, Type: sniffMIME(header[:n], name), Name: name}
 	return ref, tempPath, nil
+}
+
+// fileKindDescription names the non-regular file kind for the error
+// hashAndSniff returns, so "not a regular file" is a directory, named pipe or
+// device rather than a bare rejection the caller has to guess at.
+func fileKindDescription(mode os.FileMode) string {
+	switch {
+	case mode&os.ModeDir != 0:
+		return "a directory"
+	case mode&os.ModeNamedPipe != 0:
+		return "a named pipe"
+	case mode&os.ModeSocket != 0:
+		return "a socket"
+	case mode&os.ModeDevice != 0:
+		return "a device"
+	case mode&os.ModeSymlink != 0:
+		return "a symlink" // os.Stat resolves symlinks, so this should be unreachable
+	default:
+		return mode.String()
+	}
 }
 
 // sniffMIME sniffs content from header (http.DetectContentType), then falls

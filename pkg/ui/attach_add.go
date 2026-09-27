@@ -23,6 +23,12 @@ import (
 // call cannot hang the run indefinitely.
 const attachAddTimeout = 2 * time.Minute
 
+// maxAttachPaths caps how many files one submission of the attach-files form
+// uploads. Each accepted file runs its own hash, upload and `bd comments add`
+// against attachAddTimeout, so an unbounded list turns one submission into an
+// unbounded amount of sequential work against a single deadline.
+const maxAttachPaths = 50
+
 // AttachAddModal is the huh form the "I" key opens over the selected issue
 // (bd-t8j5.10): one multi-line field for the paths to attach. It follows
 // EditModal's shape (a *huh.Form field, ctrl+s/esc caught ahead of the form
@@ -65,7 +71,8 @@ func buildAttachAddForm(m *AttachAddModal) *huh.Form {
 				Title("Attach files to " + m.issueID).
 				Description("One path per line, or several separated by spaces " +
 					`(quote a path with a space, e.g. "my file.txt"). ` +
-					"A leading ~ expands to the home directory.").
+					"A leading ~ expands to the home directory. A relative path " +
+					"resolves against the project directory, not where b9s was launched.").
 				Value(m.paths).
 				Lines(6),
 		),
@@ -190,6 +197,9 @@ func parseAttachPaths(raw string) ([]string, error) {
 			paths = append(paths, expandHomePath(f))
 		}
 	}
+	if len(paths) > maxAttachPaths {
+		return nil, fmt.Errorf("%d paths given, attach at most %d files at a time", len(paths), maxAttachPaths)
+	}
 	return paths, nil
 }
 
@@ -230,6 +240,29 @@ func splitQuotedFields(line string) ([]string, error) {
 		fields = append(fields, cur.String())
 	}
 	return fields, nil
+}
+
+// resolveAttachPaths resolves every relative path in paths against baseDir,
+// the project's checkout directory and the same directory bd runs in
+// (IssueWriter.checkout.Dir()). Without this, a relative path typed into the
+// form would resolve against the b9s process's own working directory, which
+// is wherever the terminal happened to be when b9s was launched and has no
+// relationship to the project being edited. An absolute path is returned
+// unchanged; baseDir == "" (no local checkout) leaves every path unchanged,
+// since attachAddCmd already refuses to write without one.
+func resolveAttachPaths(paths []string, baseDir string) []string {
+	if baseDir == "" {
+		return paths
+	}
+	resolved := make([]string, len(paths))
+	for i, p := range paths {
+		if filepath.IsAbs(p) {
+			resolved[i] = p
+			continue
+		}
+		resolved[i] = filepath.Join(baseDir, p)
+	}
+	return resolved
 }
 
 // expandHomePath expands a leading ~ or ~/ to the user's home directory. A
@@ -328,7 +361,13 @@ func (m Model) attachAddCmd(issueID string, paths []string) tea.Cmd {
 	sourceType := m.sourceType
 	doltSource := m.doltSource
 	allProjectsMode := m.allProjectsMode
-	writer := m.issueWriter
+
+	// Resolved here, on Update's goroutine, the same way runBdCmd resolves
+	// IssueWriter's fields before building its own closure (issue_writer.go):
+	// a :project switch can call SetCheckout/SetOpening concurrently with the
+	// goroutine this Cmd runs on, so the closure below must never read
+	// m.issueWriter itself, only the bdRunner already resolved from it.
+	bdRunner, bdRunnerErr := bdRunnerForAttach(m.issueWriter)
 
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), attachAddTimeout)
@@ -343,9 +382,8 @@ func (m Model) attachAddCmd(issueID string, paths []string) tea.Cmd {
 			return result
 		}
 
-		bdRunner, err := bdRunnerForAttach(writer)
-		if err != nil {
-			result.statusMsg = fmt.Sprintf("attach: %v", err)
+		if bdRunnerErr != nil {
+			result.statusMsg = fmt.Sprintf("attach: %v", bdRunnerErr)
 			result.isError = true
 			return result
 		}

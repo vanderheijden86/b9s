@@ -1343,6 +1343,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.statusIsError = false
 					return m, tea.Batch(cmds...)
 				}
+				var checkoutDir string
+				if m.issueWriter != nil {
+					checkoutDir = m.issueWriter.checkout.Dir()
+				}
+				paths = resolveAttachPaths(paths, checkoutDir)
 				m.statusMsg = fmt.Sprintf("attaching %d file(s)...", len(paths))
 				m.statusIsError = false
 				cmds = append(cmds, m.attachAddCmd(issueID, paths))

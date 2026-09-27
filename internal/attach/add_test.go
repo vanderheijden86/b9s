@@ -8,8 +8,11 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/vanderheijden86/beadwork/internal/attachref"
 	"github.com/vanderheijden86/beadwork/internal/blobstore"
@@ -242,6 +245,66 @@ func TestAdd_MaxBytesAtInt64MaxDoesNotOverflow(t *testing.T) {
 	}
 	if want := sha256Hex(content); results[0].Ref.SHA256 != want {
 		t.Errorf("Ref.SHA256 = %s, want %s", results[0].Ref.SHA256, want)
+	}
+}
+
+// TestAdd_RejectsFIFO guards against os.Open blocking forever on a named
+// pipe with no writer: Add must reject it via the os.Stat regular-file check
+// before ever calling os.Open, rather than hang past ctx's deadline (which
+// does not bound a blocking local open).
+func TestAdd_RejectsFIFO(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("named pipes need syscall.Mkfifo, POSIX-only")
+	}
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	fifoPath := filepath.Join(srcDir, "pipe")
+	if err := syscall.Mkfifo(fifoPath, 0o600); err != nil {
+		t.Fatalf("Mkfifo: %v", err)
+	}
+	bd := &fakeBd{}
+
+	done := make(chan []AddResult, 1)
+	go func() { done <- Add(context.Background(), h, bd, "bd-1", []string{fifoPath}) }()
+
+	select {
+	case results := <-done:
+		if len(results) != 1 || results[0].Err == nil {
+			t.Fatalf("Add results = %+v, want a rejection error for a FIFO", results)
+		}
+		if !strings.Contains(results[0].Err.Error(), "not a regular file") {
+			t.Errorf("error = %v, want it to say the path is not a regular file", results[0].Err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Add blocked on a FIFO instead of rejecting it up front")
+	}
+	if len(bd.calls) != 0 {
+		t.Errorf("bd calls = %v, want none: a FIFO must never reach bd", bd.calls)
+	}
+}
+
+// TestAdd_RejectsDirectory guards the same os.Stat check for a directory
+// path, which os.Open would otherwise accept (a directory FD opens fine; the
+// failure only surfaces later, on read).
+func TestAdd_RejectsDirectory(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	subdir := filepath.Join(srcDir, "subdir")
+	if err := os.Mkdir(subdir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{subdir})
+
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("Add results = %+v, want a rejection error for a directory", results)
+	}
+	if !strings.Contains(results[0].Err.Error(), "not a regular file") {
+		t.Errorf("error = %v, want it to say the path is not a regular file", results[0].Err)
+	}
+	if len(bd.calls) != 0 {
+		t.Errorf("bd calls = %v, want none: a directory must never reach bd", bd.calls)
 	}
 }
 

@@ -363,3 +363,109 @@ func TestParseAttachPathsUnterminatedQuoteErrors(t *testing.T) {
 		t.Fatal("expected an error for an unterminated quote")
 	}
 }
+
+// TestParseAttachPathsCapsAtMax guards the 50-path cap (bd-t8j5.10 review):
+// each accepted file runs its own hash/upload/bd-comments-add against a
+// single attachAddTimeout deadline, so an unbounded list must be rejected
+// with a clear error rather than accepted and left to run long.
+func TestParseAttachPathsCapsAtMax(t *testing.T) {
+	var raw strings.Builder
+	for i := 0; i < maxAttachPaths+1; i++ {
+		fmt.Fprintf(&raw, "/tmp/file%d.txt\n", i)
+	}
+
+	_, err := parseAttachPaths(raw.String())
+	if err == nil {
+		t.Fatal("expected an error for 51 paths (cap is 50)")
+	}
+	if !strings.Contains(err.Error(), "50") {
+		t.Errorf("error = %v, want it to name the 50-path cap", err)
+	}
+}
+
+func TestParseAttachPathsAtMaxSucceeds(t *testing.T) {
+	var raw strings.Builder
+	for i := 0; i < maxAttachPaths; i++ {
+		fmt.Fprintf(&raw, "/tmp/file%d.txt\n", i)
+	}
+
+	got, err := parseAttachPaths(raw.String())
+	if err != nil {
+		t.Fatalf("parseAttachPaths with exactly %d paths: %v", maxAttachPaths, err)
+	}
+	if len(got) != maxAttachPaths {
+		t.Fatalf("got %d paths, want %d", len(got), maxAttachPaths)
+	}
+}
+
+func TestResolveAttachPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		paths   []string
+		baseDir string
+		want    []string
+	}{
+		{
+			name:    "relative path resolves against baseDir",
+			paths:   []string{"notes.txt", "sub/dir/file.txt"},
+			baseDir: "/proj",
+			want:    []string{"/proj/notes.txt", "/proj/sub/dir/file.txt"},
+		},
+		{
+			name:    "absolute path is left unchanged",
+			paths:   []string{"/elsewhere/file.txt"},
+			baseDir: "/proj",
+			want:    []string{"/elsewhere/file.txt"},
+		},
+		{
+			name:    "empty baseDir leaves every path unchanged",
+			paths:   []string{"notes.txt", "/abs/file.txt"},
+			baseDir: "",
+			want:    []string{"notes.txt", "/abs/file.txt"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveAttachPaths(tc.paths, tc.baseDir)
+			if len(got) != len(tc.want) {
+				t.Fatalf("resolveAttachPaths(%v, %q) = %v, want %v", tc.paths, tc.baseDir, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("resolveAttachPaths(%v, %q)[%d] = %q, want %q", tc.paths, tc.baseDir, i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+// TestAttachAddSubmitRelativePathResolvesAgainstProjectDir is the
+// through-the-model regression test for relative-path resolution: a relative
+// path typed into the form must resolve against the project's checkout
+// directory (the same directory bd runs in), not the test process's cwd.
+func TestAttachAddSubmitRelativePathResolvesAgainstProjectDir(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	m, recordPath, _ := attachAddTestModel(t, true, 0)
+
+	relName := "relative-notes.txt"
+	fullPath := filepath.Join(m.activeProjectPath, relName)
+	if err := os.WriteFile(fullPath, []byte("hi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m = submitAttachAddForm(t, m, relName)
+
+	if m.statusIsError {
+		t.Fatalf("expected a successful attach of a project-relative path, got %q", m.statusMsg)
+	}
+	calls := readBdCallsUI(t, recordPath)
+	var commentAdds int
+	for _, c := range calls {
+		if len(c) >= 2 && c[0] == "comments" && c[1] == "add" {
+			commentAdds++
+		}
+	}
+	if commentAdds != 1 {
+		t.Fatalf("expected 1 `bd comments add` call for the project-relative path, got %d: %v", commentAdds, calls)
+	}
+}
