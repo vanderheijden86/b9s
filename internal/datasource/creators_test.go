@@ -2,7 +2,6 @@ package datasource
 
 import (
 	"database/sql"
-	"errors"
 	"path/filepath"
 	"testing"
 
@@ -86,6 +85,7 @@ func TestSQLiteReader_LoadsCreator(t *testing.T) {
 			created_at DATETIME, updated_at DATETIME, tombstone INT, created_by TEXT, owner TEXT)`,
 		`INSERT INTO issues (id, title, status, priority, issue_type, created_by, owner)
 			VALUES ('bd-1', 'one', 'open', 2, 'task', 'ubuntu', 'u@example.com')`,
+		`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
 	} {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("exec: %v", err)
@@ -99,10 +99,7 @@ func TestSQLiteReader_LoadsCreator(t *testing.T) {
 	}
 	defer r.Close()
 	issues, err := r.LoadIssues()
-	// This fixture has no comments table; the fallback schema load still
-	// reports that as ErrCommentsUnavailable rather than silently returning
-	// no comments (bd-t8j5.18), so it is the one error this test tolerates.
-	if err != nil && !errors.Is(err, ErrCommentsUnavailable) {
+	if err != nil {
 		t.Fatal(err)
 	}
 	if len(issues) != 1 || issues[0].CreatedBy != "ubuntu" || issues[0].Owner != "u@example.com" {

@@ -1567,3 +1567,134 @@ func TestDoltIntegration_BdCLI_CloseAndReadBack(t *testing.T) {
 		t.Log("Note: ClosedAt nil (bd v0.63 may store this differently)")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Test: missing-column fallback against a real Dolt server (bd-t8j5.18 review)
+// ---------------------------------------------------------------------------
+
+// testDBSimpleSchema creates a fresh Dolt database with only the eight
+// columns loadIssuesSimple selects, plus a comments table, and returns a
+// cleanup function that drops it. Missing every column the full-schema query
+// in LoadIssuesFiltered selects (assignee, due_at, defer_until, ...) makes a
+// real Dolt server reject that query with its own 1105 "could not be found
+// in any table in scope" error rather than MySQL's 1054, exercising
+// doltMissingColumnError's Dolt-specific branch end-to-end.
+func testDBSimpleSchema(t *testing.T) (dbName string, addr string, cleanup func()) {
+	t.Helper()
+
+	dbName = fmt.Sprintf("%s%d", testDBPrefix, time.Now().UnixNano())
+
+	addr = requireScratchServer(t)
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		t.Fatalf("scratch server address %q: %v", addr, err)
+	}
+	user := scratchServerUser()
+	password := os.Getenv("BEADS_DOLT_PASSWORD")
+	serverDSN := buildDSN(user, password, addr, "")
+
+	db, err := sql.Open("mysql", serverDSN)
+	if err != nil {
+		t.Fatalf("cannot connect to Dolt server: %v", err)
+	}
+
+	if _, err := db.Exec(fmt.Sprintf("CREATE DATABASE `%s`", dbName)); err != nil {
+		db.Close()
+		t.Fatalf("cannot create test database %s: %v", dbName, err)
+	}
+	if _, err := db.Exec(fmt.Sprintf("USE `%s`", dbName)); err != nil {
+		db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName))
+		db.Close()
+		t.Fatalf("cannot use test database: %v", err)
+	}
+
+	schema := []string{
+		`CREATE TABLE issues (
+			id VARCHAR(255) PRIMARY KEY,
+			title VARCHAR(500) NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			status VARCHAR(32) NOT NULL DEFAULT 'open',
+			priority INT NOT NULL DEFAULT 2,
+			issue_type VARCHAR(32) NOT NULL DEFAULT 'task',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE comments (
+			id CHAR(36) NOT NULL PRIMARY KEY,
+			issue_id VARCHAR(255) NOT NULL,
+			author VARCHAR(255) NOT NULL,
+			text TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+	for _, ddl := range schema {
+		if _, err := db.Exec(ddl); err != nil {
+			db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName))
+			db.Close()
+			t.Fatalf("schema creation failed: %v", err)
+		}
+	}
+
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	seeds := []string{
+		fmt.Sprintf(`INSERT INTO issues (id, title, description, status, priority, issue_type, created_at, updated_at)
+			VALUES ('simple-001', 'Old-schema issue', 'predates the newer columns', 'open', 2, 'task', '%s', '%s')`, now, now),
+		fmt.Sprintf(`INSERT INTO comments (id, issue_id, author, text, created_at) VALUES ('cmt-simple-001', 'simple-001', 'bob', 'still works', '%s')`, now),
+	}
+	for _, seed := range seeds {
+		if _, err := db.Exec(seed); err != nil {
+			db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName))
+			db.Close()
+			t.Fatalf("seed data failed: %v", err)
+		}
+	}
+
+	db.Exec("CALL DOLT_ADD('-A')")
+	db.Exec("CALL DOLT_COMMIT('-m', 'seed simple-schema test data')")
+
+	db.Close()
+
+	cleanup = func() {
+		var cleanDSN string
+		if password != "" {
+			cleanDSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/?parseTime=true&timeout=10s", user, password, host, port)
+		} else {
+			cleanDSN = fmt.Sprintf("%s@tcp(%s:%s)/?parseTime=true&timeout=10s", user, host, port)
+		}
+		cleanDB, err := sql.Open("mysql", cleanDSN)
+		if err == nil {
+			cleanDB.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName))
+			cleanDB.Close()
+		}
+	}
+
+	return dbName, addr, cleanup
+}
+
+// TestDoltIntegration_SimpleSchemaFallbackLoadsCommentsWithoutError guards
+// the re-review finding on b744126 (bd-t8j5.18): doltMissingColumnError only
+// matched MySQL's own 1054, but a real Dolt server reports a missing column
+// as 1105 with the message "could not be found in any table in scope", so a
+// project still on the older 8-column issues schema was misclassified as an
+// unreadable source and fell back to a stale JSONL export instead of the
+// simple-schema query. Runs against a live Dolt server, not a SQLite
+// stand-in, because only the real server's exact error number and wording
+// prove the fix.
+func TestDoltIntegration_SimpleSchemaFallbackLoadsCommentsWithoutError(t *testing.T) {
+	dbName, addr, cleanup := testDBSimpleSchema(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+
+	issues, err := reader.LoadIssues()
+	if err != nil {
+		t.Fatalf("LoadIssues() err = %v, want nil", err)
+	}
+	if len(issues) != 1 || issues[0].ID != "simple-001" {
+		t.Fatalf("issues = %+v, want simple-001", issues)
+	}
+	if len(issues[0].Comments) != 1 || issues[0].Comments[0].ID != "cmt-simple-001" {
+		t.Fatalf("issues[0].Comments = %+v, want cmt-simple-001", issues[0].Comments)
+	}
+}

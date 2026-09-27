@@ -194,13 +194,31 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 	return result, commentsErr
 }
 
+// doltMissingColumnErrorText is the message a real Dolt server sends for a
+// missing column. Dolt never sends MySQL's own 1054 for this; it reuses its
+// generic 1105 code, so the number alone cannot discriminate it from an
+// unrelated server error arriving over the same code (bd-t8j5.18).
+const doltMissingColumnErrorText = "could not be found in any table in scope"
+
 // doltMissingColumnError reports whether err is a MySQL "Unknown column"
-// error (1054), the only signal that legitimately means "try the older,
-// narrower schema." Any other failure must propagate unchanged rather than
-// quietly downgrading to a partial load.
+// error (1054, from a plain MySQL server), or Dolt's own 1105 carrying
+// doltMissingColumnErrorText - the only two signals that legitimately mean
+// "try the older, narrower schema." Any other failure, including a 1105 with
+// a different message, must propagate unchanged rather than quietly
+// downgrading to a partial load.
 func doltMissingColumnError(err error) bool {
 	var mysqlErr *mysql.MySQLError
-	return errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlErrUnknownColumn
+	if !errors.As(err, &mysqlErr) {
+		return false
+	}
+	switch mysqlErr.Number {
+	case mysqlErrUnknownColumn:
+		return true
+	case mysqlErrUnknown:
+		return strings.Contains(mysqlErr.Message, doltMissingColumnErrorText)
+	default:
+		return false
+	}
 }
 
 // loadIssuesSimple is a fallback for Dolt databases with fewer columns.

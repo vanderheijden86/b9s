@@ -130,8 +130,13 @@ func TestDoltReader_ConnectFailure(t *testing.T) {
 
 // TestDoltMissingColumnError_OnlyMatchesMySQLUnknownColumn is the
 // discriminator LoadIssuesFiltered's fallback gate relies on: it must fire
-// only for MySQL error 1054 ("Unknown column"), never for an unrelated
-// server error that happens to arrive over the same connection.
+// for MySQL error 1054 ("Unknown column"), or for Dolt's own 1105 "could not
+// be found in any table in scope" (a real Dolt server never sends 1054 for a
+// missing column, only this generic code with that specific message), but
+// never for an unrelated server error that happens to arrive over the same
+// connection - including a 1105 with a different message, since 1105 is
+// Dolt's generic error code and is not on its own evidence of a schema
+// mismatch.
 func TestDoltMissingColumnError_OnlyMatchesMySQLUnknownColumn(t *testing.T) {
 	tests := []struct {
 		name string
@@ -141,6 +146,18 @@ func TestDoltMissingColumnError_OnlyMatchesMySQLUnknownColumn(t *testing.T) {
 		{name: "nil", err: nil, want: false},
 		{name: "unknown column", err: &mysql.MySQLError{Number: 1054, Message: "Unknown column 'defer_until' in 'field list'"}, want: true},
 		{name: "wrapped unknown column", err: fmt.Errorf("query issues: %w", &mysql.MySQLError{Number: 1054}), want: true},
+		{
+			name: "dolt column not found in scope",
+			// The exact text a real Dolt server sends for a missing column.
+			err:  &mysql.MySQLError{Number: 1105, Message: `column "defer_until" could not be found in any table in scope`},
+			want: true,
+		},
+		{
+			name: "wrapped dolt column not found in scope",
+			err:  fmt.Errorf("query issues: %w", &mysql.MySQLError{Number: 1105, Message: `column "defer_until" could not be found in any table in scope`}),
+			want: true,
+		},
+		{name: "generic dolt 1105", err: &mysql.MySQLError{Number: 1105, Message: "branch not found"}, want: false},
 		{name: "no such table", err: &mysql.MySQLError{Number: 1146}, want: false},
 		{name: "connection refused", err: errors.New("dial tcp: connection refused")}, // want defaults to false
 	}

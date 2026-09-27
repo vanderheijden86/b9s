@@ -6838,6 +6838,9 @@ func (m *Model) exitAllProjectsMode() {
 	m.countOpen, m.countReady, m.countBlocked, m.countClosed = 0, 0, 0, 0
 	m.tree.ApplyFilter("all")
 	m.tree.ClearSearch()
+	// The all-projects comments error must not leak into the single project
+	// this returns to; the next load sets its own value.
+	m.commentsLoadErr = nil
 	m.statusMsg = fmt.Sprintf("Returned to %s", m.activeProjectName)
 	m.statusIsError = false
 

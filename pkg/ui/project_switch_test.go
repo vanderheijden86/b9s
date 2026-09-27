@@ -230,6 +230,21 @@ func TestSwitchingProjectsClearsCommentsLoadErr(t *testing.T) {
 	}
 }
 
+// TestExitingAllProjectsModeClearsCommentsLoadErr guards bd-t8j5.18: a
+// comments failure recorded while browsing all projects must not linger and
+// be shown against the single project exitAllProjectsMode returns to.
+func TestExitingAllProjectsModeClearsCommentsLoadErr(t *testing.T) {
+	m, _, _ := switchModel(t)
+	m.allProjectsMode = true
+	m.commentsLoadErr = errors.New("all-projects: comments unavailable")
+
+	m.exitAllProjectsMode()
+
+	if m.commentsLoadErr != nil {
+		t.Errorf("commentsLoadErr = %v after exiting all-projects mode, want nil", m.commentsLoadErr)
+	}
+}
+
 func TestStartupFailurePopupNamesFallbackProject(t *testing.T) {
 	m, _, _ := switchModel(t)
 	failure := &datasource.OpenFailure{Reason: datasource.OpenNotAProject, Project: "ghost", Dir: "/work/ghost"}
