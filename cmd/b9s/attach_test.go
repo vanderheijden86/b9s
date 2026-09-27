@@ -30,7 +30,7 @@ func sha256Hex(content []byte) string {
 // comments), a local-backend attachments config, and a fake bd on PATH that
 // records every invocation to recordPath. It never touches the shared Dolt
 // server: the data source is a plain issues.jsonl file the test controls.
-func attachTestProject(t *testing.T, bdExitCode int) (beadsDir, recordPath string) {
+func attachTestProject(t *testing.T, bdExitCode int) (beadsDir, recordPath, cwdPath string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("fake bd script needs a POSIX shell")
@@ -63,6 +63,7 @@ func attachTestProject(t *testing.T, bdExitCode int) (beadsDir, recordPath strin
 	}
 
 	recordPath = filepath.Join(dir, "bd-calls")
+	cwdPath = filepath.Join(dir, "bd-cwd")
 	binDir := t.TempDir()
 	// Args are separated by RS (\036) within one call and calls by GS (\035),
 	// since a reference comment's text itself contains a real newline and so
@@ -72,13 +73,14 @@ func attachTestProject(t *testing.T, bdExitCode int) (beadsDir, recordPath strin
 		"  for a in \"$@\"; do printf '%s\\036' \"$a\"; done\n" +
 		"  printf '\\035'\n" +
 		"} >> " + shellQuote(recordPath) + "\n" +
+		"pwd >> " + shellQuote(cwdPath) + "\n" +
 		"exit " + strconv.Itoa(bdExitCode) + "\n"
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", binDir)
 
-	return beadsDir, recordPath
+	return beadsDir, recordPath, cwdPath
 }
 
 // shellQuote wraps s in single quotes for embedding in a generated sh
@@ -165,7 +167,7 @@ func seedComment(t *testing.T, beadsDir string, ref attachref.Ref) {
 }
 
 func TestAttachAdd_UploadsFileAndWritesReferenceComment(t *testing.T) {
-	beadsDir, recordPath := attachTestProject(t, 0)
+	beadsDir, recordPath, _ := attachTestProject(t, 0)
 	srcDir := t.TempDir()
 	path := filepath.Join(srcDir, "notes.txt")
 	if err := os.WriteFile(path, []byte("hello world"), 0o644); err != nil {
@@ -206,7 +208,7 @@ func TestAttachAdd_UploadsFileAndWritesReferenceComment(t *testing.T) {
 }
 
 func TestAttachAdd_CrashOrder_BlobSurvivesAFailedBdCall(t *testing.T) {
-	beadsDir, recordPath := attachTestProject(t, 1)
+	beadsDir, recordPath, _ := attachTestProject(t, 1)
 	srcDir := t.TempDir()
 	path := filepath.Join(srcDir, "notes.txt")
 	if err := os.WriteFile(path, []byte("hello world"), 0o644); err != nil {
@@ -242,8 +244,69 @@ func TestAttachAdd_CrashOrder_BlobSurvivesAFailedBdCall(t *testing.T) {
 	}
 }
 
+func TestAttachAdd_MultiFilePartialFailure(t *testing.T) {
+	beadsDir, recordPath, _ := attachTestProject(t, 0)
+	srcDir := t.TempDir()
+	good1 := filepath.Join(srcDir, "good1.txt")
+	// attachref rejects a name ending in a dot (Windows cannot use one), so
+	// this file fails validation before it ever reaches bd.
+	bad := filepath.Join(srcDir, "bad.")
+	good2 := filepath.Join(srcDir, "good2.txt")
+	for path, content := range map[string]string{good1: "one", bad: "two", good2: "three"} {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"bd-1", good1, bad, good2}, &stdout, &stderr)
+
+	if code == 0 {
+		t.Fatal("exit = 0, want a non-zero exit: one of the three files is invalid")
+	}
+	if !strings.Contains(stdout.String(), "good1.txt") || !strings.Contains(stdout.String(), "good2.txt") {
+		t.Errorf("stdout = %q, want it to report both good files attached", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), bad) {
+		t.Errorf("stderr = %q, want it to report the bad file's failure", stderr.String())
+	}
+	calls := readBdCalls(t, recordPath)
+	if len(calls) != 2 {
+		t.Fatalf("bd calls = %v, want one per good file (2), not one per argument", calls)
+	}
+	_ = beadsDir
+}
+
+func TestAttach_BdRunsInProjectDirectory(t *testing.T) {
+	beadsDir, _, cwdPath := attachTestProject(t, 0)
+	projectDir := filepath.Dir(beadsDir)
+	srcDir := t.TempDir()
+	path := filepath.Join(srcDir, "notes.txt")
+	if err := os.WriteFile(path, []byte("hello world"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Run from a directory other than the project's, so a cwd match in
+	// bd-cwd can only come from b9s explicitly passing projectDir to bdrun,
+	// never from inheriting the test process's own working directory.
+	t.Chdir(t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"bd-1", path}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	got, err := os.ReadFile(cwdPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotDir := strings.TrimSpace(string(got)); gotDir != projectDir {
+		t.Errorf("bd ran in %q, want %q (the project directory)", gotDir, projectDir)
+	}
+}
+
 func TestAttachDetach_WritesADetachComment(t *testing.T) {
-	beadsDir, recordPath := attachTestProject(t, 0)
+	beadsDir, recordPath, _ := attachTestProject(t, 0)
 	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
 	seedComment(t, beadsDir, ref)
 
@@ -264,7 +327,7 @@ func TestAttachDetach_WritesADetachComment(t *testing.T) {
 }
 
 func TestAttachList_HumanAndJSON(t *testing.T) {
-	beadsDir, _ := attachTestProject(t, 0)
+	beadsDir, _, _ := attachTestProject(t, 0)
 	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
 	seedComment(t, beadsDir, ref)
 
@@ -294,7 +357,7 @@ func TestAttachList_HumanAndJSON(t *testing.T) {
 }
 
 func TestAttachGet_DownloadsAndVerifies(t *testing.T) {
-	beadsDir, _ := attachTestProject(t, 0)
+	beadsDir, _, _ := attachTestProject(t, 0)
 	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
 	seedComment(t, beadsDir, ref)
 
@@ -316,8 +379,53 @@ func TestAttachGet_DownloadsAndVerifies(t *testing.T) {
 	}
 }
 
+func TestAttachGet_ByHashPrefix(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "downloaded.txt")
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256[:12], "-o", destPath}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	got, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "hello world" {
+		t.Errorf("downloaded content = %q, want %q", got, "hello world")
+	}
+}
+
+func TestAttachGet_DefaultOutputPathWritesAttachmentName(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	t.Chdir(t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	got, err := os.ReadFile("notes.txt")
+	if err != nil {
+		t.Fatalf("expected notes.txt in the current directory: %v", err)
+	}
+	if string(got) != "hello world" {
+		t.Errorf("content = %q, want %q", got, "hello world")
+	}
+}
+
 func TestAttachGet_ByNamePrefixAndStdout(t *testing.T) {
-	beadsDir, _ := attachTestProject(t, 0)
+	beadsDir, _, _ := attachTestProject(t, 0)
 	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
 	seedComment(t, beadsDir, ref)
 
@@ -332,8 +440,164 @@ func TestAttachGet_ByNamePrefixAndStdout(t *testing.T) {
 	}
 }
 
+func TestAttachGet_RefusesToOverwriteExistingFile(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "downloaded.txt")
+	if err := os.WriteFile(destPath, []byte("original content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256, "-o", destPath}, &stdout, &stderr)
+
+	if code == 0 {
+		t.Fatal("exit = 0, want a non-zero exit: get must refuse to overwrite an existing file")
+	}
+	if stderr.String() == "" {
+		t.Error("stderr is empty, want a clear message about the existing file")
+	}
+	got, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original content" {
+		t.Errorf("destPath content = %q, want it unchanged", got)
+	}
+}
+
+func TestAttachGet_NeverFollowsSymlinkAtDestination(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	destDir := t.TempDir()
+	realTarget := filepath.Join(destDir, "real-target.txt")
+	if err := os.WriteFile(realTarget, []byte("original content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	linkPath := filepath.Join(destDir, "link.txt")
+	if err := os.Symlink(realTarget, linkPath); err != nil {
+		t.Skipf("symlinks unsupported: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256, "-o", linkPath}, &stdout, &stderr)
+
+	if code == 0 {
+		t.Fatal("exit = 0, want a non-zero exit: get must refuse to overwrite through a symlink")
+	}
+	got, err := os.ReadFile(realTarget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original content" {
+		t.Errorf("symlink target content = %q, want it unchanged", got)
+	}
+}
+
+func TestAttachGet_ForceReplacesExistingFile(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "downloaded.txt")
+	if err := os.WriteFile(destPath, []byte("stale content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256, "-o", destPath, "--force"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	got, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "hello world" {
+		t.Errorf("destPath content = %q, want %q", got, "hello world")
+	}
+}
+
+func TestAttachGet_DefaultOutputPathAlsoRefusesOverwrite(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	workDir := t.TempDir()
+	t.Chdir(workDir)
+	if err := os.WriteFile("notes.txt", []byte("original content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256}, &stdout, &stderr)
+
+	if code == 0 {
+		t.Fatal("exit = 0, want a non-zero exit: the default output path must refuse to overwrite too")
+	}
+	got, err := os.ReadFile(filepath.Join(workDir, "notes.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original content" {
+		t.Errorf("notes.txt content = %q, want it unchanged", got)
+	}
+}
+
+func TestAttachGet_ODirectoryWritesSafeNameInside(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	destDir := t.TempDir()
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256, "-o", destDir}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	got, err := os.ReadFile(filepath.Join(destDir, "notes.txt"))
+	if err != nil {
+		t.Fatalf("expected notes.txt inside %s: %v", destDir, err)
+	}
+	if string(got) != "hello world" {
+		t.Errorf("content = %q, want %q", got, "hello world")
+	}
+}
+
+func TestAttachGet_WritesWithNormalCreatePermissions(t *testing.T) {
+	beadsDir, _, _ := attachTestProject(t, 0)
+	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
+	seedComment(t, beadsDir, ref)
+
+	destDir := t.TempDir()
+	destPath := filepath.Join(destDir, "downloaded.txt")
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"get", "bd-1", ref.SHA256, "-o", destPath}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr.String())
+	}
+	info, err := os.Stat(destPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := info.Mode().Perm(), normalFileMode().Perm(); got != want {
+		t.Errorf("mode = %o, want %o (0666 masked by umask, not CreateTemp's 0600)", got, want)
+	}
+}
+
 func TestAttachURL_RefusedForLocalBackend(t *testing.T) {
-	beadsDir, _ := attachTestProject(t, 0)
+	beadsDir, _, _ := attachTestProject(t, 0)
 	ref := seedAttachment(t, beadsDir, filepath.Base(filepath.Dir(beadsDir)), []byte("hello world"), "notes.txt", "text/plain")
 	seedComment(t, beadsDir, ref)
 
@@ -349,7 +613,7 @@ func TestAttachURL_RefusedForLocalBackend(t *testing.T) {
 }
 
 func TestAttachNotConfigured_ExitsWithGuidance(t *testing.T) {
-	beadsDir, _ := attachTestProject(t, 0)
+	beadsDir, _, _ := attachTestProject(t, 0)
 	// Overwrite the seeded config with an empty one: no attachments section.
 	xdgConfig := os.Getenv("XDG_CONFIG_HOME")
 	if err := os.WriteFile(filepath.Join(xdgConfig, "b9s", "config.yaml"), []byte(""), 0o644); err != nil {
@@ -366,6 +630,115 @@ func TestAttachNotConfigured_ExitsWithGuidance(t *testing.T) {
 	if !strings.Contains(stderr.String(), "attachments") {
 		t.Errorf("stderr = %q, want it to mention attachments configuration", stderr.String())
 	}
+}
+
+func TestAttachNotConfigured_NeverResolvesBdOrProject(t *testing.T) {
+	// No bd on PATH, no .beads directory, and no attachments config: the
+	// missing-configuration check must win before any of the three is ever
+	// touched, so this must exit 2 with guidance rather than fail on a
+	// missing bd binary or a missing project.
+	t.Setenv("BEADS_DIR", filepath.Join(t.TempDir(), "does-not-exist"))
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := runAttach([]string{"list", "bd-1"}, &stdout, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit = %d, stderr %q, want 2", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "attachments") {
+		t.Errorf("stderr = %q, want it to mention attachments configuration", stderr.String())
+	}
+}
+
+func TestParseFlags_InlineEqualsSyntax(t *testing.T) {
+	values, _, rest, err := parseFlags([]string{"get", "bd-1", "-o=out.txt"}, nil, []string{"-o"})
+
+	if err != nil {
+		t.Fatalf("parseFlags: %v", err)
+	}
+	if values["-o"] != "out.txt" {
+		t.Errorf("values[-o] = %q, want out.txt", values["-o"])
+	}
+	if want := []string{"get", "bd-1"}; !slicesEqual(rest, want) {
+		t.Errorf("rest = %v, want %v", rest, want)
+	}
+}
+
+func TestParseFlags_DoubleDashEndsFlagScanning(t *testing.T) {
+	_, _, rest, err := parseFlags([]string{"bd-1", "--", "--json"}, []string{"--json"}, nil)
+
+	if err != nil {
+		t.Fatalf("parseFlags: %v", err)
+	}
+	if want := []string{"bd-1", "--json"}; !slicesEqual(rest, want) {
+		t.Errorf("rest = %v, want %v: everything after -- is positional", rest, want)
+	}
+}
+
+func TestParseFlags_RepeatedFlagIsAnError(t *testing.T) {
+	_, _, _, err := parseFlags([]string{"-o", "a.txt", "-o", "b.txt"}, nil, []string{"-o"})
+
+	if err == nil {
+		t.Fatal("parseFlags: err = nil, want an error for a repeated flag")
+	}
+}
+
+func TestParseFlags_ValueLookingLikeAFlagIsAnError(t *testing.T) {
+	_, _, _, err := parseFlags([]string{"-o", "--force"}, []string{"--force"}, []string{"-o"})
+
+	if err == nil {
+		t.Fatal("parseFlags: err = nil, want an error: -o's value looks like another flag")
+	}
+}
+
+func TestParseFlags_DashAloneIsAllowedAsOValue(t *testing.T) {
+	values, _, rest, err := parseFlags([]string{"get", "bd-1", "-o", "-"}, nil, []string{"-o"})
+
+	if err != nil {
+		t.Fatalf("parseFlags: %v", err)
+	}
+	if values["-o"] != "-" {
+		t.Errorf("values[-o] = %q, want \"-\"", values["-o"])
+	}
+	if want := []string{"get", "bd-1"}; !slicesEqual(rest, want) {
+		t.Errorf("rest = %v, want %v", rest, want)
+	}
+}
+
+func TestParseFlags_UnknownFlagIsAnErrorNotAPositional(t *testing.T) {
+	_, _, _, err := parseFlags([]string{"bd-1", "--bogus"}, []string{"--json"}, nil)
+
+	if err == nil {
+		t.Fatal("parseFlags: err = nil, want an error for an unknown flag")
+	}
+}
+
+func TestParseFlags_BoolFlagAfterPositionals(t *testing.T) {
+	_, bools, rest, err := parseFlags([]string{"bd-1", "--json"}, []string{"--json"}, nil)
+
+	if err != nil {
+		t.Fatalf("parseFlags: %v", err)
+	}
+	if !bools["--json"] {
+		t.Errorf("bools[--json] = false, want true")
+	}
+	if want := []string{"bd-1"}; !slicesEqual(rest, want) {
+		t.Errorf("rest = %v, want %v", rest, want)
+	}
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestAttachUsage_NoArgsPrintsUsageAndExits2(t *testing.T) {

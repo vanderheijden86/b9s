@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -37,10 +38,28 @@ func Download(ctx context.Context, h *blobstore.Handle, att attachref.Attachment
 	tempPath = tmp.Name()
 	defer tmp.Close()
 
+	// att.Size comes from a comment and is trusted no further than
+	// size >= 0 (attachref's own check), so limit+1 must not overflow the
+	// way it would if att.Size were math.MaxInt64: io.LimitReader treats a
+	// negative limit as "read nothing", which would pass an oversized
+	// download through as a false size match.
+	limit := att.Size
+	if limit < math.MaxInt64 {
+		limit++
+	}
 	hasher := sha256.New()
-	if _, err := io.Copy(io.MultiWriter(tmp, hasher), rc); err != nil {
+	written, err := io.Copy(io.MultiWriter(tmp, hasher), io.LimitReader(rc, limit))
+	if err != nil {
 		os.Remove(tempPath)
 		return "", fmt.Errorf("downloading %s: %w", att.Name, err)
+	}
+	// The size check runs before the hash comparison: bytes truncated or
+	// padded to the wrong length can still coincidentally hash to the
+	// claimed sha256 over the bytes actually read, which would otherwise
+	// report success on a corrupt or truncated download.
+	if written != att.Size {
+		os.Remove(tempPath)
+		return "", fmt.Errorf("downloaded %d bytes for %s, want %d (attachment size mismatch)", written, att.Name, att.Size)
 	}
 	if sum := hex.EncodeToString(hasher.Sum(nil)); sum != att.SHA256 {
 		os.Remove(tempPath)

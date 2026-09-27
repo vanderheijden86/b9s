@@ -19,6 +19,10 @@ const (
 	// accepts; a longer value fails at request time on a real bucket, so
 	// UnmarshalYAML rejects it at load time instead.
 	maxAttachmentURLTTL = 7 * 24 * time.Hour
+	// maxAttachmentMaxBytes caps attachments.max_bytes at the largest object
+	// a single S3 PUT accepts; a file above it would need multipart upload,
+	// which this package's S3 client does not implement.
+	maxAttachmentMaxBytes = 5 * 1024 * 1024 * 1024 // 5 GiB
 )
 
 // Duration is a YAML duration that parses with time.ParseDuration and
@@ -175,6 +179,9 @@ func (a *AttachmentsConfig) UnmarshalYAML(node *yaml.Node) error {
 	}
 	if decoded.MaxBytes < 0 {
 		return fmt.Errorf("attachments.max_bytes must not be negative")
+	}
+	if decoded.MaxBytes > maxAttachmentMaxBytes {
+		return fmt.Errorf("attachments.max_bytes %d exceeds the 5 GiB S3 single PUT limit", decoded.MaxBytes)
 	}
 	if time.Duration(decoded.S3.URLTTL) > maxAttachmentURLTTL {
 		return fmt.Errorf("attachments.s3.url_ttl %s exceeds the 7 day S3 presign limit", time.Duration(decoded.S3.URLTTL))

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime"
 	"net/http"
 	"os"
@@ -65,8 +66,8 @@ func addOne(ctx context.Context, h *blobstore.Handle, bd BdRunner, issueID, path
 	if err != nil {
 		return AddResult{Path: path, Ref: ref, Skipped: skipped, Err: fmt.Errorf("%s: %w", path, err)}
 	}
-	if _, err := bd.Run("comments", "add", issueID, text); err != nil {
-		return AddResult{Path: path, Ref: ref, Skipped: skipped, Err: fmt.Errorf("%s: bd comments add: %w", path, err)}
+	if output, err := bd.Run("comments", "add", issueID, text); err != nil {
+		return AddResult{Path: path, Ref: ref, Skipped: skipped, Err: fmt.Errorf("%s: bd comments add: %s: %w", path, output, err)}
 	}
 	return AddResult{Path: path, Ref: ref, Skipped: skipped}
 }
@@ -103,8 +104,17 @@ func hashAndSniff(h *blobstore.Handle, path, name string) (attachref.Ref, string
 	tempPath := tmp.Name()
 	defer tmp.Close()
 
+	// h.MaxBytes+1 gives the reader one byte of headroom to detect an
+	// over-limit file; pkg/config caps a loaded MaxBytes well below
+	// math.MaxInt64, but a Handle built directly (as tests do) is not bound
+	// by that check, and MaxBytes+1 at math.MaxInt64 would overflow to a
+	// negative limit, which io.LimitReader silently reads as "nothing".
+	limit := h.MaxBytes
+	if limit < math.MaxInt64 {
+		limit++
+	}
 	hasher := sha256.New()
-	written, err := io.Copy(io.MultiWriter(tmp, hasher), io.LimitReader(src, h.MaxBytes+1))
+	written, err := io.Copy(io.MultiWriter(tmp, hasher), io.LimitReader(src, limit))
 	if err != nil {
 		os.Remove(tempPath)
 		return attachref.Ref{}, "", fmt.Errorf("reading %s: %w", path, err)

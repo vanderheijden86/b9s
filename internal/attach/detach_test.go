@@ -1,6 +1,7 @@
 package attach
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,23 @@ func TestDetach_AppendsDetachCommentForALiveAttachment(t *testing.T) {
 	_, detaches := attachref.Parse(call[3])
 	if len(detaches) != 1 || detaches[0] != testSHA {
 		t.Errorf("Parse(%q) detaches = %v", call[3], detaches)
+	}
+}
+
+func TestDetach_BdFailureErrorIncludesBdOutput(t *testing.T) {
+	ref := attachref.Ref{SHA256: testSHA, Size: 3, Type: "text/plain", Name: "notes.txt"}
+	comments := fakeComments{
+		"bd-1": {attachComment(t, "1", "alice", time.Unix(100, 0), ref)},
+	}
+	bd := &fakeBd{err: errCommandFailed, output: "bd: issue bd-1 not found"}
+
+	err := Detach(bd, comments, "bd-1", testSHA)
+
+	if err == nil {
+		t.Fatal("Detach: err = nil, want the bd failure reported")
+	}
+	if !strings.Contains(err.Error(), "bd: issue bd-1 not found") {
+		t.Errorf("error = %v, want it to include bd's output", err)
 	}
 }
 

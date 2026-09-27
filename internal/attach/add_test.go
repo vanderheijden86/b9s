@@ -2,9 +2,13 @@ package attach
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/vanderheijden86/beadwork/internal/attachref"
@@ -17,17 +21,24 @@ import (
 var errCommandFailed = errors.New("bd exited 1")
 
 // fakeBd records every argv it was called with, and fails with err when set.
+// output stands in for what a real bd invocation prints (its combined
+// stdout/stderr), which a caller's error must surface rather than discard.
 type fakeBd struct {
-	calls [][]string
-	err   error
+	calls  [][]string
+	err    error
+	output string
 }
 
 func (f *fakeBd) Run(args ...string) (string, error) {
 	f.calls = append(f.calls, append([]string(nil), args...))
-	if f.err != nil {
-		return "", f.err
-	}
-	return "", nil
+	return f.output, f.err
+}
+
+// sha256Hex returns content's sha256 as lowercase hex, the same form
+// attachref requires in a machine line.
+func sha256Hex(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
 }
 
 func localHandle(t *testing.T, maxBytes int64) *blobstore.Handle {
@@ -191,6 +202,46 @@ func TestAdd_SkipsPutWhenBlobAlreadyExists(t *testing.T) {
 	}
 	if results[0].Ref.SHA256 != results[1].Ref.SHA256 {
 		t.Errorf("identical content hashed to different sums: %s vs %s", results[0].Ref.SHA256, results[1].Ref.SHA256)
+	}
+}
+
+func TestAdd_BdFailureErrorIncludesBdOutput(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	path := writeTempFile(t, srcDir, "notes.txt", []byte("hello world"))
+	bd := &fakeBd{err: errCommandFailed, output: "bd: issue bd-1 not found"}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("Add results = %+v, want the bd failure reported", results)
+	}
+	if !strings.Contains(results[0].Err.Error(), "bd: issue bd-1 not found") {
+		t.Errorf("error = %v, want it to include bd's output", results[0].Err)
+	}
+}
+
+func TestAdd_MaxBytesAtInt64MaxDoesNotOverflow(t *testing.T) {
+	h := localHandle(t, math.MaxInt64)
+	srcDir := t.TempDir()
+	content := []byte("hello world")
+	path := writeTempFile(t, srcDir, "notes.txt", content)
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+
+	if len(results) != 1 || results[0].Err != nil {
+		t.Fatalf("Add results = %+v", results)
+	}
+	// MaxBytes+1 overflows to a negative int64 when MaxBytes is
+	// math.MaxInt64; io.LimitReader treats a negative limit as "read
+	// nothing", which would silently upload an empty blob instead of the
+	// real file.
+	if results[0].Ref.Size != int64(len(content)) {
+		t.Fatalf("Ref.Size = %d, want %d: MaxBytes+1 must not overflow into a truncated read", results[0].Ref.Size, len(content))
+	}
+	if want := sha256Hex(content); results[0].Ref.SHA256 != want {
+		t.Errorf("Ref.SHA256 = %s, want %s", results[0].Ref.SHA256, want)
 	}
 }
 

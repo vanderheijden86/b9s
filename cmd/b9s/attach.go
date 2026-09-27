@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/vanderheijden86/beadwork/internal/attach"
@@ -23,7 +24,7 @@ import (
 const attachUsage = `usage: b9s attach <issue-id> <file>...
        b9s attach --detach <issue-id> <sha256>
        b9s attach list <issue-id> [--json]
-       b9s attach get <issue-id> <sha256|name> [-o path]
+       b9s attach get <issue-id> <sha256|name> [-o path] [--force]
        b9s attach url <issue-id> <sha256|name>
 
 Uploads a file to the project's configured blob store and writes the Beads
@@ -90,6 +91,19 @@ type attachEnv struct {
 }
 
 func newAttachEnv(ctx context.Context) (*attachEnv, error) {
+	// Checked first, and alone: a project with no attachments: section has
+	// no need for bd on PATH, a .beads directory, or an open data source,
+	// so none of the three is resolved before this fails.
+	appCfg, cfgErr := config.Load()
+	if cfgErr != nil {
+		return nil, fmt.Errorf("loading b9s config: %w", cfgErr)
+	}
+	if appCfg.Attachments == nil {
+		return nil, fmt.Errorf(
+			"attachments are not configured for this project; add an attachments: section to %s (README.md, section \"Attachments\"): %w",
+			config.ConfigPath(), blobstore.ErrNotConfigured)
+	}
+
 	bdPath, ok := bdrun.Resolve()
 	if !ok {
 		return nil, errors.New("bd is not installed or not on PATH")
@@ -105,11 +119,6 @@ func newAttachEnv(ctx context.Context) (*attachEnv, error) {
 	opened, failure := datasource.OpenProject(datasource.OpenTarget{Name: projectName, Dir: projectDir})
 	if failure != nil {
 		return nil, failure
-	}
-
-	appCfg, cfgErr := config.Load()
-	if cfgErr != nil {
-		return nil, fmt.Errorf("loading b9s config: %w", cfgErr)
 	}
 
 	srcInfo, err := blobstore.SourceInfoFromDataSource(opened.Source, beadsDir, projectName)
@@ -196,14 +205,12 @@ func runAttachDetach(issueID, sha256Hash string, stdout, stderr io.Writer) int {
 }
 
 func runAttachList(args []string, stdout, stderr io.Writer) int {
-	// flag.FlagSet.Parse stops at the first non-flag argument, which would
-	// reject "list <issue-id> --json" (the order the usage string shows);
-	// scanning manually accepts --json in either position.
-	jsonOut, rest := extractBoolFlag(args, "--json")
-	if len(rest) != 1 {
+	_, bools, rest, err := parseFlags(args, []string{"--json"}, nil)
+	if err != nil || len(rest) != 1 {
 		fmt.Fprint(stderr, attachUsage)
 		return 2
 	}
+	jsonOut := bools["--json"]
 	issueID := rest[0]
 
 	env, err := newAttachEnv(context.Background())
@@ -262,14 +269,14 @@ func printAttachListJSON(attachments []attach.Attachment, stdout, stderr io.Writ
 }
 
 func runAttachGet(args []string, stdout, stderr io.Writer) int {
-	// See runAttachList: "-o path" can follow the positionals, which
-	// flag.FlagSet.Parse cannot handle, so this scans for it manually too.
-	out, rest, ok := extractStringFlag(args, "-o")
-	if !ok || len(rest) != 2 {
+	values, bools, rest, err := parseFlags(args, []string{"--force"}, []string{"-o"})
+	if err != nil || len(rest) != 2 {
 		fmt.Fprint(stderr, attachUsage)
 		return 2
 	}
 	issueID, query := rest[0], rest[1]
+	out := values["-o"]
+	force := bools["--force"]
 
 	ctx := context.Background()
 	env, err := newAttachEnv(ctx)
@@ -284,24 +291,13 @@ func runAttachGet(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// The temp file must land in the same directory it is ultimately renamed
-	// into, since os.Rename does not cross filesystems; stdout has no such
-	// destination, so it gets the system temp dir instead.
-	destDir := "."
-	switch {
-	case out == "-":
-		destDir = os.TempDir()
-	case out != "":
-		destDir = filepath.Dir(out)
-	}
-	tempPath, err := attach.Download(ctx, env.handle, found, destDir)
-	if err != nil {
-		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
-		return 1
-	}
-	defer os.Remove(tempPath)
-
 	if out == "-" {
+		tempPath, err := attach.Download(ctx, env.handle, found, os.TempDir())
+		if err != nil {
+			fmt.Fprintf(stderr, "b9s attach: %v\n", err)
+			return 1
+		}
+		defer os.Remove(tempPath)
 		f, err := os.Open(tempPath)
 		if err != nil {
 			fmt.Fprintf(stderr, "b9s attach: %v\n", err)
@@ -315,20 +311,100 @@ func runAttachGet(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	destPath := out
-	if destPath == "" {
-		destPath, err = attach.SafeJoin(".", found.Name)
-		if err != nil {
-			fmt.Fprintf(stderr, "b9s attach: %v\n", err)
-			return 1
-		}
+	destPath, err := resolveGetDestPath(out, found.Name)
+	if err != nil {
+		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
+		return 1
 	}
-	if err := os.Rename(tempPath, destPath); err != nil {
+
+	// The temp file must land in destPath's directory: placeDownloadedFile's
+	// os.Link and os.Rename do not cross filesystems.
+	tempPath, err := attach.Download(ctx, env.handle, found, filepath.Dir(destPath))
+	if err != nil {
+		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
+		return 1
+	}
+	defer os.Remove(tempPath)
+
+	if err := placeDownloadedFile(tempPath, destPath, force); err != nil {
 		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
 		return 1
 	}
 	fmt.Fprintln(stdout, destPath)
 	return 0
+}
+
+// resolveGetDestPath turns -o's raw value into the file path get writes to.
+// An empty value defaults to the attachment's name in the current
+// directory; a value naming an existing directory writes the name inside
+// it, rather than attempting to write over the directory itself.
+func resolveGetDestPath(out, name string) (string, error) {
+	if out == "" {
+		return attach.SafeJoin(".", name)
+	}
+	if info, err := os.Stat(out); err == nil && info.IsDir() {
+		return attach.SafeJoin(out, name)
+	}
+	return out, nil
+}
+
+// placeDownloadedFile moves tempPath (created by attach.Download, mode 0600
+// like every os.CreateTemp file) to destPath with the permissions a normal
+// file create would produce, either refusing to replace an existing file at
+// destPath or, with force, replacing it outright.
+func placeDownloadedFile(tempPath, destPath string, force bool) error {
+	if err := os.Chmod(tempPath, normalFileMode()); err != nil {
+		return err
+	}
+	if force {
+		return os.Rename(tempPath, destPath)
+	}
+	return placeByExclusiveCreate(tempPath, destPath)
+}
+
+// placeByExclusiveCreate links tempPath to destPath, which succeeds only if
+// destPath does not already exist as any file type, including a symlink:
+// link(2) never follows a symlink already at destPath, so this can never be
+// tricked into overwriting whatever file the symlink points to. When Link
+// fails for a reason other than destPath already existing (crossing a
+// filesystem boundary, or a filesystem with no hard links), the fallback is
+// O_CREATE|O_EXCL, which gives the identical non-follow guarantee without
+// needing tempPath and destPath to share a device.
+func placeByExclusiveCreate(tempPath, destPath string) error {
+	if err := os.Link(tempPath, destPath); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("%s already exists; use --force to overwrite", destPath)
+		}
+		if openErr := placeByExclusiveOpen(tempPath, destPath); openErr != nil {
+			return openErr
+		}
+		return os.Remove(tempPath)
+	}
+	return os.Remove(tempPath)
+}
+
+// placeByExclusiveOpen copies tempPath's bytes into a file newly created at
+// destPath with O_EXCL, the fallback placeByExclusiveCreate uses when Link
+// cannot place the file directly.
+func placeByExclusiveOpen(tempPath, destPath string) error {
+	dst, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, normalFileMode())
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("%s already exists; use --force to overwrite", destPath)
+		}
+		return err
+	}
+	defer dst.Close()
+	src, err := os.Open(tempPath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	if _, err := io.Copy(dst, src); err != nil {
+		os.Remove(destPath)
+		return err
+	}
+	return nil
 }
 
 func runAttachURL(args []string, stdout, stderr io.Writer) int {
@@ -360,43 +436,84 @@ func runAttachURL(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// extractBoolFlag reports whether name is present anywhere in args, and
-// returns the remaining arguments with it removed. It exists because the
-// documented usage puts a boolean flag after its positional arguments
-// (list <issue-id> [--json]), a shape flag.FlagSet.Parse rejects.
-func extractBoolFlag(args []string, name string) (present bool, rest []string) {
+// parseFlags scans args for the flags named in boolFlags and valueFlags,
+// wherever they appear: the documented usage puts a flag after its
+// positional arguments (list <issue-id> [--json], get <issue-id>
+// <sha256|name> [-o path]), a shape flag.FlagSet.Parse rejects since it
+// stops scanning at the first non-flag argument.
+//
+// "--" ends flag scanning; every argument after it, including one that
+// looks like a flag, is positional. A value flag accepts "name=value" as
+// well as "name value". Every other token starting with "-" (other than a
+// bare "-", reserved as a positional meaning stdin/stdout) is an unknown
+// flag and an error, never silently treated as positional. A flag given
+// more than once is an error, and so is a value that itself looks like a
+// flag (starts with "-"), except a bare "-" as -o's value, which get's
+// stdout convention requires.
+func parseFlags(args []string, boolFlags, valueFlags []string) (values map[string]string, bools map[string]bool, rest []string, err error) {
+	isBool := make(map[string]bool, len(boolFlags))
+	for _, name := range boolFlags {
+		isBool[name] = true
+	}
+	isValue := make(map[string]bool, len(valueFlags))
+	for _, name := range valueFlags {
+		isValue[name] = true
+	}
+	values = make(map[string]string)
+	bools = make(map[string]bool)
+	seen := make(map[string]bool)
 	rest = make([]string, 0, len(args))
-	for _, a := range args {
-		if a == name {
-			present = true
+
+	setValue := func(name, value string) error {
+		if seen[name] {
+			return fmt.Errorf("flag %s given more than once", name)
+		}
+		if value != "-" || name != "-o" {
+			if strings.HasPrefix(value, "-") {
+				return fmt.Errorf("flag %s value %q looks like another flag", name, value)
+			}
+		}
+		seen[name] = true
+		values[name] = value
+		return nil
+	}
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			rest = append(rest, args[i+1:]...)
+			break
+		}
+		if isBool[a] {
+			if seen[a] {
+				return nil, nil, nil, fmt.Errorf("flag %s given more than once", a)
+			}
+			seen[a] = true
+			bools[a] = true
 			continue
 		}
-		rest = append(rest, a)
-	}
-	return present, rest
-}
-
-// extractStringFlag finds "name value" anywhere in args and returns value
-// together with the remaining arguments with both removed. ok is false if
-// name appears with no following value. Like extractBoolFlag, this exists
-// because the documented usage (get <issue-id> <sha256|name> [-o path])
-// allows the flag after its positionals, which flag.FlagSet.Parse rejects.
-func extractStringFlag(args []string, name string) (value string, rest []string, ok bool) {
-	rest = make([]string, 0, len(args))
-	ok = true
-	for i := 0; i < len(args); i++ {
-		if args[i] == name {
+		if isValue[a] {
 			if i+1 >= len(args) {
-				ok = false
-				continue
+				return nil, nil, nil, fmt.Errorf("flag %s needs a value", a)
 			}
-			value = args[i+1]
+			if err := setValue(a, args[i+1]); err != nil {
+				return nil, nil, nil, err
+			}
 			i++
 			continue
 		}
-		rest = append(rest, args[i])
+		if name, value, ok := strings.Cut(a, "="); ok && isValue[name] {
+			if err := setValue(name, value); err != nil {
+				return nil, nil, nil, err
+			}
+			continue
+		}
+		if a != "-" && strings.HasPrefix(a, "-") {
+			return nil, nil, nil, fmt.Errorf("unknown flag %q", a)
+		}
+		rest = append(rest, a)
 	}
-	return value, rest, ok
+	return values, bools, rest, nil
 }
 
 // resolveOneAttachment lists issueID's attachments and resolves query

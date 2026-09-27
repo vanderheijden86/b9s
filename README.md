@@ -216,9 +216,11 @@ Once configured, the `b9s attach` command line attaches and retrieves files with
 b9s attach <issue-id> <file>...          upload one or more files, then write the reference comment
 b9s attach --detach <issue-id> <sha256>  write a comment that marks a hash detached
 b9s attach list <issue-id> [--json]      list an issue's current attachments
-b9s attach get <issue-id> <sha256|name> [-o path]   download one, by full hash, a hash prefix, or its name
+b9s attach get <issue-id> <sha256|name> [-o path] [--force]   download one, by full hash, a hash prefix, or its name
 b9s attach url <issue-id> <sha256|name>  print a presigned URL (s3 backend only)
 ```
+
+`get` refuses to overwrite an existing file (or a symlink) at its output path; pass `--force` to replace it. On a project whose data source is a plain `issues.jsonl` file, `attach list` can lag behind an `attach` made moments earlier, until `bd` writes its next export.
 
 ## Mouse and tmux
 

@@ -1,14 +1,59 @@
 package attach
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vanderheijden86/beadwork/internal/attachref"
+	"github.com/vanderheijden86/beadwork/internal/blobstore"
 )
+
+// fakeStore is a minimal blobstore.Store whose Open is the only method
+// Download calls; the rest exist only to satisfy the interface.
+type fakeStore struct {
+	open func(ctx context.Context, key string) (io.ReadCloser, error)
+}
+
+func (f *fakeStore) Put(context.Context, string, io.Reader, int64, string) error { return nil }
+func (f *fakeStore) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	return f.open(ctx, key)
+}
+func (f *fakeStore) Stat(context.Context, string) (blobstore.Info, error) {
+	return blobstore.Info{}, nil
+}
+func (f *fakeStore) Delete(context.Context, string) error { return nil }
+func (f *fakeStore) List(context.Context, string, func(blobstore.Info) error) error {
+	return nil
+}
+func (f *fakeStore) URL(context.Context, string, time.Duration, string) (string, error) {
+	return "", nil
+}
+
+func fakeHandle(store blobstore.Store) *blobstore.Handle {
+	return &blobstore.Handle{
+		Store: store,
+		Key:   func(hash string) (string, error) { return hash, nil },
+	}
+}
+
+// countingReader tallies every byte Read returns, so a test can assert a
+// bound on how much the reader beneath it was ever asked to give up.
+type countingReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
+}
 
 func TestDownload_FetchesAndVerifiesAStoredBlob(t *testing.T) {
 	h := localHandle(t, 1<<20)
@@ -87,6 +132,65 @@ func TestDownload_RejectsAndRemovesOnHashMismatch(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Errorf("destDir entries = %v, want none: a failed download must not leave a temp file behind", entries)
+	}
+}
+
+func TestDownload_RejectsSizeMismatchBeforeHash(t *testing.T) {
+	content := []byte("hello world")
+	store := &fakeStore{open: func(context.Context, string) (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(content)), nil
+	}}
+	h := fakeHandle(store)
+	att := attachref.Attachment{Ref: attachref.Ref{
+		SHA256: sha256Hex(content),
+		Size:   int64(len(content)) + 1, // claims one more byte than the store holds
+		Type:   "text/plain",
+		Name:   "notes.txt",
+	}}
+	destDir := t.TempDir()
+
+	_, err := Download(context.Background(), h, att, destDir)
+
+	// The hash of the bytes actually returned matches att.SHA256, so a check
+	// that ran the hash comparison first would let this through; the size
+	// mismatch must be caught before that comparison ever runs.
+	if err == nil {
+		t.Fatal("Download: err = nil, want a size-mismatch error")
+	}
+	if strings.Contains(err.Error(), "hash to") {
+		t.Errorf("error = %v, want the size mismatch reported, not a hash comparison", err)
+	}
+	if !strings.Contains(err.Error(), "size") {
+		t.Errorf("error = %v, want it to name the size mismatch", err)
+	}
+	entries, rdErr := os.ReadDir(destDir)
+	if rdErr != nil {
+		t.Fatal(rdErr)
+	}
+	if len(entries) != 0 {
+		t.Errorf("destDir entries = %v, want none: a failed download must not leave a temp file behind", entries)
+	}
+}
+
+func TestDownload_ReadsAtMostSizePlusOneBytes(t *testing.T) {
+	content := bytes.Repeat([]byte("x"), 1<<20) // far more than the claimed size
+	cr := &countingReader{r: bytes.NewReader(content)}
+	store := &fakeStore{open: func(context.Context, string) (io.ReadCloser, error) {
+		return io.NopCloser(cr), nil
+	}}
+	h := fakeHandle(store)
+	att := attachref.Attachment{Ref: attachref.Ref{
+		SHA256: sha256Hex(content[:10]), // deliberately wrong; only the read bound matters here
+		Size:   10,
+		Type:   "text/plain",
+		Name:   "notes.txt",
+	}}
+	destDir := t.TempDir()
+
+	Download(context.Background(), h, att, destDir)
+
+	if cr.n > att.Size+1 {
+		t.Errorf("bytes read from the store = %d, want at most %d (att.Size+1)", cr.n, att.Size+1)
 	}
 }
 

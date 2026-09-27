@@ -119,6 +119,23 @@ func TestAttachments_NegativeMaxBytes(t *testing.T) {
 	}
 }
 
+func TestAttachments_MaxBytesAboveFiveGiBIsAnError(t *testing.T) {
+	_, err := writeConfigAndLoad(t, "attachments:\n  backend: local\n  max_bytes: 9223372036854775807\n")
+	if err == nil || !strings.Contains(err.Error(), "max_bytes") || !strings.Contains(err.Error(), "5 GiB") {
+		t.Fatalf("LoadFrom error = %v, want an error naming max_bytes and the 5 GiB limit", err)
+	}
+}
+
+func TestAttachments_MaxBytesAtFiveGiBIsAllowed(t *testing.T) {
+	cfg, err := writeConfigAndLoad(t, "attachments:\n  backend: local\n  max_bytes: 5368709120\n")
+	if err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	if got := cfg.Attachments.MaxBytesOrDefault(); got != 5368709120 {
+		t.Errorf("MaxBytesOrDefault() = %d, want 5368709120", got)
+	}
+}
+
 func TestAttachments_BadDuration(t *testing.T) {
 	_, err := writeConfigAndLoad(t, "attachments:\n  backend: local\n  gc_grace: nope\n")
 	if err == nil || !strings.Contains(err.Error(), "duration") {

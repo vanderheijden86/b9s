@@ -34,8 +34,8 @@ func Detach(bd BdRunner, cl CommentLoader, issueID, sha256Hash string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := bd.Run("comments", "add", issueID, text); err != nil {
-		return fmt.Errorf("bd comments add: %w", err)
+	if output, err := bd.Run("comments", "add", issueID, text); err != nil {
+		return fmt.Errorf("bd comments add: %s: %w", output, err)
 	}
 	return nil
 }
