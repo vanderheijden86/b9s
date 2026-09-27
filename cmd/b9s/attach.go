@@ -25,16 +25,27 @@ const attachUsage = `usage: b9s attach <issue-id> <file>...
        b9s attach list <issue-id> [--json]
        b9s attach get <issue-id> <sha256|name> [-o path] [--force]
        b9s attach url <issue-id> <sha256|name>
+       b9s attach gc [--apply] [--grace 24h] [--json] [--allow-empty-references]
 
 Uploads a file to the project's configured blob store and writes the Beads
 reference comment that attaches it (ADR 0024). Needs an "attachments:"
 section in b9s's config file; see README.md, section "Attachments".
+
+gc reports every blob no live comment still references and that has aged
+past --grace (default: the config's attachments.gc_grace, 24h). It is a dry
+run unless --apply is given, and --apply only deletes what it re-checks as
+still unreferenced and stale immediately beforehand.
 `
 
 // attachCmdTimeout bounds every b9s attach subcommand end to end (bd-t8j5.20):
 // a hung bd or a stalled blob store call must fail the command rather than
 // block the CLI forever.
 const attachCmdTimeout = 2 * time.Minute
+
+// attachGCTimeout bounds `b9s attach gc`. gc lists every blob under the
+// project's prefix rather than one issue's attachments, so it gets more time
+// than attachCmdTimeout allows the other subcommands.
+const attachGCTimeout = 10 * time.Minute
 
 // runAttach implements `b9s attach` and returns the process exit code.
 func runAttach(args []string, stdout, stderr io.Writer) int {
@@ -50,6 +61,8 @@ func runAttach(args []string, stdout, stderr io.Writer) int {
 		return runAttachGet(args[1:], stdout, stderr)
 	case "url":
 		return runAttachURL(args[1:], stdout, stderr)
+	case "gc":
+		return runAttachGC(args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, attachUsage)
 		return 0
@@ -88,9 +101,10 @@ func runAttachAddOrDetach(args []string, stdout, stderr io.Writer) int {
 // issue's comments. Building it once per invocation keeps every subcommand
 // free of the datasource/config wiring.
 type attachEnv struct {
-	handle *blobstore.Handle
-	bd     attach.BdRunner
-	cl     attach.CommentLoader
+	handle      *blobstore.Handle
+	bd          attach.BdRunner
+	cl          attach.CommentLoader
+	allComments attach.AllCommentsFunc
 }
 
 func newAttachEnv(ctx context.Context) (*attachEnv, error) {
@@ -153,8 +167,11 @@ func newAttachEnv(ctx context.Context) (*attachEnv, error) {
 		}
 		return nil, fmt.Errorf("issue %s not found", issueID)
 	})
+	allComments := attach.AllCommentsFunc(func() (map[string][]*model.Comment, error) {
+		return datasource.LoadAllComments(opened.Source)
+	})
 
-	return &attachEnv{handle: handle, bd: bd, cl: cl}, nil
+	return &attachEnv{handle: handle, bd: bd, cl: cl, allComments: allComments}, nil
 }
 
 // attachEnvExitCode reports the exit code for a newAttachEnv failure:
@@ -427,6 +444,119 @@ func placeByExclusiveOpen(tempPath, destPath string) error {
 		return closeErr
 	}
 	return nil
+}
+
+// runAttachGC implements `b9s attach gc`. It is a dry run unless --apply is
+// given; --grace overrides the config's attachments.gc_grace for this run
+// only.
+func runAttachGC(args []string, stdout, stderr io.Writer) int {
+	values, bools, rest, err := parseFlags(args,
+		[]string{"--apply", "--json", "--allow-empty-references"},
+		[]string{"--grace"})
+	if err != nil || len(rest) != 0 {
+		fmt.Fprint(stderr, attachUsage)
+		return 2
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), attachGCTimeout)
+	defer cancel()
+	env, err := newAttachEnv(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
+		return attachEnvExitCode(err)
+	}
+
+	grace := env.handle.GCGrace
+	if raw, ok := values["--grace"]; ok {
+		grace, err = time.ParseDuration(raw)
+		if err != nil {
+			fmt.Fprintf(stderr, "b9s attach: --grace %q: %v\n", raw, err)
+			return 2
+		}
+	}
+
+	apply := bools["--apply"]
+	report, gcErr := attach.GC(ctx, env.handle, env.allComments, attach.GCOptions{
+		Grace:                grace,
+		Apply:                apply,
+		AllowEmptyReferences: bools["--allow-empty-references"],
+	})
+	if gcErr != nil {
+		fmt.Fprintf(stderr, "b9s attach gc: %v\n", gcErr)
+		return 1
+	}
+
+	if bools["--json"] {
+		return printAttachGCJSON(report, apply, stdout, stderr)
+	}
+	printAttachGCReport(report, apply, stdout)
+	return 0
+}
+
+func printAttachGCReport(report attach.Report, apply bool, stdout io.Writer) {
+	for _, c := range report.Candidates {
+		fmt.Fprintf(stdout, "%s  %10d  %s\n", c.SHA256, c.Size, c.Age.Truncate(time.Second))
+	}
+	fmt.Fprintf(stdout, "total blobs: %d  referenced: %d  candidates: %d (%d bytes)  deleted: %d (%d bytes)  unrecognised: %d\n",
+		report.TotalBlobs, report.ReferencedCount, len(report.Candidates), report.CandidateBytes,
+		report.Deleted, report.DeletedBytes, len(report.Unrecognised))
+	if report.EmptyReferences {
+		fmt.Fprintf(stdout, "warning: no attachment references were found while %d blob(s) exist in the store\n", report.TotalBlobs)
+	}
+	if !apply {
+		fmt.Fprintln(stdout, "dry run: nothing was deleted; pass --apply to delete these blobs")
+	}
+}
+
+// jsonGCCandidate and jsonGCReport are `attach gc --json`'s stable output
+// shape: every field Report exposes, spelled the way a script consuming this
+// output expects (snake_case, no embedded struct).
+type jsonGCCandidate struct {
+	Key          string    `json:"key"`
+	SHA256       string    `json:"sha256"`
+	Size         int64     `json:"size"`
+	LastModified time.Time `json:"last_modified"`
+	AgeSeconds   float64   `json:"age_seconds"`
+	Deleted      bool      `json:"deleted"`
+}
+
+type jsonGCReport struct {
+	Applied         bool              `json:"applied"`
+	TotalBlobs      int               `json:"total_blobs"`
+	ReferencedCount int               `json:"referenced_count"`
+	Candidates      []jsonGCCandidate `json:"candidates"`
+	CandidateBytes  int64             `json:"candidate_bytes"`
+	Deleted         int               `json:"deleted"`
+	DeletedBytes    int64             `json:"deleted_bytes"`
+	Unrecognised    []string          `json:"unrecognised"`
+	EmptyReferences bool              `json:"empty_references"`
+}
+
+func printAttachGCJSON(report attach.Report, apply bool, stdout, stderr io.Writer) int {
+	out := jsonGCReport{
+		Applied:         apply,
+		TotalBlobs:      report.TotalBlobs,
+		ReferencedCount: report.ReferencedCount,
+		Candidates:      make([]jsonGCCandidate, 0, len(report.Candidates)),
+		CandidateBytes:  report.CandidateBytes,
+		Deleted:         report.Deleted,
+		DeletedBytes:    report.DeletedBytes,
+		Unrecognised:    report.Unrecognised,
+		EmptyReferences: report.EmptyReferences,
+	}
+	for _, c := range report.Candidates {
+		out.Candidates = append(out.Candidates, jsonGCCandidate{
+			Key: c.Key, SHA256: c.SHA256, Size: c.Size, LastModified: c.LastModified,
+			AgeSeconds: c.Age.Seconds(), Deleted: c.Deleted,
+		})
+	}
+	enc := json.NewEncoder(stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
+		fmt.Fprintf(stderr, "b9s attach: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 func runAttachURL(args []string, stdout, stderr io.Writer) int {

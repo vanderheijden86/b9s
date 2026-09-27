@@ -200,10 +200,10 @@ Commit: `feat(ui): attach files from the detail pane`.
 
 ## Task 7: garbage collection
 
-`b9s attach gc [--dry-run] [--grace 24h]`: list blobs under `prefix/database`,
+`b9s attach gc [--apply] [--grace 24h]`: list blobs under `prefix/database`,
 collect every referenced hash from all comments of the database (detached ones
 count as unreferenced), and delete blobs that are unreferenced and older than the
-grace period. Default is `--dry-run`; `--apply` deletes. Test with the local
+grace period. A run is dry unless `--apply` is given. Test with the local
 backend and fixed clocks.
 
 Commit: `feat(attach): collect unreferenced blobs`.

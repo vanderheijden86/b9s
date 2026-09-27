@@ -58,6 +58,24 @@ func localHandle(t *testing.T, maxBytes int64) *blobstore.Handle {
 	return h
 }
 
+// localHandleWithDir mirrors localHandle but also returns the local
+// backend's root directory, so a test can reach into the store's files
+// directly (backdating a blob's mtime, for example) without Local exposing
+// that path itself.
+func localHandleWithDir(t *testing.T, maxBytes int64) (*blobstore.Handle, string) {
+	t.Helper()
+	dir := t.TempDir()
+	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: dir, MaxBytes: maxBytes}
+	h, err := blobstore.Open(context.Background(), cfg, blobstore.SourceInfo{
+		Kind:        blobstore.SourceJSONL,
+		ProjectName: "b9s",
+	})
+	if err != nil {
+		t.Fatalf("blobstore.Open: %v", err)
+	}
+	return h, dir
+}
+
 func writeTempFile(t *testing.T, dir, name string, content []byte) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
@@ -206,6 +224,59 @@ func TestAdd_SkipsPutWhenBlobAlreadyExists(t *testing.T) {
 	}
 	if results[0].Ref.SHA256 != results[1].Ref.SHA256 {
 		t.Errorf("identical content hashed to different sums: %s vs %s", results[0].Ref.SHA256, results[1].Ref.SHA256)
+	}
+}
+
+// TestAdd_ReattachOfExistingBlobRefreshesLastModified is the test for race
+// 6a (bd-t8j5.16): attaching bytes already present in the store must refresh
+// the blob's LastModified, not only skip the Put. Otherwise a concurrent gc
+// run measures the grace window from the blob's original upload rather than
+// this renewed reference, and can delete a blob a comment was just written
+// to attach.
+func TestAdd_ReattachOfExistingBlobRefreshesLastModified(t *testing.T) {
+	h, dir := localHandleWithDir(t, 1<<20)
+	srcDir := t.TempDir()
+	content := []byte("same bytes")
+	path := writeTempFile(t, srcDir, "a.txt", content)
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+	if len(results) != 1 || results[0].Err != nil {
+		t.Fatalf("first Add results = %+v", results)
+	}
+	key, err := h.Key(results[0].Ref.SHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	old := time.Now().Add(-48 * time.Hour)
+	blobPath := filepath.Join(dir, filepath.FromSlash(key))
+	if err := os.Chtimes(blobPath, old, old); err != nil {
+		t.Fatal(err)
+	}
+	before, err := h.Store.Stat(context.Background(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !before.LastModified.Before(time.Now().Add(-time.Hour)) {
+		t.Fatalf("backdated LastModified = %v, want well in the past", before.LastModified)
+	}
+
+	path2 := writeTempFile(t, srcDir, "b.txt", content)
+	results2 := Add(context.Background(), h, bd, "bd-2", []string{path2})
+	if len(results2) != 1 || results2[0].Err != nil {
+		t.Fatalf("second Add results = %+v", results2)
+	}
+	if !results2[0].Skipped {
+		t.Errorf("second Add Skipped = false, want true (identical bytes already stored)")
+	}
+
+	after, err := h.Store.Stat(context.Background(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !after.LastModified.After(before.LastModified) {
+		t.Fatalf("LastModified after re-attach = %v, want it to have advanced past %v", after.LastModified, before.LastModified)
 	}
 }
 

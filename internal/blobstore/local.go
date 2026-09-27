@@ -132,6 +132,27 @@ func (l *Local) Stat(ctx context.Context, key string) (Info, error) {
 	return Info{Key: key, Size: existing.Size(), LastModified: existing.ModTime()}, nil
 }
 
+// Touch sets key's mtime to now, a metadata-only syscall that never reads or
+// rewrites the blob's bytes: gc's grace window only needs LastModified to
+// move, not the file to change.
+func (l *Local) Touch(ctx context.Context, key string) error {
+	abs, existing, err := l.resolveForAccess(key)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return ErrNotFound
+	}
+	if !existing.Mode().IsRegular() {
+		return fmt.Errorf("blob path %q is not a regular file", key)
+	}
+	now := time.Now()
+	if err := os.Chtimes(abs, now, now); err != nil {
+		return fmt.Errorf("touch blob: %w", err)
+	}
+	return nil
+}
+
 // Delete is idempotent: a key already gone is not an error, because gc
 // retries its deletes and two gc runs can race over the same orphan.
 func (l *Local) Delete(ctx context.Context, key string) error {

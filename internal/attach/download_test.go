@@ -28,6 +28,7 @@ func (f *fakeStore) Stat(context.Context, string) (blobstore.Info, error) {
 	return blobstore.Info{}, nil
 }
 func (f *fakeStore) Delete(context.Context, string) error { return nil }
+func (f *fakeStore) Touch(context.Context, string) error  { return nil }
 func (f *fakeStore) List(context.Context, string, func(blobstore.Info) error) error {
 	return nil
 }

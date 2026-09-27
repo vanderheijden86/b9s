@@ -199,14 +199,26 @@ func bareMediaType(t string) string {
 
 // putIfAbsent uploads the blob at tempPath under ref's key unless the store
 // already holds it, so a retried Add after a crash never re-uploads bytes
-// that already made it to the store.
+// that already made it to the store. When the blob already exists, it
+// refreshes the blob's LastModified via Touch: without this, a gc run
+// racing this Add could read the blob's original upload time, find it older
+// than the grace period, and delete a blob this call just re-referenced
+// (bd-t8j5.16 race 6a).
 func putIfAbsent(ctx context.Context, h *blobstore.Handle, ref attachref.Ref, tempPath string) (skipped bool, err error) {
 	key, err := h.Key(ref.SHA256)
 	if err != nil {
 		return false, err
 	}
 	if _, statErr := h.Store.Stat(ctx, key); statErr == nil {
-		return true, nil
+		switch touchErr := h.Store.Touch(ctx, key); {
+		case touchErr == nil:
+			return true, nil
+		case errors.Is(touchErr, blobstore.ErrNotFound):
+			// gc deleted the blob between Stat and Touch: fall through to
+			// Put below, which re-creates it under the same key.
+		default:
+			return false, touchErr
+		}
 	} else if !errors.Is(statErr, blobstore.ErrNotFound) {
 		return false, statErr
 	}

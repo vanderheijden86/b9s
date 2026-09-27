@@ -51,6 +51,10 @@ func (p *prefixedStore) Delete(ctx context.Context, key string) error {
 	return p.Store.Delete(ctx, p.full(key))
 }
 
+func (p *prefixedStore) Touch(ctx context.Context, key string) error {
+	return p.Store.Touch(ctx, p.full(key))
+}
+
 func (p *prefixedStore) List(ctx context.Context, prefix string, fn func(Info) error) error {
 	return p.Store.List(ctx, p.full(prefix), func(i Info) error {
 		i.Key = strings.TrimPrefix(i.Key, p.segment+"/")
@@ -122,6 +126,39 @@ func runContract(t *testing.T, s Store) {
 	if u, err := s.URL(ctx, key, time.Minute, "hello.txt"); err != nil || u == "" {
 		t.Fatalf("URL = %q, %v", u, err)
 	}
+
+	before, err := s.Stat(ctx, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(20 * time.Millisecond) // LastModified must move forward by a measurable amount
+	if err := s.Touch(ctx, key); err != nil {
+		t.Fatalf("Touch: %v", err)
+	}
+	after, err := s.Stat(ctx, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !after.LastModified.After(before.LastModified) {
+		t.Fatalf("Touch did not advance LastModified: before=%v after=%v", before.LastModified, after.LastModified)
+	}
+	if after.Size != before.Size {
+		t.Fatalf("Touch changed Size: before=%d after=%d", before.Size, after.Size)
+	}
+	rc, err = s.Open(ctx, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ = io.ReadAll(rc)
+	rc.Close()
+	if !bytes.Equal(got, body) {
+		t.Fatalf("Open after Touch read %q, want the same bytes", got)
+	}
+	missingKey := "ws/db/sha256/ff/missingmissingmissing"
+	if err := s.Touch(ctx, missingKey); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("Touch on a missing key: err = %v, want ErrNotFound", err)
+	}
+
 	if err := s.Delete(ctx, key); err != nil {
 		t.Fatal(err)
 	}

@@ -147,6 +147,64 @@ func TestSQLiteReader_AllCommentsLoadsEveryIssuesComments(t *testing.T) {
 	}
 }
 
+// TestLoadAllComments_DispatchesToSQLiteReader is a smoke test for the
+// SQLite branch of LoadAllComments' dispatch: the real work is already
+// covered by TestSQLiteReader_AllCommentsLoadsEveryIssuesComments, this only
+// checks LoadAllComments reaches it.
+func TestLoadAllComments_DispatchesToSQLiteReader(t *testing.T) {
+	path := openSQLiteFixture(t, []string{
+		sqliteIssuesSchema,
+		`INSERT INTO issues (id, title, status, priority, issue_type) VALUES ('bd-1', 'one', 'open', 2, 'task')`,
+		`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+		`INSERT INTO comments (id, issue_id, author, text, created_at) VALUES ('cmt-1', 'bd-1', 'alice', 'note', '2026-09-25 00:00:00')`,
+	})
+
+	comments, err := LoadAllComments(DataSource{Type: SourceTypeSQLite, Path: path})
+	if err != nil {
+		t.Fatalf("LoadAllComments() err = %v, want nil", err)
+	}
+	if len(comments) != 1 || len(comments["bd-1"]) != 1 {
+		t.Fatalf("LoadAllComments() = %+v, want one comment for bd-1", comments)
+	}
+}
+
+// TestLoadAllComments_JSONLBuildsMapFromIssues is the JSONL branch: no
+// AllCommentsLoader exists for a JSONL source, so LoadAllComments must build
+// the map itself from the issues LoadIssuesFromFile already parses.
+func TestLoadAllComments_JSONLBuildsMapFromIssues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "issues.jsonl")
+	line := `{"id":"bd-1","title":"one","status":"open","issue_type":"task","comments":[{"id":"cmt-1","issue_id":"bd-1","author":"alice","text":"note","created_at":"2026-09-25T00:00:00Z"}]}` + "\n" +
+		`{"id":"bd-2","title":"two","status":"open","issue_type":"task"}` + "\n"
+	if err := os.WriteFile(path, []byte(line), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	comments, err := LoadAllComments(DataSource{Type: SourceTypeJSONLLocal, Path: path})
+	if err != nil {
+		t.Fatalf("LoadAllComments() err = %v, want nil", err)
+	}
+	if len(comments) != 1 || len(comments["bd-1"]) != 1 {
+		t.Fatalf("LoadAllComments() = %+v, want one comment for bd-1 and none for bd-2 (omitted, not an empty slice)", comments)
+	}
+}
+
+// TestLoadAllComments_JSONLLoadErrorStopsTheCaller guards gc's fail-closed
+// requirement (bd-t8j5.16) on its JSONL path: a file LoadIssuesFromFile
+// cannot parse must return an error, never an empty map a caller could read
+// as "nothing is referenced".
+func TestLoadAllComments_JSONLLoadErrorStopsTheCaller(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.jsonl")
+
+	comments, err := LoadAllComments(DataSource{Type: SourceTypeJSONLLocal, Path: path})
+	if err == nil {
+		t.Fatalf("LoadAllComments() err = nil, want an error for a missing JSONL file")
+	}
+	if comments != nil {
+		t.Fatalf("LoadAllComments() = %v, want nil on failure", comments)
+	}
+}
+
 // TestOpenProject_ToleratesCommentsUnavailableAndKeepsTheSource is the
 // regression this whole fix exists to protect: before LoadIssuesFiltered
 // reported a comments failure as an error, OpenProject had no way to see it

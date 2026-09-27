@@ -26,6 +26,50 @@ func TestS3StoreContract(t *testing.T) {
 	t.Run("presigned URL serves the exact bytes with content-disposition", func(t *testing.T) {
 		testS3PresignedDownload(t, store)
 	})
+	t.Run("touch keeps the content type", func(t *testing.T) {
+		testS3TouchKeepsContentType(t, store)
+	})
+}
+
+// testS3TouchKeepsContentType guards the metadata a self-copy must resend:
+// S3 refuses a copy onto the same key that leaves the metadata as it is, and
+// a replacing copy that omits Content-Type resets it to a generic default.
+func testS3TouchKeepsContentType(t *testing.T, store Store) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	key := "ws/db/sha256/cd/touch-type"
+	body := []byte("\x89PNG touched")
+	if err := store.Put(ctx, key, bytes.NewReader(body), int64(len(body)), "image/png"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Touch(ctx, key); err != nil {
+		t.Fatalf("Touch: %v", err)
+	}
+	link, err := store.URL(ctx, key, time.Minute, "touched.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	got, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || !bytes.Equal(got, body) {
+		t.Fatalf("GET after Touch: status %d body %q, want 200 and the original bytes", resp.StatusCode, got)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "image/png" {
+		t.Fatalf("Content-Type after Touch = %q, want image/png", ct)
+	}
+	if err := store.Delete(ctx, key); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestS3PutRejectsShortRead checks the requirement Local already enforces:

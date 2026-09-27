@@ -51,7 +51,7 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 | `pkg/model` | Domain types: `Issue`, `Dependency`, `Status`, `Priority` and their parsing |
 | `internal/datasource` | Source discovery and readers for Dolt, SQLite and JSONL, plus the Dolt watcher, the project catalog and the open-failure reasons |
 | `internal/bdrun` | Finding and running `bd`: the deadline, the process-group kill, and the timeout and cancel errors |
-| `internal/attach` | Attaching and detaching files: upload to the blob store, then a reference comment through `bd` (ADR 0024) |
+| `internal/attach` | Attaching and detaching files: upload to the blob store, then a reference comment through `bd` (ADR 0024). `GC` deletes blobs that no comment references once they are older than the grace period, and checks each one again just before it deletes it |
 | `internal/attachref` | The versioned attachment reference line in a comment, and the fold of comments into an issue's attachment list |
 | `internal/blobstore` | Content-addressed blob storage with local and S3 backends, and store selection from the `attachments` config |
 | `internal/control` | The control socket: instance registration, the verb set, picking the instance in the caller's tmux window, and the `b9s ctl` client side |

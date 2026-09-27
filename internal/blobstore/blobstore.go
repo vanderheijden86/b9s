@@ -32,6 +32,12 @@ type Store interface {
 	Open(ctx context.Context, key string) (io.ReadCloser, error)
 	Stat(ctx context.Context, key string) (Info, error)
 	Delete(ctx context.Context, key string) error
+	// Touch advances an existing blob's LastModified to now, without
+	// changing its bytes. attach.Add calls this when a re-attached blob
+	// already exists in the store, so gc's grace window measures from the
+	// most recent reference rather than the blob's original upload time
+	// (bd-t8j5.16 race 6a). Touch on a missing key returns ErrNotFound.
+	Touch(ctx context.Context, key string) error
 	// List yields every blob under prefix. gc is the only caller.
 	List(ctx context.Context, prefix string, fn func(Info) error) error
 	// URL returns a link a browser can open for ttl. Local stores return file://.

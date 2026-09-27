@@ -212,6 +212,58 @@ func (s *S3) headInfo(ctx context.Context, k string) (Info, error) {
 	return Info{Key: k, Size: aws.ToInt64(out.ContentLength), LastModified: aws.ToTime(out.LastModified)}, nil
 }
 
+// Touch refreshes key's LastModified via a self-CopyObject, entirely
+// server-side, unlike a full re-Put, which would read the object back through
+// the client and re-upload every byte. S3 refuses a copy onto the same key
+// that keeps the metadata as it is, so the copy replaces it, and must resend
+// the Content-Type that Put set or S3 resets it to a generic default. A
+// replacing copy with metadata equal to the old is still refused by some
+// S3-compatible servers, so a "touched" entry makes every call a real change.
+func (s *S3) Touch(ctx context.Context, key string) error {
+	k, err := s3Key(key)
+	if err != nil {
+		return err
+	}
+	head, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{Bucket: &s.bucket, Key: &k})
+	if err != nil {
+		if isNotFoundErr(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("s3 blob store: head blob %q: %w", key, err)
+	}
+	meta := make(map[string]string, len(head.Metadata)+1)
+	for name, value := range head.Metadata {
+		meta[name] = value
+	}
+	meta["touched"] = time.Now().UTC().Format(time.RFC3339Nano)
+	source := s.bucket + "/" + copySourceEscape(k)
+	if _, err := s.client.CopyObject(ctx, &s3.CopyObjectInput{
+		Bucket:            &s.bucket,
+		Key:               &k,
+		CopySource:        &source,
+		MetadataDirective: types.MetadataDirectiveReplace,
+		ContentType:       head.ContentType,
+		Metadata:          meta,
+	}); err != nil {
+		if isNotFoundErr(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("s3 blob store: touch blob %q: %w", key, err)
+	}
+	return nil
+}
+
+// copySourceEscape percent-encodes each path segment of k on its own,
+// preserving the "/" separators CopySource requires between them: escaping
+// the whole string at once would also encode those separators.
+func copySourceEscape(k string) string {
+	segs := strings.Split(k, "/")
+	for i, seg := range segs {
+		segs[i] = url.PathEscape(seg)
+	}
+	return strings.Join(segs, "/")
+}
+
 // Delete is idempotent: DeleteObject on a key that is already gone still
 // reports success, which is what lets gc retry a delete without ceremony.
 func (s *S3) Delete(ctx context.Context, key string) error {
