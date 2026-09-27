@@ -294,7 +294,7 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `f`, `x` | Show only the cursor's branch or subtree; again undoes it |
 | `s`, `\|`, `v`, `F` | Sort, columns, wrap titles, follow live changes |
 | `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |
-| `Enter` `d`, `e`, `S`, `K`, `Delete`, `c` | Open the detail, edit, status, close, delete, copy the ID and title |
+| `Enter` `d`, `e`, `S`, `K`, `Delete` or `Cmd-Backspace`, `c` | Open the detail, edit, status, close, delete, copy the ID and title. A Mac keyboard has no `Delete` key, and `Backspace` alone goes back |
 | `Ctrl-N` | Create an issue |
 | `b`, `g`, `Esc` | Board, dependency graph of the cursor, back |
 | `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |

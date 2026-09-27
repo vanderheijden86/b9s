@@ -248,6 +248,16 @@ test.describe("tree sheets and toggles", () => {
     await expect(sheet(page)).toHaveAttribute("aria-label", "New issue");
   });
 
+  test("Cmd-Backspace asks to delete, as a Mac has no Delete key", async ({ page, project }) => {
+    await open(page, project);
+    await cursorTo(page, "t-2");
+    await page.keyboard.press("Meta+Backspace");
+    await expect(sheet(page)).toHaveAttribute("aria-label", /Delete/);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Backspace");
+    await expect(sheet(page)).toHaveCount(0);
+  });
+
   test("K closes the issue under the cursor", async ({ page, project }) => {
     await open(page, project);
     await cursorTo(page, "t-5");

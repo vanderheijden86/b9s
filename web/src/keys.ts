@@ -22,8 +22,14 @@ import { detailKids, ensureVisible, render, renderBoard, siblings, wide } from "
 import { S, saveChips, treeRows } from "./state";
 import { $, copyText, store } from "./util";
 
-/** keyName spells a key the way the README does: "j", "C-a", "S-Tab". */
+/**
+ * keyName spells a key the way the README does: "j", "C-a", "S-Tab", or
+ * returns "" for a Cmd or Alt chord, which stays with the browser. A Mac
+ * keyboard has no Delete key, so Cmd-Backspace stands in for it, as in the Finder.
+ */
 function keyName(e: KeyboardEvent): string {
+  if (e.metaKey && e.key === "Backspace" && !e.altKey && !e.ctrlKey && !e.shiftKey) return "Delete";
+  if (e.metaKey || e.altKey) return "";
   if (e.key === "Tab") return e.shiftKey ? "S-Tab" : "Tab";
   return (e.ctrlKey ? "C-" : "") + (e.ctrlKey && e.key.length === 1 ? e.key.toLowerCase() : e.key);
 }
@@ -33,8 +39,8 @@ function keyName(e: KeyboardEvent): string {
  * a form never reach it, and Cmd or Alt chords stay with the browser.
  */
 export function onKey(e: KeyboardEvent): boolean {
-  if (e.metaKey || e.altKey) return false;
   const k = keyName(e);
+  if (!k) return false;
   // Enter and Space on a focused button press the button.
   if ((k === "Enter" || k === " ") && (e.target as HTMLElement).closest("button, a")) return false;
   if (S.sheet) {
@@ -64,8 +70,8 @@ const BOARD_CURSOR = new Set(["z", "Enter", "Tab", "y", "f", "S", "K"]);
  * frame on; a fresh page has none, and in the tree a filter can hide its row.
  */
 export function adoptCursor(e: KeyboardEvent): void {
-  if (S.sheet || e.metaKey || e.altKey) return;
   const k = keyName(e);
+  if (S.sheet || !k) return;
   if (S.view === "tree" && !TREE_STEPS.has(k)) {
     const ids = rowIds();
     if (ids.length && !(S.cursor && ids.includes(S.cursor))) S.cursor = ids[0];
