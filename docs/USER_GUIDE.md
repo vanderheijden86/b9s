@@ -479,6 +479,7 @@ The chips under the header are the status filters and the Ready filter from the 
 | Browser Back, or `Backspace` | Step back: the previous issue, then the closed detail, then the previous view. Forward redoes it | `Esc` |
 | Swipe left or right on the board | Next column | `h` / `l` |
 | Tap the active column tab | Fold it into a rail | `z` |
+| Tap the phone board's **All** tab | Show every unfolded column in one list, under the epic lanes, so open and in-progress cards sit together. The chips choose the statuses | `h` from the first column |
 | Tap `Z unfold` | Unfold every column | `Z` |
 | Tap an epic in the board rail | Scroll to its lane | |
 | Long-press an epic in the rail, or tap a lane header's title | Fold or unfold that lane | `Tab` |

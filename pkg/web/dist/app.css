@@ -128,7 +128,7 @@
   .tab { flex: none; height: 30px; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; gap: 6px; color: var(--dim); border: 1px solid transparent; font-size: 0.923rem; }
   .tab b { font-weight: 500; color: var(--muted); }
   .tab.on { border-color: var(--line); background: var(--bg3); color: var(--text); }
-  .tab.on::after { content: "z"; color: var(--muted); font-size: 0.769rem; margin-left: 2px; }
+  .tab.on:not([data-tab="*"])::after { content: "z"; color: var(--muted); font-size: 0.769rem; margin-left: 2px; }
   .tab.rail { padding: 0 6px; color: var(--muted); border: 1px dashed var(--line); writing-mode: vertical-rl; height: 30px; font-size: 0.769rem; line-height: 12px; }
   .tab.drop { border-color: var(--yellow); background: rgba(241,250,140,.12); color: var(--yellow); }
   .tab.unf { color: var(--cyan); }

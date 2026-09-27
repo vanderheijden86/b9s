@@ -5,7 +5,7 @@
 import * as api from "./api";
 import type { ProjectEntry, WriteRequest, WriteResult } from "./api.gen";
 import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type Item } from "./data";
-import { boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, treeList, wide } from "./render";
+import { ALL, boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, treeList, wide } from "./render";
 import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveChips, stOf, type Sheet, type SortKey } from "./state";
 import { $, $opt, copyText, esc, fmtDate, haptic, store } from "./util";
 
@@ -709,6 +709,7 @@ export function setRetryLive(f: () => void): void { retryLive = f; }
 /* ================= board ================= */
 
 export function tabTap(k: string): void {
+  if (k === ALL) { S.board.col = ALL; renderBoard(); return; }
   const cols = boardCols();
   const name = (cols.find(([c]) => c === k) || [k, k])[1];
   if (S.board.folded.has(k)) { S.board.folded.delete(k); S.board.col = k; renderBoard(); toast("Unfolded " + name); return; }

@@ -30,6 +30,33 @@ test("swiping the column moves to the next one", async ({ page, project }) => {
   await expect(page.locator('[data-card="t-1"]')).toBeVisible();
 });
 
+test("the All tab shows open, in-progress and blocked cards together", async ({ page, project }) => {
+  await open(page, project);
+  await page.locator('#bar [data-view="board"]').click();
+  await page.locator('[data-tab="*"]').click();
+  await expect(page.locator('[data-tab="*"]')).toHaveClass(/on/);
+  for (const id of ["t-1", "t-2", "t-3", "t-5"]) await expect(page.locator(`[data-card="${id}"]`)).toBeVisible();
+  await expect(page.locator('[data-card="t-4"]')).toHaveCount(0);
+  // The chips still decide which statuses the All tab merges.
+  await page.locator('#chips [data-chip="blocked"]').click();
+  await expect(page.locator('[data-card="t-3"]')).toHaveCount(0);
+  await expect(page.locator('[data-card="t-1"]')).toBeVisible();
+});
+
+test("swiping right from the first column reaches the All tab", async ({ page, project }) => {
+  await open(page, project);
+  await page.locator('#bar [data-view="board"]').click();
+  const b = (await page.locator("#bcol").boundingBox())!;
+  const y = b.y + 40;
+  await page.mouse.move(b.x + b.width * 0.2, y);
+  await page.mouse.down();
+  for (let s = 1; s <= 10; s++) await page.mouse.move(b.x + b.width * (0.2 + 0.06 * s), y);
+  await page.mouse.up();
+  await expect(page.locator('[data-tab="*"]')).toHaveClass(/on/);
+  await expect(page.locator('[data-card="t-1"]')).toBeVisible();
+  await expect(page.locator('[data-card="t-2"]')).toBeVisible();
+});
+
 test("the options button in the board toolbar opens board options", async ({ page, project }) => {
   await open(page, project);
   await page.locator('#bar [data-view="board"]').click();

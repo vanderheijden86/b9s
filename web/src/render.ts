@@ -159,21 +159,40 @@ export function boardCols(): [string, string][] {
 
 export { WIDE, wide };
 
+/**
+ * ALL is the phone board's first tab: every unfolded column in one list, so
+ * open and in-progress cards show side by side under their epic lanes. It is
+ * not a status, so nothing can be dropped on it.
+ */
+export const ALL = "*";
+
 function boardItems(key: string): Item[] {
+  if (key === ALL) {
+    const keys = new Set(openCols().map(([k]) => k));
+    return pool().filter(i => keys.has(colOf(i)) && inBoard(i)).sort(SORTS[S.sort]);
+  }
+  return pool().filter(i => colOf(i) === key && inBoard(i)).sort(SORTS[S.sort]);
+}
+
+function inBoard(i: Item): boolean {
   const keep = S.focus ? new Set([S.focus.id, ...descendants(S.focus.id)]) : null;
-  return pool().filter(i => {
-    if (i.type === "epic" && S.board.group !== "type" && S.board.lanes !== "off") return false;
-    if (colOf(i) !== key || !matches(i)) return false;
-    return !keep || keep.has(i.id);
-  }).sort(SORTS[S.sort]);
+  if (i.type === "epic" && S.board.group !== "type" && S.board.lanes !== "off") return false;
+  if (!matches(i)) return false;
+  return !keep || keep.has(i.id);
 }
 
 export function openCols(): [string, string][] { return boardCols().filter(([k]) => !S.board.folded.has(k)); }
 
-function activeCol(): [string, string] | null {
+/** phoneCols are the columns a phone steps through: All, then every unfolded column. */
+export function phoneCols(): [string, string][] {
   const cols = openCols();
+  return cols.length > 1 ? [[ALL, "All"], ...cols] : cols;
+}
+
+function activeCol(): [string, string] | null {
+  const cols = phoneCols();
   if (!cols.length) return null;
-  if (!cols.some(([k]) => k === S.board.col)) S.board.col = cols[0][0];
+  if (!cols.some(([k]) => k === S.board.col)) S.board.col = openCols()[0][0];
   return cols.find(([k]) => k === S.board.col) || null;
 }
 
@@ -330,6 +349,7 @@ export function renderBoard(): void {
     if (S.board.folded.has(k)) return `<button class="tab rail" data-tab="${esc(k)}" aria-label="Unfold ${esc(l)}">${esc(l.slice(0, 4))} ${n}</button>`;
     return `<button class="tab ${cur && cur[0] === k ? "on" : ""}" data-tab="${esc(k)}">${esc(l)} <b>${n}</b></button>`;
   }).join("");
+  if (phoneCols()[0]?.[0] === ALL) tabs = `<button class="tab ${cur && cur[0] === ALL ? "on" : ""}" data-tab="${ALL}">All <b>${boardItems(ALL).length}</b></button>` + tabs;
   if (folded.length) tabs += `<button class="tab unf" data-act="unfoldall">Z unfold</button>`;
   tabs += optsTab();
   let body: string;

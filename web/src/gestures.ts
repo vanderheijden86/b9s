@@ -8,7 +8,7 @@ import {
 } from "./actions";
 import { adoptCursor, onKey } from "./keys";
 import { canGoBack } from "./nav";
-import { WIDE, appW, boardCols, colOf, ensureVisible, fullH, halfH, openCols, render, renderBoard, renderSearch, scrollToLane, siblings, wide } from "./render";
+import { ALL, WIDE, appW, colOf, ensureVisible, fullH, halfH, openCols, phoneCols, render, renderBoard, renderSearch, scrollToLane, siblings, wide } from "./render";
 import { S } from "./state";
 import { $, haptic, store } from "./util";
 
@@ -423,7 +423,7 @@ function bindBoard(): void {
 }
 
 function swipeColumn(b: BoardGesture, dx: number): void {
-  const cols = boardCols().filter(([k]) => !S.board.folded.has(k));
+  const cols = phoneCols();
   const idx = cols.findIndex(([k]) => k === S.board.col);
   const next = cols[idx + (dx < 0 ? 1 : -1)];
   const col = b.col!;
@@ -473,13 +473,14 @@ function dragMove(b: BoardGesture, e: PointerEvent, app: HTMLElement): void {
   const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
   const tab = el && el.closest<HTMLElement>("[data-tab]");
   let target: string | null = tab ? tab.dataset.tab! : null;
-  const cols = boardCols();
+  const cols = phoneCols();
   const idx = cols.findIndex(([k]) => k === S.board.col);
   const edge = x < 36 ? -1 : x > appW() - 36 ? 1 : 0;
   if (!tab && edge) {
     if (b.edgeDir !== edge) { b.edgeDir = edge; b.edgeT = performance.now(); }
     if (performance.now() - b.edgeT! > LP_MS && cols[idx + edge]) target = cols[idx + edge][0];
   } else b.edgeDir = 0;
+  if (target === ALL) target = null;
   b.target = target;
   if (target != null) document.querySelector(`[data-tab="${CSS.escape(target)}"]`)?.classList.add("drop");
 }
