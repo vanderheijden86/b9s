@@ -73,7 +73,7 @@
      - Document the matching "arguments are not valid past return" contract on `vtab.Cursor.Filter` and `vtab.Updater.Insert`/`Update`, consistent with the existing rule for `FunctionImpl.Scalar` / `AggregateFunction.Step` / `WindowInverse`.
      - Resolves [GitLab issue #226](https://gitlab.com/cznic/sqlite/-/issues/226). See [GitLab merge request #114](https://gitlab.com/cznic/sqlite/-/merge_requests/114), thanks Ian Chechin!
      - Add `FileControl.FileControlDataVersion`, a wrapper around `SQLITE_FCNTL_DATA_VERSION` for observing pager-cache data-version changes, including those made on the same connection. Useful as a primitive for application-level cache invalidation.
-     - Exposed via the idiomatic `database/sql` escape hatch `(*sql.Conn).Raw()`, consistent with the existing `FileControlPersistWAL`.
+     - Exposed via the idiomatic `database/sql` escape hatch `(*sql.Conn).Raw()`, consistent with the existing `FileControlPersistWAL`.                                                                    
      - See [GitLab merge request #115](https://gitlab.com/cznic/sqlite/-/merge_requests/115), thanks Ian Chechin!
      - Fix a regression where in-memory connections (`:memory:`, `file::memory:`, shared-cache memory URIs) were discarded by `database/sql` after a context-cancelled query, taking the entire in-memory store with them. The fix for #198 had added an `sqlite3_is_interrupted` check to the connection validator that mistakenly applied to in-memory connections too, re-introducing the bug originally fixed by !74. File-backed connections keep the existing behaviour and are still discarded after an interrupt.
      - Resolves [GitLab issue #196](https://gitlab.com/cznic/sqlite/-/issues/196). See [GitLab merge request #116](https://gitlab.com/cznic/sqlite/-/merge_requests/116), thanks Ian Chechin!
@@ -92,7 +92,7 @@
      - Introduce `ColumnInfo`, enabling dynamic query builders and ORMs to retrieve underlying SQLite C-API metadata (`OriginName`, `TableName`, `DatabaseName`, and `DeclType`).
      - This feature is exposed via the idiomatic `database/sql` escape hatch `(*sql.Conn).Raw()`, avoiding custom statement handles and keeping the standard library workflow intact.
      - See [GitLab merge request #113](https://gitlab.com/cznic/sqlite/-/merge_requests/113), thanks Josh Bleecher Snyder!
-
+ 
  - 2026-04-17 v1.49.0: Upgrade to [SQLite 3.53.0](https://sqlite.org/releaselog/3_53_0.html).
      - Added `-DSQLITE_ENABLE_DBPAGE_VTAB` to the transpilation. See ["The SQLITE_DBPAGE Virtual Table"](https://www.sqlite.org/dbpage.html) for details.
 
