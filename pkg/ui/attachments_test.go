@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -196,6 +197,7 @@ func runAttachmentOpenCmd(t *testing.T, m Model) Model {
 
 func TestEnterInTestModeRecordsOpenerWithoutRunningIt(t *testing.T) {
 	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("TMPDIR", t.TempDir())
 	now := time.Now()
 	content := []byte("plain text content")
 	comment, ref := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", content, now)
@@ -220,10 +222,14 @@ func TestEnterInTestModeRecordsOpenerWithoutRunningIt(t *testing.T) {
 	if _, err := os.Stat(rec.Path); err != nil {
 		t.Fatalf("downloaded file must exist at recorded path: %v", err)
 	}
+	if filepath.Base(rec.Path) != "notes.txt" {
+		t.Fatalf("recorded path = %q, want it to end in the attachment name notes.txt (macOS `open` picks the opener from the extension)", rec.Path)
+	}
 }
 
 func TestEnterRefusesToOpenContentSniffedAsHTML(t *testing.T) {
 	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("TMPDIR", t.TempDir())
 	now := time.Now()
 	// The machine line claims text/plain; the actual bytes sniff as HTML.
 	// attachmentOpenDownload must trust the sniff, not the claim.
@@ -250,6 +256,7 @@ func TestEnterRefusesToOpenContentSniffedAsHTML(t *testing.T) {
 }
 
 func TestEnterWithoutAttachmentsConfigShowsHint(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
 	now := time.Now()
 	comment, _ := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", []byte("hi"), now)
 	m, _ := attachmentTestModel(t, []*model.Comment{comment}, false)
@@ -265,5 +272,222 @@ func TestEnterWithoutAttachmentsConfigShowsHint(t *testing.T) {
 	}
 	if rec.StatusMsg != notConfiguredHint {
 		t.Fatalf("status message = %q, want %q", rec.StatusMsg, notConfiguredHint)
+	}
+}
+
+// TestFooterWritesHyperlinkRawAfterSanitizingLabel is review item 1: the
+// footer must not run sanitizeTerminalLine over the OSC 8 escape codes
+// (attachmentOpenWeb carries them in a separate field precisely so this
+// cannot happen), or a B9S_WEB link collapses to its plain-text label.
+func TestFooterWritesHyperlinkRawAfterSanitizingLabel(t *testing.T) {
+	m, _ := attachmentTestModel(t, nil, false)
+	m.width = 80
+	const url = "https://example.com/presigned/diagram.png"
+	m.statusMsg = "diagram.png:"
+	m.statusHyperlink = osc8Hyperlink(url, url)
+
+	footer := (&m).renderFooter()
+
+	if !strings.Contains(footer, "\x1b]8;;"+url) {
+		t.Fatalf("footer = %q, want it to contain the raw OSC 8 hyperlink escape for %s", footer, url)
+	}
+	if !strings.Contains(footer, url) {
+		t.Fatalf("footer = %q, want it to contain the URL %s", footer, url)
+	}
+}
+
+// TestEnterOnWebModeRefusesLocalBackendWithoutSettingHyperlink exercises
+// attachmentOpenWeb end to end against a non-S3 handle (refused, since
+// presigned links need S3) to confirm attachmentOpenResultMsg.hyperlink,
+// not statusMsg, is where a link would land; the S3 success path itself
+// needs a real or mocked S3 endpoint and is covered by the blobstore
+// package's own gated integration tests.
+func TestEnterOnWebModeRefusesLocalBackendWithoutSettingHyperlink(t *testing.T) {
+	t.Setenv("B9S_WEB", "1")
+	t.Setenv("TMPDIR", t.TempDir())
+	now := time.Now()
+	comment, ref := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", []byte("hi"), now)
+	m, localDir := attachmentTestModel(t, []*model.Comment{comment}, true)
+	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref, []byte("hi"))
+
+	m = runAttachmentOpenCmd(t, m)
+
+	rec := m.LastAttachmentOpen()
+	if rec == nil {
+		t.Fatal("expected a recorded attachment-open attempt")
+	}
+	if !rec.IsError {
+		t.Fatalf("expected the local backend to refuse a presigned link, got %q", rec.StatusMsg)
+	}
+	if m.statusHyperlink != "" {
+		t.Fatalf("statusHyperlink = %q, want empty: the local backend never reaches attachmentOpenWeb's success path", m.statusHyperlink)
+	}
+}
+
+// pngBytes, pdfBytes and plainTextBytes sniff (http.DetectContentType) to
+// the exact base MIME types openAllowedContentClass maps to "image",
+// "pdf" and "text": real signature bytes, not just a claimed type=, since
+// attachmentOpenDownload trusts the sniff.
+var pngBytes = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+
+var pdfBytes = []byte("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj\n")
+
+var plainTextBytes = []byte("just some plain text content")
+
+func TestEnterOpenerAllowlist(t *testing.T) {
+	tests := []struct {
+		name    string
+		attName string
+		content []byte
+		claimed string
+		allowed bool
+	}{
+		{name: "png allowed", attName: "diagram.png", content: pngBytes, claimed: "image/png", allowed: true},
+		{name: "pdf allowed", attName: "report.pdf", content: pdfBytes, claimed: "application/pdf", allowed: true},
+		{name: "txt allowed", attName: "notes.txt", content: plainTextBytes, claimed: "text/plain", allowed: true},
+		{name: "terminal plist refused", attName: "evil.terminal", content: []byte("<?xml version=\"1.0\"?><plist></plist>"), claimed: "text/plain", allowed: false},
+		{name: "sh text refused", attName: "evil.sh", content: []byte("#!/bin/sh\necho hi\n"), claimed: "text/plain", allowed: false},
+		{name: "jar zip refused", attName: "evil.jar", content: []byte("PK\x03\x04\x14\x00\x00\x00\x08\x00"), claimed: "application/java-archive", allowed: false},
+		{name: "svg refused", attName: "evil.svg", content: []byte("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>"), claimed: "image/svg+xml", allowed: false},
+		{name: "html refused", attName: "evil.html", content: []byte("<!DOCTYPE html><html><body>hi</body></html>"), claimed: "text/html", allowed: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("B9S_TEST_MODE", "1")
+			t.Setenv("TMPDIR", t.TempDir())
+			now := time.Now()
+			comment, ref := attachmentFixture(t, "cmt-001", tc.attName, tc.claimed, tc.content, now)
+			m, localDir := attachmentTestModel(t, []*model.Comment{comment}, true)
+			seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref, tc.content)
+
+			m = runAttachmentOpenCmd(t, m)
+
+			rec := m.LastAttachmentOpen()
+			if rec == nil {
+				t.Fatal("expected a recorded attachment-open attempt")
+			}
+			if rec.IsError {
+				t.Fatalf("unexpected error status: %q", rec.StatusMsg)
+			}
+			opened := len(rec.OpenerCmd) != 0
+			if opened != tc.allowed {
+				t.Fatalf("opener recorded = %v (cmd=%v, status=%q), want allowed=%v", opened, rec.OpenerCmd, rec.StatusMsg, tc.allowed)
+			}
+			if !tc.allowed {
+				if !strings.Contains(rec.StatusMsg, "opening refused") {
+					t.Fatalf("status message = %q, want it to contain %q", rec.StatusMsg, "opening refused")
+				}
+			}
+		})
+	}
+}
+
+// TestAttachTempDirIsReusedAcrossOpens is review item 4: attachTempDir is
+// created once per run and reused, not once per open (which leaked one
+// directory per R+enter). Each open still gets its own subdirectory of it,
+// so two attachments sharing a file name never collide.
+func TestAttachTempDirIsReusedAcrossOpens(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("TMPDIR", t.TempDir())
+	now := time.Now()
+	c1, ref1 := attachmentFixture(t, "cmt-001", "one.txt", "text/plain", []byte("one"), now)
+	c2, ref2 := attachmentFixture(t, "cmt-002", "two.txt", "text/plain", []byte("two"), now.Add(time.Minute))
+	m, localDir := attachmentTestModel(t, []*model.Comment{c1, c2}, true)
+	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref1, []byte("one"))
+	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref2, []byte("two"))
+
+	m = runAttachmentOpenCmd(t, m)
+	firstDir := m.attachTempDir
+	firstPath := m.LastAttachmentOpen().Path
+	if firstDir == "" {
+		t.Fatal("expected attachTempDir to be set after the first open")
+	}
+
+	// Select the second attachment and open it too.
+	m, _ = pressBulkKey(t, m, runeKey("R"))
+	m.attachmentPicker.MoveDown()
+	m, cmd := pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("enter on the second attachment must return a Cmd")
+	}
+	updated, _ := m.Update(cmd())
+	m = updated.(Model)
+
+	if m.attachTempDir != firstDir {
+		t.Fatalf("attachTempDir changed across opens: first=%q second=%q, want the parent directory reused", firstDir, m.attachTempDir)
+	}
+	secondPath := m.LastAttachmentOpen().Path
+	if secondPath == firstPath {
+		t.Fatalf("both opens recorded the same path %q, want distinct subdirectories", secondPath)
+	}
+	if filepath.Dir(firstPath) == filepath.Dir(secondPath) {
+		t.Fatalf("both downloads landed in the same subdirectory %q, want one per open", filepath.Dir(firstPath))
+	}
+	if !strings.HasPrefix(firstPath, firstDir) || !strings.HasPrefix(secondPath, firstDir) {
+		t.Fatalf("expected both paths under the shared per-run dir %q, got %q and %q", firstDir, firstPath, secondPath)
+	}
+}
+
+// TestStopRemovesAttachTempDir is review item 4: the per-run directory is
+// removed once, at program exit (Model.Stop), not after each open, since
+// the system opener may still be reading the file when Update moves on.
+func TestStopRemovesAttachTempDir(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("TMPDIR", t.TempDir())
+	now := time.Now()
+	comment, ref := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", []byte("hi"), now)
+	m, localDir := attachmentTestModel(t, []*model.Comment{comment}, true)
+	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref, []byte("hi"))
+
+	m = runAttachmentOpenCmd(t, m)
+	dir := m.attachTempDir
+	if dir == "" {
+		t.Fatal("expected attachTempDir to be set after an open")
+	}
+	if _, err := os.Stat(dir); err != nil {
+		t.Fatalf("attachTempDir must exist before Stop: %v", err)
+	}
+
+	(&m).Stop()
+
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("attachTempDir still exists after Stop: err=%v", err)
+	}
+}
+
+// TestRInLabelPickerGoesToInputNotAttachmentPicker is review item 5: R must
+// not steal the letter from the label picker's fuzzy-search input.
+func TestRInLabelPickerGoesToInputNotAttachmentPicker(t *testing.T) {
+	now := time.Now()
+	comment, _ := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", []byte("hi"), now)
+	m, _ := attachmentTestModel(t, []*model.Comment{comment}, false)
+	m.labelPicker.SetLabels([]string{"bug", "chore"}, map[string]int{"bug": 1, "chore": 1})
+	m.showLabelPicker = true
+	m.focused = focusLabelPicker
+
+	m, _ = pressBulkKey(t, m, runeKey("R"))
+
+	if m.ShowAttachmentPicker() {
+		t.Fatal("R while the label picker is focused must not open the attachment picker")
+	}
+	if got := m.labelPicker.InputValue(); got != "R" {
+		t.Fatalf("labelPicker.InputValue() = %q, want %q (R must reach the fuzzy-search input)", got, "R")
+	}
+}
+
+// TestRWithSortPopupOpenDoesNotOpenAttachmentPicker is review item 5: R
+// must not open the attachment picker while the tree's sort popup is
+// taking keys, wherever focus happens to be.
+func TestRWithSortPopupOpenDoesNotOpenAttachmentPicker(t *testing.T) {
+	now := time.Now()
+	comment, _ := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", []byte("hi"), now)
+	m, _ := attachmentTestModel(t, []*model.Comment{comment}, false)
+	m.tree.OpenSortPopup()
+
+	m, _ = pressBulkKey(t, m, runeKey("R"))
+
+	if m.ShowAttachmentPicker() {
+		t.Fatal("R with the sort popup open must not open the attachment picker")
 	}
 }

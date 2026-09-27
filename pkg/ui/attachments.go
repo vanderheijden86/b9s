@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -151,6 +152,25 @@ func (m *Model) openAttachmentPicker() {
 	m.showAttachmentPicker = true
 }
 
+// ensureAttachTempDir returns the private per-run directory attachment
+// downloads land in, creating it on first use. Every subsequent open reuses
+// the same parent directory (review item 4); attachmentOpenDownload still
+// gives each individual download its own subdirectory so two attachments
+// sharing a file name never collide. Model.Stop removes the whole tree once,
+// at program exit, not after each open, since the system opener may still be
+// reading the file when Update moves on.
+func (m *Model) ensureAttachTempDir() (string, error) {
+	if m.attachTempDir != "" {
+		return m.attachTempDir, nil
+	}
+	dir, err := os.MkdirTemp(os.TempDir(), "b9s-attach-*")
+	if err != nil {
+		return "", fmt.Errorf("creating attachments temp dir: %w", err)
+	}
+	m.attachTempDir = dir
+	return dir, nil
+}
+
 // attachmentOpenRecord is the test-visible record of the most recent
 // attachment-open attempt, including the opener command that ran or, under
 // B9S_TEST_MODE, would have run, so a test can assert on it without a real
@@ -170,34 +190,72 @@ type attachmentOpenRecord struct {
 type attachmentOpenResultMsg struct {
 	handle      *blobstore.Handle
 	projectPath string
+	// dispatchProjectPath is the active project when attachmentOpenCmd was
+	// dispatched. Update drops a result whose dispatchProjectPath no longer
+	// matches the active project: a :project switch that lands between
+	// dispatch and here means this result names the wrong project's blob
+	// store and the wrong project's footer message (review item 7).
+	dispatchProjectPath string
 
 	attachmentName string
 	openerCmd      []string
 	openedPath     string
 	statusMsg      string
-	isError        bool
+	// hyperlink is an OSC 8 escape sequence for the B9S_WEB=1 path,
+	// carried separately from statusMsg so the footer can write it raw
+	// after sanitizing statusMsg (review item 1: sanitizeTerminalLine
+	// would otherwise strip the escape codes as control characters).
+	hyperlink string
+	isError   bool
 }
 
-// refusedOpenContentTypes are sniffed base MIME types attachmentOpenCmd
-// refuses to hand to the system opener, because the comment's type= field is
-// an untrusted claim and the opener would otherwise run whatever the OS
-// associates with the sniffed type. image/svg+xml never appears from
-// http.DetectContentType (it has no signature), but is listed for defense in
-// depth in case a future sniffer version adds one.
-var refusedOpenContentTypes = map[string]bool{
-	"text/html":             true,
-	"application/xhtml+xml": true,
-	"image/svg+xml":         true,
-	"text/xml":              true,
-	"application/xml":       true,
-}
-
-func isRefusedOpenContentType(sniffed string) bool {
-	base, _, err := mime.ParseMediaType(sniffed)
+// openAllowedContentClass returns the class mimeType belongs to for the
+// opener allowlist ("image", "pdf", "text", "audio" or "video"), or "" for
+// anything else. image/svg+xml is refused even though it sniffs under
+// image/, since SVG can embed script; http.DetectContentType never actually
+// returns it (SVG has no magic-byte signature), but the exclusion also
+// covers the extension side of openAllowedForContent below.
+func openAllowedContentClass(mimeType string) string {
+	base, _, err := mime.ParseMediaType(mimeType)
 	if err != nil {
-		base = sniffed
+		base = mimeType
 	}
-	return refusedOpenContentTypes[base]
+	switch {
+	case base == "image/svg+xml":
+		return ""
+	case strings.HasPrefix(base, "image/"):
+		return "image"
+	case base == "application/pdf":
+		return "pdf"
+	case base == "text/plain":
+		return "text"
+	case strings.HasPrefix(base, "audio/"):
+		return "audio"
+	case strings.HasPrefix(base, "video/"):
+		return "video"
+	default:
+		return ""
+	}
+}
+
+// openAllowedForContent reports whether attachmentOpenDownload may hand the
+// downloaded file to the system opener. Both the sniffed bytes (an
+// untrusted comment's type= field is not trusted for this) and name's
+// extension must resolve to the same allowed class, so a disguised
+// extension (a .terminal or .desktop file whose bytes happen to sniff as
+// plain text) never reaches the opener on the strength of the sniff alone,
+// and a mislabeled extension on genuinely dangerous bytes never reaches it
+// on the strength of the name alone.
+func openAllowedForContent(sniffedType, name string) bool {
+	sniffClass := openAllowedContentClass(sniffedType)
+	if sniffClass == "" {
+		return false
+	}
+	extClass := openAllowedContentClass(mime.TypeByExtension(filepath.Ext(name)))
+	if extClass == "" {
+		return false
+	}
+	return extClass == sniffClass
 }
 
 // systemOpenerCommand names the OS's file opener and its argument, run with
@@ -222,20 +280,38 @@ const notConfiguredHint = `attachments are not configured for this project; add 
 // attachmentOpenCmd downloads and opens att, or (B9S_WEB=1) prints a
 // presigned link, returning its result as a tea.Msg rather than blocking
 // Update, whose receiver is by value (pkg/ui architecture: every network or
-// subprocess call runs inside the returned closure).
-func (m Model) attachmentOpenCmd(att attachref.Attachment) tea.Cmd {
+// subprocess call runs inside the returned closure). dir is the per-run
+// temp directory (Model.ensureAttachTempDir), created by the caller because
+// creating it needs a pointer receiver this value-receiver Cmd builder does
+// not have.
+func (m Model) attachmentOpenCmd(att attachref.Attachment, dir string) tea.Cmd {
 	handle := m.attachHandle
 	handleProject := m.attachHandleProject
 	projectPath := m.activeProjectPath
 	projectName := m.activeProjectName
 	sourceType := m.sourceType
 	doltSource := m.doltSource
+	allProjectsMode := m.allProjectsMode
 	webMode := os.Getenv("B9S_WEB") != ""
 	testMode := os.Getenv("B9S_TEST_MODE") != ""
 
 	return func() tea.Msg {
 		ctx := context.Background()
-		result := attachmentOpenResultMsg{attachmentName: att.Name}
+		result := attachmentOpenResultMsg{attachmentName: att.Name, dispatchProjectPath: projectPath}
+
+		if allProjectsMode {
+			// All-projects mode merges issues from every Dolt database in
+			// the workspace, and the blob key's database segment must be
+			// the issue's own source database, not whichever project is
+			// merely "active" for the picker. Deriving that cheaply needs
+			// the multi-reader to tag each issue with its source database,
+			// which it does not do today, so this is refused outright
+			// (review item 6) rather than risk resolving the wrong
+			// project's blob store.
+			result.statusMsg = "attachments: not available in all-projects mode; switch to one project (0 or :project) first"
+			result.isError = true
+			return result
+		}
 
 		if handle == nil || handleProject != projectPath {
 			h, err := openProjectBlobStore(ctx, projectPath, projectName, sourceType, doltSource)
@@ -252,7 +328,7 @@ func (m Model) attachmentOpenCmd(att attachref.Attachment) tea.Cmd {
 		if webMode {
 			return attachmentOpenWeb(ctx, handle, att, result)
 		}
-		return attachmentOpenDownload(ctx, handle, att, testMode, result)
+		return attachmentOpenDownload(ctx, handle, att, dir, testMode, result)
 	}
 }
 
@@ -307,46 +383,66 @@ func attachmentOpenWeb(ctx context.Context, handle *blobstore.Handle, att attach
 		result.isError = true
 		return result
 	}
-	result.statusMsg = osc8Hyperlink(url, att.Name)
+	// The link itself, not the plain statusMsg label, carries the OSC 8
+	// escape codes: renderFooter sanitizes statusMsg and writes hyperlink
+	// raw afterward (review item 1).
+	result.statusMsg = att.Name + ":"
+	result.hyperlink = osc8Hyperlink(url, url)
 	return result
 }
 
-// attachmentOpenDownload downloads att into a private per-run temp
-// directory, sniffs the content actually downloaded (the comment's type=
-// field is an untrusted claim), and runs the system opener unless the
-// sniffed type is script-capable or B9S_TEST_MODE is set, in which case the
-// would-be command is recorded instead of run.
-func attachmentOpenDownload(ctx context.Context, handle *blobstore.Handle, att attachref.Attachment, testMode bool, result attachmentOpenResultMsg) attachmentOpenResultMsg {
-	dir, err := os.MkdirTemp(os.TempDir(), "b9s-attach-*")
+// attachmentOpenDownload downloads att into its own subdirectory of the
+// private per-run temp directory (dir), renames the verified download to
+// its declared name so the system opener's own type detection (e.g.
+// macOS LaunchServices) sees a real extension instead of the download's
+// randomly named temp file, sniffs the content actually downloaded (the
+// comment's type= field is an untrusted claim), and runs the system opener
+// unless the sniffed type and the name's extension do not agree on an
+// allowed class, or B9S_TEST_MODE is set, in which case the would-be
+// command is recorded instead of run. The subdirectory (not dir directly)
+// is what makes two attachments sharing a file name safe to open in the
+// same run, since dir is reused across opens (review item 4) while att.Name
+// is only unique within one attachment.
+func attachmentOpenDownload(ctx context.Context, handle *blobstore.Handle, att attachref.Attachment, dir string, testMode bool, result attachmentOpenResultMsg) attachmentOpenResultMsg {
+	subDir, err := os.MkdirTemp(dir, "dl-*")
 	if err != nil {
 		result.statusMsg = fmt.Sprintf("attachments: creating temp dir: %v", err)
 		result.isError = true
 		return result
 	}
-	if err := os.Chmod(dir, 0o700); err != nil {
-		os.RemoveAll(dir)
-		result.statusMsg = fmt.Sprintf("attachments: securing temp dir: %v", err)
-		result.isError = true
-		return result
-	}
 
-	path, err := attach.Download(ctx, handle, att, dir, attach.DownloadModeRestricted)
+	path, err := attach.Download(ctx, handle, att, subDir, attach.DownloadModeRestricted)
 	if err != nil {
-		os.RemoveAll(dir)
 		result.statusMsg = fmt.Sprintf("attachments: %v", err)
 		result.isError = true
 		return result
 	}
+
+	finalPath, err := attach.SafeJoin(subDir, att.Name)
+	if err != nil {
+		os.Remove(path)
+		result.statusMsg = fmt.Sprintf("attachments: %v", err)
+		result.isError = true
+		return result
+	}
+	if err := os.Rename(path, finalPath); err != nil {
+		os.Remove(path)
+		result.statusMsg = fmt.Sprintf("attachments: renaming download: %v", err)
+		result.isError = true
+		return result
+	}
+	path = finalPath
 	result.openedPath = path
 
 	sniffed, err := sniffContentType(path)
 	if err != nil {
+		os.Remove(path)
 		result.statusMsg = fmt.Sprintf("attachments: %v", err)
 		result.isError = true
 		return result
 	}
 
-	if isRefusedOpenContentType(sniffed) {
+	if !openAllowedForContent(sniffed, att.Name) {
 		result.statusMsg = fmt.Sprintf("%s downloaded to %s (opening refused: sniffed as %s)", att.Name, path, sniffed)
 		return result
 	}

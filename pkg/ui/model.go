@@ -565,6 +565,12 @@ type Model struct {
 	// blobstore.Open once per project rather than on every open.
 	attachHandle        *blobstore.Handle
 	attachHandleProject string
+	// attachTempDir is the private per-run directory attachment downloads
+	// land in, created lazily on the first open and reused for every open
+	// after that (never per-download: that leaked one directory per open),
+	// removed once in Stop() rather than after each open, since the system
+	// opener may still be reading the file when Update moves on.
+	attachTempDir string
 	// lastAttachmentOpen records the most recent attachment-open attempt,
 	// including the opener command that ran or would have run under
 	// B9S_TEST_MODE, so a test can assert on it without a real opener.
@@ -586,9 +592,14 @@ type Model struct {
 	showTimeTravelPrompt bool
 
 	// Status message (for temporary feedback)
-	statusMsg      string
-	statusIsError  bool
-	clipboardWrite func(string) error
+	statusMsg     string
+	statusIsError bool
+	// statusHyperlink is an OSC 8 escape sequence renderFooter writes raw,
+	// after the sanitized statusMsg label: sanitizeTerminalLine would strip
+	// the escape codes as control characters if it ran over this too
+	// (bd-t8j5.9 review).
+	statusHyperlink string
+	clipboardWrite  func(string) error
 
 	// Workspace mode state
 	workspaceMode    bool            // True when viewing multiple repos
@@ -1341,19 +1352,25 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case attachmentOpenResultMsg:
-		// Handle attachment open results (bd-t8j5.9)
-		if msg.handle != nil {
-			m.attachHandle = msg.handle
-			m.attachHandleProject = msg.projectPath
-		}
-		m.statusMsg = msg.statusMsg
-		m.statusIsError = msg.isError
-		m.lastAttachmentOpen = &attachmentOpenRecord{
-			AttachmentName: msg.attachmentName,
-			OpenerCmd:      msg.openerCmd,
-			Path:           msg.openedPath,
-			StatusMsg:      msg.statusMsg,
-			IsError:        msg.isError,
+		// Handle attachment open results (bd-t8j5.9). A :project switch
+		// between dispatch and here invalidates the result (wrong project's
+		// blob store, wrong footer message), so it is dropped rather than
+		// applied (review item 7).
+		if msg.dispatchProjectPath == m.activeProjectPath {
+			if msg.handle != nil {
+				m.attachHandle = msg.handle
+				m.attachHandleProject = msg.projectPath
+			}
+			m.statusMsg = msg.statusMsg
+			m.statusIsError = msg.isError
+			m.statusHyperlink = msg.hyperlink
+			m.lastAttachmentOpen = &attachmentOpenRecord{
+				AttachmentName: msg.attachmentName,
+				OpenerCmd:      msg.openerCmd,
+				Path:           msg.openedPath,
+				StatusMsg:      msg.statusMsg,
+				IsError:        msg.isError,
+			}
 		}
 
 	case AllProjectsLoadMsg:
@@ -2029,6 +2046,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear status message on any keypress
 		m.statusMsg = ""
 		m.statusIsError = false
+		m.statusHyperlink = ""
 
 		// The help search owns every key while editing, ahead of the global
 		// single-key bindings (?, :, `) that would otherwise close help.
@@ -2080,7 +2098,13 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.attachmentPicker.MoveUp()
 			case "enter":
 				if att, ok := m.attachmentPicker.Selected(); ok {
-					cmds = append(cmds, m.attachmentOpenCmd(att))
+					dir, err := m.ensureAttachTempDir()
+					if err != nil {
+						m.statusMsg = fmt.Sprintf("attachments: %v", err)
+						m.statusIsError = true
+					} else {
+						cmds = append(cmds, m.attachmentOpenCmd(att, dir))
+					}
 				}
 				m.showAttachmentPicker = false
 			case "esc":
@@ -2642,9 +2666,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "R":
 				// Attachment picker over the selected issue's attachments
-				// (bd-t8j5.9). 'A' already opens the assignee picker
-				// (bd-j764), so this uses the ADR 0024 term "reference
-				// comments" for its mnemonic instead.
+				// (bd-t8j5.9). Skipped when a popup or the label filter
+				// input would otherwise take the letter, so it falls
+				// through to handleLabelPickerKeys/handleTreeKeys below
+				// instead. 'A' already opens the assignee picker (bd-j764),
+				// so this uses the ADR 0024 term "reference comments" for
+				// its mnemonic instead.
+				if m.focused == focusLabelPicker || m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen() {
+					break
+				}
 				m.openAttachmentPicker()
 				return m, nil
 
@@ -4838,7 +4868,14 @@ func (m *Model) renderFooter() string {
 			remaining = 0
 		}
 		filler := lipgloss.NewStyle().Width(remaining).Render("")
-		return lipgloss.JoinHorizontal(lipgloss.Bottom, msgSection, filler)
+		line := msgSection
+		if m.statusHyperlink != "" {
+			// Written raw, after remaining/filler is sized from the
+			// sanitized label alone: sanitizeTerminalLine would strip the
+			// OSC 8 escape codes as control characters (bd-t8j5.9 review).
+			line += " " + m.statusHyperlink
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Bottom, line, filler)
 	}
 
 	keyStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
@@ -6467,6 +6504,10 @@ func (m *Model) Stop() {
 	if len(m.pooledIssues) > 0 {
 		loader.ReturnIssuePtrsToPool(m.pooledIssues)
 		m.pooledIssues = nil
+	}
+	if m.attachTempDir != "" {
+		os.RemoveAll(m.attachTempDir)
+		m.attachTempDir = ""
 	}
 }
 
