@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/vanderheijden86/beadwork/pkg/debug"
 )
 
 // Resolve locates the bd binary on PATH. ok is false when bd is not
@@ -24,12 +26,22 @@ func Resolve() (path string, ok bool) {
 	return p, true
 }
 
-// waitDelay bounds how long Run waits for bd's process group to release
-// stdout/stderr after a kill, the same role WaitDelay plays in
-// internal/blobstore's credential_command runner: SIGKILL ends bd itself
-// promptly, but a grandchild that inherited the pipes can hold them open
-// past that, and Wait would otherwise block on it indefinitely.
+// waitDelay bounds how long Run waits for bd's stdout/stderr pipes to close
+// after bd's own process exits, whether that exit is an ordinary one or a
+// kill: a descendant that inherited the pipes (a hook, a backgrounded job)
+// can otherwise hold them open indefinitely even though bd itself is done.
 const waitDelay = time.Second
+
+// ErrTimeout wraps the error Run returns when ctx's deadline elapses before
+// bd exits, so a caller can tell a timeout apart from every other bd failure
+// with errors.Is rather than matching Run's message text.
+var ErrTimeout = errors.New("bd timed out")
+
+// ErrCancelled wraps the error Run returns when ctx is cancelled (not timed
+// out) while bd is running or before it starts, so a caller can tell a
+// deliberate cancellation apart from a timeout or an ordinary bd failure
+// with errors.Is.
+var ErrCancelled = errors.New("bd cancelled")
 
 // Run executes bdPath with args in dir, bound to ctx, and returns its
 // combined stdout and stderr, trimmed of surrounding whitespace. args reach
@@ -43,6 +55,16 @@ const waitDelay = time.Second
 // call) that inherits the same stdout/stderr pipes, and killing bd alone
 // would leave that child holding them open, blocking Wait past the
 // deadline that was supposed to bound this call.
+//
+// A non-nil error names its cause: ErrTimeout for a deadline, ErrCancelled
+// for a caller cancellation, and bd's own error otherwise. Whether bd
+// succeeded is judged from its own exit, never from ctx.Err() alone: ctx can
+// already be past its deadline by the time CombinedOutput returns even
+// though bd exited cleanly, if a descendant it forked kept a pipe open past
+// that deadline. That same lingering-descendant case surfaces from Wait as
+// exec.ErrWaitDelay rather than nil, regardless of whether ctx has a
+// deadline at all, and Run reports it as success: nothing about the run
+// itself failed.
 func Run(ctx context.Context, bdPath, dir string, args ...string) (output string, err error) {
 	cmd := exec.CommandContext(ctx, bdPath, args...)
 	cmd.Dir = dir
@@ -57,8 +79,21 @@ func Run(ctx context.Context, bdPath, dir string, args ...string) (output string
 	elapsed := time.Since(start).Round(time.Millisecond)
 	trimmed := strings.TrimSpace(string(out))
 
-	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return trimmed, fmt.Errorf("bd timed out after %s", elapsed)
+	if runErr == nil {
+		return trimmed, nil
 	}
-	return trimmed, runErr
+
+	if errors.Is(runErr, exec.ErrWaitDelay) {
+		debug.Log("bdrun: bd exited successfully but a lingering child held its output pipes open past WaitDelay (dir=%s, args=%v)", dir, args)
+		return trimmed, nil
+	}
+
+	switch {
+	case errors.Is(ctx.Err(), context.DeadlineExceeded):
+		return trimmed, fmt.Errorf("%w after %s", ErrTimeout, elapsed)
+	case errors.Is(ctx.Err(), context.Canceled):
+		return trimmed, fmt.Errorf("%w: %w", ErrCancelled, runErr)
+	default:
+		return trimmed, runErr
+	}
 }

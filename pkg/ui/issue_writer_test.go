@@ -224,6 +224,57 @@ func TestIssueWriter_RunBdCmd_HungBdReturnsErroredResult(t *testing.T) {
 	}
 }
 
+// TestIssueWriter_RunBatch_TimeoutMessageWarnsOfPartialWrite proves runBatch
+// scales its budget with the batch (bdRunTimeout plus batchPerIDBudget per
+// id) and, when that larger budget still expires, that the result's error
+// warns the batch may be partly written: bd's one invocation covers every id
+// in the same call, so a timeout partway through leaves no way to tell which
+// ids it reached before the deadline.
+func TestIssueWriter_RunBatch_TimeoutMessageWarnsOfPartialWrite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	originalTimeout, originalPerID := bdRunTimeout, batchPerIDBudget
+	bdRunTimeout = 50 * time.Millisecond
+	batchPerIDBudget = 50 * time.Millisecond
+	t.Cleanup(func() { bdRunTimeout, batchPerIDBudget = originalTimeout, originalPerID })
+
+	w := &IssueWriter{bdPath: filepath.Join(binDir, "bd"), available: true}
+	w.SetCheckout(testCheckout(t))
+
+	ids := []string{"bd-1", "bd-2"}
+	start := time.Now()
+	cmd := w.runBatch(BdOpSetStatus, ids, append([]string{"update"}, append(append([]string(nil), ids...), "--status=closed")...))
+	msg := cmd()
+	elapsed := time.Since(start)
+
+	if elapsed > 5*time.Second {
+		t.Fatalf("runBatch took %v, want it bounded by bdRunTimeout+batchPerIDBudget*len(ids) plus WaitDelay", elapsed)
+	}
+	result, ok := msg.(BdResultMsg)
+	if !ok {
+		t.Fatalf("expected BdResultMsg, got %T", msg)
+	}
+	if result.Success {
+		t.Fatal("expected failure for a hung bd")
+	}
+	if !strings.Contains(result.Error.Error(), "timed out") {
+		t.Errorf("result.Error = %v, want it to name the timeout clearly", result.Error)
+	}
+	if !strings.Contains(result.Error.Error(), "the batch may be partly written") {
+		t.Errorf("result.Error = %v, want it to warn the batch may be partly written", result.Error)
+	}
+	if len(result.IssueIDs) != len(ids) {
+		t.Errorf("result.IssueIDs = %v, want %v", result.IssueIDs, ids)
+	}
+}
+
 func TestIssueWriter_DeleteIssue(t *testing.T) {
 	w := &IssueWriter{bdPath: "/usr/local/bin/bd", available: true}
 

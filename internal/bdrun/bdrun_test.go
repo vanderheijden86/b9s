@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -188,12 +189,12 @@ func TestRun_KillsWholeProcessGroupOnTimeout(t *testing.T) {
 	}
 }
 
-// TestRun_ContextCancellationIsReportedAsTimeout guards the error-shaping
-// branch specifically: errors.Is(ctx.Err(), context.DeadlineExceeded) must
-// be the check Run uses, not a bare ctx.Err() != nil, since a deliberate
-// cancellation (not a deadline) should surface as the underlying exec error
-// rather than "bd timed out".
-func TestRun_ContextCancellationIsReportedAsTimeout(t *testing.T) {
+// TestRun_CancelledBeforeStart_ReturnsCancelledError guards the error-shaping
+// branch specifically: errors.Is(ctx.Err(), context.DeadlineExceeded) must be
+// the check Run uses for a timeout, so a context that was already cancelled
+// before bd ever started (not a deadline) is reported as "bd cancelled", not
+// "bd timed out".
+func TestRun_CancelledBeforeStart_ReturnsCancelledError(t *testing.T) {
 	binDir := writeFakeBd(t, 0)
 	bdPath := filepath.Join(binDir, "bd")
 
@@ -208,7 +209,138 @@ func TestRun_ContextCancellationIsReportedAsTimeout(t *testing.T) {
 	if strings.Contains(err.Error(), "timed out") {
 		t.Errorf("err = %v, want cancellation (not a deadline) to not claim a timeout", err)
 	}
-	if !errors.Is(err, context.Canceled) && !strings.Contains(err.Error(), "context canceled") {
-		t.Errorf("err = %v, want it to reflect context cancellation", err)
+	if !strings.Contains(err.Error(), "cancelled") {
+		t.Errorf("err = %v, want it to say the run was cancelled", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want errors.Is(err, context.Canceled)", err)
+	}
+}
+
+// TestRun_CancelledDuringRun_ReturnsCancelledError guards the same "bd
+// cancelled" shaping when the caller cancels ctx while bd is actually
+// running, not only when ctx was already done before Start ever ran.
+func TestRun_CancelledDuringRun_ReturnsCancelledError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	start := time.Now()
+	_, err := Run(ctx, filepath.Join(binDir, "bd"), t.TempDir(), "list")
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Run() err = nil, want an error for a cancellation during the run")
+	}
+	if strings.Contains(err.Error(), "timed out") {
+		t.Errorf("err = %v, want cancellation (not a deadline) to not claim a timeout", err)
+	}
+	if !strings.Contains(err.Error(), "cancelled") {
+		t.Errorf("err = %v, want it to say the run was cancelled", err)
+	}
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want it bounded by the cancellation plus WaitDelay, not the 30s sleep", elapsed)
+	}
+}
+
+// TestRun_QuickSuccessWithLingeringSameGroupChild_ReturnsOutputNoError guards
+// against reporting a timeout from a stale ctx.Err() check alone: bd itself
+// exits successfully well within the deadline, but a child it backgrounds (in
+// bd's own process group, the common case) keeps the stdout pipe open past
+// that deadline and past WaitDelay. By the time CombinedOutput returns,
+// ctx.Err() is already DeadlineExceeded even though the run succeeded, so Run
+// must judge success from runErr, not from ctx. The deadline is 500ms rather
+// than near-instant: forking a fresh, unsigned temp-dir script incurs real
+// exec overhead on macOS (observed ~150-200ms), and a deadline shorter than
+// that races bd's own startup, killing it before it ever backgrounds the
+// child or prints anything.
+func TestRun_QuickSuccessWithLingeringSameGroupChild_ReturnsOutputNoError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nsleep 30 &\nprintf 'written'\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	out, err := Run(ctx, filepath.Join(binDir, "bd"), t.TempDir(), "list")
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("Run() err = %v, want nil: bd exited 0, only a lingering child held stdout open", err)
+	}
+	if out != "written" {
+		t.Errorf("Run() out = %q, want %q", out, "written")
+	}
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 30s sleep", elapsed)
+	}
+}
+
+// TestRun_ErrWaitDelay_QuickSuccessWithLingeringDetachedChild_ReturnsOutputNoError
+// guards the exec.ErrWaitDelay branch specifically: it means bd itself
+// exited successfully and only a lingering descendant kept a pipe open,
+// never a real failure, whether or not ctx has a deadline at all. The child
+// detaches into its own process group before bd exits, so Run's
+// process-group kill (which only fires on cancellation, and never reaches a
+// different group in any case) plays no part in this scenario: WaitDelay's
+// forced pipe close is what unblocks Wait.
+func TestRun_ErrWaitDelay_QuickSuccessWithLingeringDetachedChild_ReturnsOutputNoError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	if _, err := exec.LookPath("perl"); err != nil {
+		t.Skip("perl not on PATH: needed to detach the lingering child into its own process group")
+	}
+	binDir := t.TempDir()
+	script := "#!/bin/sh\nperl -e 'setpgrp(0,0); exec(\"sleep\",\"30\")' &\nprintf 'written'\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bdPath := filepath.Join(binDir, "bd")
+
+	cases := []struct {
+		name string
+		ctx  func() (context.Context, context.CancelFunc)
+	}{
+		{"background", func() (context.Context, context.CancelFunc) {
+			return context.Background(), func() {}
+		}},
+		{"with deadline", func() (context.Context, context.CancelFunc) {
+			return context.WithTimeout(context.Background(), 100*time.Millisecond)
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := tc.ctx()
+			defer cancel()
+
+			start := time.Now()
+			out, err := Run(ctx, bdPath, t.TempDir(), "list")
+			elapsed := time.Since(start)
+
+			if err != nil {
+				t.Fatalf("Run() err = %v, want nil", err)
+			}
+			if out != "written" {
+				t.Errorf("Run() out = %q, want %q", out, "written")
+			}
+			if elapsed > 5*time.Second {
+				t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 30s sleep", elapsed)
+			}
+		})
 	}
 }

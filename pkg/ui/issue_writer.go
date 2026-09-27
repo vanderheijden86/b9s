@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -18,6 +19,13 @@ import (
 // which can legitimately take longer than a plain bd write. A var, not a
 // const, so a test can shrink it rather than waiting out the real deadline.
 var bdRunTimeout = 60 * time.Second
+
+// batchPerIDBudget extends a batch invocation's timeout beyond bdRunTimeout
+// by this much per id: bd's one process call covers every id in the batch,
+// so a batch of N takes longer than a single-id write in the ordinary case,
+// and bdRunTimeout alone would flag a merely-large batch as hung. A var, not
+// a const, so a test can shrink it rather than waiting out the real budget.
+var batchPerIDBudget = 2 * time.Second
 
 // BdOperation represents the type of bd operation performed
 type BdOperation int
@@ -135,21 +143,29 @@ func (w *IssueWriter) DeleteIssues(ids []string) tea.Cmd {
 }
 
 // runBatch runs one bd command over several issues and reports all of them in
-// the result's IssueIDs.
+// the result's IssueIDs. The timeout scales with the batch (bdRunTimeout plus
+// batchPerIDBudget per id): bd's one invocation covers every id in the same
+// call, so a timeout partway through leaves no way to tell which ids it
+// reached before the deadline, and the result's error says so.
 func (w *IssueWriter) runBatch(op BdOperation, ids []string, args []string) tea.Cmd {
 	ids = append([]string(nil), ids...)
 	label := strings.Join(ids, " ")
 	cmd := w.unavailableCmd(op, label)
 	if w.available {
-		cmd = w.runBdCmd(op, label, args)
+		budget := bdRunTimeout + batchPerIDBudget*time.Duration(len(ids))
+		cmd = w.runBdCmdWithTimeout(op, label, args, budget)
 	}
 	return func() tea.Msg {
 		msg := cmd()
-		if result, ok := msg.(BdResultMsg); ok {
-			result.IssueIDs = ids
-			return result
+		result, ok := msg.(BdResultMsg)
+		if !ok {
+			return msg
 		}
-		return msg
+		result.IssueIDs = ids
+		if result.Error != nil && errors.Is(result.Error, bdrun.ErrTimeout) {
+			result.Error = fmt.Errorf("%w; the batch may be partly written", result.Error)
+		}
+		return result
 	}
 }
 
@@ -209,10 +225,18 @@ func (w *IssueWriter) buildCloseArgs(id, reason string) []string {
 }
 
 // runBdCmd executes a bd command asynchronously in the checkout and returns
-// the result. Every write passes through here, so this is the one place that
-// refuses writes for a project opened without a checkout: bd resolves the
-// project from its working directory and would otherwise write elsewhere.
+// the result, bound to bdRunTimeout. Every write passes through here or
+// through runBatch, so this is the one place that refuses writes for a
+// project opened without a checkout: bd resolves the project from its
+// working directory and would otherwise write elsewhere.
 func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) tea.Cmd {
+	return w.runBdCmdWithTimeout(op, issueID, args, bdRunTimeout)
+}
+
+// runBdCmdWithTimeout is runBdCmd with an explicit timeout, so runBatch can
+// give a multi-id invocation more time than a single-id write without
+// changing bdRunTimeout itself.
+func (w *IssueWriter) runBdCmdWithTimeout(op BdOperation, issueID string, args []string, timeout time.Duration) tea.Cmd {
 	if w.opening != "" {
 		return w.openingCmd(op, issueID)
 	}
@@ -225,7 +249,7 @@ func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) te
 		debug.Log("bd-cmd: exec %s %s (dir=%s)", bdPath, strings.Join(args, " "), dir)
 		start := time.Now()
 
-		ctx, cancel := context.WithTimeout(context.Background(), bdRunTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		outStr, err := bdrun.Run(ctx, bdPath, dir, args...)
 		elapsed := time.Since(start)
