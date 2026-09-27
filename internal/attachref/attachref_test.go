@@ -101,6 +101,13 @@ func TestFormatRejectsInvalid(t *testing.T) {
 		{"empty type", func() Ref { r := base; r.Type = ""; return r }()},
 		{"unparseable type", func() Ref { r := base; r.Type = "not-a-mime-type"; return r }()},
 		{"type with space", func() Ref { r := base; r.Type = "text/plain; charset=utf-8"; return r }()},
+		{"type with vertical tab", func() Ref { r := base; r.Type = "image/png\v"; return r }()},
+		{"type with form feed", func() Ref { r := base; r.Type = "image/png\f"; return r }()},
+		{"type with nbsp", func() Ref { r := base; r.Type = "image/png "; return r }()},
+		{"type with leading em space", func() Ref { r := base; r.Type = " image/png"; return r }()},
+		{"type with nel", func() Ref { r := base; r.Type = "image/png\u0085"; return r }()},
+		{"type with two slashes", func() Ref { r := base; r.Type = "image/png/extra"; return r }()},
+		{"type with tspecial", func() Ref { r := base; r.Type = "image/png;q=1"; return r }()},
 		{"empty name", func() Ref { r := base; r.Name = ""; return r }()},
 		{"name with slash", func() Ref { r := base; r.Name = "a/b.png"; return r }()},
 		{"name with backslash", func() Ref { r := base; r.Name = `a\b.png`; return r }()},
@@ -109,6 +116,18 @@ func TestFormatRejectsInvalid(t *testing.T) {
 		{"name with newline", func() Ref { r := base; r.Name = "a\nb.png"; return r }()},
 		{"name with control char", func() Ref { r := base; r.Name = "a\x01b.png"; return r }()},
 		{"name too long", func() Ref { r := base; r.Name = strings.Repeat("a", 256); return r }()},
+		{"name with invalid UTF-8", func() Ref { r := base; r.Name = "a\xffb.png"; return r }()},
+		{"name with LRM", func() Ref { r := base; r.Name = "a‎b.png"; return r }()},
+		{"name with RLM", func() Ref { r := base; r.Name = "a‏b.png"; return r }()},
+		{"name with Arabic letter mark", func() Ref { r := base; r.Name = "a؜b.png"; return r }()},
+		{"name with LRO", func() Ref { r := base; r.Name = "a‭b.png"; return r }()},
+		{"name with RLO", func() Ref { r := base; r.Name = "a‮b.png"; return r }()},
+		{"name with LRI", func() Ref { r := base; r.Name = "a⁦b.png"; return r }()},
+		{"name with PDI", func() Ref { r := base; r.Name = "a⁩b.png"; return r }()},
+		{"name with zero-width space", func() Ref { r := base; r.Name = "a​b.png"; return r }()},
+		{"name with zero-width non-joiner", func() Ref { r := base; r.Name = "a‌b.png"; return r }()},
+		{"name with BOM", func() Ref { r := base; r.Name = "a" + "\xef\xbb\xbf" + "b.png"; return r }()},
+		{"name starting with dash", func() Ref { r := base; r.Name = "-rf.png"; return r }()},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -116,6 +135,22 @@ func TestFormatRejectsInvalid(t *testing.T) {
 				t.Errorf("Format(%+v) succeeded, want error", tc.ref)
 			}
 		})
+	}
+}
+
+func TestFormatAllowsZeroWidthJoiner(t *testing.T) {
+	// ZWJ is what joins emoji into a single glyph (e.g. family emoji sequences),
+	// so a name built from one must not be treated the same as the other,
+	// visually similar zero-width and bidi formatting characters that are rejected.
+	r := validRef()
+	r.Name = "a‍b.png"
+	text, err := Format(r)
+	if err != nil {
+		t.Fatalf("Format with a ZWJ in the name failed: %v", err)
+	}
+	refs, _ := Parse(text)
+	if len(refs) != 1 || refs[0].Name != r.Name {
+		t.Fatalf("round trip of a ZWJ name failed: got %+v", refs)
 	}
 }
 
@@ -131,6 +166,9 @@ func TestParseRejectsEveryRuleViolation(t *testing.T) {
 		{"negative size", "beads-attachment/v1 sha256=" + sha + " size=-1 type=image/png name=a.png"},
 		{"non-numeric size", "beads-attachment/v1 sha256=" + sha + " size=big type=image/png name=a.png"},
 		{"missing size", "beads-attachment/v1 sha256=" + sha + " type=image/png name=a.png"},
+		{"size with leading plus", "beads-attachment/v1 sha256=" + sha + " size=+5 type=image/png name=a.png"},
+		{"size with leading zero", "beads-attachment/v1 sha256=" + sha + " size=0005 type=image/png name=a.png"},
+		{"size negative zero", "beads-attachment/v1 sha256=" + sha + " size=-0 type=image/png name=a.png"},
 		{"bad type", "beads-attachment/v1 sha256=" + sha + " size=1 type=nope name=a.png"},
 		{"missing type", "beads-attachment/v1 sha256=" + sha + " size=1 name=a.png"},
 		{"missing name", "beads-attachment/v1 sha256=" + sha + " size=1 type=image/png"},
@@ -273,19 +311,82 @@ func TestCollectFoldsAttachAndDetach(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("Collect returned %d attachments, want 2: %+v", len(got), got)
 	}
-	// First-attached order: A was first attached in c1, before B in c2, so A stays first
-	// even though its surviving copy comes from the later re-attach in c4.
-	if got[0].SHA256 != shaA {
-		t.Errorf("got[0].SHA256 = %q, want %q (first-attached order)", got[0].SHA256, shaA)
+	// A was detached and re-attached, so it moves to the end of the list: a
+	// re-attach is a new attachment event, not a restore of the old position.
+	if got[0].SHA256 != shaB {
+		t.Errorf("got[0].SHA256 = %q, want %q (B was never detached)", got[0].SHA256, shaB)
 	}
-	if got[0].CommentID != "c4" || got[0].AddedBy != "carol" {
-		t.Errorf("got[0] = %+v, want the re-attach comment's author/id", got[0])
+	if got[1].SHA256 != shaA {
+		t.Errorf("got[1].SHA256 = %q, want %q (re-attach appends at the end)", got[1].SHA256, shaA)
 	}
-	if !got[0].AddedAt.Equal(t0.Add(4 * time.Hour)) {
-		t.Errorf("got[0].AddedAt = %v, want %v", got[0].AddedAt, t0.Add(4*time.Hour))
+	if got[1].CommentID != "c4" || got[1].AddedBy != "carol" {
+		t.Errorf("got[1] = %+v, want the re-attach comment's author/id", got[1])
+	}
+	if !got[1].AddedAt.Equal(t0.Add(4 * time.Hour)) {
+		t.Errorf("got[1].AddedAt = %v, want %v", got[1].AddedAt, t0.Add(4*time.Hour))
+	}
+}
+
+func TestCollectSecondAttachWhileLiveReplacesInPlace(t *testing.T) {
+	shaA := strings.Repeat("a", 64)
+	shaB := strings.Repeat("b", 64)
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	attachA1, _ := Format(Ref{SHA256: shaA, Size: 1, Type: "image/png", Name: "a.png"})
+	attachB, _ := Format(Ref{SHA256: shaB, Size: 2, Type: "image/png", Name: "b.png"})
+	attachA2, _ := Format(Ref{SHA256: shaA, Size: 1, Type: "image/png", Name: "a-renamed.png"})
+
+	comments := []*model.Comment{
+		{ID: "c1", IssueID: "i1", Author: "alice", Text: attachA1, CreatedAt: t0},
+		{ID: "c2", IssueID: "i1", Author: "bob", Text: attachB, CreatedAt: t0.Add(time.Hour)},
+		{ID: "c3", IssueID: "i1", Author: "carol", Text: attachA2, CreatedAt: t0.Add(2 * time.Hour)},
+	}
+
+	got := Collect(comments)
+	if len(got) != 2 {
+		t.Fatalf("Collect returned %d attachments, want 2: %+v", len(got), got)
+	}
+	// A was never detached between c1 and c3, so the second attach replaces
+	// it in place: A keeps its original (first) position ahead of B.
+	if got[0].SHA256 != shaA || got[0].Name != "a-renamed.png" || got[0].CommentID != "c3" {
+		t.Errorf("got[0] = %+v, want A updated in place by c3", got[0])
 	}
 	if got[1].SHA256 != shaB {
 		t.Errorf("got[1].SHA256 = %q, want %q", got[1].SHA256, shaB)
+	}
+}
+
+func TestCollectDetachThenAttachSameCommentIsLive(t *testing.T) {
+	sha := strings.Repeat("d", 64)
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	attach, _ := Format(Ref{SHA256: sha, Size: 1, Type: "image/png", Name: "a.png"})
+	detach, _ := FormatDetach(Ref{SHA256: sha, Name: "a.png"})
+
+	comments := []*model.Comment{
+		{ID: "c1", IssueID: "i1", Author: "alice", Text: attach, CreatedAt: t0},
+		// One comment carries both lines, detach first: line order within
+		// the comment must be honoured, not "all detaches after all attaches".
+		{ID: "c2", IssueID: "i1", Author: "bob", Text: detach + "\n" + strings.SplitN(attach, "\n", 2)[1], CreatedAt: t0.Add(time.Hour)},
+	}
+
+	got := Collect(comments)
+	if len(got) != 1 || got[0].SHA256 != sha {
+		t.Fatalf("Collect returned %+v, want the attachment live", got)
+	}
+}
+
+func TestCollectSkipsNilComments(t *testing.T) {
+	sha := strings.Repeat("e", 64)
+	attach, _ := Format(Ref{SHA256: sha, Size: 1, Type: "image/png", Name: "a.png"})
+	comments := []*model.Comment{
+		nil,
+		{ID: "c1", IssueID: "i1", Author: "alice", Text: attach, CreatedAt: time.Now()},
+		nil,
+	}
+	got := Collect(comments)
+	if len(got) != 1 || got[0].SHA256 != sha {
+		t.Fatalf("Collect with nil comments = %+v, want one attachment", got)
 	}
 }
 
@@ -319,6 +420,58 @@ func TestCollectOrdersByCreatedAtThenID(t *testing.T) {
 	if len(got) != 2 || got[0].SHA256 != shaB || got[1].SHA256 != shaA {
 		t.Fatalf("Collect did not tie-break by comment ID: %+v", got)
 	}
+}
+
+func TestCollectOrdersNumericIDsNumerically(t *testing.T) {
+	sha9 := strings.Repeat("9", 64)
+	sha10 := strings.Repeat("8", 64)
+	sha11 := strings.Repeat("7", 64)
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	attach9, _ := Format(Ref{SHA256: sha9, Size: 1, Type: "image/png", Name: "9.png"})
+	attach10, _ := Format(Ref{SHA256: sha10, Size: 1, Type: "image/png", Name: "10.png"})
+	attach11, _ := Format(Ref{SHA256: sha11, Size: 1, Type: "image/png", Name: "11.png"})
+
+	// Same second for all three: a lexical id comparison would order "10" and
+	// "11" before "9" ('1' < '9'), which is wrong once ids are legacy integers.
+	comments := []*model.Comment{
+		{ID: "10", IssueID: "i1", Author: "alice", Text: attach10, CreatedAt: t0},
+		{ID: "9", IssueID: "i1", Author: "alice", Text: attach9, CreatedAt: t0},
+		{ID: "11", IssueID: "i1", Author: "alice", Text: attach11, CreatedAt: t0},
+	}
+
+	got := Collect(comments)
+	if len(got) != 3 {
+		t.Fatalf("Collect returned %d attachments, want 3: %+v", len(got), got)
+	}
+	if got[0].SHA256 != sha9 || got[1].SHA256 != sha10 || got[2].SHA256 != sha11 {
+		t.Fatalf("Collect did not order numeric ids numerically: %+v", got)
+	}
+}
+
+// FuzzFormat covers the direction FuzzParse does not: for any Ref that Format
+// accepts (however it was constructed), the text it produces must read back
+// through Parse as that exact Ref, not merely as some valid Ref.
+func FuzzFormat(f *testing.F) {
+	sha := strings.Repeat("a", 64)
+	f.Add(sha, int64(120832), "image/png", "screenshot.png")
+	f.Add(sha, int64(0), "text/plain", "notes.txt")
+	f.Add(sha, int64(1), "image/png ", "a.png")
+	f.Add(sha, int64(1), "image/png", "a‎b.png")
+	f.Add(sha, int64(1), "image/png", "-rf")
+	f.Fuzz(func(t *testing.T, sha string, size int64, typ string, name string) {
+		r := Ref{SHA256: sha, Size: size, Type: typ, Name: name}
+		text, err := Format(r)
+		if err != nil {
+			return
+		}
+		refs, detaches := Parse(text)
+		if len(detaches) != 0 {
+			t.Fatalf("Format(%+v) = %q, which Parse read as a detach: %v", r, text, detaches)
+		}
+		if len(refs) != 1 || refs[0] != r {
+			t.Fatalf("Format(%+v) = %q, round trip returned %+v", r, text, refs)
+		}
+	})
 }
 
 func FuzzParse(f *testing.F) {
