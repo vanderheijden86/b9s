@@ -1,0 +1,217 @@
+package attach
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/vanderheijden86/beadwork/internal/attachref"
+	"github.com/vanderheijden86/beadwork/internal/blobstore"
+	"github.com/vanderheijden86/beadwork/pkg/config"
+)
+
+// errCommandFailed stands in for whatever error a real bd invocation
+// returns on a non-zero exit; only its presence matters to these tests.
+var errCommandFailed = errors.New("bd exited 1")
+
+// fakeBd records every argv it was called with, and fails with err when set.
+type fakeBd struct {
+	calls [][]string
+	err   error
+}
+
+func (f *fakeBd) Run(args ...string) (string, error) {
+	f.calls = append(f.calls, append([]string(nil), args...))
+	if f.err != nil {
+		return "", f.err
+	}
+	return "", nil
+}
+
+func localHandle(t *testing.T, maxBytes int64) *blobstore.Handle {
+	t.Helper()
+	cfg := &config.AttachmentsConfig{Backend: "local", LocalDir: t.TempDir(), MaxBytes: maxBytes}
+	h, err := blobstore.Open(context.Background(), cfg, blobstore.SourceInfo{
+		Kind:        blobstore.SourceJSONL,
+		ProjectName: "b9s",
+	})
+	if err != nil {
+		t.Fatalf("blobstore.Open: %v", err)
+	}
+	return h
+}
+
+func writeTempFile(t *testing.T, dir, name string, content []byte) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestAdd_UploadsAndWritesReferenceComment(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	path := writeTempFile(t, srcDir, "notes.txt", []byte("hello world"))
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+
+	if len(results) != 1 || results[0].Err != nil {
+		t.Fatalf("Add results = %+v", results)
+	}
+	r := results[0]
+	if r.Ref.Name != "notes.txt" || r.Ref.Type != "text/plain" || r.Ref.Size != int64(len("hello world")) {
+		t.Errorf("ref = %+v", r.Ref)
+	}
+	if r.Skipped {
+		t.Errorf("Skipped = true on first upload, want false")
+	}
+
+	key, err := h.Key(r.Ref.SHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Store.Stat(context.Background(), key); err != nil {
+		t.Errorf("blob missing from store after Add: %v", err)
+	}
+
+	if len(bd.calls) != 1 {
+		t.Fatalf("bd calls = %d, want 1", len(bd.calls))
+	}
+	call := bd.calls[0]
+	if len(call) != 4 || call[0] != "comments" || call[1] != "add" || call[2] != "bd-1" {
+		t.Fatalf("bd call = %v", call)
+	}
+	// The comment text must arrive as a single argv element: Parse must
+	// read back exactly the ref that was uploaded.
+	refs, _ := attachref.Parse(call[3])
+	if len(refs) != 1 || refs[0].SHA256 != r.Ref.SHA256 || refs[0].Name != "notes.txt" {
+		t.Errorf("Parse(%q) refs = %+v", call[3], refs)
+	}
+}
+
+func TestAdd_MimeSniff_TxtAndMd(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	txt := writeTempFile(t, srcDir, "readme.txt", []byte("plain text content"))
+	md := writeTempFile(t, srcDir, "readme.md", []byte("# Heading\n\nSome *markdown*.\n"))
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{txt, md})
+
+	if len(results) != 2 || results[0].Err != nil || results[1].Err != nil {
+		t.Fatalf("Add results = %+v", results)
+	}
+	if got := results[0].Ref.Type; got != "text/plain" {
+		t.Errorf("readme.txt type = %q, want text/plain", got)
+	}
+	if got := results[1].Ref.Type; got != "text/markdown" {
+		t.Errorf("readme.md type = %q, want text/markdown", got)
+	}
+}
+
+func TestAdd_RejectsFileOverMaxBytes(t *testing.T) {
+	h := localHandle(t, 4)
+	srcDir := t.TempDir()
+	path := writeTempFile(t, srcDir, "big.bin", []byte("way too big"))
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("Add results = %+v, want an over-limit error", results)
+	}
+	if len(bd.calls) != 0 {
+		t.Errorf("bd calls = %v, want none: an oversized file must never reach bd", bd.calls)
+	}
+}
+
+func TestAdd_RejectsInvalidName(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	// attachref rejects a name ending in a dot (Windows cannot use one).
+	path := writeTempFile(t, srcDir, "bad.", []byte("x"))
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("Add results = %+v, want a name-validation error", results)
+	}
+	if len(bd.calls) != 0 {
+		t.Errorf("bd calls = %v, want none: an invalid name must never reach bd", bd.calls)
+	}
+}
+
+func TestAdd_ProcessesFilesIndependently(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	good1 := writeTempFile(t, srcDir, "good1.txt", []byte("one"))
+	bad := writeTempFile(t, srcDir, "bad.", []byte("x"))
+	good2 := writeTempFile(t, srcDir, "good2.txt", []byte("two"))
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{good1, bad, good2})
+
+	if len(results) != 3 {
+		t.Fatalf("Add results = %+v", results)
+	}
+	if results[0].Err != nil || results[2].Err != nil {
+		t.Errorf("good files failed: %+v / %+v", results[0], results[2])
+	}
+	if results[1].Err == nil {
+		t.Errorf("bad file succeeded, want an error")
+	}
+	if len(bd.calls) != 2 {
+		t.Errorf("bd calls = %d, want 2 (one per good file)", len(bd.calls))
+	}
+}
+
+func TestAdd_SkipsPutWhenBlobAlreadyExists(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	path1 := writeTempFile(t, srcDir, "a.txt", []byte("same bytes"))
+	path2 := writeTempFile(t, srcDir, "b.txt", []byte("same bytes"))
+	bd := &fakeBd{}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path1, path2})
+
+	if len(results) != 2 || results[0].Err != nil || results[1].Err != nil {
+		t.Fatalf("Add results = %+v", results)
+	}
+	if results[0].Skipped {
+		t.Errorf("first upload Skipped = true, want false")
+	}
+	if !results[1].Skipped {
+		t.Errorf("second upload of identical bytes Skipped = false, want true")
+	}
+	if results[0].Ref.SHA256 != results[1].Ref.SHA256 {
+		t.Errorf("identical content hashed to different sums: %s vs %s", results[0].Ref.SHA256, results[1].Ref.SHA256)
+	}
+}
+
+func TestAdd_CrashOrder_BlobSurvivesAFailedComment(t *testing.T) {
+	h := localHandle(t, 1<<20)
+	srcDir := t.TempDir()
+	path := writeTempFile(t, srcDir, "notes.txt", []byte("hello world"))
+	bd := &fakeBd{err: errCommandFailed}
+
+	results := Add(context.Background(), h, bd, "bd-1", []string{path})
+
+	if len(results) != 1 || results[0].Err == nil {
+		t.Fatalf("Add results = %+v, want the bd failure reported", results)
+	}
+	// Put happened before the failing bd call, so the blob is not lost: a
+	// retried Add for the same bytes would find it already present.
+	key, err := h.Key(results[0].Ref.SHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Store.Stat(context.Background(), key); err != nil {
+		t.Errorf("blob missing after a failed bd comments add: %v", err)
+	}
+}

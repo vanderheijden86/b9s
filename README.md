@@ -210,6 +210,16 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 The `attachments` section configures the blob store b9s uses to attach files to issues (see [ADR 0024](docs/adr/0024-attach-files-through-reference-comments.md)). It never holds credentials: the `s3` backend reads them from `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or from `s3.credential_command`, which must print exactly two lines (access key id, then secret) within 10 seconds. Only the fields shown above are accepted under `attachments` and `attachments.s3`; any other key, and any YAML alias or merge (`<<`) node anywhere in the section, makes the whole file fail to load, naming the key it rejected. The `local` backend is refused for a project whose data source is a Dolt server unless `local_with_dolt_server: true` is set: b9s's own shared Dolt server runs through an SSH tunnel and looks like loopback from every machine that reaches it, so a host-based check cannot tell that apart from Dolt genuinely running solo, and files the local backend writes are invisible to every other operator sharing that server.
 
+Once configured, the `b9s attach` command line attaches and retrieves files without opening the TUI:
+
+```
+b9s attach <issue-id> <file>...          upload one or more files, then write the reference comment
+b9s attach --detach <issue-id> <sha256>  write a comment that marks a hash detached
+b9s attach list <issue-id> [--json]      list an issue's current attachments
+b9s attach get <issue-id> <sha256|name> [-o path]   download one, by full hash, a hash prefix, or its name
+b9s attach url <issue-id> <sha256|name>  print a presigned URL (s3 backend only)
+```
+
 ## Mouse and tmux
 
 The mouse wheel moves through issues and scrolls the detail pane. Because b9s captures the mouse for this, a drag does not select text, and in tmux with `mouse on` the drag goes to b9s instead of starting copy mode.
@@ -231,6 +241,7 @@ Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:
 | `--rollback` | Go back to the version before the last update |
 | `--version` | Print the version |
 | `ctl [--pane %N] branch [--if-known] <id>...` | Steer a running b9s, see [Mouse and tmux](#mouse-and-tmux) |
+| `attach <issue-id> <file>...` | Attach files to an issue, see [Attachments](#attachments) |
 
 ## Development
 

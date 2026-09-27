@@ -2,12 +2,12 @@ package ui
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/vanderheijden86/beadwork/internal/bdrun"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
 )
 
@@ -46,8 +46,8 @@ type IssueWriter struct {
 
 // NewIssueWriter creates a new IssueWriter, detecting bd availability
 func NewIssueWriter() *IssueWriter {
-	path, err := exec.LookPath("bd")
-	if err != nil {
+	path, ok := bdrun.Resolve()
+	if !ok {
 		return &IssueWriter{available: false}
 	}
 	return &IssueWriter{bdPath: path, available: true}
@@ -217,10 +217,7 @@ func (w *IssueWriter) runBdCmd(op BdOperation, issueID string, args []string) te
 		debug.Log("bd-cmd: exec %s %s (dir=%s)", bdPath, strings.Join(args, " "), dir)
 		start := time.Now()
 
-		cmd := exec.Command(bdPath, args...)
-		cmd.Dir = dir
-		output, err := cmd.CombinedOutput()
-		outStr := strings.TrimSpace(string(output))
+		outStr, err := bdrun.Run(bdPath, dir, args...)
 		elapsed := time.Since(start)
 
 		if err != nil {
