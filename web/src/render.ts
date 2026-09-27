@@ -203,10 +203,12 @@ function laneKeys(items: Item[]): [string, Item[]][] {
   return [...lanes].sort((a, b) => Number(a[0] === "none") - Number(b[0] === "none") || b[1].length - a[1].length);
 }
 
+/** laneHTML is an epic's lane header: its ID and title open the epic, the rest of the header folds the lane. */
 function laneHTML(l: string, n: number): string {
   const f = S.board.laneFold.has(l), e = get(l), pr = e ? progress(l) : null;
   const bar = pr ? `<span class="bar" title="${pr.done}/${pr.all} done"><i style="width:${Math.round((100 * pr.done) / pr.all)}%"></i></span>` : "";
-  return `<button class="lane" data-lane="${esc(l)}" aria-expanded="${!f}" style="--ec:${epicHue(l)}"><span class="ch">${f ? "▸" : "▾"}</span><span class="ei">${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span>${bar}<span class="n">${n}</span></button>`;
+  const name = l === "none" ? `<span class="ei">·</span><span class="t">No epic</span>` : `<span class="ei" data-lopen>♦ ${esc(shortId(l))}</span><span class="t" data-lopen>${esc(e ? e.t : l)}</span>`;
+  return `<button class="lane" data-lane="${esc(l)}" aria-expanded="${!f}" style="--ec:${epicHue(l)}"><span class="ch">${f ? "▸" : "▾"}</span>${name}${bar}<span class="n">${n}</span></button>`;
 }
 
 /**

@@ -316,6 +316,8 @@ interface BoardGesture {
   x0: number; y0: number; pid: number; mode: null | "swipe" | "scroll" | "drag"; edge?: boolean; lp?: number;
   /** wide is the side-by-side board, where a mouse drags at once and nothing swipes */
   wide?: boolean; mouse?: boolean;
+  /** lopen is a tap on the epic named in a lane header, which opens the epic instead of folding */
+  lopen?: boolean;
   ghost?: HTMLElement; ox?: number; oy?: number; target?: string | null; edgeDir?: number; edgeT?: number;
 }
 let B: BoardGesture | null = null;
@@ -333,7 +335,7 @@ function bindBoard(): void {
     const card = t.closest<HTMLElement>("[data-card]");
     const b: BoardGesture = {
       col, card, id: card?.dataset.card, x0: e.clientX, y0: e.clientY, pid: e.pointerId, mode: null, edge: inDeadZone(e.clientX),
-      lane: t.closest<HTMLElement>("[data-lane]"), epic: t.closest<HTMLElement>("[data-epic]"), wide: col.id === "wboard", mouse: e.pointerType === "mouse",
+      lane: t.closest<HTMLElement>("[data-lane]"), lopen: !!t.closest("[data-lopen]"), epic: t.closest<HTMLElement>("[data-epic]"), wide: col.id === "wboard", mouse: e.pointerType === "mouse",
     };
     if (card && !D.project.read_only && !(b.wide && b.mouse)) b.lp = window.setTimeout(() => { if (B === b && !b.mode) startDrag(b, app); }, LP_MS);
     B = b;
@@ -376,6 +378,7 @@ function bindBoard(): void {
     if (b.mode) return;
     if (b.lane) {
       const l = b.lane.dataset.lane!;
+      if (b.lopen) { openDetail(l); return; }
       if (S.board.laneFold.has(l)) S.board.laneFold.delete(l); else S.board.laneFold.add(l);
       S.board.keep = true;
       renderBoard();

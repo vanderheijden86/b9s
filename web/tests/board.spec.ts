@@ -109,9 +109,17 @@ test.describe("epic lanes with the rail as an index", () => {
   test("the lane chevron folds the lane", async ({ page, project }) => {
     await open(page, project);
     await page.locator('#bar [data-view="board"]').click();
-    await page.locator('#bcol .lane[data-lane="t-beta"]').click();
+    await page.locator('#bcol .lane[data-lane="t-beta"] .ch').click();
     await expect(page.locator('#bcol [data-card="t-b1"]')).toHaveCount(0);
     await expect(page.locator('#bcol [data-card="t-a0"]')).toHaveCount(1);
+  });
+
+  test("a tap on the lane's epic opens the epic", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('#bar [data-view="board"]').click();
+    await page.locator('#bcol .lane[data-lane="t-beta"] .t').click();
+    await expect(page.locator(".detail")).toContainText("Beta epic");
+    await expect(page.locator('#bcol [data-card="t-b1"]')).toHaveCount(1);
   });
 
   test("a card nested below a task names its parent on a third line", async ({ page, project }) => {
