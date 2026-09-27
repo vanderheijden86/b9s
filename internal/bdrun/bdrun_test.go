@@ -185,7 +185,7 @@ func TestRun_KillsWholeProcessGroupOnTimeout(t *testing.T) {
 		t.Fatal("Run() err = nil, want a timeout error")
 	}
 	if elapsed > 5*time.Second {
-		t.Fatalf("Run took %v, want the grandchild's pipe hold to be bounded by WaitDelay, not the 2s sleep", elapsed)
+		t.Fatalf("Run took %v, want the grandchild's pipe hold to be bounded by WaitDelay, not the 3s sleep", elapsed)
 	}
 }
 
@@ -254,6 +254,13 @@ func TestRun_CancelledDuringRun_ReturnsCancelledError(t *testing.T) {
 	}
 }
 
+// lingeringChildDeadline must expire after the fake bd exits and before Run
+// returns, which is WaitDelay after that exit because a child still holds the
+// pipe. Starting a fresh temp-dir script takes 150-200ms on macOS and more
+// under parallel test load; a deadline near that races bd's own startup and
+// kills it, which turns these tests into timeout tests.
+const lingeringChildDeadline = waitDelay
+
 // TestRun_QuickNonZeroExitWithLingeringSameGroupChild_ReturnsExitError guards
 // the other half of trusting bd's own exit over ctx: bd itself exits 3 well
 // within the deadline, but a child it backgrounds keeps the stdout pipe open
@@ -265,12 +272,12 @@ func TestRun_QuickNonZeroExitWithLingeringSameGroupChild_ReturnsExitError(t *tes
 		t.Skip("fake bd script needs a POSIX shell")
 	}
 	binDir := t.TempDir()
-	script := "#!/bin/sh\nsleep 2 &\nprintf 'boom'\nexit 3\n"
+	script := "#!/bin/sh\nsleep 3 &\nprintf 'boom'\nexit 3\n"
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), lingeringChildDeadline)
 	defer cancel()
 
 	start := time.Now()
@@ -290,7 +297,7 @@ func TestRun_QuickNonZeroExitWithLingeringSameGroupChild_ReturnsExitError(t *tes
 		t.Errorf("Run() out = %q, want %q", out, "boom")
 	}
 	if elapsed > 5*time.Second {
-		t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 2s sleep", elapsed)
+		t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 3s sleep", elapsed)
 	}
 }
 
@@ -300,22 +307,18 @@ func TestRun_QuickNonZeroExitWithLingeringSameGroupChild_ReturnsExitError(t *tes
 // bd's own process group, the common case) keeps the stdout pipe open past
 // that deadline and past WaitDelay. By the time CombinedOutput returns,
 // ctx.Err() is already DeadlineExceeded even though the run succeeded, so Run
-// must judge success from runErr, not from ctx. The deadline is 500ms rather
-// than near-instant: forking a fresh, unsigned temp-dir script incurs real
-// exec overhead on macOS (observed ~150-200ms), and a deadline shorter than
-// that races bd's own startup, killing it before it ever backgrounds the
-// child or prints anything.
+// must judge success from runErr, not from ctx.
 func TestRun_QuickSuccessWithLingeringSameGroupChild_ReturnsOutputNoError(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake bd script needs a POSIX shell")
 	}
 	binDir := t.TempDir()
-	script := "#!/bin/sh\nsleep 2 &\nprintf 'written'\n"
+	script := "#!/bin/sh\nsleep 3 &\nprintf 'written'\n"
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), lingeringChildDeadline)
 	defer cancel()
 
 	start := time.Now()
@@ -329,7 +332,7 @@ func TestRun_QuickSuccessWithLingeringSameGroupChild_ReturnsOutputNoError(t *tes
 		t.Errorf("Run() out = %q, want %q", out, "written")
 	}
 	if elapsed > 5*time.Second {
-		t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 2s sleep", elapsed)
+		t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 3s sleep", elapsed)
 	}
 }
 
@@ -349,7 +352,7 @@ func TestRun_ErrWaitDelay_QuickSuccessWithLingeringDetachedChild_ReturnsOutputNo
 		t.Skip("perl not on PATH: needed to detach the lingering child into its own process group")
 	}
 	binDir := t.TempDir()
-	script := "#!/bin/sh\nperl -e 'setpgrp(0,0); exec(\"sleep\",\"2\")' &\nprintf 'written'\n"
+	script := "#!/bin/sh\nperl -e 'setpgrp(0,0); exec(\"sleep\",\"3\")' &\nprintf 'written'\n"
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +366,7 @@ func TestRun_ErrWaitDelay_QuickSuccessWithLingeringDetachedChild_ReturnsOutputNo
 			return context.Background(), func() {}
 		}},
 		{"with deadline", func() (context.Context, context.CancelFunc) {
-			return context.WithTimeout(context.Background(), 100*time.Millisecond)
+			return context.WithTimeout(context.Background(), lingeringChildDeadline)
 		}},
 	}
 	for _, tc := range cases {
@@ -382,7 +385,7 @@ func TestRun_ErrWaitDelay_QuickSuccessWithLingeringDetachedChild_ReturnsOutputNo
 				t.Errorf("Run() out = %q, want %q", out, "written")
 			}
 			if elapsed > 5*time.Second {
-				t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 2s sleep", elapsed)
+				t.Fatalf("Run took %v, want it bounded by WaitDelay, not the 3s sleep", elapsed)
 			}
 		})
 	}
