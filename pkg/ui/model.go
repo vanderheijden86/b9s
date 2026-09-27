@@ -583,6 +583,11 @@ type Model struct {
 	// B9S_TEST_MODE, so a test can assert on it without a real opener.
 	lastAttachmentOpen *attachmentOpenRecord
 
+	// Attach-files form (bd-t8j5.10): the "I" key opens a huh form asking
+	// for one or more paths, then runs internal/attach.Add for them.
+	showAttachAddModal bool
+	attachAddModal     AttachAddModal
+
 	// Repo picker (workspace mode)
 	showRepoPicker bool
 	repoPicker     RepoPickerModel
@@ -1307,6 +1312,38 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	}
 
+	// Handle the attach-add modal before the type switch for the same reason
+	// as the edit modal above: huh.Form needs every message type, not just
+	// tea.KeyMsg, to drive its own internal navigation.
+	if m.showAttachAddModal {
+		m.attachAddModal, cmd = m.attachAddModal.Update(msg)
+		cmds = append(cmds, cmd)
+		if m.attachAddModal.IsCancelRequested() {
+			m.showAttachAddModal = false
+			return m, tea.Batch(cmds...)
+		}
+		if m.attachAddModal.IsSubmitRequested() {
+			m.showAttachAddModal = false
+			issueID := m.attachAddModal.issueID
+			paths, err := parseAttachPaths(m.attachAddModal.RawPaths())
+			if err != nil {
+				m.statusMsg = fmt.Sprintf("attach: %v", err)
+				m.statusIsError = true
+				return m, tea.Batch(cmds...)
+			}
+			if len(paths) == 0 {
+				m.statusMsg = "attach: no file paths given"
+				m.statusIsError = false
+				return m, tea.Batch(cmds...)
+			}
+			m.statusMsg = fmt.Sprintf("attaching %d file(s)...", len(paths))
+			m.statusIsError = false
+			cmds = append(cmds, m.attachAddCmd(issueID, paths))
+			return m, tea.Batch(cmds...)
+		}
+		return m, tea.Batch(cmds...)
+	}
+
 	switch msg := msg.(type) {
 	case UpdateMsg:
 		m.updateAvailable = true
@@ -1384,6 +1421,23 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Path:           msg.openedPath,
 				StatusMsg:      msg.statusMsg,
 				IsError:        msg.isError,
+			}
+		}
+
+	case attachAddResultMsg:
+		// Handle attach-add results (bd-t8j5.10). Dropped the same way as
+		// attachmentOpenResultMsg above when a :project switch landed
+		// between dispatch and here.
+		if msg.dispatchProjectPath == m.activeProjectPath {
+			if msg.handle != nil {
+				m.attachHandle = msg.handle
+				m.attachHandleProject = msg.projectPath
+			}
+			m.statusMsg = msg.statusMsg
+			m.statusIsError = msg.isError
+			if msg.reload {
+				debug.Log("attachAddResultMsg: triggering FileChangedMsg for reload (issue=%s)", msg.issueID)
+				cmds = append(cmds, func() tea.Msg { return FileChangedMsg{} })
 			}
 		}
 
@@ -2693,6 +2747,21 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.openAttachmentPicker()
 				return m, nil
 
+			case "I":
+				// Attach-files form over the selected issue (bd-t8j5.10).
+				// Guarded the same way as R just above: skipped when a
+				// popup or the label filter input would otherwise take the
+				// letter, so it falls through to
+				// handleLabelPickerKeys/handleTreeKeys below instead.
+				if m.focused == focusLabelPicker || m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen() {
+					break
+				}
+				m.openAttachAddModal()
+				if m.showAttachAddModal {
+					return m, m.attachAddModal.Init()
+				}
+				return m, nil
+
 			case "b":
 				// Toggle board view from any context (bd-8hw.4: tree is permanent)
 				m.isGraphView = false
@@ -3962,6 +4031,10 @@ func (m Model) View() string {
 	} else if m.showAttachmentPicker {
 		// Attachment picker modal (bd-t8j5.9)
 		body = m.attachmentPicker.View()
+		isOverlay = true
+	} else if m.showAttachAddModal {
+		// Attach-files modal (bd-t8j5.10)
+		body = m.attachAddModal.View()
 		isOverlay = true
 	} else if m.showRepoPicker {
 		body = m.repoPicker.View()
