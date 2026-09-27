@@ -157,6 +157,29 @@ func TestRKeyOnIssueWithNoAttachmentsShowsStatusAndNoPicker(t *testing.T) {
 	}
 }
 
+// TestRKeyInAllProjectsModeRefusesWithoutOpeningPicker is review item D: the
+// picker must refuse up front rather than open over an issue whose source
+// database the merged view cannot single out, only to fail on every Enter.
+// attachmentOpenCmd keeps its own refusal as a backstop (review item 6).
+func TestRKeyInAllProjectsModeRefusesWithoutOpeningPicker(t *testing.T) {
+	now := time.Now()
+	c1, _ := attachmentFixture(t, "cmt-001", "one.txt", "text/plain", []byte("one"), now)
+	m, _ := attachmentTestModel(t, []*model.Comment{c1}, false)
+	m.allProjectsMode = true
+
+	m, _ = pressBulkKey(t, m, runeKey("R"))
+
+	if m.ShowAttachmentPicker() {
+		t.Fatal("R in all-projects mode must not open the picker")
+	}
+	if m.statusIsError {
+		t.Fatalf("expected a non-error status message, got isError=true (%q)", m.statusMsg)
+	}
+	if !strings.Contains(m.statusMsg, "all-projects mode") {
+		t.Fatalf("status message = %q, want it to mention all-projects mode", m.statusMsg)
+	}
+}
+
 func TestEscClosesAttachmentPickerWithoutOpening(t *testing.T) {
 	now := time.Now()
 	c1, _ := attachmentFixture(t, "cmt-001", "one.txt", "text/plain", []byte("one"), now)
@@ -285,6 +308,7 @@ func TestFooterWritesHyperlinkRawAfterSanitizingLabel(t *testing.T) {
 	const url = "https://example.com/presigned/diagram.png"
 	m.statusMsg = "diagram.png:"
 	m.statusHyperlink = osc8Hyperlink(url, url)
+	m.statusHyperlinkFor = m.statusMsg
 
 	footer := (&m).renderFooter()
 
@@ -293,6 +317,44 @@ func TestFooterWritesHyperlinkRawAfterSanitizingLabel(t *testing.T) {
 	}
 	if !strings.Contains(footer, url) {
 		t.Fatalf("footer = %q, want it to contain the URL %s", footer, url)
+	}
+}
+
+// TestBdResultAfterAttachmentLinkDropsStaleHyperlink is the review's proven
+// case: statusHyperlink used to persist across any statusMsg change that was
+// not a keypress, so a later BdResultMsg (no key involved) rendered its own
+// label next to an unrelated attachment's OSC 8 link. statusHyperlinkFor now
+// has to still match statusMsg before renderFooter writes the link.
+func TestBdResultAfterAttachmentLinkDropsStaleHyperlink(t *testing.T) {
+	m, _ := attachmentTestModel(t, nil, false)
+	m.width = 80
+	const url = "https://example.com/presigned/diagram.png"
+
+	updated, _ := m.Update(attachmentOpenResultMsg{
+		dispatchProjectPath: m.activeProjectPath,
+		attachmentName:      "diagram.png",
+		statusMsg:           "diagram.png:",
+		hyperlink:           osc8Hyperlink(url, url),
+	})
+	m = updated.(Model)
+	if m.statusHyperlink == "" {
+		t.Fatal("expected the attachment result to set statusHyperlink")
+	}
+	if footer := (&m).renderFooter(); !strings.Contains(footer, "\x1b]8;;") {
+		t.Fatalf("footer = %q, want the freshly set hyperlink to render", footer)
+	}
+
+	// A bd operation's result is not a keypress, so it never used to clear
+	// the leftover hyperlink fields.
+	updated, _ = m.Update(BdResultMsg{Operation: BdOpClose, IssueID: "bd-1", Success: true})
+	m = updated.(Model)
+
+	footer := (&m).renderFooter()
+	if strings.Contains(footer, "\x1b]8;;") {
+		t.Fatalf("footer = %q, want no OSC 8 sequence: BdResultMsg set an unrelated statusMsg and must not carry the stale attachment link", footer)
+	}
+	if !strings.Contains(footer, "Closed bd-1") {
+		t.Fatalf("footer = %q, want it to show the bd result", footer)
 	}
 }
 
@@ -321,6 +383,32 @@ func TestEnterOnWebModeRefusesLocalBackendWithoutSettingHyperlink(t *testing.T) 
 	}
 	if m.statusHyperlink != "" {
 		t.Fatalf("statusHyperlink = %q, want empty: the local backend never reaches attachmentOpenWeb's success path", m.statusHyperlink)
+	}
+}
+
+// TestContainsControlByte is review item B: a presigned URL is written raw
+// to the terminal past sanitizeTerminalLine, so attachmentOpenWeb refuses one
+// carrying a byte that could act on the terminal instead of rendering as
+// plain text, rather than trusting the S3 SDK's own escaping.
+func TestContainsControlByte(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{name: "ordinary url", s: "https://example.com/presigned/diagram.png?sig=abc", want: false},
+		{name: "newline", s: "https://example.com/\nbad", want: true},
+		{name: "escape", s: "https://example.com/\x1b]8;;evil\x1b\\", want: true},
+		{name: "del", s: "https://example.com/\x7f", want: true},
+		{name: "tab", s: "https://example.com/\tbad", want: true},
+		{name: "space is not a control byte", s: "https://example.com/has space", want: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := containsControlByte(tc.s); got != tc.want {
+				t.Fatalf("containsControlByte(%q) = %v, want %v", tc.s, got, tc.want)
+			}
+		})
 	}
 }
 

@@ -135,6 +135,15 @@ func (m *AttachmentPickerModel) View() string {
 // needs no blob store configuration), so a project with no attachments:
 // section still shows the list; only Enter needs the store.
 func (m *Model) openAttachmentPicker() {
+	if m.allProjectsMode {
+		// attachmentOpenCmd refuses this too (review item 6), but refusing
+		// here as well means the picker never opens only to fail on every
+		// Enter: the merged view has no single project to resolve the blob
+		// store against (review item D).
+		m.statusMsg = "attachments: not available in all-projects mode; switch to one project (0 or :project) first"
+		m.statusIsError = false
+		return
+	}
 	issue := m.getSelectedIssue()
 	if issue == nil {
 		return
@@ -409,12 +418,37 @@ func attachmentOpenWeb(ctx context.Context, handle *blobstore.Handle, att attach
 		result.isError = true
 		return result
 	}
+	if containsControlByte(url) {
+		// The database segment of the blob key comes from repo-controlled
+		// metadata.json (b9s's own project catalog, not attacker input from
+		// this download), but a presigned URL is about to be written raw to
+		// the terminal past sanitizeTerminalLine, so it still gets its own
+		// check rather than trusting the S3 SDK's escaping (review item B).
+		result.statusMsg = fmt.Sprintf("attachments: refusing to print a presigned URL with a control byte for %s", att.Name)
+		result.isError = true
+		return result
+	}
 	// The link itself, not the plain statusMsg label, carries the OSC 8
 	// escape codes: renderFooter sanitizes statusMsg and writes hyperlink
-	// raw afterward (review item 1).
+	// raw afterward (review item 1). The visible label is "open <name>"
+	// rather than the full URL (review item C): att.Name is already
+	// validated as a bare file name with no path separators or control
+	// characters (internal/attachref's Parse), so it is safe to show as-is.
 	result.statusMsg = att.Name + ":"
-	result.hyperlink = osc8Hyperlink(url, url)
+	result.hyperlink = osc8Hyperlink(url, "open "+att.Name)
 	return result
+}
+
+// containsControlByte reports whether s has any byte below 0x20 or equal to
+// 0x7f, the range that lets a value break out of an OSC 8 escape sequence or
+// otherwise act on the terminal instead of rendering as plain text.
+func containsControlByte(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < 0x20 || s[i] == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 // attachmentOpenDownload downloads att into its own subdirectory of the
@@ -469,7 +503,12 @@ func attachmentOpenDownload(ctx context.Context, handle *blobstore.Handle, att a
 	}
 
 	if !openAllowedForContent(sniffed, att.Name) {
-		result.statusMsg = fmt.Sprintf("%s downloaded to %s (opening refused: sniffed as %s)", att.Name, path, sniffed)
+		// The file itself is not removed on refusal, unlike the sniff and
+		// rename error paths above: it stays reachable at path until b9s
+		// exits (Model.Stop removes the whole per-run temp dir), so the
+		// message says so rather than leaving the user to guess (review
+		// item E).
+		result.statusMsg = fmt.Sprintf("%s downloaded to %s (opening refused: sniffed as %s; file stays until b9s exits)", att.Name, path, sniffed)
 		return result
 	}
 

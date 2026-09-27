@@ -604,9 +604,14 @@ type Model struct {
 	// statusHyperlink is an OSC 8 escape sequence renderFooter writes raw,
 	// after the sanitized statusMsg label: sanitizeTerminalLine would strip
 	// the escape codes as control characters if it ran over this too
-	// (bd-t8j5.9 review).
-	statusHyperlink string
-	clipboardWrite  func(string) error
+	// (bd-t8j5.9 review). statusHyperlinkFor holds the exact statusMsg it was
+	// set for: statusMsg changes on many paths that never touch the
+	// hyperlink (BdResultMsg, a reload, the Dolt watcher), so renderFooter
+	// only writes the link while statusMsg still matches, rather than
+	// attaching a stale attachment link to an unrelated message.
+	statusHyperlink    string
+	statusHyperlinkFor string
+	clipboardWrite     func(string) error
 
 	// Workspace mode state
 	workspaceMode    bool            // True when viewing multiple repos
@@ -1372,6 +1377,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMsg = msg.statusMsg
 			m.statusIsError = msg.isError
 			m.statusHyperlink = msg.hyperlink
+			m.statusHyperlinkFor = msg.statusMsg
 			m.lastAttachmentOpen = &attachmentOpenRecord{
 				AttachmentName: msg.attachmentName,
 				OpenerCmd:      msg.openerCmd,
@@ -2055,6 +2061,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMsg = ""
 		m.statusIsError = false
 		m.statusHyperlink = ""
+		m.statusHyperlinkFor = ""
 
 		// The help search owns every key while editing, ahead of the global
 		// single-key bindings (?, :, `) that would otherwise close help.
@@ -4877,10 +4884,13 @@ func (m *Model) renderFooter() string {
 		}
 		filler := lipgloss.NewStyle().Width(remaining).Render("")
 		line := msgSection
-		if m.statusHyperlink != "" {
+		if m.statusHyperlink != "" && m.statusHyperlinkFor == m.statusMsg {
 			// Written raw, after remaining/filler is sized from the
 			// sanitized label alone: sanitizeTerminalLine would strip the
 			// OSC 8 escape codes as control characters (bd-t8j5.9 review).
+			// The statusHyperlinkFor check drops the link once statusMsg
+			// has moved on to an unrelated message set by one of the many
+			// paths that never touch the hyperlink fields.
 			line += " " + m.statusHyperlink
 		}
 		return lipgloss.JoinHorizontal(lipgloss.Bottom, line, filler)
