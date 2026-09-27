@@ -15,7 +15,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$REPO = "github.com/vanderheijden86/beadwork"
+$REPO = "github.com/vanderheijden86/b9s"
 $BIN_NAME = "b9s"
 $MIN_GO_VERSION = "1.25"
 

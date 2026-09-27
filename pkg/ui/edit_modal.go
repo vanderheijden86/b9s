@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"

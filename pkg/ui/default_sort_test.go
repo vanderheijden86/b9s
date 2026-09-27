@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
-	"github.com/vanderheijden86/beadwork/pkg/model"
-	"github.com/vanderheijden86/beadwork/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 func defaultSortIssues() []model.Issue {

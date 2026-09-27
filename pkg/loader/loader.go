@@ -12,7 +12,7 @@ import (
 
 	json "github.com/goccy/go-json"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // BeadsDirEnvVar is the name of the environment variable for custom beads directory

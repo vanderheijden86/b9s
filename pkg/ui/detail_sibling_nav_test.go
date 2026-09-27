@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 // openDetailOn opens the full-screen tree detail view for the issue reached

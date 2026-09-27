@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 func TestOpen_NilConfigIsNotConfigured(t *testing.T) {

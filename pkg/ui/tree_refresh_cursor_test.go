@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // refreshIssues returns n flat tasks, newest first under the default sort.

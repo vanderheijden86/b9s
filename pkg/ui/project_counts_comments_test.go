@@ -8,7 +8,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // sqliteFullIssuesSchema mirrors every column SQLiteReader.LoadIssuesFiltered

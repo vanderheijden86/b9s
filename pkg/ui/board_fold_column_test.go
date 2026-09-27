@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 func foldColumnBoard(t *testing.T) Model {

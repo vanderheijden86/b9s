@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // scanAllComments scans every row of a "SELECT id, issue_id, author, text,

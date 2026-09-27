@@ -8,8 +8,8 @@ package attach
 import (
 	"context"
 
-	"github.com/vanderheijden86/beadwork/internal/attachref"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/internal/attachref"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // Attachment is one attachment folded from an issue's comments. It is an

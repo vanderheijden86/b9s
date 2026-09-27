@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // ErrNotConfigured is returned by Open when the project has no attachments

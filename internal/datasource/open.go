@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // OpenReason classifies why a project could not be opened. It is a closed set:

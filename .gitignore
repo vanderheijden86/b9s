@@ -21,7 +21,7 @@ benchmarks/current.txt
 # Local BW state and reports
 .bw/
 .bv/
-beads_report_beadwork_*.md
+beads_report_b9s_*.md
 beads_report_b9s_*.md
 
 # Nix build artifacts
@@ -36,7 +36,7 @@ bv-graph-wasm/pkg/
 pkg/export/wasm_scorer/target/
 pkg/export/wasm_scorer/pkg/
 node_modules/
-beadwork_graph*.html
+b9s_graph*.html
 b9s_graph*.html
 test-results/
 

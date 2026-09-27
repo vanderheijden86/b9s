@@ -15,14 +15,14 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/vanderheijden86/beadwork/internal/datasource"
-	"github.com/vanderheijden86/beadwork/pkg/config"
-	"github.com/vanderheijden86/beadwork/pkg/debug"
-	"github.com/vanderheijden86/beadwork/pkg/loader"
-	"github.com/vanderheijden86/beadwork/pkg/model"
-	"github.com/vanderheijden86/beadwork/pkg/ui"
-	"github.com/vanderheijden86/beadwork/pkg/updater"
-	"github.com/vanderheijden86/beadwork/pkg/version"
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/debug"
+	"github.com/vanderheijden86/b9s/pkg/loader"
+	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/updater"
+	"github.com/vanderheijden86/b9s/pkg/version"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"

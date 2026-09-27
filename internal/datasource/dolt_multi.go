@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/vanderheijden86/beadwork/pkg/debug"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/debug"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // MultiDoltReader loads issues from multiple Dolt databases on the same server.

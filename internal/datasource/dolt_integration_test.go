@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 
 	_ "github.com/go-sql-driver/mysql"
 )

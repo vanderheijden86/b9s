@@ -296,6 +296,10 @@ func TestInstallersUseCurrentIdentityAndRequireChecksums(t *testing.T) {
 		if strings.Contains(installer, "Dicklesworthstone") {
 			t.Fatal("installer still points at the previous repository owner")
 		}
+		// go install resolves the module path, so a stale one installs nothing.
+		if strings.Contains(installer, "vanderheijden86/beadwork") {
+			t.Fatal("installer still points at the previous module path")
+		}
 	}
 	if !strings.Contains(string(installPowerShell), `$BIN_NAME = "b9s"`) {
 		t.Fatal("install.ps1 still installs the previous binary name")

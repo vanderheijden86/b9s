@@ -37,7 +37,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 			Title:   "Welcome",
 			Section: "Introduction",
 			Elements: []TutorialElement{
-				Section{Title: "Welcome to beadwork"},
+				Section{Title: "Welcome to b9s"},
 				Paragraph{Text: "Issue tracking that lives in your code."},
 				Spacer{Lines: 1},
 				Paragraph{Text: "The problem: You're deep in flow, coding away, when you need to check an issue. You switch to a browser, navigate to your tracker, lose context, and break concentration."},

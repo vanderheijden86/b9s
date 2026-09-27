@@ -8,7 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // switchModelWithFakeBd is switchModel plus a fake bd recorder wired as the

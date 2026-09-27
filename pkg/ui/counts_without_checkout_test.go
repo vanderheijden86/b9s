@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // chdirIntoProjectWithOpenIssue makes the working directory a checkout whose

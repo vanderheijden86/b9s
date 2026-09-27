@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // boardBreakpoints gives the minimum width at which 4, 3 and 2 columns are

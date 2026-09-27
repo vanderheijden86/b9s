@@ -12,10 +12,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/internal/attachref"
-	"github.com/vanderheijden86/beadwork/internal/datasource"
-	"github.com/vanderheijden86/beadwork/pkg/config"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/internal/attachref"
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // writeFakeBdRecorder installs a shell script named bd that appends every

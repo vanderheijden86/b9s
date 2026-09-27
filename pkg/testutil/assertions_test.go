@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 func TestAssertionHelpersAcceptValidIssueGraph(t *testing.T) {

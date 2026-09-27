@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/internal/attachref"
-	"github.com/vanderheijden86/beadwork/internal/blobstore"
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/internal/attachref"
+	"github.com/vanderheijden86/b9s/internal/blobstore"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 func TestAttachGC_DryRun_ReportsUnreferencedBlobWithoutDeleting(t *testing.T) {

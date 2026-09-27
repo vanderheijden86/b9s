@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 func TestModelStylePlaceholder(t *testing.T) {

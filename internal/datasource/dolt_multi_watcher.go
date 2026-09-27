@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/debug"
+	"github.com/vanderheijden86/b9s/pkg/debug"
 )
 
 // MultiDoltWatcher polls working-set content hashes across multiple Dolt

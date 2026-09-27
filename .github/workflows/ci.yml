@@ -40,7 +40,7 @@ jobs:
           {
             file = $1
             sub(/:.*/, "", file)
-            if (file !~ /^github.com\/vanderheijden86\/beadwork\/pkg\//) next
+            if (file !~ /^github.com\/vanderheijden86\/b9s\/pkg\//) next
             stmts = $2; count = $3; all += stmts
             if (count > 0) hit += stmts
           }

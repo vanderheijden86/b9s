@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vanderheijden86/beadwork/internal/datasource"
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // ProjectEntry holds display data for one project in the picker.

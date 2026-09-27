@@ -1,6 +1,6 @@
 package ui
 
-import "github.com/vanderheijden86/beadwork/pkg/config"
+import "github.com/vanderheijden86/b9s/pkg/config"
 
 // headerProjects lists the header rows: the recent projects in stored order,
 // preceded by the startup project when it is not among them, so the folder b9s

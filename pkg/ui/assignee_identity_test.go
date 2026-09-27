@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/pkg/identity"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/identity"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 const assigneeIdentities = `[

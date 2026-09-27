@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // refreshExpansionIssues returns a fresh four-level chain on every call, the

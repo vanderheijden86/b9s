@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
-	"github.com/vanderheijden86/beadwork/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 // View Transition Integration Tests (bv-i3ls)

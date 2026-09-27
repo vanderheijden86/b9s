@@ -3,8 +3,8 @@ package datasource
 import (
 	"fmt"
 
-	"github.com/vanderheijden86/beadwork/pkg/loader"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/loader"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // SourceDiff represents differences between two data sources

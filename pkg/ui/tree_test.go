@@ -13,7 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // testTheme returns a minimal Theme for testing.

@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vanderheijden86/beadwork/pkg/identity"
+	"github.com/vanderheijden86/b9s/pkg/identity"
 )
 
 func stubActorLookup(env map[string]string, gitUser string) actorLookup {

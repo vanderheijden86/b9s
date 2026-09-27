@@ -12,8 +12,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vanderheijden86/beadwork/pkg/identity"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/identity"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // TreeState represents the persistent state of the tree view (bv-zv7p).

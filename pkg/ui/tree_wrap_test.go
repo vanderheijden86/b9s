@@ -8,7 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 const wrapTestTitle = "MegaToby cannot read photos and PDFs because media paths are rejected as outside the allowed roots"

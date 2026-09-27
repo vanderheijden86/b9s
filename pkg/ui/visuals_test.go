@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 func TestRenderSparkline(t *testing.T) {

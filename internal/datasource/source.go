@@ -1,5 +1,5 @@
 // Package datasource provides intelligent multi-source data detection and selection
-// for beadwork. It discovers, validates, and selects the freshest valid source
+// for b9s. It discovers, validates, and selects the freshest valid source
 // from SQLite databases, worktree JSONL files, and local JSONL files.
 package datasource
 
@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/loader"
+	"github.com/vanderheijden86/b9s/pkg/loader"
 )
 
 // SourceType identifies the type of data source

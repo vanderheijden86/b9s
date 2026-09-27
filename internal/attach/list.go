@@ -1,6 +1,6 @@
 package attach
 
-import "github.com/vanderheijden86/beadwork/internal/attachref"
+import "github.com/vanderheijden86/b9s/internal/attachref"
 
 // List returns issueID's attachments, folded from its comments in the order
 // attachref.Collect defines.

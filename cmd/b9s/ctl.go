@@ -7,9 +7,9 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/vanderheijden86/beadwork/internal/control"
-	"github.com/vanderheijden86/beadwork/pkg/debug"
-	"github.com/vanderheijden86/beadwork/pkg/ui"
+	"github.com/vanderheijden86/b9s/internal/control"
+	"github.com/vanderheijden86/b9s/pkg/debug"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 const ctlUsage = `usage: b9s ctl [--pane %N] branch <issue-id>

@@ -10,8 +10,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"github.com/vanderheijden86/beadwork/pkg/config"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 func epicChildDeps(id, parent string) []*model.Dependency {

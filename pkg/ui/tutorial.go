@@ -325,7 +325,7 @@ func (m TutorialModel) renderHeader(page TutorialPage, totalPages int) string {
 			Render(strings.Repeat("░", barWidth-filledWidth))
 
 	// Title
-	title := titleStyle.Render("📚 beadwork Tutorial")
+	title := titleStyle.Render("📚 b9s Tutorial")
 
 	// Calculate spacing to align progress to the right
 	headerContent := title + "  " + progressText + " " + progressBar
@@ -1030,11 +1030,11 @@ func defaultTutorialPages() []TutorialPage {
 // =============================================================================
 
 // introWelcomeContent is Page 1 of the Introduction section.
-const introWelcomeContent = `## Welcome to beadwork
+const introWelcomeContent = `## Welcome to b9s
 
 ` + "```" + `
     ╭──────────────────────────────────────╮
-    │      beadwork (bv)               │
+    │                 b9s                  │
     │  Issue tracking that lives in code   │
     ╰──────────────────────────────────────╯
 ` + "```" + `

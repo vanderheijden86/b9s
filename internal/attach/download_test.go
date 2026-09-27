@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/internal/attachref"
-	"github.com/vanderheijden86/beadwork/internal/blobstore"
+	"github.com/vanderheijden86/b9s/internal/attachref"
+	"github.com/vanderheijden86/b9s/internal/blobstore"
 )
 
 // fakeStore is a minimal blobstore.Store whose Open is the only method

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/internal/datasource"
-	"github.com/vanderheijden86/beadwork/pkg/identity"
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/identity"
 )
 
 func healthIdentityModel(t *testing.T) Model {

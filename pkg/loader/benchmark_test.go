@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/pkg/testutil"
+	"github.com/vanderheijden86/b9s/pkg/testutil"
 )
 
 func BenchmarkLoadIssuesFromFile(b *testing.B) {

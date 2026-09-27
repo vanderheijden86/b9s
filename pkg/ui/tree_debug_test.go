@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
-	"github.com/vanderheijden86/beadwork/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 func TestDebugTreeOrder(t *testing.T) {

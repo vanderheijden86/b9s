@@ -3,8 +3,8 @@ package ui
 import (
 	"errors"
 
-	"github.com/vanderheijden86/beadwork/internal/datasource"
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // errNoCheckout marks a project that can only be read from its database.

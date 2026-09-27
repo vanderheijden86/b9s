@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vanderheijden86/beadwork/pkg/loader"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/loader"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // ErrCommentsUnavailable wraps a query or scan failure while loading

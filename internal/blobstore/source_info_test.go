@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/internal/datasource"
+	"github.com/vanderheijden86/b9s/internal/datasource"
 )
 
 func TestSourceInfoFromDataSource_Dolt(t *testing.T) {

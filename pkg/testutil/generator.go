@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // GraphFixture represents an abstract graph for testing graph algorithms.

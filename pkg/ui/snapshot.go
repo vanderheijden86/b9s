@@ -1,4 +1,4 @@
-// Package ui provides the terminal user interface for beadwork.
+// Package ui provides the terminal user interface for b9s.
 // This file implements the DataSnapshot type for thread-safe UI rendering.
 package ui
 
@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 type datasetTier int

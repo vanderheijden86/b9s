@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vanderheijden86/beadwork/internal/control"
+	"github.com/vanderheijden86/b9s/internal/control"
 )
 
 func TestCtlBranchSendsTheIDToTheRunningInstance(t *testing.T) {

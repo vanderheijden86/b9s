@@ -385,7 +385,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // DoltReader provides read access to a beads Dolt database via MySQL protocol.

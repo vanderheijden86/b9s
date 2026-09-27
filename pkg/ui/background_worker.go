@@ -1,4 +1,4 @@
-// Package ui provides the terminal user interface for beadwork.
+// Package ui provides the terminal user interface for b9s.
 // This file implements the BackgroundWorker for off-thread data processing.
 package ui
 
@@ -19,10 +19,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	dbg "github.com/vanderheijden86/beadwork/pkg/debug"
-	"github.com/vanderheijden86/beadwork/pkg/loader"
-	"github.com/vanderheijden86/beadwork/pkg/model"
-	"github.com/vanderheijden86/beadwork/pkg/watcher"
+	dbg "github.com/vanderheijden86/b9s/pkg/debug"
+	"github.com/vanderheijden86/b9s/pkg/loader"
+	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/watcher"
 )
 
 // WorkerState represents the current state of the background worker.

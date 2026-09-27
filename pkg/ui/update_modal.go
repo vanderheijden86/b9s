@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/pkg/updater"
-	"github.com/vanderheijden86/beadwork/pkg/version"
+	"github.com/vanderheijden86/b9s/pkg/updater"
+	"github.com/vanderheijden86/b9s/pkg/version"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

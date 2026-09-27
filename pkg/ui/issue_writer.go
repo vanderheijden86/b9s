@@ -9,8 +9,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/vanderheijden86/beadwork/internal/bdrun"
-	"github.com/vanderheijden86/beadwork/pkg/debug"
+	"github.com/vanderheijden86/b9s/internal/bdrun"
+	"github.com/vanderheijden86/b9s/pkg/debug"
 )
 
 // bdRunTimeout bounds a single bd invocation from IssueWriter (bd-t8j5.20): a

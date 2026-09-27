@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vanderheijden86/beadwork/internal/attachref"
-	"github.com/vanderheijden86/beadwork/pkg/model"
+	"github.com/vanderheijden86/b9s/internal/attachref"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 func TestList_ReturnsEmptyForAnIssueWithNoComments(t *testing.T) {

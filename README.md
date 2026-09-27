@@ -280,6 +280,7 @@ B9S_TEST_DOLT_SCRATCH_ADDR=127.0.0.1:13306 go test ./internal/datasource/ -run D
 
 ## Acknowledgments
 
+- Jeffrey Emanuel for [beads_viewer](https://github.com/Dicklesworthstone/beads_viewer), the project b9s started from. Parts of its code remain, under the MIT licence.
 - Steve Yegge for [Beads](https://github.com/steveyegge/beads).
 - The [k9s](https://k9scli.io/) project for the interaction model b9s follows.
 - The [Charm](https://charm.sh) team for [Bubble Tea](https://github.com/charmbracelet/bubbletea), [Lip Gloss](https://github.com/charmbracelet/lipgloss), [Bubbles](https://github.com/charmbracelet/bubbles), [Huh](https://github.com/charmbracelet/huh) and [Glamour](https://github.com/charmbracelet/glamour).

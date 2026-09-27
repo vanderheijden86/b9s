@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vanderheijden86/beadwork/internal/datasource"
-	"github.com/vanderheijden86/beadwork/pkg/config"
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // projectOpener loads a project; datasource.OpenProject in production.

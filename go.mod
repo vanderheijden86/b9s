@@ -1,4 +1,4 @@
-module github.com/vanderheijden86/beadwork
+module github.com/vanderheijden86/b9s
 
 // Keep this in sync with CI (see .github/workflows/ci.yml) and the minimum
 // version available in common dev environments.

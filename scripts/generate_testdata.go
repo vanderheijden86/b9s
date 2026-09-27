@@ -15,8 +15,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/vanderheijden86/beadwork/pkg/model"
-	"github.com/vanderheijden86/beadwork/pkg/testutil"
+	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/testutil"
 )
 
 type datasetSpec struct {
