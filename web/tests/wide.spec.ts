@@ -48,10 +48,10 @@ test("epic lanes are swimlanes across the columns", async ({ page, project }) =>
   const none = page.locator('#wboard [data-lane="none"]');
   expect((await none.boundingBox())!.y).toBeGreaterThan(lb.y);
   expect((await card(page, "t-5").boundingBox())!.y).toBeGreaterThan((await none.boundingBox())!.y);
-  await lane.locator(".ch").click();
+  await lane.locator(".t").click();
   await expect(card(page, "t-2")).toHaveCount(0);
   await expect(card(page, "t-5")).toBeVisible();
-  await lane.locator(".t").click();
+  await lane.locator(".ei").click();
   await expect(page.locator(".detail")).toContainText("Mobile web");
 });
 

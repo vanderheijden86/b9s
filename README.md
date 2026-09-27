@@ -245,8 +245,8 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Tap the active column tab | Fold it into a rail | `z` |
 | Tap `Z unfold` | Unfold every column | `Z` |
 | Tap an epic in the board rail | Scroll to its lane | |
-| Long-press an epic in the rail, or tap a lane's ▾ | Fold or unfold that lane | `Tab` |
-| Tap the epic in a lane header | Open the epic | `Enter` on the epic |
+| Long-press an epic in the rail, or tap a lane header's title | Fold or unfold that lane | `Tab` |
+| Tap a lane header's ▾ or epic ID | Open the epic | `Enter` on the epic |
 | Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
 | Tap the project name | Project sheet | `1`-`9`, `0` |
 | Tap the ● dot | Data source health | `D` |
@@ -268,7 +268,7 @@ A window at least 720 px wide and 500 px high shows the whole board at once. Eve
 | Drag a card with the mouse | Move it to the column under the pointer. The board scrolls when the pointer is near an edge |
 | Click a column header | Fold it into a rail; click the rail to unfold it |
 | Click an epic cell | Open the epic. Its ▾ arrow folds the lane |
-| Click a lane header (epic rows) | Its epic ID or title opens the epic; the rest of the header folds or unfolds the lane |
+| Click a lane header (epic rows) | Its ▾ or epic ID opens the epic; the rest of the header, title included, folds or unfolds the lane |
 | `h` `l`, `Left` `Right` | Move the cursor to the nearest card in the previous or next column. `h` from the first column selects the lane's epic |
 | `Tab` | Fold or unfold the lane of the selected card or epic |
 | `v` | Switch between the epic rail and epic rows |
