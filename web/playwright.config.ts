@@ -10,7 +10,9 @@ export default defineConfig({
   fullyParallel: true,
   workers: 4,
   reporter: [["list"]],
-  use: { trace: "retain-on-failure", actionTimeout: 5000, navigationTimeout: 10000 },
+  // Reduced motion drops the app's transitions (app.css), so a tap never
+  // lands on a sheet that is still sliding in. tests/motion.spec.ts says why.
+  use: { trace: "retain-on-failure", actionTimeout: 5000, navigationTimeout: 10000, reducedMotion: "reduce" },
   // Phones get the one-column board; wide.spec.ts and keys.spec.ts cover
   // laptops and iPads, which have a keyboard.
   projects: [
