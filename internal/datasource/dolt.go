@@ -363,10 +363,11 @@ func (r *DoltReader) loadDependencies(issueID string) []*model.Dependency {
 
 // loadComments loads the comments for a single issue. Returns nil on any error;
 // this is a best-effort helper.
-// bd v0.63 uses CHAR(36) UUID for comment IDs; our model uses int64.
-// We scan the ID as a string and skip it since the TUI doesn't use comment IDs.
+// bd v0.63 uses CHAR(36) UUID for comment IDs; our model's ID is a string, so
+// it round-trips either the UUID or a legacy integer ID unchanged. attachref
+// needs the ID to break ties between comments sharing one created_at.
 func (r *DoltReader) loadComments(issueID string) []*model.Comment {
-	query := `SELECT author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
+	query := `SELECT id, author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`
 	rows, err := r.db.Query(query, issueID)
 	if err != nil {
 		return nil
@@ -377,7 +378,7 @@ func (r *DoltReader) loadComments(issueID string) []*model.Comment {
 	for rows.Next() {
 		var comment model.Comment
 		var createdAt sql.NullTime
-		if err := rows.Scan(&comment.Author, &comment.Text, &createdAt); err != nil {
+		if err := rows.Scan(&comment.ID, &comment.Author, &comment.Text, &createdAt); err != nil {
 			continue
 		}
 		if createdAt.Valid {
@@ -444,7 +445,7 @@ func (r *DoltReader) loadAllDependencies() (map[string][]*model.Dependency, erro
 // loadAllComments loads comments for all issues in a single query.
 // Returns a map from issue ID to comment slice.
 func (r *DoltReader) loadAllComments() map[string][]*model.Comment {
-	rows, err := r.db.Query(`SELECT issue_id, author, text, created_at FROM comments ORDER BY created_at`)
+	rows, err := r.db.Query(`SELECT id, issue_id, author, text, created_at FROM comments ORDER BY created_at`)
 	if err != nil {
 		debug.Log("dolt: batch comments query failed: %v", err)
 		return nil
@@ -455,7 +456,7 @@ func (r *DoltReader) loadAllComments() map[string][]*model.Comment {
 	for rows.Next() {
 		var comment model.Comment
 		var createdAt sql.NullTime
-		if err := rows.Scan(&comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
+		if err := rows.Scan(&comment.ID, &comment.IssueID, &comment.Author, &comment.Text, &createdAt); err != nil {
 			continue
 		}
 		if createdAt.Valid {

@@ -1138,3 +1138,31 @@ func TestGetBeadsDir_WorktreeWithOwnBeadsResolvesToMainRepo(t *testing.T) {
 		t.Errorf("GetBeadsDir(worktree) = %s, want main repo .beads under %s", result, wantRoot)
 	}
 }
+
+// =============================================================================
+// Comment ID Tests
+// =============================================================================
+
+// TestParseIssues_CommentIDRoundTrips guards attachref.Collect's tie-break: it
+// orders same-timestamp comments by ID, so a loader that drops the ID would
+// silently break attachment ordering without any parse error to notice.
+func TestParseIssues_CommentIDRoundTrips(t *testing.T) {
+	line := `{"id":"bd-1","title":"one","status":"open","issue_type":"task","comments":[` +
+		`{"id":"cmt-string-1","issue_id":"bd-1","author":"alice","text":"a","created_at":"2026-09-25T00:00:00Z"},` +
+		`{"id":42,"issue_id":"bd-1","author":"bob","text":"b","created_at":"2026-09-25T00:00:01Z"}` +
+		`]}` + "\n"
+
+	issues, err := loader.ParseIssues(strings.NewReader(line))
+	if err != nil {
+		t.Fatalf("ParseIssues: %v", err)
+	}
+	if len(issues) != 1 || len(issues[0].Comments) != 2 {
+		t.Fatalf("issues = %+v", issues)
+	}
+	if got := issues[0].Comments[0].ID; got != "cmt-string-1" {
+		t.Errorf("comment[0].ID = %q, want cmt-string-1", got)
+	}
+	if got := issues[0].Comments[1].ID; got != "42" {
+		t.Errorf("comment[1].ID (legacy int) = %q, want 42", got)
+	}
+}

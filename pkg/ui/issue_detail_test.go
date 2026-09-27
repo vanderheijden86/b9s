@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/beadwork/internal/attachref"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
@@ -122,6 +123,36 @@ func TestRenderIssueDetail_HeaderIsAHeavyBox(t *testing.T) {
 		if !strings.Contains(after, want) {
 			t.Errorf("%q should follow the box:\n%s", want, after)
 		}
+	}
+}
+
+func TestRenderIssueDetail_ShowsAttachmentsBlockWithMachineLinesStripped(t *testing.T) {
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	issue, issueMap := detailFixture()
+	text, err := attachref.Format(attachref.Ref{
+		SHA256: strings.Repeat("a", 64), Size: 2048, Type: "image/png", Name: "diagram.png",
+	})
+	if err != nil {
+		t.Fatalf("attachref.Format: %v", err)
+	}
+	issue.Comments = append(issue.Comments, &model.Comment{
+		ID: "cmt-1", Author: "carol", Text: text, CreatedAt: time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC),
+	})
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	for _, want := range []string{"ATTACHMENTS · 1", "diagram.png", "image/png", "2.0 KB", "added by carol"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("attachments block missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "beads-attachment/v1") {
+		t.Errorf("machine line should be stripped from the comment body:\n%s", out)
+	}
+}
+
+func TestRenderIssueDetail_NoAttachmentsShowsNoBlock(t *testing.T) {
+	out := renderDetailFixture(t, nil)
+	if strings.Contains(out, "ATTACHMENTS") {
+		t.Errorf("issue with no attachments should show no ATTACHMENTS block:\n%s", out)
 	}
 }
 

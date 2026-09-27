@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/beadwork/internal/attachref"
 	"github.com/vanderheijden86/beadwork/pkg/model"
 )
 
@@ -165,6 +166,19 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 		blocks = append(blocks, "")
 	}
 
+	attachments := attachref.Collect(item.Comments)
+	if len(attachments) > 0 {
+		blocks = append(blocks, section(fmt.Sprintf("ATTACHMENTS · %d", len(attachments))))
+		body := r.NewStyle().Width(width - 2).PaddingLeft(2)
+		for _, a := range attachments {
+			name := r.NewStyle().Bold(true).Foreground(t.Primary).Render(sanitizeTerminalLine(a.Name))
+			meta := muted.Render(fmt.Sprintf("%s · %s", sanitizeTerminalLine(a.Type), formatBytes(a.Size)))
+			by := muted.Render("added by " + sanitizeTerminalLine(a.AddedBy) + " · " + FormatTimeRel(a.AddedAt))
+			blocks = append(blocks, body.Render(name+"  "+meta), body.Render(by))
+		}
+		blocks = append(blocks, "")
+	}
+
 	if len(item.Comments) > 0 {
 		blocks = append(blocks, section(fmt.Sprintf("COMMENTS · %d", len(item.Comments))))
 		body := r.NewStyle().Width(width - 2).PaddingLeft(2)
@@ -174,7 +188,8 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 			}
 			head := r.NewStyle().Bold(true).Foreground(t.Primary).Render(sanitizeTerminalLine(c.Author)) +
 				muted.Render(" · "+FormatTimeRel(c.CreatedAt))
-			blocks = append(blocks, wrap.Render(head), body.Render(sanitizeTerminalText(c.Text)), "")
+			text := attachref.StripMachineLines(c.Text)
+			blocks = append(blocks, wrap.Render(head), body.Render(sanitizeTerminalText(text)), "")
 		}
 	}
 

@@ -562,8 +562,14 @@ func TestDoltIntegration_Comments(t *testing.T) {
 	if issue.Comments[0].Text != "Reproduced on staging" {
 		t.Errorf("first comment text wrong: %q", issue.Comments[0].Text)
 	}
+	if issue.Comments[0].ID != "cmt-001" {
+		t.Errorf("first comment ID should be cmt-001, got %q", issue.Comments[0].ID)
+	}
 	if issue.Comments[1].Author != "alice" {
 		t.Errorf("second comment author should be alice, got %q", issue.Comments[1].Author)
+	}
+	if issue.Comments[1].ID != "cmt-002" {
+		t.Errorf("second comment ID should be cmt-002, got %q", issue.Comments[1].ID)
 	}
 	for _, c := range issue.Comments {
 		if c.IssueID != "test-001" {
@@ -573,6 +579,38 @@ func TestDoltIntegration_Comments(t *testing.T) {
 			t.Error("comment should have non-zero CreatedAt")
 		}
 	}
+}
+
+// TestDoltIntegration_LoadIssuesLoadsCommentID exercises the bulk
+// loadAllComments path (LoadIssues), as opposed to the single-issue
+// GetIssueByID path covered by TestDoltIntegration_Comments. attachref.Collect
+// needs the comment ID to break ties between comments sharing one
+// created_at, so both loading paths must carry it.
+func TestDoltIntegration_LoadIssuesLoadsCommentID(t *testing.T) {
+	skipIfNoDoltIntegration(t)
+	dbName, addr, cleanup := testDB(t)
+	defer cleanup()
+
+	reader := newTestDoltReader(t, dbName, addr)
+	defer reader.Close()
+
+	issues, err := reader.LoadIssues()
+	if err != nil {
+		t.Fatalf("LoadIssues failed: %v", err)
+	}
+	for _, issue := range issues {
+		if issue.ID != "test-001" {
+			continue
+		}
+		if len(issue.Comments) != 2 {
+			t.Fatalf("expected 2 comments, got %d", len(issue.Comments))
+		}
+		if issue.Comments[0].ID != "cmt-001" || issue.Comments[1].ID != "cmt-002" {
+			t.Errorf("comment IDs = %q, %q, want cmt-001, cmt-002", issue.Comments[0].ID, issue.Comments[1].ID)
+		}
+		return
+	}
+	t.Fatal("test-001 not found in LoadIssues result")
 }
 
 func TestDoltIntegration_NoComments(t *testing.T) {

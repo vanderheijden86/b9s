@@ -98,6 +98,7 @@ Everywhere:
 |------|--------|
 | `1`-`9`, `0` | Open a recent project, show all projects |
 | `L`, `A`, `P` | Put labels, assignees or projects on `1`-`9` |
+| `R` | List the cursor issue's attachments and open one, see [Attachments](#attachments) |
 | `Ctrl-E` `H`, `D` | Hide or show the header, show the data source health |
 | `Ctrl-R`, `F5` | Reload |
 | `?` | Help |
@@ -221,6 +222,8 @@ b9s attach url <issue-id> <sha256|name>  print a presigned URL (s3 backend only)
 ```
 
 `get` refuses to overwrite an existing file (or a symlink) at its output path; pass `--force` to replace it. On a project whose data source is a plain `issues.jsonl` file, `attach list` can lag behind an `attach` made moments earlier, until `bd` writes its next export.
+
+The detail pane shows an issue's attachments above its comments, and `R` lists them in a picker: `j`/`k` to move, `Enter` to open the highlighted one, `Esc` to cancel. Opening downloads the file into a private temporary directory and hands it to the system opener (`open` on macOS, `xdg-open` on Linux), unless the downloaded bytes sniff as HTML or another script-capable type, in which case b9s shows the download path instead of opening it. With `B9S_WEB=1` (a web session has no local file system to open into), `Enter` prints an OSC 8 hyperlink to a presigned URL, which needs the `s3` backend. A project with no `attachments` section still shows the list; `Enter` names the setting to add.
 
 ## Mouse and tmux
 

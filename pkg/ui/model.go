@@ -11,6 +11,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/vanderheijden86/beadwork/internal/attachref"
+	"github.com/vanderheijden86/beadwork/internal/blobstore"
 	"github.com/vanderheijden86/beadwork/internal/datasource"
 	"github.com/vanderheijden86/beadwork/pkg/config"
 	"github.com/vanderheijden86/beadwork/pkg/debug"
@@ -552,6 +554,21 @@ type Model struct {
 	statusPicker     StatusPickerModel
 	// statusTargets holds the issues the open status picker applies to.
 	statusTargets []string
+
+	// Attachment picker (bd-t8j5.9)
+	showAttachmentPicker bool
+	attachmentPicker     AttachmentPickerModel
+	// attachIssueID is the issue the open attachment picker lists.
+	attachIssueID string
+	// attachHandle and attachHandleProject cache the opened blob store
+	// handle for one project, so R only pays for config.Load and
+	// blobstore.Open once per project rather than on every open.
+	attachHandle        *blobstore.Handle
+	attachHandleProject string
+	// lastAttachmentOpen records the most recent attachment-open attempt,
+	// including the opener command that ran or would have run under
+	// B9S_TEST_MODE, so a test can assert on it without a real opener.
+	lastAttachmentOpen *attachmentOpenRecord
 
 	// Repo picker (workspace mode)
 	showRepoPicker bool
@@ -1323,6 +1340,22 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusIsError = true
 		}
 
+	case attachmentOpenResultMsg:
+		// Handle attachment open results (bd-t8j5.9)
+		if msg.handle != nil {
+			m.attachHandle = msg.handle
+			m.attachHandleProject = msg.projectPath
+		}
+		m.statusMsg = msg.statusMsg
+		m.statusIsError = msg.isError
+		m.lastAttachmentOpen = &attachmentOpenRecord{
+			AttachmentName: msg.attachmentName,
+			OpenerCmd:      msg.openerCmd,
+			Path:           msg.openedPath,
+			StatusMsg:      msg.statusMsg,
+			IsError:        msg.isError,
+		}
+
 	case AllProjectsLoadMsg:
 		// Load issues from all Dolt databases (bd-g68w)
 		if m.multiDoltReader == nil {
@@ -2038,6 +2071,24 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
+		// Handle attachment picker modal (bd-t8j5.9)
+		if m.showAttachmentPicker {
+			switch msg.String() {
+			case "j", "down":
+				m.attachmentPicker.MoveDown()
+			case "k", "up":
+				m.attachmentPicker.MoveUp()
+			case "enter":
+				if att, ok := m.attachmentPicker.Selected(); ok {
+					cmds = append(cmds, m.attachmentOpenCmd(att))
+				}
+				m.showAttachmentPicker = false
+			case "esc":
+				m.showAttachmentPicker = false
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 		// Edit modal is handled before the type switch (needs all msg types for huh.Form)
 
 		// Handle self-update modal (bv-182)
@@ -2587,6 +2638,14 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.pickerMode = pickerModeAssignees
 				m.assigneeScrollOffset = 0
 				m.rebuildPickerEntries()
+				return m, nil
+
+			case "R":
+				// Attachment picker over the selected issue's attachments
+				// (bd-t8j5.9). 'A' already opens the assignee picker
+				// (bd-j764), so this uses the ADR 0024 term "reference
+				// comments" for its mnemonic instead.
+				m.openAttachmentPicker()
 				return m, nil
 
 			case "b":
@@ -3854,6 +3913,10 @@ func (m Model) View() string {
 	} else if m.showStatusPicker {
 		// Status picker modal (bd-a83)
 		body = m.statusPicker.View()
+		isOverlay = true
+	} else if m.showAttachmentPicker {
+		// Attachment picker modal (bd-t8j5.9)
+		body = m.attachmentPicker.View()
 		isOverlay = true
 	} else if m.showRepoPicker {
 		body = m.repoPicker.View()
@@ -5748,6 +5811,40 @@ func (m Model) TreeSelectedID() string {
 // TreeNodeCount returns the number of visible nodes in the tree.
 func (m Model) TreeNodeCount() int {
 	return m.tree.NodeCount()
+}
+
+// AttachmentList returns the attachments of the currently selected issue,
+// parsed from its comments the same way the detail pane and the R picker
+// do (bd-t8j5.9).
+func (m Model) AttachmentList() []attachref.Attachment {
+	issue := m.getSelectedIssue()
+	if issue == nil {
+		return nil
+	}
+	return attachref.Collect(issue.Comments)
+}
+
+// ShowAttachmentPicker reports whether the attachment picker overlay is
+// open (bd-t8j5.9).
+func (m Model) ShowAttachmentPicker() bool {
+	return m.showAttachmentPicker
+}
+
+// AttachmentPickerCount returns how many attachments the open picker lists.
+func (m Model) AttachmentPickerCount() int {
+	return m.attachmentPicker.Count()
+}
+
+// OpenAttachmentPicker exposes openAttachmentPicker for testing (bd-t8j5.9).
+func (m *Model) OpenAttachmentPicker() {
+	m.openAttachmentPicker()
+}
+
+// LastAttachmentOpen returns the record of the most recent attachment-open
+// attempt, including the opener command that ran or (B9S_TEST_MODE) would
+// have run, or nil if none has happened yet (bd-t8j5.9).
+func (m Model) LastAttachmentOpen() *attachmentOpenRecord {
+	return m.lastAttachmentOpen
 }
 
 // BuildProjectEntries exposes buildProjectEntries for testing (bd-qjc).
