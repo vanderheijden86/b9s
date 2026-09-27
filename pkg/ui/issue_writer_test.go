@@ -275,6 +275,58 @@ func TestIssueWriter_RunBatch_TimeoutMessageWarnsOfPartialWrite(t *testing.T) {
 	}
 }
 
+// TestIssueWriter_RunBatch_BudgetScalesWithBatchSize proves the scaled budget
+// actually buys a batch more time than a single write gets: a bd that takes
+// longer than bdRunTimeout alone, but less than bdRunTimeout plus
+// batchPerIDBudget per id, must fail a single runBdCmd call while succeeding
+// through runBatch for the same ids. bd's sleep (300ms) sits well clear of
+// both bdRunTimeout (200ms, must be short enough that a single call times
+// out) and the batch budget (800ms, must be long enough that the batch
+// succeeds even with real exec overhead on top of the sleep).
+func TestIssueWriter_RunBatch_BudgetScalesWithBatchSize(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake bd script needs a POSIX shell")
+	}
+	binDir := t.TempDir()
+	// 300ms of actual sleep, not 150ms: a fresh, unsigned temp-dir script
+	// incurs real exec overhead on macOS (observed ~150-200ms on top of the
+	// sleep itself), and a bdRunTimeout/batchPerIDBudget too close to the
+	// sleep duration races that overhead instead of testing the budget.
+	script := "#!/bin/sh\nsleep 0.3\nprintf 'written'\n"
+	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	originalTimeout, originalPerID := bdRunTimeout, batchPerIDBudget
+	bdRunTimeout = 200 * time.Millisecond
+	batchPerIDBudget = 300 * time.Millisecond
+	t.Cleanup(func() { bdRunTimeout, batchPerIDBudget = originalTimeout, originalPerID })
+
+	w := &IssueWriter{bdPath: filepath.Join(binDir, "bd"), available: true}
+	w.SetCheckout(testCheckout(t))
+
+	ids := []string{"bd-1", "bd-2"}
+	batchCmd := w.runBatch(BdOpSetStatus, ids, append([]string{"update"}, append(append([]string(nil), ids...), "--status=closed")...))
+	batchMsg := batchCmd()
+	batchResult, ok := batchMsg.(BdResultMsg)
+	if !ok {
+		t.Fatalf("expected BdResultMsg, got %T", batchMsg)
+	}
+	if !batchResult.Success {
+		t.Fatalf("runBatch failed: %v, want the scaled budget (bdRunTimeout+batchPerIDBudget*2 = 800ms) to cover the 300ms sleep", batchResult.Error)
+	}
+
+	singleCmd := w.runBdCmd(BdOpUpdate, "bd-1", []string{"update", "bd-1", "--status=closed"})
+	singleMsg := singleCmd()
+	singleResult, ok := singleMsg.(BdResultMsg)
+	if !ok {
+		t.Fatalf("expected BdResultMsg, got %T", singleMsg)
+	}
+	if singleResult.Success {
+		t.Fatal("expected a single runBdCmd (bdRunTimeout=200ms alone) to time out on a 300ms bd")
+	}
+}
+
 func TestIssueWriter_DeleteIssue(t *testing.T) {
 	w := &IssueWriter{bdPath: "/usr/local/bin/bd", available: true}
 

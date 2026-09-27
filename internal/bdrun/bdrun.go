@@ -88,11 +88,27 @@ func Run(ctx context.Context, bdPath, dir string, args ...string) (output string
 		return trimmed, nil
 	}
 
+	// cmd.ProcessState is set as soon as the bd process itself exits, and is
+	// authoritative over ctx.Err(): watchCtx and the pipe-copying goroutines
+	// can still be unwinding a lingering descendant well after bd is done, so
+	// ctx can already read as DeadlineExceeded even though bd finished
+	// cleanly or failed on its own. Only a process a signal killed, or one
+	// that never started, falls through to the ctx-based classification
+	// below.
+	if state := cmd.ProcessState; state != nil {
+		if state.Success() {
+			return trimmed, nil
+		}
+		if state.Exited() {
+			return trimmed, runErr
+		}
+	}
+
 	switch {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded):
 		return trimmed, fmt.Errorf("%w after %s", ErrTimeout, elapsed)
 	case errors.Is(ctx.Err(), context.Canceled):
-		return trimmed, fmt.Errorf("%w: %w", ErrCancelled, runErr)
+		return trimmed, fmt.Errorf("%w: %w (%v)", ErrCancelled, ctx.Err(), runErr)
 	default:
 		return trimmed, runErr
 	}
