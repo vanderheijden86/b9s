@@ -136,6 +136,8 @@ The sort fields are priority, created, updated, title, status, type and deps. Th
 | `j` `k` | Scroll |
 | `Home`, `End` | Jump to the top, the bottom |
 | `n`, `p` | Open the next or previous sibling |
+| `1`-`9` | Open the child with that number in the CHILDREN list. In the detail pane the digits stand for children, not projects |
+| `Backspace` | Go back to the issue a child's number was pressed on |
 | `c` | Copy the whole issue as Markdown |
 | `d` | Hide the pane |
 | `Enter`, `Esc` | Return to the tree |
@@ -534,6 +536,7 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
 | `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
 | Detail: `n` `p`, `c`, `d` | Next or previous sibling, copy as Markdown, close |
+| Detail: `1`-`9`, `Backspace` | Open the child with that number, instead of a project; go back to the issue before |
 | Board: `o` `i` `C`, `r`, `c` | Toggle open, in progress, closed; ready; the closed column |
 | Board: `s`, `v`, `e` | Group by status, priority or type; epic rows or rail; hide empty columns |
 | Board: `y`, `f`, `{` `}`, `Tab`, `Shift-Tab` | Copy the ID, show the branch, previous or next epic, fold the lane, fold every lane |

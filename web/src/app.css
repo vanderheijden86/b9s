@@ -248,6 +248,7 @@
   .dsec button { color: var(--hi); text-transform: none; letter-spacing: 0; }
   .rel { display: flex; gap: 6px; align-items: baseline; width: 100%; text-align: left; padding: 7px 0; min-height: 36px; border-bottom: 1px dashed var(--line); white-space: nowrap; }
   .rel .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .rel .kn { flex: none; width: 1ch; color: var(--muted); }
   .bar2 { height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; margin: 6px 0 2px; }
   .bar2 i { display: block; height: 100%; background: var(--green); }
   .md { color: var(--dim); font-size: 1rem; line-height: 20px; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }

@@ -147,8 +147,13 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 			idWidth = max(idWidth, lipgloss.Width(detailShortID(c.id)))
 		}
 		idWidth = min(idWidth, width/3)
-		for _, c := range children {
-			blocks = append(blocks, renderDetailRelation(r, t, c, width, idWidth, false))
+		for n, c := range children {
+			// The number is the key that opens the child from the detail pane.
+			num := "  "
+			if n < 9 {
+				num = fmt.Sprintf("%d ", n+1)
+			}
+			blocks = append(blocks, renderDetailRelation(r, t, c, width, idWidth, num))
 		}
 		blocks = append(blocks, "")
 	}
@@ -160,7 +165,7 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 		}
 		idWidth = min(idWidth, width/3)
 		for _, rel := range rels {
-			blocks = append(blocks, renderDetailRelation(r, t, rel, width, idWidth, true))
+			blocks = append(blocks, renderDetailRelation(r, t, rel, width, idWidth, fmt.Sprintf("%s %-10s ", rel.arrow, rel.label)))
 		}
 		blocks = append(blocks, "")
 	}
@@ -256,6 +261,17 @@ func detailRelations(rawID string, item model.Issue, issueMap map[string]*model.
 	return append(out, related...), byID(children)
 }
 
+// detailChildIDs lists the issue's children in the order the detail's
+// CHILDREN section numbers them.
+func detailChildIDs(item model.Issue, issueMap map[string]*model.Issue) []string {
+	_, children := detailRelations(item.ID, item, issueMap)
+	ids := make([]string, len(children))
+	for n, c := range children {
+		ids[n] = c.id
+	}
+	return ids
+}
+
 // detailShortID drops the project prefix, as the board cards do.
 func detailShortID(id string) string {
 	id = sanitizeTerminalLine(id)
@@ -265,14 +281,10 @@ func detailShortID(id string) string {
 	return id
 }
 
-// renderDetailRelation draws one row: the relation label when withLabel is
-// set, then the short ID, the title and the status on the right edge.
-func renderDetailRelation(r *lipgloss.Renderer, t Theme, rel detailRelation, width, idWidth int, withLabel bool) string {
+// renderDetailRelation draws one row: the muted label, then the short ID,
+// the title and the status on the right edge.
+func renderDetailRelation(r *lipgloss.Renderer, t Theme, rel detailRelation, width, idWidth int, label string) string {
 	muted := r.NewStyle().Foreground(t.Muted)
-	label := ""
-	if withLabel {
-		label = fmt.Sprintf("%s %-10s ", rel.arrow, rel.label)
-	}
 	idWidth = max(min(idWidth, width-lipgloss.Width(label)-1), 4)
 	id := truncateRunesHelper(detailShortID(rel.id), idWidth, "…")
 	id += strings.Repeat(" ", max(idWidth-lipgloss.Width(id), 0))

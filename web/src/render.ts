@@ -536,11 +536,17 @@ export function fullIssue(id: string): Issue | null {
   return c ? c.issue : null;
 }
 
-function relHTML(x: string): string {
+/** detailKids orders an issue's children as its detail lists them, so 1-9 pick the child shown with that number. */
+export function detailKids(id: string): string[] {
+  return kids(id).map(k => get(k)!).sort(SORTS.status).map(k => k.id);
+}
+
+/** relHTML is one related issue in the detail; num is the digit key that opens a child. */
+function relHTML(x: string, num = 0): string {
   const j = get(x);
   if (!j) return "";
   const st = stOf(eff(j));
-  return `<button class="rel" data-nav="${esc(x)}"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(x))}</span><span class="t">${esc(j.t)}</span></button>`;
+  return `<button class="rel" data-nav="${esc(x)}">${num ? `<span class="kn">${num}</span>` : ""}<span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(x))}</span><span class="t">${esc(j.t)}</span></button>`;
 }
 
 function textSec(label: string, text: string | undefined, loading: boolean): string {
@@ -576,7 +582,7 @@ export function renderDetail(): void {
     <div class="dbody" id="dbody">
       <dl class="meta"><dt>assignee</dt><dd>${i.assignee ? "@" + esc(i.assignee) : "—"}</dd><dt>creator</dt><dd>${esc(i.created_by || "—")}</dd><dt>created</dt><dd>${fmtDate(i.crt)}${i.crt ? " · " + age(i.crt) : ""}</dd><dt>updated</dt><dd>${fmtDate(i.upd)}${i.upd ? " · " + age(i.upd) : ""}</dd>${i.cls ? `<dt>closed</dt><dd>${fmtDate(i.cls)}</dd>` : ""}${i.defer_until ? `<dt>deferred</dt><dd>until ${esc(i.defer_until.slice(0, 10))}</dd>` : ""}${D.project.all ? `<dt>project</dt><dd>${esc(projectOf(i))}</dd>` : ""}</dl>
       ${i.parent && get(i.parent) ? `<div class="dsec">Parent</div>${relHTML(i.parent)}` : ""}
-      ${pr ? `<div class="dsec"><span>Children ${pr.done}/${pr.all}</span><button data-act="dfocus">⌖ subtree</button></div><div class="bar2"><i style="width:${Math.round(100 * pr.done / pr.all)}%"></i></div>${kids(id).map(k => get(k)!).sort(SORTS.status).map(k => relHTML(k.id)).join("")}` : ""}
+      ${pr ? `<div class="dsec"><span>Children ${pr.done}/${pr.all}</span><button data-act="dfocus">⌖ subtree</button></div><div class="bar2"><i style="width:${Math.round(100 * pr.done / pr.all)}%"></i></div>${detailKids(id).map((k, n) => relHTML(k, n < 9 ? n + 1 : 0)).join("")}` : ""}
       ${ob.length ? `<div class="dsec"><span style="color:var(--red)">Blocked by ${ob.length}</span><button data-act="dgraph">⋔ graph</button></div>${ob.map(relHTML).join("")}` : ""}
       ${bl.length ? `<div class="dsec"><span style="color:var(--orange)">Blocks ${bl.length}</span><button data-act="dgraph">⋔ graph</button></div>${bl.map(relHTML).join("")}` : ""}
       ${i.discovered_from.some(x => get(x)) ? `<div class="dsec">Discovered from</div>${i.discovered_from.map(relHTML).join("")}` : ""}

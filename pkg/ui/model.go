@@ -454,6 +454,7 @@ type Model struct {
 	pooledIssues     []*model.Issue // Issue pool refs for sync reloads (return to pool on replace)
 	issueMap         map[string]*model.Issue
 	pendingBranchID  string                  // ShowBranchMsg waiting for its issue to load
+	detailBack       []string                // issues left through a child's number key, for Backspace
 	beadsPath        string                  // Path to beads.jsonl for reloading
 	watcher          *watcher.Watcher        // File watcher for live reload
 	doltWatcher      *datasource.DoltWatcher // Dolt polling watcher for live reload
@@ -2397,6 +2398,10 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Number keys 1-9: route to labels, assignees, or projects depending on pickerMode (bd-gj41, bd-gs45.1)
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
+			if m.focused == focusDetail {
+				m.detailChildKey(n)
+				return m, nil
+			}
 			if m.pickerMode == pickerModeLabels {
 				// Label mode: number keys toggle label filter (composes with status) (bd-dlqi)
 				for _, entry := range m.labelEntries {
@@ -2806,8 +2811,11 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case focusDetail:
 				if msg.String() == "c" || msg.String() == "C" {
 					m.copyIssueToClipboard()
+				} else if msg.String() == "backspace" {
+					m.detailBackKey()
 				} else if msg.String() == "enter" {
 					// Enter returns to previous view from detail (bd-y0m, bd-yo4)
+					m.detailBack = nil
 					if m.isBoardView {
 						m.focused = focusBoard
 					} else if m.isGraphView {
@@ -4600,6 +4608,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"1-9", "Expand to level N"},
 		{"d", "Toggle detail panel"},
 		{"n/p", "Detail: next/prev sibling"},
+		{"1-9", "Detail: open numbered child"},
 		{"c", "Copy ID and title"},
 		{"o/C/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
@@ -4871,7 +4880,8 @@ func (m *Model) renderFooter() string {
 			{"enter", "back to " + returnTo},
 			{"j/k", "scroll"},
 			{"home/end", "top/bottom"},
-			{"0-9", "project"},
+			{"1-9", "child"},
+			{"bksp", "back"},
 			{"^R", "refresh"},
 			{"n/p", "next/prev sibling"},
 			{"e", "edit"},

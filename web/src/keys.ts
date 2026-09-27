@@ -6,6 +6,7 @@
 //   keydown ──▶ sheet open? ── only Esc
 //               │
 //               ├─ \ sizes the detail when it shows
+//               ├─ 1-9 open a numbered child when the detail shows
 //               ├─ global keys (views, projects, reload, help)
 //               ├─ board keys          when the board shows
 //               ├─ detail keys (n p c) when the detail shows
@@ -17,7 +18,7 @@ import {
 } from "./actions";
 import * as api from "./api";
 import { eff, get, kids, laneOf, pool } from "./data";
-import { ensureVisible, render, renderBoard, siblings, wide } from "./render";
+import { detailKids, ensureVisible, render, renderBoard, siblings, wide } from "./render";
 import { S, saveChips, treeRows } from "./state";
 import { $, copyText, store } from "./util";
 
@@ -43,6 +44,8 @@ export function onKey(e: KeyboardEvent): boolean {
   if (k === "Escape") return escape();
   // The TUI's \ stacks the detail full width; here it sizes the sheet or the side panel.
   if (k === "\\" && S.detail) { void act("dsize"); return true; }
+  // With the detail open the digits open its numbered children, as in the TUI's detail pane.
+  if (S.detail && /^[1-9]$/.test(k)) { detailChild(+k); return true; }
   if (globalKey(k)) return true;
   if (S.view === "board") return boardKey(k);
   if (S.detail && detailKey(k)) return true;
@@ -270,6 +273,13 @@ function detailKey(k: string): boolean {
     case "c": void copyIssueMarkdown(id); return true;
   }
   return false;
+}
+
+/** detailChild opens the n-th child of the issue the detail shows; Backspace comes back through history. */
+function detailChild(n: number): void {
+  const id = S.detail!.stack[S.detail!.stack.length - 1];
+  const kid = detailKids(id)[n - 1];
+  if (kid) openDetail(kid, true); else toast(`No child ${n}`);
 }
 
 /* ================= board ================= */

@@ -320,6 +320,20 @@ test.describe("detail keys", () => {
     await expect(sel(page)).toHaveAttribute("data-id", (await page.locator(".detail").getAttribute("data-id"))!);
   });
 
+  test("with the detail open, 1-9 open the numbered child and Backspace goes back", async ({ page, project }) => {
+    await open(page, project);
+    await cursorTo(page, "t-epic");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".detail")).toHaveAttribute("data-id", "t-epic");
+    await expect(page.locator(".detail .rel .kn")).toHaveText(["1", "2", "3"]);
+    const second = await page.locator(".detail .rel").filter({ has: page.locator(".kn", { hasText: "2" }) }).getAttribute("data-nav");
+    await page.keyboard.press("2");
+    await expect(page.locator(".detail")).toHaveAttribute("data-id", second!);
+    await expect(page.locator(".detail .rel .kn")).toHaveCount(0);
+    await page.keyboard.press("Backspace");
+    await expect(page.locator(".detail")).toHaveAttribute("data-id", "t-epic");
+  });
+
   test("c in the detail copies the issue as Markdown", async ({ page, project }) => {
     await open(page, project);
     await cursorTo(page, "t-1");
