@@ -40,6 +40,8 @@ b9s is a Go program built on [Bubble Tea](https://github.com/charmbracelet/bubbl
 
 Reads and writes take different paths on purpose. b9s reads the store directly for speed and live reload. It never writes to the store itself, so the rules that `bd` enforces on create, update, close and delete apply to every change made in b9s.
 
+Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. It runs under a deadline: 60 seconds for one write from the TUI, plus 2 seconds per issue in a batch, and 2 minutes for each `b9s attach` subcommand. At the deadline b9s kills `bd` and its whole process group. The exit status of `bd` decides the result whenever `bd` exits by itself, so a write that completed is never reported as a timeout, even when a child of `bd` still holds its output open.
+
 ## Packages
 
 | Package | Role |
@@ -48,6 +50,10 @@ Reads and writes take different paths on purpose. b9s reads the store directly f
 | `pkg/ui` | The whole terminal UI: the root `Model`, the tree, detail pane, board, graph, command prompt, pickers, forms, tutorial and the `IssueWriter` that runs `bd` |
 | `pkg/model` | Domain types: `Issue`, `Dependency`, `Status`, `Priority` and their parsing |
 | `internal/datasource` | Source discovery and readers for Dolt, SQLite and JSONL, plus the Dolt watcher, the project catalog and the open-failure reasons |
+| `internal/bdrun` | Finding and running `bd`: the deadline, the process-group kill, and the timeout and cancel errors |
+| `internal/attach` | Attaching and detaching files: upload to the blob store, then a reference comment through `bd` (ADR 0024) |
+| `internal/attachref` | The versioned attachment reference line in a comment, and the fold of comments into an issue's attachment list |
+| `internal/blobstore` | Content-addressed blob storage with local and S3 backends, and store selection from the `attachments` config |
 | `internal/control` | The control socket: instance registration, the verb set, picking the instance in the caller's tmux window, and the `b9s ctl` client side |
 | `pkg/loader` | JSONL parsing, `.beads` directory lookup including `BEADS_DIR` and git worktrees, and git-history loading |
 | `pkg/watcher` | File watching with debouncing, and a polling fallback on filesystems where events are unreliable |
