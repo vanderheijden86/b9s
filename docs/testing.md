@@ -18,11 +18,13 @@ go build ./...
 go test ./... -skip DoltIntegration          # everything that needs no Dolt server
 go test ./pkg/ui/ -run TestTreeView -v       # one package, one pattern
 go test ./... -race -skip DoltIntegration    # with the race detector
-go test ./tests/e2e/ -v -timeout 300s        # end-to-end, slow
+go test ./tests/e2e/ -v -timeout 1200s       # end-to-end, slow
 go test ./... -short -skip DoltIntegration   # skips the slow cases
 ```
 
 `make test` runs the default set. Every run must have a bounded timeout. A test that hangs is a bug in the test or the code, never a reason to raise the timeout.
+
+The E2E suite runs its PTY tests one after another and takes about seven minutes, or up to eleven on a loaded machine. The 1200s limit covers the whole suite, not one test: each PTY run has its own deadline of 10 to 15 seconds, and a run that reaches it fails, so a hang still shows within seconds. Count the results of a verbose run with `grep -c '^--- SKIP' e2e.log` (and `PASS`, `FAIL`): a skip that no missing server or tool explains needs a look.
 
 ## Layers
 

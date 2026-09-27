@@ -31,7 +31,7 @@ jobs:
       run: go test -timeout=5m -covermode=atomic -coverprofile=coverage.out ./pkg/... ./cmd/b9s
 
     - name: E2E Tests
-      run: go test -timeout=10m -v ./tests/e2e -count=1
+      run: go test -timeout=20m -v ./tests/e2e -count=1
 
     - name: Enforce Coverage Threshold
       run: |
