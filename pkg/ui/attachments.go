@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -152,6 +153,29 @@ func (m *Model) openAttachmentPicker() {
 	m.showAttachmentPicker = true
 }
 
+// attachTempState holds the private per-run attachment temp directory in a
+// place every copy of Model shares. Model is a value type: Update returns a
+// new copy on each message, and cmd/b9s/main.go's deferred Stop runs on the
+// original value handed to tea.NewProgram, which never sees a field set on
+// a later copy. Model.NewModel allocates one attachTempState and every
+// WithXxx builder and Update carry the same pointer forward by copying the
+// struct, so ensureAttachTempDir and Stop always reach the same dir field
+// regardless of which copy of Model calls them.
+type attachTempState struct {
+	mu  sync.Mutex
+	dir string
+}
+
+// take clears dir and returns its previous value, so a concurrent or
+// repeated Stop call removes the directory at most once.
+func (s *attachTempState) take() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	dir := s.dir
+	s.dir = ""
+	return dir
+}
+
 // ensureAttachTempDir returns the private per-run directory attachment
 // downloads land in, creating it on first use. Every subsequent open reuses
 // the same parent directory (review item 4); attachmentOpenDownload still
@@ -160,14 +184,16 @@ func (m *Model) openAttachmentPicker() {
 // at program exit, not after each open, since the system opener may still be
 // reading the file when Update moves on.
 func (m *Model) ensureAttachTempDir() (string, error) {
-	if m.attachTempDir != "" {
-		return m.attachTempDir, nil
+	m.attachTemp.mu.Lock()
+	defer m.attachTemp.mu.Unlock()
+	if m.attachTemp.dir != "" {
+		return m.attachTemp.dir, nil
 	}
 	dir, err := os.MkdirTemp(os.TempDir(), "b9s-attach-*")
 	if err != nil {
 		return "", fmt.Errorf("creating attachments temp dir: %w", err)
 	}
-	m.attachTempDir = dir
+	m.attachTemp.dir = dir
 	return dir, nil
 }
 

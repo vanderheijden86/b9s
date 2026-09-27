@@ -398,10 +398,10 @@ func TestAttachTempDirIsReusedAcrossOpens(t *testing.T) {
 	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref2, []byte("two"))
 
 	m = runAttachmentOpenCmd(t, m)
-	firstDir := m.attachTempDir
+	firstDir := m.attachTemp.dir
 	firstPath := m.LastAttachmentOpen().Path
 	if firstDir == "" {
-		t.Fatal("expected attachTempDir to be set after the first open")
+		t.Fatal("expected attachTemp.dir to be set after the first open")
 	}
 
 	// Select the second attachment and open it too.
@@ -414,8 +414,8 @@ func TestAttachTempDirIsReusedAcrossOpens(t *testing.T) {
 	updated, _ := m.Update(cmd())
 	m = updated.(Model)
 
-	if m.attachTempDir != firstDir {
-		t.Fatalf("attachTempDir changed across opens: first=%q second=%q, want the parent directory reused", firstDir, m.attachTempDir)
+	if m.attachTemp.dir != firstDir {
+		t.Fatalf("attachTemp.dir changed across opens: first=%q second=%q, want the parent directory reused", firstDir, m.attachTemp.dir)
 	}
 	secondPath := m.LastAttachmentOpen().Path
 	if secondPath == firstPath {
@@ -441,18 +441,53 @@ func TestStopRemovesAttachTempDir(t *testing.T) {
 	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref, []byte("hi"))
 
 	m = runAttachmentOpenCmd(t, m)
-	dir := m.attachTempDir
+	dir := m.attachTemp.dir
 	if dir == "" {
-		t.Fatal("expected attachTempDir to be set after an open")
+		t.Fatal("expected attachTemp.dir to be set after an open")
 	}
 	if _, err := os.Stat(dir); err != nil {
-		t.Fatalf("attachTempDir must exist before Stop: %v", err)
+		t.Fatalf("attach temp dir must exist before Stop: %v", err)
 	}
 
 	(&m).Stop()
 
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
-		t.Fatalf("attachTempDir still exists after Stop: err=%v", err)
+		t.Fatalf("attach temp dir still exists after Stop: err=%v", err)
+	}
+}
+
+// TestStopOnOriginalModelRemovesAttachTempDir is the regression case for the
+// leak in the real program: Update always returns a new copy of Model, and
+// cmd/b9s/main.go defers Stop on the ORIGINAL value it passed to
+// tea.NewProgram, which is never reassigned to any of those copies. Before
+// attachTemp became a shared pointer, that original copy's temp-dir field
+// stayed empty forever, so Stop had nothing to remove and the directory
+// leaked on every real exit. Only Stop reaching the same attachTempState
+// every copy points at proves the fix.
+func TestStopOnOriginalModelRemovesAttachTempDir(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("TMPDIR", t.TempDir())
+	now := time.Now()
+	comment, ref := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", []byte("hi"), now)
+	orig, localDir := attachmentTestModel(t, []*model.Comment{comment}, true)
+	seedBlob(t, localDir, orig.activeProjectPath, orig.activeProjectName, ref, []byte("hi"))
+
+	// runAttachmentOpenCmd takes its argument by value, so orig itself is
+	// never touched by the R+Enter+Update sequence below: it stays exactly
+	// the pre-run value that main.go's defer m.Stop() would operate on.
+	updated := runAttachmentOpenCmd(t, orig)
+	dir := updated.attachTemp.dir
+	if dir == "" {
+		t.Fatal("expected attachTemp.dir to be set after an open")
+	}
+	if _, err := os.Stat(dir); err != nil {
+		t.Fatalf("attach temp dir must exist before Stop: %v", err)
+	}
+
+	(&orig).Stop()
+
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("attach temp dir still exists after orig.Stop(): err=%v", err)
 	}
 }
 

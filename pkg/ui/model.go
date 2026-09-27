@@ -565,12 +565,19 @@ type Model struct {
 	// blobstore.Open once per project rather than on every open.
 	attachHandle        *blobstore.Handle
 	attachHandleProject string
-	// attachTempDir is the private per-run directory attachment downloads
-	// land in, created lazily on the first open and reused for every open
-	// after that (never per-download: that leaked one directory per open),
+	// attachTemp is the private per-run directory attachment downloads land
+	// in, created lazily on the first open and reused for every open after
+	// that (never per-download: that leaked one directory per open),
 	// removed once in Stop() rather than after each open, since the system
-	// opener may still be reading the file when Update moves on.
-	attachTempDir string
+	// opener may still be reading the file when Update moves on. It is a
+	// pointer, allocated once in NewModel, because Model is a value type:
+	// Update returns a new copy on every message, and cmd/b9s/main.go's
+	// deferred Stop runs on the original value passed to tea.NewProgram,
+	// which never sees a field assignment made to a later copy. A shared
+	// pointer is the one piece of state every copy of this run keeps
+	// pointing at the same directory, so whichever copy Stop runs on can
+	// still find and remove it.
+	attachTemp *attachTempState
 	// lastAttachmentOpen records the most recent attachment-open attempt,
 	// including the opener command that ran or would have run under
 	// B9S_TEST_MODE, so a test can assert on it without a real opener.
@@ -1116,6 +1123,7 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		// Issue writer for in-app editing (bd-a83)
 		issueWriter: NewIssueWriter(),
 		openProject: datasource.OpenProject,
+		attachTemp:  &attachTempState{},
 	}
 }
 
@@ -6505,9 +6513,10 @@ func (m *Model) Stop() {
 		loader.ReturnIssuePtrsToPool(m.pooledIssues)
 		m.pooledIssues = nil
 	}
-	if m.attachTempDir != "" {
-		os.RemoveAll(m.attachTempDir)
-		m.attachTempDir = ""
+	if m.attachTemp != nil {
+		if dir := m.attachTemp.take(); dir != "" {
+			os.RemoveAll(dir)
+		}
 	}
 }
 
