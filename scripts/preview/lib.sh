@@ -108,7 +108,12 @@ preview_require_boundary() {
   head="$(git -C "$PREVIEW_ROOT" rev-parse HEAD)"
   [[ $head == "$PREVIEW_COMMIT_SHA" ]] \
     || preview_die boundary "HEAD is $head, not $PREVIEW_COMMIT_SHA"
-  dirty="$(git -C "$PREVIEW_ROOT" status --porcelain --untracked-files=all | sed '/^?? \.codex-tmp\//d')"
+  # These local Beads/harness artifacts are excluded by Dockerfile.dockerignore.
+  # Only runtime statuses are exempt: staged changes and Beads data still block.
+  dirty="$(git -C "$PREVIEW_ROOT" status --porcelain=v1 --untracked-files=all | sed \
+    -e '/^?? \.codex-tmp\//d' \
+    -e '/^ M \.beads\/\.local_version$/d' \
+    -e '/^?? \.beads\.gate\.lock$/d')"
   [[ -z $dirty ]] || preview_die boundary "worktree is dirty"
   check_pass artifact-boundary "$PREVIEW_COMMIT_SHA"
 }
