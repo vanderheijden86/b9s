@@ -373,3 +373,36 @@ func joinArgs(args []string) string {
 	}
 	return result
 }
+
+func TestIssueWriter_AddComment_PassesTextAfterSeparator(t *testing.T) {
+	// echo as bd prints the arguments it received.
+	w := &IssueWriter{bdPath: "/bin/echo", available: true}
+	w.SetCheckout(testCheckout(t))
+
+	msg := w.AddComment("bd-1", "--status=closed looks like a flag")()
+	result := msg.(BdResultMsg)
+	if !result.Success {
+		t.Fatalf("comment failed: %v", result.Error)
+	}
+	want := "comments add bd-1 -- --status=closed looks like a flag"
+	if result.Output != want {
+		t.Errorf("bd args = %q, want %q", result.Output, want)
+	}
+	if result.Operation != BdOpComment {
+		t.Errorf("operation = %v, want BdOpComment", result.Operation)
+	}
+}
+
+// bd 1.3 follows the ID with the title, and older releases print the ID
+// alone. Either way the ID is what a later --parent or selection needs.
+func TestExtractCreatedID_TakesOnlyTheID(t *testing.T) {
+	for _, output := range []string{
+		"✓ Created issue: ct-2wu — Parent\n  Priority: P2\n  Status: open",
+		"warning: beads.role not configured\n✓ Created issue: ct-2wu\n",
+		"Created issue: ct-2wu",
+	} {
+		if got := extractCreatedID(output); got != "ct-2wu" {
+			t.Errorf("extractCreatedID(%q) = %q, want ct-2wu", output, got)
+		}
+	}
+}

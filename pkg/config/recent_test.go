@@ -354,3 +354,21 @@ func writeFile(t *testing.T, path, content string) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 }
+
+func TestRecentFromCheckout_EmbeddedProjectIsIdentifiedByPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "gamma")
+	if err := os.MkdirAll(filepath.Join(path, ".beads"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := `{"database":"dolt","backend":"dolt","dolt_mode":"embedded","dolt_database":"gamma"}`
+	if err := os.WriteFile(filepath.Join(path, ".beads", "metadata.json"), []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, ok := RecentFromCheckout("gamma", path)
+
+	want := RecentProject{Name: "gamma", Path: path}
+	if !ok || got != want {
+		t.Errorf("RecentFromCheckout = %+v, %v; want %+v, true: an embedded store lives in the checkout", got, ok, want)
+	}
+}

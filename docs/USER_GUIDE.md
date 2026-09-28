@@ -19,6 +19,7 @@ b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/b
 - [Data sources](#data-sources)
 - [Configuration](#configuration)
 - [Help and tutorial](#help-and-tutorial)
+- [Phone and browser](#phone-and-browser)
 - [Mouse and tmux](#mouse-and-tmux)
 - [Command-line options](#command-line-options)
 - [Updating b9s](#updating-b9s)
@@ -135,6 +136,8 @@ The sort fields are priority, created, updated, title, status, type and deps. Th
 | `j` `k` | Scroll |
 | `Home`, `End` | Jump to the top, the bottom |
 | `n`, `p` | Open the next or previous sibling |
+| `1`-`9` | Open the child with that number in the CHILDREN list. In the detail pane the digits stand for children, not projects |
+| `Backspace` | Go back to the issue a child's number was pressed on |
 | `c` | Copy the whole issue as Markdown |
 | `d` | Hide the pane |
 | `Enter`, `Esc` | Return to the tree |
@@ -362,6 +365,7 @@ b9s loads a project before it replaces the one on screen. While it loads, the st
 | Not a Beads database | the database has no `issues` table, or does not exist |
 | Unreadable | no issues file or Dolt configuration could be read |
 | Timed out | the project did not open within 10 seconds |
+| bd not found | the project uses embedded Dolt, and `bd` is not on `PATH` |
 
 Press `r` in the popup to retry. When the folder b9s starts in cannot be opened, b9s opens the recent project that last opened successfully and shows the same popup. With `--no-fallback`, or without a terminal, it exits with status 1 instead, so a script never acts on the wrong project. See [ADR 0012](adr/0012-open-a-project-before-replacing-the-visible-one.md).
 
@@ -372,12 +376,15 @@ b9s reads the `.beads` directory of the current folder, or the one in `BEADS_DIR
 | Source | Found through |
 |--------|---------------|
 | Dolt server | `.beads/metadata.json` with `"dolt_mode": "server"` |
+| Embedded Dolt | `.beads/metadata.json` with `"dolt_mode": "embedded"`, the default of `bd init` |
 | SQLite | `.beads/beads.db`, from older `bd` versions |
 | JSONL | `.beads/issues.jsonl`, also in linked git worktrees |
 
 A configured Dolt server always wins, even over a newer JSONL file. If b9s cannot connect to it, b9s falls back to SQLite and then JSONL. `D` shows the active source and the connection error while the header is visible.
 
-b9s cannot read embedded Dolt (`bd init` without `--server`), because there is no server to connect to. [Migrating embedded Dolt to a server](embedded-to-server-migration.md) explains the move.
+b9s reads embedded Dolt (`bd init` without `--server`) by running `bd export` in the project, so it needs `bd` on `PATH` and nothing else. It never opens the store itself, so your own `bd` writes never wait for b9s. An `issues.jsonl` beside the store is never read in its place, and b9s does not fall back to it when `bd` fails. See [ADR 0025](adr/0025-read-embedded-dolt-through-bd-export.md). It checks the store files every `refresh.poll_interval` and reloads after each `bd` write.
+
+A project that several agents or machines write to at once is better served by a Dolt server. [Migrating embedded Dolt to a server](embedded-to-server-migration.md) explains the move.
 
 ### Dolt connection
 
@@ -427,6 +434,144 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 | `?` | The help overlay with every key |
 | `Ctrl-S` in the help overlay | Search the overlay by key or description. `Enter` keeps the filter, `Esc` clears it |
 | `` ` `` | The interactive tutorial. Progress is saved between sessions |
+
+## Phone and browser
+
+`b9s web` serves the project in the current folder to a browser, sized for a phone. It opens the project the same way `b9s` does and never falls back to another one: a server started in the wrong folder exits rather than show other data.
+
+```bash
+b9s web                        # 127.0.0.1:7979, pairing on
+b9s web --filter 'status:open' # start every browser with a query
+```
+
+### Reaching it from a phone
+
+**Tailscale is the supported route.** The server listens on loopback, and `tailscale serve` publishes that port to your tailnet over HTTPS:
+
+1. Install [Tailscale](https://tailscale.com) on the computer and the phone, and sign both in to the same tailnet.
+2. Run `b9s web` in the project folder. With `tailscale` on the `PATH` it prints a phone link on your tailnet name and the command below.
+3. Run `tailscale serve --bg 7979` once. It keeps serving after a restart until you run `tailscale serve reset`.
+4. Open the phone link, or scan the QR code that `b9s web` prints when `qrencode` is installed (`brew install qrencode`). This pairs the phone (see Pairing below).
+
+Nothing outside your tailnet can reach the server, and Tailscale encrypts the traffic.
+
+**A LAN address works, without encryption.** `b9s web --listen 0.0.0.0:7979` serves on every interface, pairing stays on, and the phone opens the printed `localhost` link with the computer's LAN address in place of `localhost` (`http://192.168.1.20:7979/pair?t=...`). That link and the session cookie then cross the network as plain HTTP, so anyone who can see the Wi-Fi traffic can take them and use the board as you. Use it only on a network you trust, and run `b9s web --new-token` afterwards to unpair every device.
+
+**What it is not.** The phone app is a page in the phone's browser. It is not a native app and it does not work offline: every screen reads from and writes to the running `b9s web`. The computer that serves must stay on, awake and connected, with `b9s web` running. A laptop that sleeps with its lid closed takes the board away until it wakes. On macOS, `caffeinate -s b9s web` keeps it awake while it has power.
+
+### Pairing
+
+Every browser pairs once, by opening the link `b9s web` printed at start. The link sets a session cookie for 90 days. A browser that is not paired sees "This browser is not paired" and nothing else. `b9s web --new-token` replaces the secret and signs every device out. `--no-token` turns pairing off, and only on loopback addresses.
+
+Behind a login proxy, `b9s web --trust-header X-Forwarded-Email --owner you@example.com` replaces pairing: a request is served only when the proxy's header names the owner, and there is no link to open. Use it only where nothing but the proxy can reach the port. The hosted board at `<person>.beads.osen.co` runs this way (`scripts/web/README.md`).
+
+`b9s web --projects-root <dir>` lists every Beads checkout directly under `<dir>` in the project sheet, after the recent projects. The recent list holds nine, so a server that should offer more projects than that needs this flag.
+
+The database password never reaches the browser. The server reads the store and runs `bd`, and the browser only sends requests with its cookie and a CSRF header.
+
+### Screens
+
+| Screen | What it shows |
+|--------|---------------|
+| Tree | The TUI tree: epics, children, status glyphs, a second line with priority, type, assignee, age, progress, blockers, comment count and labels (choose them under Tree options) |
+| Board | One column at a time on a phone, every column side by side on a wider screen, grouped by status, priority or type. Columns fold into rails, and epics show as cards, rows or a side rail |
+| Search | The [query language](#search) with completions. Results update as you type, and Apply puts the query on the tree |
+| Detail | A sheet over the list, half height on a phone until you scroll its text or tap its head: fields, parent, children, blockers, text sections as Markdown, comments, and Status, Edit, Comment, Branch and More |
+| Graph | The chains of blockers and blocked issues around one issue, with parent, children and discovered-from |
+| More | Projects, health, the write log, identity, pairing, board and tree options |
+
+The chips under the header are the status filters and the Ready filter from the TUI, with counts. The ● dot turns red when the live connection or the data source has a problem, and a banner then says the list shows the last snapshot.
+
+### Gestures
+
+| Gesture | Effect | TUI key |
+|---------|--------|---------|
+| Tap a row | Open the detail at full height | `Enter` |
+| Tap ▾ or ▸ | Fold or unfold | `Tab` |
+| Double-tap ▾ | Fold the whole subtree | `h` / `l` |
+| Short swipe right | Start, or stop when in progress | `S` |
+| Long swipe right | Status picker | `S` |
+| Short swipe left | Close, with 5 s to undo | `K` |
+| Long swipe left | Action sheet: edit, comment, defer, copy, focus, graph, mark, child, delete | `e` `c` `y` `f` `x` |
+| Long-press a row | Mark it; then tap more rows | `Space` |
+| Long-press while marking | Mark the range | `Ctrl-Space` |
+| Pull down on the tree | Reload | `Ctrl-R` |
+| Swipe left or right on the detail | Next or previous sibling | `n` / `p` |
+| Scroll the detail up, or tap its head | Raise the half sheet to full height; a tap on the head switches back | `\` |
+| Pull the detail down from its top | Full height goes to half, half closes | `Esc` |
+| Drag the detail handle | Up: full height. Down: half height, then close | `Esc` |
+| Tap a relation in the detail | Go there; `‹` goes back | |
+| Browser Back, or `Backspace` | Step back: an open sheet closes first, then the previous issue, the closed detail and the previous view. Forward redoes it, but never reopens a sheet | `Esc` |
+| Swipe left or right on the board | Next column | `h` / `l` |
+| Tap the active column tab | Fold it into a rail | `z` |
+| Tap the phone board's **All** tab | Show every unfolded column in one list, under the epic lanes, so open and in-progress cards sit together. The chips choose the statuses | `h` from the first column |
+| Tap `Z unfold` | Unfold every column | `Z` |
+| Tap an epic in the board rail | Scroll to its lane | |
+| Long-press an epic in the rail, or tap a lane header's title | Fold or unfold that lane | `Tab` |
+| Tap a lane header's ▾ or epic ID | Open the epic | `Enter` on the epic |
+| Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
+| Tap the project name | Project sheet | `1`-`9`, `0` |
+| Tap the ● dot | Data source health | `D` |
+| Swipe down on the header | Hide or show the filter chips | `Ctrl-E` |
+| Tap `F` | Follow live changes | `F` |
+
+On a phone, the board groups each column into epic lanes. A lane's header shows the epic, its completion and the card count, and stays at the top of the column while you scroll through the lane. The rail on the left is an index: the lane in view is highlighted, and a tap on another epic scrolls to it. A card nested below another task names that parent on a third line ([ADR 0022](adr/0022-make-the-phone-epic-rail-an-index.md)).
+
+No gesture starts in the outer 24 px of the screen, because iOS and Android use the edges for back and home. The `?` button shows this table in the app.
+
+The address shows the view and the open issue, for example `#/board/bd-12`. A reload or a shared link opens the same place. Moving the cursor or swiping to a sibling replaces the open issue rather than adding a step, so one Back closes the detail.
+
+### Laptop, desktop and iPad
+
+A window at least 720 px wide and 500 px high shows the whole board at once. Every column sits side by side, and each epic is a swimlane across them. As in the TUI, the board opens on the epic rail: the first column holds one cell per epic, with its completion and issue count, level with its lane. `v` switches to epic rows, a header row above each lane, and the choice stays. The detail opens as a panel on the right, so the board stays in view beside it. `\` or the panel's ⤢ button widens it to the full window, and again makes it a panel. A phone keeps the one-column board. The tests run this layout in current Chrome, Safari and Firefox.
+
+| Input | Effect |
+|-------|--------|
+| Drag a card with the mouse | Move it to the column under the pointer. The board scrolls when the pointer is near an edge |
+| Click a column header | Fold it into a rail; click the rail to unfold it |
+| Click an epic cell | Open the epic. Its ▾ arrow folds the lane |
+| Click a lane header (epic rows) | Its ▾ or epic ID opens the epic; the rest of the header, title included, folds or unfolds the lane |
+| `h` `l`, `Left` `Right` | Move the cursor to the nearest card in the previous or next column. `h` from the first column selects the lane's epic |
+| `Tab` | Fold or unfold the lane of the selected card or epic |
+| `v` | Switch between the epic rail and epic rows |
+| `j` `k`, `Down` `Up` | Move the cursor through the column |
+| `Enter` | Open the detail panel. With it open, the cursor keys change the issue it shows |
+| `\` | Switch the detail between a side panel and the full width |
+| `z`, `Z` | Fold the cursor's column into a rail, unfold every column |
+| `Esc` | Close the detail panel |
+
+On a touch screen, a long press on a card still starts the drag.
+
+### Keyboard
+
+With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive meaning. `?` shows the list in the app. Keys do nothing while a text field has focus, and with a sheet open only `Esc` works: it closes the sheet.
+
+| Keys | Effect |
+|------|--------|
+| `j` `k`, `Down` `Up`, `Ctrl-F` `Ctrl-B`, `Ctrl-D` `Ctrl-U`, `Home` `End` | Move the tree cursor, by a row, a page or half a page, or to the top or bottom |
+| `h` `l`, `Tab`, `Shift-Tab`, `X` `Z` `Ctrl-A` | Collapse or expand, fold the issue, fold the whole tree, expand all, collapse all, switch |
+| `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
+| `o` `C` `r` `a` | Show open, closed, ready or all issues |
+| `/`, `n` `N`, `O` | Search, next or previous match, only the matches without their ancestors |
+| `f`, `x` | Show only the cursor's branch or subtree; again undoes it |
+| `s`, `\|`, `v`, `F` | Sort, columns, wrap titles, follow live changes |
+| `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |
+| `Enter` `d`, `e`, `S`, `K`, `Delete` or `Cmd-Backspace`, `c` | Open the detail, edit, status, close, delete, copy the ID and title. A Mac keyboard has no `Delete` key, and `Backspace` alone goes back |
+| `Ctrl-N` | Create an issue |
+| `b`, `g`, `Esc` | Board, dependency graph of the cursor, back |
+| `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
+| `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
+| Detail: `n` `p`, `c`, `d` | Next or previous sibling, copy as Markdown, close |
+| Detail: `1`-`9`, `Backspace` | Open the child with that number, instead of a project; go back to the issue before |
+| Board: `o` `i` `C`, `r`, `c` | Toggle open, in progress, closed; ready; the closed column |
+| Board: `s`, `v`, `e` | Group by status, priority or type; epic rows or rail; hide empty columns |
+| Board: `y`, `f`, `{` `}`, `Tab`, `Shift-Tab` | Copy the ID, show the branch, previous or next epic, fold the lane, fold every lane |
+
+The browser keeps a few keys, so the web UI does not use them. `Ctrl-C` copies instead of quitting, and `Ctrl-W` closes the tab. `\` `<` `>` lay out TUI panes, which the web UI does not have. Chrome on Windows and Linux takes `Ctrl-N` for a new window: use the `+` button there.
+
+### Writes
+
+Every write is the same `bd` command the TUI runs, in the project's checkout, as the server's `bd` actor. The row changes at once and a toast shows the command. When `bd` fails, the toast shows its error and the row goes back. A close, a status change and a card move have Undo for 5 seconds. More → Write log lists every command this browser sent.
 
 ## Mouse and tmux
 

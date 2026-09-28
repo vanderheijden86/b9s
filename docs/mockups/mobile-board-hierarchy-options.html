@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Board Hierarchy</title>
+<meta name="description" content="Four ways to show epic and parent hierarchy in the one-column mobile board of b9s.">
+<style>
+  /* The app's own palette (web/src/app.css), so the mockups read as the real UI. */
+  :root {
+    color-scheme: dark;
+    --page: #0b0c0f; --bg: #16171d; --bg2: #1c1e26; --bg3: #252836; --line: #2d3142;
+    --text: #f8f8f2; --dim: #bfbfbf; --muted: #7f8bb3; --accent: #bd93f9; --cyan: #8be9fd;
+    --hi: #4fc1e9; --green: #50fa7b; --red: #ff5555; --orange: #ffb86c; --blue: #4c9aff;
+    --feat: #57d9a3; --yellow: #f1fa8c;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, "Roboto Mono", monospace;
+    /* one hue per epic, as the wide board already does */
+    --e-foit: var(--accent); --e-6e8h: var(--orange); --e-bjqc: var(--green); --e-none: var(--line);
+  }
+  :root[data-theme="light"] { color-scheme: dark; }
+  *, *::before, *::after { box-sizing: border-box; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--page); color: var(--text); font: 13px/18px var(--mono); font-variant-numeric: tabular-nums; }
+  main { max-width: 1640px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 20px; line-height: 26px; }
+  .sub { margin: 0 0 20px; color: var(--muted); max-width: 92ch; }
+  .stage { display: flex; flex-wrap: wrap; gap: 32px 28px; align-items: flex-start; }
+  .opt { width: 360px; flex: none; max-width: 100%; }
+  .opt h2 { margin: 0 0 2px; font-size: 14px; line-height: 20px; color: var(--accent); }
+  .opt h2 small { color: var(--muted); font-weight: 400; }
+  .opt p { margin: 0 0 10px; color: var(--dim); font-size: 12px; line-height: 17px; }
+  .opt ul { margin: 10px 0 0; padding-left: 16px; color: var(--dim); font-size: 12px; line-height: 17px; }
+  .opt li b { color: var(--text); font-weight: 500; }
+  .ok { color: var(--green); } .warn { color: var(--orange); }
+
+  /* ---------- phone shell, the same chrome in every option ---------- */
+  .phone { width: 360px; max-width: 100%; height: 660px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 14px 34px rgba(0,0,0,.55); user-select: none; }
+  .hd { flex: none; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; border-bottom: 1px solid var(--line); background: var(--bg2); white-space: nowrap; }
+  .hd .proj { color: var(--accent); font-weight: 700; } .hd .proj small { color: var(--muted); font-weight: 400; }
+  .hd .dot { color: var(--green); }
+  .hd .cnt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); font-size: 12px; }
+  .hd .cnt b { color: var(--green); font-weight: 500; } .hd .cnt i { font-style: normal; color: var(--cyan); }
+  .hd .ib { color: var(--dim); padding: 0 6px; }
+  .chips { flex: none; height: 34px; display: flex; gap: 6px; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--bg2); overflow: hidden; white-space: nowrap; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-size: 12px; color: var(--dim); }
+  .chip.on { border-color: var(--green); color: var(--green); }
+  .chip.prog { border-color: var(--cyan); color: var(--cyan); }
+  .chip.blk { color: var(--red); } .chip.def { color: var(--orange); }
+  .tabs { flex: none; height: 40px; display: flex; align-items: center; gap: 4px; padding: 0 10px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
+  .tab { padding: 5px 10px; border-radius: 6px; color: var(--dim); }
+  .tab.on { background: var(--bg3); color: var(--text); }
+  .tab b { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .tab.opts { color: var(--muted); font-size: 12px; }
+  .body { position: relative; flex: 1; min-height: 0; display: flex; }
+  .nav { flex: none; height: 56px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); background: var(--bg2); color: var(--muted); font-size: 12px; text-align: center; padding-top: 6px; }
+  .nav span::before { display: block; content: attr(data-g); font-size: 14px; line-height: 20px; }
+  .nav .on { color: var(--accent); }
+
+  /* rail and column, as in the app */
+  .brail { flex: none; width: 64px; border-right: 1px solid var(--line); overflow: hidden; }
+  .brail button { display: block; width: 100%; padding: 8px 6px; text-align: left; font-size: 11px; line-height: 14px; color: var(--muted); border-bottom: 1px solid rgba(45,49,66,.6); }
+  .brail button.on { color: var(--accent); background: rgba(189,147,249,.12); box-shadow: inset 2px 0 var(--accent); }
+  .brail button b { display: block; color: var(--dim); font-weight: 400; }
+  .brail button i { font-style: normal; color: var(--ec); }
+  .bcol { flex: 1; min-width: 0; overflow-y: auto; padding: 6px 8px 40px 8px; scrollbar-width: none; position: relative; }
+  .bcol::-webkit-scrollbar { display: none; }
+  .card { position: relative; background: var(--bg2); border: 1px solid var(--line); border-left: 3px solid var(--c, var(--line)); border-radius: 6px; padding: 5px 8px 5px 9px; margin-bottom: 6px; }
+  .card .l1 { display: flex; gap: 6px; white-space: nowrap; overflow: hidden; }
+  .card .l1 .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .card .st { color: var(--green); } .card .id { color: var(--accent); }
+  .card .id i { font-style: normal; color: var(--ec, var(--accent)); }
+  .card .l2 { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .l2 .p { color: var(--dim); } .card .l2 .ty { color: var(--c); } .card .l2 .age { color: var(--muted); }
+  .card .l3 { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .l3 i { font-style: normal; color: var(--ec); }
+  .card.dim { opacity: .55; }
+  .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--bg)); pointer-events: none; }
+
+  /* ---------- option 1: sticky lane headers, rail as an index ---------- */
+  .lh { position: sticky; top: -6px; z-index: 2; display: flex; align-items: center; gap: 6px; margin: 0 -8px 6px; padding: 7px 8px 5px 8px; background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: inset 3px 0 var(--ec); white-space: nowrap; }
+  .lh .chev { color: var(--muted); width: 12px; }
+  .lh .ei { color: var(--ec); }
+  .lh .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+  .lh .n { color: var(--muted); }
+  .lh .ep { width: 44px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .lh .ep i { display: block; height: 100%; background: var(--ec); }
+  .lh.folded { opacity: .8; }
+
+  /* ---------- option 3: tree guides ---------- */
+  .node { position: relative; padding-left: calc(var(--d, 0) * 16px); }
+  .node::before { content: ""; position: absolute; left: calc(var(--d, 0) * 16px - 9px); top: -6px; bottom: 12px; width: 1px; background: var(--ec); opacity: .55; }
+  .node::after { content: ""; position: absolute; left: calc(var(--d, 0) * 16px - 9px); top: 14px; width: 8px; height: 1px; background: var(--ec); opacity: .55; }
+  .node[style*="--d: 0"]::before, .node[style*="--d: 0"]::after { display: none; }
+  .ghost { display: flex; gap: 6px; align-items: baseline; padding: 6px 2px 4px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; border-top: 1px dashed var(--line); }
+  .ghost:first-child { border-top: 0; }
+  .ghost .ei { color: var(--ec); } .ghost .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--dim); }
+  .ghost .w { color: var(--muted); font-size: 12px; }
+  .ghost .w.prog { color: var(--cyan); }
+
+  /* ---------- option 4: epic accordion ---------- */
+  .ecard { position: relative; margin-bottom: 10px; }
+  .ecard .eh { background: var(--bg3); border: 1px solid var(--line); border-left: 3px solid var(--ec); border-radius: 6px; padding: 6px 8px 6px 9px; }
+  .ecard .eh .l1 { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .ecard .eh .ei { color: var(--ec); }
+  .ecard .eh .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ecard .eh .chev { color: var(--muted); }
+  .ecard .eh .l2 { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .ecard .eh .ep { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .ecard .eh .ep i { display: block; height: 100%; background: var(--ec); }
+  .ecard.closed .stack { height: 10px; margin: 0 8px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 6px 6px; background: var(--bg2); opacity: .7; }
+  .ecard.closed .stack + .stack { margin: 0 16px; opacity: .45; }
+  .ecard.open .kids { padding: 6px 0 0 10px; border-left: 1px solid var(--line); margin-left: 6px; }
+  .ecard.open .kids .card { margin-bottom: 5px; }
+
+  .verdict { margin: 32px 0 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); max-width: 96ch; }
+  .verdict h2 { margin: 0 0 8px; font-size: 14px; color: var(--accent); }
+  .verdict p { margin: 0 0 8px; color: var(--dim); font-size: 12px; line-height: 17px; }
+  .verdict table { border-collapse: collapse; font-size: 12px; margin-top: 8px; width: 100%; }
+  .verdict th, .verdict td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .verdict th { color: var(--muted); font-weight: 500; }
+  @media (max-width: 420px) { body { padding: 16px 16px 32px; } .phone { height: 600px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mobile board: showing the hierarchy</h1>
+  <p class="sub">Today the epic rail on the phone is a filter, and its <b>all</b> state is a flat list sorted by priority. A card's parent is visible only as an ID prefix, and a parent that is not an epic (a task with subtasks) is never shown. The four phones below use the Open column from the screenshot: 25 cards across foit, 6e8h, bjqc and 17 loose cards.</p>
+  <div class="stage" id="stage"></div>
+
+  <section class="verdict">
+    <h2>Recommendation: option 1, with option 2's parent line for nested cards</h2>
+    <p>Option 1 keeps the rail the user already knows and makes it useful in the <b>all</b> state: tapping an epic scrolls to its lane, the header sticks while its cards scroll past, and the rail highlights the lane in view. It is the smallest change, because epic rows already exist on the phone and the wide board already assigns each epic a hue. A lane only knows the topmost epic, so a subtask of a task (b6jw.4) still needs one line naming its direct parent, which is option 2's third line, drawn only when the parent is not the lane's epic.</p>
+    <table>
+      <tr><th>Option</th><th>Shows</th><th>Costs</th><th>Code</th></tr>
+      <tr><td>1 Sticky lanes + rail index</td><td>epic per lane, count, progress; lane in view</td><td>a header row per epic (25 px)</td><td>rows renderer + sticky CSS, rail tap becomes scroll, scroll-spy</td></tr>
+      <tr><td>2 Parent line on the card</td><td>full ancestry per card, any sort order</td><td>one line per parented card (17 px)</td><td>cardHTML only, no layout change</td></tr>
+      <tr><td>3 Tree guides in the column</td><td>any depth, parents in other columns as ghosts</td><td>16 px of width per level, ghost rows</td><td>new tree walk per column, indent CSS</td></tr>
+      <tr><td>4 Epic accordion, no rail</td><td>epic facts large, 64 px more card width</td><td>a tap before any card is visible</td><td>replaces rail and rows on the phone</td></tr>
+    </table>
+  </section>
+</main>
+<script>
+  // Cards from the screenshot. e = topmost epic (lane), par = direct parent when it is not the epic.
+  const C = {
+    "foit.20": { t: "Measure the web UI on a real Pixel 9", ty: "task", p: "P2", age: "10h", e: "foit" },
+    "foit.19": { t: "Run the web Playwright suite on CI", ty: "task", p: "P2", age: "10h", e: "foit" },
+    "foit.27": { t: "Mac Backspace as delete in the tree", ty: "task", p: "P3", age: "2h", e: "foit" },
+    "foit.25": { t: "Browser Back closes an open sheet", ty: "task", p: "P3", age: "2h", e: "foit" },
+    "foit.18": { t: "Bulk close E2E failed once on CI", ty: "bug", p: "P3", age: "10h", e: "foit" },
+    "foit.4.2": { t: "Swipe threshold on iPhone 15", ty: "bug", p: "P3", age: "5h", e: "foit", par: ["foit.4", "Gestures for status and close"] },
+    "6e8h.9": { t: "Recent projects compare unreadable paths", ty: "bug", p: "P2", age: "12d", e: "6e8h" },
+    "6e8h.12": { t: "Project sheet lists a closed project", ty: "bug", p: "P3", age: "3d", e: "6e8h" },
+    "bjqc.3": { t: "Colon prompt loses focus on blur", ty: "task", p: "P3", age: "6d", e: "bjqc" },
+    "pdob": { t: "Improve the rewritten README", ty: "task", p: "P2", age: "2d", e: "none" },
+    "lg9d": { t: "Improve the rewritten README", ty: "task", p: "P2", age: "2d", e: "none" },
+    "md8p": { t: "Global keys shadow view keys: g and G", ty: "bug", p: "P2", age: "3d", e: "none" },
+    "2cpl": { t: "Help overlay and tutorial list stale keys", ty: "bug", p: "P2", age: "3d", e: "none" },
+    "80q4": { t: "Project switch keeps writing the old DB", ty: "bug", p: "P2", age: "12d", e: "none" },
+    "b6jw.4": { t: "Make preview verification real", ty: "bug", p: "P2", age: "13d", e: "none", par: ["b6jw", "Preview b9s from a phone"] },
+    "j7jf": { t: "Raise the documented E2E timeout", ty: "chore", p: "P3", age: "1d", e: "none" },
+    "trdj": { t: "Drop pagerank from the accepted sorts", ty: "task", p: "P3", age: "2d", e: "none" },
+    "xb9g": { t: "One blank row below the footer", ty: "bug", p: "P3", age: "2d", e: "none" },
+  };
+  const E = {
+    foit: { t: "Mobile-first web UI for b9s", done: 12, all: 31, n: 6 },
+    "6e8h": { t: "Recent projects and the project sheet", done: 7, all: 9, n: 2 },
+    bjqc: { t: "Colon command prompt", done: 4, all: 5, n: 1 },
+    none: { t: "No epic", n: 17 },
+  };
+  const TY = { task: ["✔", "var(--blue)"], bug: ["●", "var(--red)"], chore: ["○", "var(--cyan)"] };
+  const hue = e => `var(--e-${e})`;
+  const pct = e => Math.round(100 * E[e].done / E[e].all);
+
+  // card(id, opts): opts.path splits the id at the epic (option 2), opts.parent draws the third line, opts.depth indents (option 3).
+  function card(id, o = {}) {
+    const c = C[id], [g, col] = TY[c.ty];
+    const idHTML = o.path && c.e !== "none" ? `<i>♦${c.e}</i>.${id.slice(c.e.length + 1)}` : id;
+    let l3 = "";
+    if (o.parent && c.par) l3 = `<div class="l3">↳ <i>${c.par[0]}</i> ${c.par[1]}</div>`;
+    else if (o.parent && c.e !== "none") l3 = `<div class="l3"><i>♦ ${c.e}</i> ${E[c.e].t}</div>`;
+    const d = o.depth != null ? ` style="--d: ${o.depth}; --ec:${hue(c.e)}"` : "";
+    return `<div class="${o.depth != null ? "node" : ""}"${d}><div class="card" style="--c:${col}; --ec:${hue(c.e)}"><div class="l1"><span class="st">o</span><span class="id">${idHTML}</span><span class="t">${c.t}</span></div><div class="l2"><span class="p">${c.p}</span> · <span class="ty">${g} ${c.ty}</span> · <span class="age">${c.age}</span></div>${l3}</div></div>`;
+  }
+  const rail = (on, spy) => `<div class="brail">` + [["", "all", 25], ["none", "no epic", 17], ["foit", "♦foit", 6], ["6e8h", "♦6e8h", 2], ["bjqc", "♦bjqc", 1]]
+    .map(([k, l, n]) => `<button class="${k === on ? "on" : ""}" style="--ec:${hue(k || "none")}">${spy && k ? `<i>${l}</i>` : l}<b>${n}</b></button>`).join("") + `</div>`;
+  const laneHead = (e, folded) => `<div class="lh ${folded ? "folded" : ""}" style="--ec:${hue(e)}"><span class="chev">${folded ? "▸" : "▾"}</span>${e === "none" ? "<span class='ei'>·</span>" : `<span class="ei">♦ ${e}</span>`}<span class="t">${E[e].t}</span>${E[e].all ? `<span class="ep"><i style="width:${pct(e)}%"></i></span>` : ""}<span class="n">${E[e].n}</span></div>`;
+
+  const OPTIONS = [
+    {
+      title: "1 · Sticky lane headers, the rail as an index",
+      tag: "rows + rail, joined",
+      blurb: "The column keeps every lane, grouped under a header that sticks while its cards scroll. The rail no longer filters: a tap scrolls to that lane, and the entry of the lane in view lights up. A long press on a rail entry, or the chevron, folds the lane.",
+      tabs: "rail · rows",
+      rail: rail("foit", true),
+      col: laneHead("foit") + ["foit.20", "foit.19", "foit.27", "foit.25", "foit.18"].map(id => card(id)).join("") + card("foit.4.2", { parent: true })
+        + laneHead("6e8h") + card("6e8h.9") + card("6e8h.12")
+        + laneHead("bjqc", true)
+        + laneHead("none") + card("pdob") + card("b6jw.4", { parent: true }) + card("md8p"),
+      notes: ["<b>Shows</b>: the epic's title, progress and count once per lane, and the lane you are in.", "<b>Nested parent</b>: b6jw.4 and foit.4.2 get option 2's third line, because a lane knows only the topmost epic.", "<b>Cost</b>: 25 px per lane header. Sorting stays inside a lane.", "<b>Change</b>: small. Rows already render on the phone; the rail tap becomes a scroll, plus a scroll-spy."],
+    },
+    {
+      title: "2 · Parent line on every card",
+      tag: "no regrouping",
+      blurb: "The list stays flat and sorted by priority. The ID splits at the epic in the epic's hue, and a card whose parent exists gets a third line naming it. A card with no parent stays two lines. The rail keeps filtering, and its entries take the same hues.",
+      tabs: "rail · flat",
+      rail: rail("", true),
+      col: ["foit.20", "foit.19", "pdob", "6e8h.9", "80q4", "b6jw.4", "foit.4.2", "foit.27", "j7jf", "bjqc.3"].map(id => card(id, { path: true, parent: true })).join(""),
+      notes: ["<b>Shows</b>: the full ancestry of each card, in any sort order, including a non-epic parent.", "<b>Cost</b>: 17 px on each parented card, so the column holds about 20 % fewer cards.", "<b>Weak spot</b>: siblings are still scattered, so the reader rebuilds the grouping in their head.", "<b>Change</b>: cardHTML only. Cheapest to ship, and it combines with 1, 3 or 4."],
+    },
+    {
+      title: "3 · Tree guides in the column",
+      tag: "any depth",
+      blurb: "The column is walked as a tree, scoped to one status. Epics and parents in another column are dim ghost rows, not cards, so a child always has its context. Children indent 16 px per level with a guide in the epic's hue.",
+      tabs: "rail · tree",
+      rail: rail("", true),
+      col: `<div class="ghost" style="--ec:${hue("foit")}"><span class="ei">♦ foit</span><span class="t">Mobile-first web UI for b9s</span><span class="w">6</span></div>`
+        + card("foit.20", { depth: 1 }) + card("foit.19", { depth: 1 })
+        + `<div class="node ghost" style="--d: 1; --ec:${hue("foit")}"><span class="ei">foit.4</span><span class="t">Gestures for status and close</span><span class="w prog">in prog</span></div>`
+        + card("foit.4.2", { depth: 2 })
+        + card("foit.27", { depth: 1 })
+        + `<div class="ghost" style="--ec:${hue("6e8h")}"><span class="ei">♦ 6e8h</span><span class="t">Recent projects and the project sheet</span><span class="w">2</span></div>`
+        + card("6e8h.9", { depth: 1 })
+        + `<div class="ghost" style="--ec:${hue("none")}"><span class="ei">·</span><span class="t">No epic</span><span class="w">17</span></div>`
+        + card("pdob", { depth: 1 })
+        + `<div class="node ghost" style="--d: 1; --ec:${hue("none")}"><span class="ei">b6jw</span><span class="t">Preview b9s from a phone</span><span class="w prog">in prog</span></div>`
+        + card("b6jw.4", { depth: 2 }),
+      notes: ["<b>Shows</b>: the whole tree under one status, like the Tree tab filtered to Open.", "<b>Ghosts</b>: a parent in another column is drawn dim with its status, so nothing is orphaned.", "<b>Cost</b>: 16 px of title width per level. Two levels is the practical cap at 360 px.", "<b>Change</b>: largest. A tree walk per column and a new ghost row, and the priority sort applies only among siblings."],
+    },
+    {
+      title: "4 · Epic accordion, no rail",
+      tag: "one card per epic",
+      blurb: "The rail goes away and cards get its 64 px. The column is a list of epic cards, each with its progress and open count. A tap unfolds an epic's cards under it. A collapsed epic shows a short stack so it reads as a container.",
+      tabs: "accordion",
+      rail: "",
+      col: `<div class="ecard closed" style="--ec:${hue("foit")}"><div class="eh"><div class="l1"><span class="ei">♦ foit</span><span class="t">Mobile-first web UI for b9s</span><span class="chev">▸</span></div><div class="l2"><span class="ep"><i style="width:${pct("foit")}%"></i></span><span>12/31</span><span>· 6 open</span></div></div><div class="stack"></div><div class="stack"></div></div>`
+        + `<div class="ecard open" style="--ec:${hue("6e8h")}"><div class="eh"><div class="l1"><span class="ei">♦ 6e8h</span><span class="t">Recent projects and the project sheet</span><span class="chev">▾</span></div><div class="l2"><span class="ep"><i style="width:${pct("6e8h")}%"></i></span><span>7/9</span><span>· 2 open</span></div></div><div class="kids">${card("6e8h.9")}${card("6e8h.12")}</div></div>`
+        + `<div class="ecard closed" style="--ec:${hue("bjqc")}"><div class="eh"><div class="l1"><span class="ei">♦ bjqc</span><span class="t">Colon command prompt</span><span class="chev">▸</span></div><div class="l2"><span class="ep"><i style="width:${pct("bjqc")}%"></i></span><span>4/5</span><span>· 1 open</span></div></div><div class="stack"></div></div>`
+        + `<div class="ecard open" style="--ec:${hue("none")}"><div class="eh"><div class="l1"><span class="ei">·</span><span class="t">No epic</span><span class="chev">▾</span></div><div class="l2"><span>17 open</span></div></div><div class="kids">${card("pdob")}${card("lg9d")}${card("md8p")}${card("b6jw.4", { parent: true })}</div></div>`,
+      notes: ["<b>Shows</b>: the epic as a real object with its progress, and full-width cards.", "<b>Cost</b>: a tap before any card is visible, and the state of what is open has to be remembered.", "<b>Nested parent</b>: still needs option 2's third line (b6jw.4).", "<b>Change</b>: replaces both the rail and rows on the phone, and the wide board keeps its own layout."],
+    },
+  ];
+
+  const chrome = (o) => `<div class="phone">
+    <div class="hd"><span class="proj">b9s <small>· b9s ▾</small></span><span class="dot">●</span><span class="cnt"><b>28</b> open · <i>12</i> prog · 2…</span><span class="ib">F</span><span class="ib">+</span><span class="ib">?</span></div>
+    <div class="chips"><span class="chip on">o Open 28</span><span class="chip prog">i In prog 12</span><span class="chip blk">b Blocked 2</span><span class="chip def">d Deferred 7</span></div>
+    <div class="tabs"><span class="tab on">Open<b>25</b></span><span class="tab">In prog<b>9</b></span><span class="tab opts">⚙ status · ${o.tabs}</span></div>
+    <div class="body">${o.rail}<div class="bcol">${o.col}</div><div class="fade"></div></div>
+    <div class="nav"><span data-g="≡">Tree</span><span class="on" data-g="▥">Board</span><span data-g="⌕">Search</span><span data-g="…">More</span></div>
+  </div>`;
+
+  document.getElementById("stage").innerHTML = OPTIONS.map(o => `<section class="opt"><h2>${o.title} <small>${o.tag}</small></h2><p>${o.blurb}</p>${chrome(o)}<ul>${o.notes.map(n => `<li>${n}</li>`).join("")}</ul></section>`).join("");
+</script>
+</body>
+</html>

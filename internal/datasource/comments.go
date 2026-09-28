@@ -43,8 +43,8 @@ type AllCommentsLoader interface {
 // LoadAllComments loads every comment in source's database as one
 // all-or-nothing map keyed by issue ID, mirroring LoadFromSource's dispatch
 // by source type. SQLite and Dolt implement AllCommentsLoader directly; a
-// JSONL source has no separate comments query to fail, so its map is built
-// from the issues LoadIssuesFromFile already returns. A JSONL load error
+// JSONL or embedded Dolt source has no separate comments query to fail, so its
+// map is built from the issues its export already carries. A load error
 // stops the caller exactly as a SQLite or Dolt query error would.
 func LoadAllComments(source DataSource) (map[string][]*model.Comment, error) {
 	switch source.Type {
@@ -64,8 +64,14 @@ func LoadAllComments(source DataSource) (map[string][]*model.Comment, error) {
 		defer reader.Close()
 		return reader.AllComments()
 
-	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree:
-		issues, err := loader.LoadIssuesFromFile(source.Path)
+	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree, SourceTypeDoltEmbedded:
+		var issues []model.Issue
+		var err error
+		if source.Type == SourceTypeDoltEmbedded {
+			issues, err = loadEmbeddedIssues(source)
+		} else {
+			issues, err = loader.LoadIssuesFromFile(source.Path)
+		}
 		if err != nil {
 			return nil, err
 		}

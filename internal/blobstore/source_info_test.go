@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 func TestSourceInfoFromDataSource_Dolt(t *testing.T) {
@@ -75,5 +76,20 @@ func TestSourceInfoFromDataSource_UnsupportedType(t *testing.T) {
 	_, err := SourceInfoFromDataSource(datasource.DataSource{Type: "made-up"}, "/repo/.beads", "b9s")
 	if err == nil || !strings.Contains(err.Error(), "made-up") {
 		t.Fatalf("SourceInfoFromDataSource err = %v, want it to name the unsupported type", err)
+	}
+}
+
+func TestSourceInfoFromDataSource_EmbeddedDoltMayUseTheLocalBackend(t *testing.T) {
+	source := datasource.DataSource{Type: datasource.SourceTypeDoltEmbedded, Path: "/repo/.beads/embeddeddolt/emb", Database: "emb"}
+	info, err := SourceInfoFromDataSource(source, "/repo/.beads", "emb")
+	if err != nil {
+		t.Fatalf("SourceInfoFromDataSource: %v", err)
+	}
+	want := SourceInfo{Kind: SourceDoltEmbedded, BeadsDir: "/repo/.beads", ProjectName: "emb"}
+	if info != want {
+		t.Fatalf("SourceInfoFromDataSource() = %+v, want %+v", info, want)
+	}
+	if _, err := openLocal(&config.AttachmentsConfig{Backend: "local"}, info); err != nil {
+		t.Errorf("openLocal refused an embedded store, which no other operator shares: %v", err)
 	}
 }

@@ -15,6 +15,7 @@ b9s is a Go program built on [Bubble Tea](https://github.com/charmbracelet/bubbl
 - [Writes go through bd](#writes-go-through-bd)
 - [Projects and the catalog](#projects-and-the-catalog)
 - [People and identities](#people-and-identities)
+- [The web UI](#the-web-ui)
 - [Configuration](#configuration)
 - [Decision records](#decision-records)
 
@@ -62,6 +63,8 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 | `pkg/updater` | Self-update from GitHub releases with checksum verification and rollback |
 | `pkg/debug`, `pkg/version` | Debug logging behind `B9S_DEBUG`, and the version string set at build time |
 | `pkg/testutil` | Deterministic fixture generators and assertion helpers for tests |
+| `pkg/web` | `b9s web`: the HTTP API, the server-sent event stream, pairing and sessions, the write endpoint, and the embedded browser bundle in `dist` |
+| `web` | The browser app in TypeScript, built with esbuild into `pkg/web/dist`, and its Playwright tests |
 | `tests/e2e` | End-to-end tests that run the built binary in a pseudo-terminal |
 
 `pkg/ui` is large because Bubble Tea keeps one model per program. The files split it by concern: `model.go` holds the root `Update` and key routing, `tree.go` the tree, `board.go` the board, `graph.go` the graph, `query_state.go` the query, `commands.go` the prompt aliases, `edit_modal.go` the forms, `issue_writer.go` the `bd` calls, and `project_*.go` the project header, table and switch.
@@ -94,10 +97,13 @@ sequenceDiagram
 | Source | Found through | Reader |
 |--------|---------------|--------|
 | Dolt server | `metadata.json` with `"dolt_mode": "server"` | `DoltReader` over `go-sql-driver/mysql` |
+| Embedded Dolt | `metadata.json` with `"dolt_mode": "embedded"` | `bd export` through `bdrun.Output`, parsed by `pkg/loader` (`embedded.go`) |
 | SQLite | `beads.db` | `SQLiteReader` |
 | JSONL | `issues.jsonl`, also through a linked worktree's main checkout | `pkg/loader` |
 
-A Dolt server always wins. If the connection fails, `cmd/b9s` falls back to SQLite and then JSONL and records the error for the `D` health popup. Embedded Dolt has no server to connect to and cannot be read.
+A Dolt server always wins. If the connection fails, `cmd/b9s` falls back to SQLite and then JSONL and records the error for the `D` health popup.
+
+Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd export` with `BEADS_DIR` set and parses stdout only, because `bd` holds the store's lock for as long as a process has it open. When the export fails, `OpenProject` reports it (`OpenNoBD` when `bd` is missing) and does not fall back to an `issues.jsonl` beside the store. See [ADR 0025](adr/0025-read-embedded-dolt-through-bd-export.md).
 
 `DoltReader` connects with the host, port, user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. The password is sent only to a loopback address or an endpoint listed in `B9S_TRUSTED_DOLT_ENDPOINTS`, so a cloned repository cannot redirect it. See [ADR 0013](adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
 
@@ -108,6 +114,7 @@ A Dolt server always wins. If the connection fails, `cmd/b9s` falls back to SQLi
 The active source decides how changes are detected:
 
 - **Dolt.** `DoltWatcher` polls `DOLT_HASHOF_DB()` at `refresh.poll_interval`, 500 ms by default. That hash covers the working set, not only `HEAD`, so a write from `bd` shows up without a Dolt commit.
+- **Embedded Dolt.** The same `DoltWatcher` polls a fingerprint of the store instead: the content of each `manifest` and the size of the chunk journal. Every other file is left out, because `bd` rewrites `journal.idx` and writes temporary manifests while it only reads, and those would turn each reload into the trigger for the next.
 - **JSONL.** `pkg/watcher` uses fsnotify with a debounce window, and switches to polling on NFS, SMB and similar filesystems where events do not arrive.
 - **SQLite.** The file is watched like JSONL.
 
@@ -189,6 +196,31 @@ config table ──▶ LoadIdentityConfig ──▶ identity.Parse ──▶ Reg
 ```
 
 The Dolt SQL login is a workspace credential shared by every agent, so it is shown but never used as a person. See [ADR 0014](adr/0014-map-actors-to-identities-in-b9s-config.md).
+
+## The web UI
+
+`b9s web` (`cmd/b9s/web.go`) serves one project to browsers. It reuses the TUI's readers, watcher, query parser and `IssueWriter`, so the browser sees the same data and makes the same `bd` calls.
+
+```text
+  phone ──https──▶ tailscale serve ──▶ 127.0.0.1:7979  pkg/web.Server
+                                          │
+             GET /api/snapshot, /issue,   │  Store: one open project,
+             /query, /health, /projects   │  version counter, watcher
+             GET /api/events (SSE) ◀──────┤
+             POST /api/write ─────────────┼──▶ ui.IssueWriter ──▶ bd
+                                          ▼
+                                   Dolt / SQLite / JSONL
+```
+
+- **Store** (`store.go`) holds the open project and a version number that goes up on each watcher event. The snapshot is lean: long text and comments come from `/api/issue` when the detail opens.
+- **Events** (`/api/events`) send `hello` with the current version on connect, then `changed`, `project` and `health`. The browser fetches a new snapshot when the version moves, so a missed event costs one fetch, never a wrong list.
+- **Queries** go to the server (`/api/query`), which runs the TUI's `ParseIssueQuery`, so the browser never has a second query language.
+- **Writes** (`write.go`) accept a closed set of operations, check them, and call `IssueWriter`. A failed `bd` answers 422 with its output. A write needs the session cookie and the `X-B9s-CSRF` header.
+- **Auth** (`auth.go`) derives the pairing token from a secret in the config folder, so a paired phone stays paired across restarts. See [ADR 0020](adr/0020-pair-every-browser-with-a-persistent-token.md).
+- **Types**: `web/src/api.gen.ts` is generated from `types.go` by `TestGeneratedTypesAreCurrent`, and fails that test when stale.
+- **Bundle**: `pkg/web/dist` is committed and embedded with `go:embed`. `dist/source.sha256` hashes the inputs, and `TestEmbeddedBundleIsCurrent` fails when `web/` changed without `make web`. The GoReleaser before-hook runs that test and `TestGeneratedTypesAreCurrent`, so a release cannot ship a stale bundle and needs no Node.
+
+The browser app (`web/src`) keeps one module per concern: `api.ts` the fetch and SSE client, `data.ts` the snapshot and derived fields, `state.ts` the view state and filters, `render.ts` the DOM, `actions.ts` writes, sheets and undo, `gestures.ts` the pointer handlers, `nav.ts` the browser history, and `main.ts` the boot and live updates. `nav.ts` derives the place (view, detail stack, graph path) from the view state after each render and pushes, replaces or steps back a history entry, so no action has to call the History API itself. A live change that arrives while a finger is on a row waits until the gesture ends. See [ADR 0019](adr/0019-serve-a-mobile-web-ui-from-b9s-web.md).
 
 ## Configuration
 

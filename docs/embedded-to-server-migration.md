@@ -2,6 +2,8 @@
 
 This guide walks through migrating a beads project from embedded Dolt (the default) to an external Dolt SQL server, preserving all issues, dependencies, comments, and memories.
 
+b9s reads embedded Dolt as it is, through `bd export` ([ADR 0025](adr/0025-read-embedded-dolt-through-bd-export.md)), so b9s alone is no reason to migrate. Migrate when several agents or machines write to one project at once: an embedded store takes one process at a time.
+
 ## Table of Contents
 
 - [Background](#background)
@@ -218,7 +220,7 @@ bd export -o .beads/issues.jsonl
 
 ### b9s shows "JSONL" as the source instead of Dolt
 
-Check `.beads/metadata.json` has `"dolt_mode": "server"` and the host/port are correct. b9s only connects to Dolt in server mode (embedded mode has no TCP socket for b9s to connect to).
+Check `.beads/metadata.json` has `"dolt_mode": "server"` and the host/port are correct. When the server cannot be reached, b9s falls back to `issues.jsonl` and `D` shows the connection error.
 
 ```bash
 cat .beads/metadata.json | jq .dolt_mode

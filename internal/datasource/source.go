@@ -28,11 +28,26 @@ const (
 	SourceTypeJSONLLocal SourceType = "jsonl_local"
 	// SourceTypeDolt is a Dolt MySQL-compatible database
 	SourceTypeDolt SourceType = "dolt"
+	// SourceTypeDoltEmbedded is an embedded Dolt store, read through bd (ADR 0025)
+	SourceTypeDoltEmbedded SourceType = "dolt_embedded"
 )
+
+// IsDolt reports whether t is a Dolt store, server or embedded. Both reload
+// from the store rather than from an issues file, and a DoltWatcher watches
+// both.
+func (t SourceType) IsDolt() bool {
+	return t == SourceTypeDolt || t == SourceTypeDoltEmbedded
+}
+
+// EmbeddedLabel is the short source label for an embedded Dolt store.
+func (s DataSource) EmbeddedLabel() string {
+	return "dolt embedded/" + s.Database
+}
 
 // Priority values for source types (higher = more authoritative)
 const (
 	PriorityDolt          = 110
+	PriorityDoltEmbedded  = 110
 	PrioritySQLite        = 100
 	PriorityJSONLWorktree = 80
 	PriorityJSONLLocal    = 50
@@ -42,7 +57,8 @@ const (
 type DataSource struct {
 	// Type identifies the source type
 	Type SourceType `json:"type"`
-	// Path is the absolute path to the source file (or host:port for Dolt)
+	// Path is the absolute path to the source file (host:port for a Dolt
+	// server, the store directory for embedded Dolt)
 	Path string `json:"path"`
 	// Priority determines preference when timestamps are equal (higher = preferred)
 	Priority int `json:"priority"`
@@ -56,7 +72,7 @@ type DataSource struct {
 	IssueCount int `json:"issue_count"`
 	// Size is the file size in bytes
 	Size int64 `json:"size"`
-	// Database is the Dolt database name (only used for SourceTypeDolt)
+	// Database is the Dolt database name (Dolt server and embedded Dolt)
 	Database string `json:"database,omitempty"`
 	// User is the Dolt connection user (only used for SourceTypeDolt)
 	User string `json:"user,omitempty"`
@@ -199,9 +215,8 @@ type beadsMetadata struct {
 	IssuePrefix    string `json:"issue_prefix"`     // e.g. "bd"
 }
 
-// discoverDoltSources detects a Dolt server backend by reading .beads/metadata.json.
-// This is the same file bd writes, so b9s always connects to the same database.
-// Only returns a source when dolt_mode is "server" (not embedded).
+// discoverDoltSources detects a Dolt backend by reading .beads/metadata.json.
+// This is the same file bd writes, so b9s always reads the same database.
 func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, error) {
 	metadataPath := filepath.Join(beadsDir, "metadata.json")
 	data, err := os.ReadFile(metadataPath)
@@ -217,7 +232,9 @@ func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, 
 		return nil, nil
 	}
 
-	// Only connect to Dolt in server mode. Embedded mode has no TCP server.
+	if meta.DoltMode == "embedded" {
+		return []DataSource{embeddedDoltSource(beadsDir, meta, opts)}, nil
+	}
 	if meta.DoltMode != "server" {
 		return nil, nil
 	}
@@ -262,6 +279,26 @@ func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, 
 	}
 
 	return []DataSource{source}, nil
+}
+
+// embeddedDoltSource describes an embedded store. Its ModTime is now: the
+// store is the project itself, so an export file beside it is never fresher.
+func embeddedDoltSource(beadsDir string, meta beadsMetadata, opts DiscoveryOptions) DataSource {
+	database := meta.DoltDatabase
+	if database == "" {
+		database = "beads"
+	}
+	source := DataSource{
+		Type:     SourceTypeDoltEmbedded,
+		Path:     filepath.Join(beadsDir, "embeddeddolt", database),
+		Priority: PriorityDoltEmbedded,
+		ModTime:  time.Now(),
+		Database: database,
+	}
+	if opts.Verbose {
+		opts.Logger(fmt.Sprintf("Found embedded Dolt: %s", source.Path))
+	}
+	return source
 }
 
 // discoverSQLiteSources finds SQLite databases in the beads directory

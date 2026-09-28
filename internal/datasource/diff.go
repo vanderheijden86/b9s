@@ -188,6 +188,8 @@ func loadIssuesFromSource(source DataSource) ([]model.Issue, error) {
 		return reader.LoadIssues()
 	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree:
 		return loadIssuesFromJSONL(source.Path)
+	case SourceTypeDoltEmbedded:
+		return loadEmbeddedIssues(source)
 	default:
 		return nil, fmt.Errorf("unsupported source type: %s", source.Type)
 	}

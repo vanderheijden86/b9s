@@ -181,6 +181,8 @@ func buildSelectionReason(selected DataSource, candidates []DataSource, opts Sel
 		reasons = append(reasons, "synced worktree data")
 	case SourceTypeJSONLLocal:
 		reasons = append(reasons, "local JSONL file")
+	case SourceTypeDoltEmbedded:
+		reasons = append(reasons, "embedded Dolt store")
 	}
 
 	if len(reasons) == 0 {

@@ -261,6 +261,11 @@ func TestReleaseConfigurationPinsActionsAndEmitsProvenance(t *testing.T) {
 	if !strings.Contains(configText, "https://github.com/vanderheijden86/b9s") {
 		t.Fatal("GoReleaser metadata still points at the old repository identity")
 	}
+	// The release embeds the committed pkg/web/dist. The hook stops a
+	// release whose bundle was built from other sources than the tag holds.
+	if !strings.Contains(configText, "TestEmbeddedBundleIsCurrent") {
+		t.Fatal("GoReleaser has no before-hook that checks the embedded web bundle")
+	}
 }
 
 func TestDebugExecutablesAreIgnored(t *testing.T) {

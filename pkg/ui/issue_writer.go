@@ -38,6 +38,7 @@ const (
 	BdOpSetStatus
 	BdOpSetPriority
 	BdOpDefer // bd-j7mx
+	BdOpComment
 )
 
 // BdResultMsg is returned after a bd CLI operation completes
@@ -167,6 +168,15 @@ func (w *IssueWriter) runBatch(op BdOperation, ids []string, args []string) tea.
 		}
 		return result
 	}
+}
+
+// AddComment runs bd comments add <id> -- <text>. The separator keeps text
+// that starts with a dash from being read as a flag.
+func (w *IssueWriter) AddComment(id, text string) tea.Cmd {
+	if !w.available {
+		return w.unavailableCmd(BdOpComment, id)
+	}
+	return w.runBdCmd(BdOpComment, id, []string{"comments", "add", id, "--", text})
 }
 
 // DeferIssue runs bd defer <id> with optional --until flag (bd-j7mx).
@@ -324,11 +334,10 @@ func (w *IssueWriter) readOnlyCmd(op BdOperation, id string) tea.Cmd {
 func extractCreatedID(output string) string {
 	for _, line := range strings.Split(output, "\n") {
 		line = strings.TrimSpace(line)
-		// Look for "Created issue: <id>" pattern
-		if strings.Contains(line, "Created issue:") {
-			parts := strings.SplitAfter(line, "Created issue:")
-			if len(parts) > 1 {
-				return strings.TrimSpace(parts[1])
+		// bd prints "Created issue: <id>", and from 1.3 on appends " — <title>".
+		if _, rest, ok := strings.Cut(line, "Created issue:"); ok {
+			if fields := strings.Fields(rest); len(fields) > 0 {
+				return fields[0]
 			}
 		}
 	}

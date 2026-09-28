@@ -89,12 +89,16 @@ func (m Model) beginProjectSwitch(project config.Project) (Model, tea.Cmd) {
 // otherwise from its database as the startup project's Dolt user, the only
 // credential b9s holds for it.
 func (m Model) openTargetFor(project config.Project) datasource.OpenTarget {
+	return openTargetFor(project, m.startupDoltUser)
+}
+
+func openTargetFor(project config.Project, startupDoltUser string) datasource.OpenTarget {
 	path := project.ResolvedPath()
 	if _, ok := NewCheckout(path); ok {
 		return datasource.OpenTarget{Name: project.Name, Dir: path}
 	}
 	if project.Database != "" {
-		source := databaseSource(project, m.startupDoltUser)
+		source := databaseSource(project, startupDoltUser)
 		return datasource.OpenTarget{Name: project.Name, Dolt: &source}
 	}
 	return datasource.OpenTarget{Name: project.Name, Dir: path}
@@ -244,7 +248,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	sources, discErr := m.projectSources(project)
 	hasDoltSource := false
 	for _, source := range sources {
-		if source.Type == datasource.SourceTypeDolt {
+		if source.Type.IsDolt() {
 			hasDoltSource = true
 			break
 		}
@@ -314,6 +318,15 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 					m.sourceInfo = doltLabel + " ✓"
 				}
 				break
+			} else if s.Type == datasource.SourceTypeDoltEmbedded {
+				// An embedded watcher holds nothing open, so only a bug fails it.
+				if dw, dwErr := datasource.NewDoltWatcher(s, m.doltPollInterval); dwErr == nil && dw.Start() == nil {
+					m.doltWatcher = dw
+					m.doltSource = s
+					m.sourceType = datasource.SourceTypeDoltEmbedded
+					m.sourceInfo = s.EmbeddedLabel() + " ✓"
+				}
+				break
 			} else if s.Type == datasource.SourceTypeSQLite {
 				m.sourceInfo = fmt.Sprintf("sqlite %s", filepath.Base(s.Path))
 			}
@@ -344,7 +357,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	m.tree.Build(nil)
 	// Start new background worker or watcher for the new project
 	bw, bwErr := NewBackgroundWorker(WorkerConfig{BeadsPath: newPath})
-	if bwErr == nil && m.sourceType != datasource.SourceTypeDolt {
+	if bwErr == nil && !m.sourceType.IsDolt() {
 		m.backgroundWorker = bw
 		cmds = append(cmds, StartBackgroundWorkerCmd(bw))
 		cmds = append(cmds, WaitForBackgroundWorkerMsgCmd(bw))

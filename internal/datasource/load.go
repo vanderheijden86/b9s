@@ -138,6 +138,12 @@ func LoadFromSource(source DataSource) ([]model.Issue, error) {
 		debug.Log("load: Dolt returned %d issues, err=%v", len(issues), err)
 		return issues, err
 
+	case SourceTypeDoltEmbedded:
+		debug.Log("load: reading embedded Dolt through bd export: %s", source.Path)
+		issues, err := loadEmbeddedIssues(source)
+		debug.Log("load: embedded Dolt returned %d issues, err=%v", len(issues), err)
+		return issues, err
+
 	case SourceTypeJSONLLocal, SourceTypeJSONLWorktree:
 		debug.Log("load: loading JSONL file: %s", source.Path)
 		issues, err := loader.LoadIssuesFromFile(source.Path)

@@ -25,6 +25,8 @@ func SourceInfoFromDataSource(source datasource.DataSource, beadsDir, projectNam
 			BeadsDir:    beadsDir,
 			ProjectName: projectName,
 		}, nil
+	case datasource.SourceTypeDoltEmbedded:
+		return SourceInfo{Kind: SourceDoltEmbedded, BeadsDir: beadsDir, ProjectName: projectName}, nil
 	case datasource.SourceTypeSQLite:
 		return SourceInfo{Kind: SourceSQLite, BeadsDir: beadsDir, ProjectName: projectName}, nil
 	case datasource.SourceTypeJSONLLocal, datasource.SourceTypeJSONLWorktree:

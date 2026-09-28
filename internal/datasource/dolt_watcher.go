@@ -10,7 +10,8 @@ import (
 // DoltWatcher polls a Dolt database for working-set content changes. It
 // notifies callers for both committed and uncommitted writes.
 type DoltWatcher struct {
-	reader       *DoltReader
+	hash         func() (string, error)
+	closeSource  func()
 	pollInterval time.Duration
 	lastHash     string
 	onChange     func()
@@ -22,23 +23,33 @@ type DoltWatcher struct {
 	mu       sync.RWMutex
 }
 
-// NewDoltWatcher creates a DoltWatcher backed by the given DataSource. It opens
-// a DoltReader (verifying connectivity) and initialises the watcher state. The
-// caller must call Start to begin polling.
+// NewDoltWatcher creates a DoltWatcher backed by the given DataSource. For a
+// Dolt server it opens a DoltReader (verifying connectivity) and polls the
+// database hash. For an embedded store it polls a fingerprint of the store
+// files and holds nothing open, so bd writes never meet a lock held by b9s
+// (ADR 0025). The caller must call Start to begin polling.
 func NewDoltWatcher(source DataSource, pollInterval time.Duration) (*DoltWatcher, error) {
-	if source.Type != SourceTypeDolt {
+	var hash func() (string, error)
+	closeSource := func() {}
+	switch source.Type {
+	case SourceTypeDolt:
+		reader, err := NewDoltReader(source)
+		if err != nil {
+			return nil, fmt.Errorf("DoltWatcher: cannot open reader: %w", err)
+		}
+		hash = reader.GetDatabaseHash
+		closeSource = func() { reader.Close() } //nolint:errcheck // best-effort on shutdown
+	case SourceTypeDoltEmbedded:
+		hash = func() (string, error) { return embeddedFingerprint(source.Path) }
+	default:
 		return nil, fmt.Errorf("DoltWatcher requires a Dolt source, got: %s", source.Type)
-	}
-
-	reader, err := NewDoltReader(source)
-	if err != nil {
-		return nil, fmt.Errorf("DoltWatcher: cannot open reader: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &DoltWatcher{
-		reader:       reader,
+		hash:         hash,
+		closeSource:  closeSource,
 		pollInterval: pollInterval,
 		changeCh:     make(chan struct{}, 1),
 		ctx:          ctx,
@@ -58,7 +69,7 @@ func (w *DoltWatcher) Start() error {
 	}
 
 	// Establish baseline hash — do not notify on first observation.
-	hash, err := w.reader.GetDatabaseHash()
+	hash, err := w.hash()
 	if err != nil {
 		// Non-fatal: proceed without a baseline; the first successful poll will
 		// set it without triggering a spurious notification.
@@ -82,7 +93,7 @@ func (w *DoltWatcher) Stop() {
 	}
 
 	w.cancel()
-	w.reader.Close() //nolint:errcheck // best-effort on shutdown
+	w.closeSource()
 	w.started = false
 }
 
@@ -119,7 +130,7 @@ func (w *DoltWatcher) poll() {
 			return
 
 		case <-ticker.C:
-			hash, err := w.reader.GetDatabaseHash()
+			hash, err := w.hash()
 			if err != nil {
 				// Transient error — skip and retry next tick.
 				continue

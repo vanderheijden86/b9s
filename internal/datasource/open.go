@@ -24,6 +24,7 @@ const (
 	OpenNoIssuesTable
 	OpenUnreadable
 	OpenTimedOut
+	OpenNoBD
 	openReasonEnd
 )
 
@@ -65,6 +66,8 @@ func (f *OpenFailure) Message() string {
 		return fmt.Sprintf("Cannot read the issues of %s", f.location())
 	case OpenTimedOut:
 		return fmt.Sprintf("%s took too long to open", f.Project)
+	case OpenNoBD:
+		return fmt.Sprintf("%s uses embedded Dolt, which b9s reads through bd, and bd is not on PATH", f.location())
 	}
 	return ""
 }
@@ -105,6 +108,11 @@ func (f *OpenFailure) Try() []string {
 		return []string{
 			"Retry: the server may be busy",
 			fmt.Sprintf("Check that the Dolt server or SSH tunnel for %s is running", server),
+		}
+	case OpenNoBD:
+		return []string{
+			"Install bd: https://github.com/steveyegge/beads",
+			"Check that bd runs in this shell: bd version",
 		}
 	}
 	return nil
@@ -161,6 +169,14 @@ func OpenProject(target OpenTarget) (OpenedProject, *OpenFailure) {
 			return OpenedProject{Issues: issues, Source: source, DoltFailure: doltFailure, CommentsErr: err}, nil
 		}
 		f := &OpenFailure{Reason: OpenUnreadable, Project: target.Name, Dir: target.Dir, Err: err}
+		if source.Type == SourceTypeDoltEmbedded {
+			// The store is the project: an export beside it is at best a
+			// copy from some earlier day, so its failure is final.
+			if errors.Is(err, ErrBDNotFound) {
+				f.Reason = OpenNoBD
+			}
+			return OpenedProject{}, f
+		}
 		if source.Type == SourceTypeDolt {
 			f.Reason = classifyDoltFailure(err)
 			f.Server = source.Path

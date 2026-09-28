@@ -8,6 +8,8 @@ cmd/bw/bw
 
 # Build artifacts
 dist/
+# The web UI bundle is committed so go build needs no Node (ADR 0019).
+!/pkg/web/dist/
 a.out
 coverage.out
 cover*.out
@@ -80,3 +82,8 @@ target-*/
 .beads/dolt-config.log
 .playwright-cli/
 *.err
+
+# web E2E
+/.b9s-e2e/
+/web/test-results/
+/web/playwright-report/

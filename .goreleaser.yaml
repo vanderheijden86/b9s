@@ -1,6 +1,14 @@
 version: 2
 
 project_name: b9s
+
+# The binary embeds pkg/web/dist, which is committed so a release needs no
+# Node toolchain. These tests stop a release whose bundle or generated API
+# types no longer match the web/ sources in the tagged commit.
+before:
+  hooks:
+    - go test ./pkg/web -run 'TestEmbeddedBundleIsCurrent|TestGeneratedTypesAreCurrent' -count=1
+
 builds:
   - main: ./cmd/b9s
     binary: b9s

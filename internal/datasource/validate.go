@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	json "github.com/goccy/go-json"
@@ -65,6 +66,8 @@ func ValidateSourceWithOptions(source *DataSource, opts ValidationOptions) error
 		err = validateJSONL(source, opts)
 	case SourceTypeDolt:
 		err = validateDolt(source, opts)
+	case SourceTypeDoltEmbedded:
+		err = validateEmbedded(source)
 	default:
 		err = fmt.Errorf("unknown source type: %s", source.Type)
 	}
@@ -322,5 +325,18 @@ func RefreshSourceInfo(source *DataSource) error {
 	}
 	source.ModTime = info.ModTime()
 	source.Size = info.Size()
+	return nil
+}
+
+// validateEmbedded checks that the store exists. Its issues are counted when
+// they load: validating by running bd export would read the store twice.
+func validateEmbedded(source *DataSource) error {
+	info, err := os.Stat(filepath.Join(source.Path, ".dolt"))
+	if err != nil {
+		return fmt.Errorf("embedded Dolt store not found: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("embedded Dolt store %s is not a directory", source.Path)
+	}
 	return nil
 }

@@ -192,6 +192,8 @@ const contextHelpDetail = `## Detail View
   j/k       Scroll content
   Home/End  Jump to top/bottom of content
   n/p       Next/previous sibling issue (tree)
+  1-9       Open the numbered child
+  Backspace Back to the issue a number was pressed on
   Esc       Return to list
   Tab       Switch to split view
 

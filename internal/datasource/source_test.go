@@ -811,9 +811,10 @@ func TestDiscoverSources_DoltNotDetectedWithoutMetadata(t *testing.T) {
 	}
 }
 
-// TestDiscoverSources_DoltEmbeddedNotDetected tests that embedded mode is NOT
-// detected as a Dolt source (only server mode has a TCP connection to make).
-func TestDiscoverSources_DoltEmbeddedNotDetected(t *testing.T) {
+// TestDiscoverSources_EmbeddedIsNotAServerSource tests that embedded mode is
+// never taken for a Dolt server: it has no TCP connection to make, and is read
+// through bd as SourceTypeDoltEmbedded instead.
+func TestDiscoverSources_EmbeddedIsNotAServerSource(t *testing.T) {
 	tmpDir := t.TempDir()
 	beadsDir := filepath.Join(tmpDir, ".beads")
 	if err := os.MkdirAll(beadsDir, 0755); err != nil {

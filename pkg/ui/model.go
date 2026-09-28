@@ -298,6 +298,16 @@ func pickerRefreshTickCmd() tea.Cmd {
 func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd {
 	projects = append([]config.Project(nil), projects...)
 	return func() tea.Msg {
+		counts, reach := probeProjects(projects, startupUser)
+		return projectCountsLoadedMsg{counts: counts, reach: reach}
+	}
+}
+
+// probeProjects loads every project's issues in parallel and reports their
+// counts and how reachable each one is. A project with neither a checkout nor
+// a database has no entry in either map.
+func probeProjects(projects []config.Project, startupUser string) (map[string]projectCounts, map[string]datasource.Reachability) {
+	{
 		type result struct {
 			key    string
 			counts projectCounts
@@ -342,7 +352,7 @@ func loadProjectCountsCmd(projects []config.Project, startupUser string) tea.Cmd
 			}
 			counts[loaded.key] = loaded.counts
 		}
-		return projectCountsLoadedMsg{counts: counts, reach: reach}
+		return counts, reach
 	}
 }
 
@@ -452,6 +462,7 @@ type Model struct {
 	pooledIssues     []*model.Issue // Issue pool refs for sync reloads (return to pool on replace)
 	issueMap         map[string]*model.Issue
 	pendingBranchID  string                  // ShowBranchMsg waiting for its issue to load
+	detailBack       []string                // issues left through a child's number key, for Backspace
 	beadsPath        string                  // Path to beads.jsonl for reloading
 	watcher          *watcher.Watcher        // File watcher for live reload
 	doltWatcher      *datasource.DoltWatcher // Dolt polling watcher for live reload
@@ -1940,7 +1951,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			debug.Log("FileChangedMsg: reloading via datasource.LoadFromSource (Dolt, no checkout, db=%s)", m.doltSource.Database)
 			newIssues, err = datasource.LoadFromSource(m.doltSource)
 			debug.Log("FileChangedMsg: Dolt reload done: %d issues, err=%v", len(newIssues), err)
-		} else if m.sourceType == datasource.SourceTypeDolt {
+		} else if m.sourceType.IsDolt() {
 			// Project switching must bypass BEADS_DIR, which identifies the startup
 			// project and otherwise redirects every reload back to that database.
 			debug.Log("FileChangedMsg: reloading via datasource.LoadIssuesFromDir (Dolt, project=%s)", m.activeProjectPath)
@@ -2161,7 +2172,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		// Auto-enable background mode after slow sync reloads (opt-out via B9S_BACKGROUND_MODE=0).
 		autoEnabled := false
 		slowReload := reloadDuration >= time.Second
-		if slowReload && m.backgroundWorker == nil && m.beadsPath != "" && m.sourceType != datasource.SourceTypeDolt {
+		if slowReload && m.backgroundWorker == nil && m.beadsPath != "" && !m.sourceType.IsDolt() {
 			autoAllowed := true
 			if v := strings.TrimSpace(os.Getenv("B9S_BACKGROUND_MODE")); v != "" {
 				switch strings.ToLower(v) {
@@ -2635,6 +2646,10 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		// Number keys 1-9: route to labels, assignees, or projects depending on pickerMode (bd-gj41, bd-gs45.1)
 		if key := msg.String(); len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 			n := int(key[0] - '0')
+			if m.focused == focusDetail {
+				m.detailChildKey(n)
+				return m, nil
+			}
 			if m.pickerMode == pickerModeLabels {
 				// Label mode: number keys toggle label filter (composes with status) (bd-dlqi)
 				for _, entry := range m.labelEntries {
@@ -3081,8 +3096,11 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			case focusDetail:
 				if msg.String() == "c" || msg.String() == "C" {
 					m.copyIssueToClipboard()
+				} else if msg.String() == "backspace" {
+					m.detailBackKey()
 				} else if msg.String() == "enter" {
 					// Enter returns to previous view from detail (bd-y0m, bd-yo4)
+					m.detailBack = nil
 					if m.isBoardView {
 						m.focused = focusBoard
 					} else if m.isGraphView {
@@ -4528,6 +4546,11 @@ func (m Model) buildDatabaseHealth() DatabaseHealth {
 			h.IssueCount = count
 		}
 
+	case datasource.SourceTypeDoltEmbedded:
+		h.Backend = "Dolt (embedded, read through bd export)"
+		h.Database = m.doltSource.Database
+		h.FilePath = m.doltSource.Path
+
 	case datasource.SourceTypeSQLite:
 		h.Backend = "SQLite"
 		h.FilePath = m.beadsPath
@@ -4544,7 +4567,7 @@ func (m Model) buildDatabaseHealth() DatabaseHealth {
 	}
 
 	// Attach Dolt failure info if Dolt was attempted but failed
-	if m.doltFailure != nil && m.sourceType != datasource.SourceTypeDolt {
+	if m.doltFailure != nil && !m.sourceType.IsDolt() {
 		h.DoltAttempt = m.doltFailure
 	}
 
@@ -4898,6 +4921,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"1-9", "Expand to level N"},
 		{"d", "Toggle detail panel"},
 		{"n/p", "Detail: next/prev sibling"},
+		{"1-9", "Detail: open numbered child"},
 		{"c", "Copy ID and title"},
 		{"o/C/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
@@ -5179,7 +5203,8 @@ func (m *Model) renderFooter() string {
 			{"enter", "back to " + returnTo},
 			{"j/k", "scroll"},
 			{"home/end", "top/bottom"},
-			{"0-9", "project"},
+			{"1-9", "child"},
+			{"bksp", "back"},
 			{"^R", "refresh"},
 			{"n/p", "next/prev sibling"},
 			{"e", "edit"},
@@ -6860,6 +6885,15 @@ func (m *Model) exitAllProjectsMode() {
 						m.sourceType = datasource.SourceTypeDolt
 						m.sourceInfo = fmt.Sprintf("dolt://%s/%s ✓", s.Path, db)
 					}
+				}
+				break
+			}
+			if s.Type == datasource.SourceTypeDoltEmbedded {
+				if dw, dwErr := datasource.NewDoltWatcher(s, m.doltPollInterval); dwErr == nil && dw.Start() == nil {
+					m.doltWatcher = dw
+					m.doltSource = s
+					m.sourceType = datasource.SourceTypeDoltEmbedded
+					m.sourceInfo = s.EmbeddedLabel() + " ✓"
 				}
 				break
 			}

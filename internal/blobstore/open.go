@@ -30,6 +30,9 @@ const (
 	SourceDolt   SourceKind = "dolt"
 	SourceSQLite SourceKind = "sqlite"
 	SourceJSONL  SourceKind = "jsonl"
+	// SourceDoltEmbedded is a store on this machine only, so like SQLite it
+	// may use the local backend and has no database segment of its own.
+	SourceDoltEmbedded SourceKind = "dolt_embedded"
 )
 
 // SourceInfo describes the project a blob store is being opened for. It is

@@ -5,9 +5,11 @@
 package bdrun
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -66,26 +68,51 @@ var ErrCancelled = errors.New("bd cancelled")
 // deadline at all, and Run reports it as success: nothing about the run
 // itself failed.
 func Run(ctx context.Context, bdPath, dir string, args ...string) (output string, err error) {
+	cmd := command(ctx, bdPath, dir, nil, args)
+	start := time.Now()
+	out, runErr := cmd.CombinedOutput()
+	trimmed := strings.TrimSpace(string(out))
+	return trimmed, classify(ctx, cmd, runErr, time.Since(start), dir, args)
+}
+
+// Output runs bd like Run, but returns stdout and stderr apart, for a caller
+// that parses stdout: bd prints hints and warnings on stderr, which would
+// corrupt machine-readable output. env entries are appended to the inherited
+// environment, so they override it.
+func Output(ctx context.Context, bdPath, dir string, env []string, args ...string) (stdout []byte, stderr string, err error) {
+	cmd := command(ctx, bdPath, dir, env, args)
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	start := time.Now()
+	runErr := cmd.Run()
+	return outBuf.Bytes(), strings.TrimSpace(errBuf.String()), classify(ctx, cmd, runErr, time.Since(start), dir, args)
+}
+
+func command(ctx context.Context, bdPath, dir string, env, args []string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, bdPath, args...)
 	cmd.Dir = dir
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 	cmd.WaitDelay = waitDelay
+	return cmd
+}
 
-	start := time.Now()
-	out, runErr := cmd.CombinedOutput()
-	elapsed := time.Since(start).Round(time.Millisecond)
-	trimmed := strings.TrimSpace(string(out))
-
+// classify turns the error from running cmd into Run's documented result.
+func classify(ctx context.Context, cmd *exec.Cmd, runErr error, elapsed time.Duration, dir string, args []string) error {
+	elapsed = elapsed.Round(time.Millisecond)
 	if runErr == nil {
-		return trimmed, nil
+		return nil
 	}
 
 	if errors.Is(runErr, exec.ErrWaitDelay) {
 		debug.Log("bdrun: bd exited successfully but a lingering child held its output pipes open past WaitDelay (dir=%s, args=%v)", dir, args)
-		return trimmed, nil
+		return nil
 	}
 
 	// cmd.ProcessState is set as soon as the bd process itself exits, and is
@@ -97,19 +124,19 @@ func Run(ctx context.Context, bdPath, dir string, args ...string) (output string
 	// below.
 	if state := cmd.ProcessState; state != nil {
 		if state.Success() {
-			return trimmed, nil
+			return nil
 		}
 		if state.Exited() {
-			return trimmed, runErr
+			return runErr
 		}
 	}
 
 	switch {
 	case errors.Is(ctx.Err(), context.DeadlineExceeded):
-		return trimmed, fmt.Errorf("%w after %s", ErrTimeout, elapsed)
+		return fmt.Errorf("%w after %s", ErrTimeout, elapsed)
 	case errors.Is(ctx.Err(), context.Canceled):
-		return trimmed, fmt.Errorf("%w: %w (%v)", ErrCancelled, ctx.Err(), runErr)
+		return fmt.Errorf("%w: %w (%v)", ErrCancelled, ctx.Err(), runErr)
 	default:
-		return trimmed, runErr
+		return runErr
 	}
 }

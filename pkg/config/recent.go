@@ -157,7 +157,7 @@ func RecentFromCheckout(name, path string) (RecentProject, bool) {
 		switch source.Type {
 		case datasource.SourceTypeDolt:
 			return RecentProject{Name: name, Database: source.Database, Host: source.Path, Path: path}, true
-		case datasource.SourceTypeJSONLLocal, datasource.SourceTypeSQLite:
+		case datasource.SourceTypeJSONLLocal, datasource.SourceTypeSQLite, datasource.SourceTypeDoltEmbedded:
 			hasLocalSource = true
 		}
 	}
