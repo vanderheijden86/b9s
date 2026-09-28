@@ -133,7 +133,7 @@ const contextHelpTree = `## Tree View
 
 **Modes**
   O  Occur   x  XRay
-  ` + "`" + `  Flat    F  Follow
+  t  List    F  Follow
   b/B  Bookmark/cycle   m/M  Mark
 
 **Actions**

@@ -89,13 +89,14 @@ In the tree:
 | `h` `l` | Collapse or expand the issue, or go to its parent or child |
 | `Tab`, `Shift-Tab` | Fold or unfold the issue, or the whole tree |
 | `X`, `Z`, `Ctrl-A` | Expand all, collapse all, switch between the two |
+| `t` | Show a flat list instead of the tree, and back. The sort then runs over every issue, so `s` → Updated puts the latest changes at the top. b9s remembers the choice per project |
 | `v`, `:wrap` | Wrap long titles onto extra lines, or truncate them to one line again |
 | `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
 | `Ctrl-F` `Ctrl-B`, `Ctrl-D` `Ctrl-U` | Page down and up, half a page down and up |
 | `Home`, `End` | Go to the top, the bottom |
 | `Enter`, `d` | Move focus to the detail pane and back, show or hide the side pane |
 | `\`, `<` `>` | Stack the detail pane below the tree or put it beside it, resize the panes |
-| `/`, `n` `N`, `O` | [Search](#search), go to the next or previous match, show only the matches |
+| `/`, `n` `N`, `O` | [Search](#search), go to the next or previous match, show only the matches. A `type:` term, or `:task` and the other entity commands, shows the flat list |
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
 | `f`, `x` | Show only the cursor's top-level branch, or its subtree. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
@@ -142,6 +143,8 @@ status:open label:backend
 type:bug !assignee:andre
 release blocker
 ```
+
+The tree keeps the parents of a match on screen, dimmed, so you see where it sits. A query with a `type:` predicate, positive or excluded, shows the flat list instead: `type:task` lists only tasks, sorted by the active sort, with no epic rows above them. `:task`, `:bug` and the other entity commands set that predicate. Remove it and the tree comes back, unless you chose the list with `t`.
 
 `--filter` starts b9s with a query applied, which suits shell scripts and tmux bindings:
 

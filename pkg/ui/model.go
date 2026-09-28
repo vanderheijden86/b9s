@@ -3663,8 +3663,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Previous search match (bd-wf8)
 		m.tree.PrevSearchMatch()
 		m.syncTreeToDetail()
-	case "`":
-		// Toggle flat/tree mode (bd-39v)
+	case "t":
+		// Toggle the flat list (bd-39v, bd-9faq)
 		m.tree.ToggleFlatMode()
 		m.syncTreeToDetail()
 	case "o":
@@ -4898,8 +4898,6 @@ func (m *Model) renderHelpOverlay() string {
 		{"Delete", "Delete marked / selected"},
 		{"Ctrl+R", "Force refresh"},
 		{"F5", "Force refresh"},
-		{"t", "Time-travel"},
-		{"T", "Quick time-travel"},
 		{"x", "Export markdown"},
 		{"C", "Copy to clipboard"},
 		{"O", "Open in editor"},
@@ -4915,6 +4913,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Ctrl+w", "Toggle wide columns"},
 		{"p", "Jump to parent"},
 		{"X/Z", "Expand / collapse all"},
+		{"t", "Flat list / tree"},
 		{"v", "Wrap long titles"},
 		{"Tab", "Cycle node visibility"},
 		{"1-9", "Expand to level N"},
@@ -6083,6 +6082,11 @@ func (m Model) IsBoardView() bool {
 // TreeSelectedID returns the ID of the currently selected tree node, or "".
 func (m Model) TreeSelectedID() string {
 	return m.tree.GetSelectedID()
+}
+
+// TreeListMode reports whether the tree pane shows the flat list (bd-9faq).
+func (m Model) TreeListMode() bool {
+	return m.tree.IsListView()
 }
 
 // TreeNodeCount returns the number of visible nodes in the tree.

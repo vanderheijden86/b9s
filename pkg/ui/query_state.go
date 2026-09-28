@@ -98,6 +98,18 @@ func (q IssueQuery) Empty() bool {
 	return len(q.predicates) == 0
 }
 
+// HasTypePredicate reports whether the query names an issue type, positive or
+// negated. Such a query asks for issues of a kind, so the parent rows the tree
+// would add for context are exactly what the query excludes (ADR 0027).
+func (q IssueQuery) HasTypePredicate() bool {
+	for _, predicate := range q.predicates {
+		if predicate.field == QueryFieldType {
+			return true
+		}
+	}
+	return false
+}
+
 // Raw returns the normalized source text used to build the query.
 func (q IssueQuery) Raw() string {
 	return q.raw

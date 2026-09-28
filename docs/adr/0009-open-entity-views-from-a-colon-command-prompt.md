@@ -2,7 +2,8 @@
 type: ADR
 id: "0009"
 title: "Open entity views from a ':' command prompt backed by a closed alias table"
-status: active
+status: superseded
+superseded_by: "0027"
 date: 2026-09-14
 ---
 

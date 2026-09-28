@@ -39,6 +39,7 @@ type TreeState struct {
 	Version   int             `json:"version"`             // Schema version (currently 1)
 	Expanded  map[string]bool `json:"expanded"`            // Issue ID -> explicitly set state
 	Bookmarks []string        `json:"bookmarks,omitempty"` // Bookmarked issue IDs (bd-k4n)
+	List      bool            `json:"list,omitempty"`      // Flat list chosen with t (bd-9faq)
 }
 
 // TreeStateVersion is the current schema version for tree persistence
@@ -109,6 +110,8 @@ func (t *TreeModel) saveState() {
 		walk(root)
 	}
 
+	state.List = t.flatMode
+
 	// Save bookmarks (bd-k4n)
 	for id := range t.bookmarks {
 		state.Bookmarks = append(state.Bookmarks, id)
@@ -143,6 +146,11 @@ func (t *TreeModel) loadState() {
 	if t.beadsDir == "" {
 		return // No persistence directory configured
 	}
+	firstLoad := t.listStateDir != t.beadsDir
+	t.listStateDir = t.beadsDir
+	if firstLoad {
+		t.flatMode = false
+	}
 	path := TreeStatePath(t.beadsDir)
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -154,6 +162,9 @@ func (t *TreeModel) loadState() {
 	if err := json.Unmarshal(data, &state); err != nil {
 		log.Printf("warning: invalid tree state file, using defaults: %v", err)
 		return
+	}
+	if firstLoad {
+		t.flatMode = state.List
 	}
 
 	// Apply loaded state to nodes
@@ -361,6 +372,10 @@ type TreeModel struct {
 
 	// Flat mode state (bd-39v)
 	flatMode bool // When true, show all issues in flat list without hierarchy
+	// listStateDir is the beads directory whose saved list choice flatMode
+	// holds. Live reloads rebuild the tree every few seconds; only a new
+	// project may replace the choice the user made in this one.
+	listStateDir string
 
 	// Advanced filter state (bd-08h)
 	advancedPredicates []FilterPredicate // Parsed predicates for advanced filtering
@@ -1656,8 +1671,8 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 
 	// Mode/filter badges
 	modeBadge := ""
-	if t.flatMode {
-		modeBadge = "[FLAT] "
+	if t.IsListView() {
+		modeBadge = "[LIST] "
 	}
 	if t.occurMode {
 		modeBadge = fmt.Sprintf("[OCCUR[%s](%d)] ", t.occurPattern, len(t.flatList))
@@ -2829,7 +2844,7 @@ func (t *TreeModel) setExpandedRecursive(node *IssueTreeNode, expanded bool) {
 // When XRay mode is active (bd-0rc), only shows the xrayRoot subtree.
 func (t *TreeModel) rebuildFlatList() {
 	t.invalidateColumnLayout()
-	if t.flatMode {
+	if t.IsListView() {
 		t.rebuildFlatModeList()
 		return
 	}
@@ -2874,13 +2889,14 @@ func (t *TreeModel) rebuildFlatList() {
 }
 
 // rebuildFlatModeList builds the flat list showing all issues without hierarchy (bd-39v).
-// Respects current filter settings.
+// It shows only filter matches: a flat row has no parent to give context to,
+// so the ancestor and descendant rows the tree adds around a match are left
+// out (bd-9faq).
 func (t *TreeModel) rebuildFlatModeList() {
 	nodes := t.buildFlatNodes()
 
-	// Apply filter if active
-	if t.currentFilter != "" && t.currentFilter != "all" && t.filterMatches != nil {
-		var filtered []*IssueTreeNode
+	if t.filterMatches != nil {
+		filtered := nodes[:0]
 		for _, node := range nodes {
 			if node.Issue != nil && t.filterMatches[node.Issue.ID] {
 				filtered = append(filtered, node)
@@ -2890,6 +2906,9 @@ func (t *TreeModel) rebuildFlatModeList() {
 	}
 
 	t.flatList = nodes
+	if t.occurMode && t.occurPattern != "" {
+		t.rebuildOccurFlatList()
+	}
 
 	// Ensure cursor stays in bounds
 	if t.cursor >= len(t.flatList) {
@@ -3042,13 +3061,25 @@ func (t *TreeModel) IsFlatMode() bool {
 	return t.flatMode
 }
 
+// IsListView reports whether rows are drawn as a flat list: the user chose it
+// with t, or the query names an issue type (ADR 0027).
+func (t *TreeModel) IsListView() bool {
+	return t.flatMode || t.issueQuery.HasTypePredicate()
+}
+
 // ToggleFlatMode toggles between flat-list and tree-hierarchy view.
 // In flat mode, all issues are shown at depth 0 without parent-child nesting,
-// preserving the current sort and filter settings.
+// preserving the current sort and filter settings. The cursor stays on the
+// issue it was on, and the choice is saved for the project.
 func (t *TreeModel) ToggleFlatMode() {
+	selectedID := t.GetSelectedID()
 	t.flatMode = !t.flatMode
 	t.rebuildFlatList()
+	if selectedID != "" {
+		t.SelectByID(selectedID)
+	}
 	t.ensureCursorVisible()
+	t.saveState()
 }
 
 // buildFlatNodes returns all issues from the tree as flat (depth-0) nodes,
@@ -3432,7 +3463,7 @@ func (t *TreeModel) StickyScrollLines() []string {
 // line, outermost first. An ancestor always precedes its descendants in
 // flatList, so every ancestor of the first drawn node is off-screen.
 func (t *TreeModel) stickyAncestors(start int) []*IssueTreeNode {
-	if t.flatMode || start < 0 || start >= len(t.flatList) {
+	if t.IsListView() || start < 0 || start >= len(t.flatList) {
 		return nil
 	}
 	firstVisible := t.flatList[start]

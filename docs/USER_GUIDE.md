@@ -42,7 +42,7 @@ b9s --filter 'status:open label:backend'
 b9s --repo api
 ```
 
-`Ctrl-C` quits. b9s keeps the expand and collapse state of the tree in `.beads/tree-state.json`, so the next start looks like the last one.
+`Ctrl-C` quits. b9s keeps the expand and collapse state of the tree, and whether `t` switched it to the flat list, in `.beads/tree-state.json`, so the next start looks like the last one.
 
 ## The screen
 

@@ -3367,8 +3367,8 @@ func TestFlatModeViewIndicator(t *testing.T) {
 	// Flat mode should show FLAT indicator
 	tree.ToggleFlatMode()
 	view = tree.View()
-	if !strings.Contains(view, "FLAT") {
-		t.Errorf("expected FLAT indicator in flat mode view")
+	if !strings.Contains(view, "[LIST]") {
+		t.Errorf("expected [LIST] badge in list mode view")
 	}
 }
 
