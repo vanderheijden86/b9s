@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -277,6 +278,29 @@ func TestDebugExecutablesAreIgnored(t *testing.T) {
 	for _, artifact := range []string{"/bv_profile\n", "/bv_test\n"} {
 		if !strings.Contains(text, artifact) {
 			t.Fatalf(".gitignore does not prevent regenerated artifact %q", strings.TrimSpace(artifact))
+		}
+	}
+}
+
+// A tracked symlink with an absolute target publishes the author's workstation
+// layout and resolves to nothing on any other checkout.
+func TestNoTrackedSymlinkHasAbsoluteTarget(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+	out, err := exec.Command("git", "-C", repoRoot, "ls-files", "-s").Output()
+	if err != nil {
+		t.Skipf("git ls-files unavailable: %v", err)
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 || fields[0] != "120000" {
+			continue
+		}
+		target, err := exec.Command("git", "-C", repoRoot, "cat-file", "blob", fields[1]).Output()
+		if err != nil {
+			t.Fatalf("read symlink blob for %s: %v", fields[3], err)
+		}
+		if filepath.IsAbs(string(target)) {
+			t.Errorf("tracked symlink %s points to absolute path %q", fields[3], target)
 		}
 	}
 }

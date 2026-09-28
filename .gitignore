@@ -66,6 +66,7 @@ target-*/
 /b9s
 /bv_profile
 /bv_test
+/.claude
 .b9s/
 
 # Beads / Dolt files (added by bd init)
