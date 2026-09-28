@@ -385,7 +385,7 @@ Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:
 | `--no-fallback` | Exit with status 1 when the current folder cannot be opened |
 | `--debug` | Write a debug log to `.b9s/debug.log` |
 | `--check-update` | Report whether a newer release exists |
-| `--update` | Install the latest release; `--yes` skips the prompt |
+| `--update` | Install the latest release after verifying its checksum and its build provenance ([ADR 0028](docs/adr/0028-verify-release-provenance-in-the-updater.md)); `--yes` skips the prompt |
 | `--rollback` | Go back to the version before the last update |
 | `--version` | Print the version |
 | `ctl [--pane %N] branch [--if-known] <id>...` | Steer a running b9s, see [Mouse and tmux](#mouse-and-tmux) |

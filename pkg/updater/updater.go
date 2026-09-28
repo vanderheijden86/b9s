@@ -574,6 +574,10 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	attestationAsset, err := requireAttestationAsset(release)
+	if err != nil {
+		return nil, err
+	}
 
 	// Get current binary path
 	binaryPath, err := GetCurrentBinaryPath()
@@ -625,6 +629,23 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	fmt.Println("Verifying checksum...")
 	if err := verifyChecksum(archivePath, expectedHash); err != nil {
 		return nil, fmt.Errorf("checksum verification failed: %w", err)
+	}
+
+	bundlePath := filepath.Join(tmpDir, attestationAssetName)
+	if err := downloadFile(attestationAsset.BrowserDownloadURL, bundlePath, attestationAsset.Size); err != nil {
+		return nil, fmt.Errorf("provenance download failed: %w", err)
+	}
+	archiveDigest, err := hex.DecodeString(expectedHash)
+	if err != nil {
+		return nil, fmt.Errorf("checksum for %s is not hex: %w", asset.Name, err)
+	}
+	fmt.Println("Verifying build provenance...")
+	trusted, err := fetchTrustedMaterial()
+	if err != nil {
+		return nil, fmt.Errorf("cannot load the Sigstore trusted root: %w", err)
+	}
+	if err := verifyProvenance(bundlePath, archiveDigest, release.TagName, trusted); err != nil {
+		return nil, fmt.Errorf("build provenance verification failed: %w", err)
 	}
 
 	// Extract binary to temp location

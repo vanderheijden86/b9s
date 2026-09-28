@@ -60,7 +60,7 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 | `pkg/watcher` | File watching with debouncing, and a polling fallback on filesystems where events are unreliable |
 | `pkg/identity` | The alias registry that maps creator and assignee names to people, agents and pools |
 | `pkg/config` | `~/.config/b9s/config.yaml`: sort defaults, poll interval, recent projects |
-| `pkg/updater` | Self-update from GitHub releases with checksum verification and rollback |
+| `pkg/updater` | Self-update from GitHub releases: checksum and Sigstore provenance verification (ADR 0028), then rollback support |
 | `pkg/debug`, `pkg/version` | Debug logging behind `B9S_DEBUG`, and the version string set at build time |
 | `pkg/testutil` | Deterministic fixture generators and assertion helpers for tests |
 | `pkg/web` | `b9s web`: the HTTP API, the server-sent event stream, pairing and sessions, the write endpoint, and the embedded browser bundle in `dist` |
