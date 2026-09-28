@@ -748,6 +748,24 @@ func (m *Model) syncTreeSize() {
 	}
 }
 
+// resizeBodyComponents applies the current header and footer height to every
+// component that keeps its own dimensions.
+func (m *Model) resizeBodyComponents() {
+	bodyHeight := max(m.bodyHeight(), 5)
+	viewportOffset := m.viewport.YOffset
+	if m.isSplitView && !m.treeDetailHidden {
+		m.sizeSplitPanes()
+	} else {
+		m.list.SetSize(m.width, max(bodyHeight-2, 3))
+		m.viewport.Width = m.width
+		m.viewport.Height = bodyHeight
+		m.renderer.SetWidthWithTheme(m.width, m.theme)
+	}
+	m.syncTreeSize()
+	m.updateViewportContent()
+	m.viewport.SetYOffset(viewportOffset)
+}
+
 // currentViewName returns a human-readable name for the current view mode.
 func (m Model) currentViewName() string {
 	if m.isGraphView {
@@ -2512,8 +2530,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		// Handle H, or k9s's Ctrl-E, to toggle picker panel visibility (bd-j764)
 		if (msg.String() == "H" || msg.String() == "ctrl+e") && m.list.FilterState() != list.Filtering {
 			m.pickerVisible = !m.pickerVisible
-			// Resize tree/board after toggling to reclaim/yield space
-			m.tree.SetSize(m.treeLayoutSize())
+			m.resizeBodyComponents()
 			return m, nil
 		}
 
@@ -3132,6 +3149,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 					if !m.treeDetailHidden {
 						m.syncTreeToDetail()
 					}
+					m.resizeBodyComponents()
 				} else {
 					m.viewport, cmd = m.viewport.Update(msg)
 					cmds = append(cmds, cmd)
@@ -3159,25 +3177,6 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		if m.showAttachAddModal && m.height > 1 {
 			m.attachAddModal.SetSize(m.width, m.height-1)
 		}
-		bodyHeight := m.bodyHeight() // accounts for picker header + footer (bd-ins4)
-		if bodyHeight < 5 {
-			bodyHeight = 5
-		}
-
-		if m.isSplitView {
-			m.sizeSplitPanes()
-		} else {
-			listHeight := bodyHeight - 2
-			if listHeight < 3 {
-				listHeight = 3
-			}
-			m.list.SetSize(msg.Width, listHeight)
-			m.viewport = viewport.New(msg.Width, bodyHeight-1)
-
-			// Update renderer for full width
-			m.renderer.SetWidthWithTheme(msg.Width, m.theme)
-		}
-
 		// Auto-hide detail panel when window is too narrow for split view (bd-6eg, bd-dy7).
 		// In narrow windows, Enter opens full-screen detail instead.
 		// Resizing from narrow to wide does NOT auto-show; user presses 'd'.
@@ -3196,9 +3195,8 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		// Detail is never auto-shown; user presses 'd' to toggle (bd-x96a)
 
+		m.resizeBodyComponents()
 		m.updateListDelegate()
-
-		m.updateViewportContent()
 	}
 
 	// Update list for navigation, but NOT for WindowSizeMsg
@@ -3771,6 +3769,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		if !m.treeDetailHidden {
 			m.syncTreeToDetail()
 		}
+		m.resizeBodyComponents()
 	case "esc":
 		// Escape hierarchy: occur, XRay, tree filter (bd-sjs.2, bd-kob, bd-0rc)
 		// Tree view is always active (bd-8hw.4), esc doesn't exit tree

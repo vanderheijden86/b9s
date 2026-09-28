@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -134,6 +135,32 @@ func TestCtrlETogglesHeaderLikeH(t *testing.T) {
 	}
 	if withCtrlE.pickerVisible != withH.pickerVisible {
 		t.Fatalf("Ctrl-E left the header visible=%v, H makes it %v", withCtrlE.pickerVisible, withH.pickerVisible)
+	}
+}
+
+func TestExpandedPickerKeepsDetailFooterOnLastRow(t *testing.T) {
+	m := pressK9sKey(newK9sKeysModel(t), tea.KeyMsg{Type: tea.KeyEnter})
+	m.statusMsg = ""
+
+	lines := strings.Split(stripANSI(m.View()), "\n")
+	if len(lines) != m.height {
+		t.Fatalf("view has %d lines, want terminal height %d", len(lines), m.height)
+	}
+	if last := lines[len(lines)-1]; !strings.Contains(last, "enter:back to tree") {
+		t.Errorf("last line = %q, want the detail footer", last)
+	}
+}
+
+func TestCollapsedPickerKeepsDetailFooterOnLastRow(t *testing.T) {
+	m := pressK9sKey(newK9sKeysModel(t), tea.KeyMsg{Type: tea.KeyEnter}, runeMsg("H"))
+	m.statusMsg = ""
+
+	lines := strings.Split(stripANSI(m.View()), "\n")
+	if len(lines) != m.height {
+		t.Fatalf("view has %d lines, want terminal height %d", len(lines), m.height)
+	}
+	if last := lines[len(lines)-1]; !strings.Contains(last, "enter:back to tree") {
+		t.Errorf("last line = %q, want the detail footer", last)
 	}
 }
 
