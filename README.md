@@ -48,6 +48,14 @@ With Homebrew on macOS or Linux:
 brew install vanderheijden86/tap/b9s
 ```
 
+On Linux or macOS without Homebrew, the install script downloads the release binary for your platform, checks it against the release checksums and puts it in `~/.local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vanderheijden86/b9s/main/install.sh | bash
+```
+
+Set `INSTALL_DIR` to choose another directory. On a platform without a release binary, the script builds from source instead. After that, `b9s --update` installs new releases.
+
 From source, with [Go 1.25 or later](https://go.dev/dl/):
 
 ```bash
