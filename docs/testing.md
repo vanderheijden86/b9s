@@ -92,7 +92,7 @@ The mobile and preview shell scripts in `tests/` are not Go tests. They check a 
 - Each test gets its own temp folder with `.beads/issues.jsonl`, an isolated `XDG_CONFIG_HOME`, and its own `b9s web --no-token` on a free loopback port (`web/tests/harness.ts`). No test reaches a Beads database.
 - `web/tests/fake-bd.mjs` stands in for `bd` on the `PATH`. It applies `update`, `close`, `delete`, `defer`, `comments add` and `create` to the JSONL, and logs each call to `.beads/bd-calls.log`, so a test checks both the command and its effect. `FAKE_BD_FAIL=<command>` makes that command fail.
 - Gestures use real pointer events through `page.mouse`, so swipes, long-presses and drags run the same handlers as a finger.
-- `perf.spec.ts` loads 1000 issues and checks load, a full re-render and a swipe deep in the list. Emulated phones on a laptop are faster than real ones, so this catches a render path that went quadratic, not a slow handset.
+- `perf.spec.ts` loads 1000 issues and checks load, a full re-render and a swipe deep in the list. Emulated phones on a laptop are faster than real ones, so this catches a render path that went quadratic, not a slow handset. It runs in the `pixel-perf` and `iphone-perf` projects, which start once every other project has finished, so the timing does not share the CPU with other workers. A failure elsewhere therefore skips it.
 - A failed test attaches the `bd` call log and the server output.
 
 ## bd releases

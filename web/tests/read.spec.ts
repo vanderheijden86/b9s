@@ -1,6 +1,13 @@
 import { expect, open, row, test } from "./harness";
 
 test.describe("reading", () => {
+  // The live stream re-renders the tree when it connects. A test that acts
+  // before then can hold a row that the render replaces.
+  test("open returns once the live stream has connected", async ({ page, project }) => {
+    await open(page, project);
+    expect(await page.locator("body").getAttribute("data-live")).toBe("live");
+  });
+
   test("tree nests children under their epic and hides closed issues", async ({ page, project }) => {
     await open(page, project);
     await expect(row(page, "t-epic")).toBeVisible();

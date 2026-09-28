@@ -129,10 +129,15 @@ export const test = base.extend<{ project: Project; fixture: { issues: FixtureIs
 });
 export { expect };
 
-/** open loads the app and waits until the first snapshot has rendered. */
+/**
+ * open loads the app and waits until the first snapshot has rendered and the
+ * live stream has connected. The connect renders the tree again, so a row
+ * found before it may be detached by the time a test measures it.
+ */
 export async function open(page: Page, p: Project): Promise<void> {
   await page.goto(p.url);
   await expect(page.locator("#boot")).toBeHidden({ timeout: 10000 });
+  await expect(page.locator("body")).toHaveAttribute("data-live", "live", { timeout: 10000 });
 }
 
 export const row = (page: Page, id: string) => page.locator(`#treeRows .row[data-id="${id}"]`);

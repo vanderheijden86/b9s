@@ -114,6 +114,9 @@ function renderBar(): void {
 
 export function renderStale(): void {
   const el = $("#stale");
+  // Tests wait on this before they act: the render that follows a connect
+  // replaces every row.
+  document.body.dataset.live = S.live;
   if (S.live !== "stale") { el.hidden = true; return; }
   el.hidden = false;
   el.innerHTML = `<span>Offline: showing the last snapshot${S.retryIn ? ` · retry in ${Math.round(S.retryIn / 1000)} s` : ""}</span><button data-act="retrylive">Retry now</button>`;
