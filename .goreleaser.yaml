@@ -33,6 +33,31 @@ archives:
       {{- .Os }}_
       {{- .Arch }}
 
+# Linux packages attached to the release for dpkg -i and rpm -i. There is no
+# hosted apt or dnf repository, so a package install upgrades only when the
+# user installs the next release's package.
+nfpms:
+  - package_name: b9s
+    file_name_template: >-
+      {{ .PackageName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    vendor: vanderheijden86
+    homepage: https://github.com/vanderheijden86/b9s
+    maintainer: vanderheijden86 <vanderheijden86@users.noreply.github.com>
+    description: "Fast, focused TUI viewer and editor for beads projects"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/b9s/LICENSE
+      - src: README.md
+        dst: /usr/share/doc/b9s/README.md
+
 checksum:
   name_template: 'checksums.txt'
 

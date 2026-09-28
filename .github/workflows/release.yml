@@ -41,6 +41,8 @@ jobs:
         with:
           subject-path: |
             dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
             dist/*.sbom.json
       # b9s update refuses a release without this asset: it verifies the
       # archive against the bundle before installing (docs/adr/0028).

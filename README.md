@@ -56,6 +56,15 @@ curl -fsSL https://raw.githubusercontent.com/vanderheijden86/b9s/main/install.sh
 
 Set `INSTALL_DIR` to choose another directory. On a platform without a release binary, the script builds from source instead. After that, `b9s --update` installs new releases.
 
+On Debian, Ubuntu, Fedora or RHEL, each [release](https://github.com/vanderheijden86/b9s/releases/latest) also carries `.deb` and `.rpm` packages for amd64 and arm64. Download the one for your system and install it:
+
+```bash
+sudo dpkg -i b9s_<version>_linux_amd64.deb   # Debian, Ubuntu
+sudo rpm -i b9s_<version>_linux_amd64.rpm    # Fedora, RHEL
+```
+
+The package puts `b9s` in `/usr/bin`. There is no apt or dnf repository, so upgrade by installing the next release's package (`dpkg -i` or `rpm -U`), not with `b9s --update`, which would replace a file the package manager owns.
+
 From source, with [Go 1.25 or later](https://go.dev/dl/):
 
 ```bash
