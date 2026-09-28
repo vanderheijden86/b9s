@@ -110,6 +110,21 @@ The credential is project-scoped, not lane-scoped. One b9s lane can still reach
 another b9s lane's preview. It cannot bind or deploy in a sibling project's
 namespace or in `default`.
 
+Redeploying the same task with another SHA updates the namespace's
+`omnigent.osenco.dev/commit-sha` label and kubectl's
+`kubectl.kubernetes.io/last-applied-configuration` annotation. The osenco-infra
+policy must allow these metadata updates only in labelled `b9s-*` preview
+namespaces. Namespace creation permission alone is insufficient. The owning
+infrastructure prerequisite is `bd-ay47`; this repository does not widen that
+policy.
+
+`preview-deploy` first applies the rendered Namespace with `--dry-run=server`.
+An admission or authorization failure stops before any workload is applied and
+records the API error in `namespace-policy.log` in the evidence directory.
+This catches metadata policy regressions even when the existing namespaced
+RoleBinding still allows workload changes. The preflight does not grant access
+or make the subsequent multi-resource apply atomic.
+
 Before the first deployment, an operator runs
 `scripts/preview/preview-provision-reader TASK_ID`. The command finds databases
 that contain an `issues` table, grants the existing `bd_b9s_ro` identity
@@ -202,6 +217,16 @@ The contract guard is safe and does not call the cluster:
 ```sh
 tests/preview_contract_test.sh
 ```
+
+It simulates two deployments of the same task with different SHAs and a
+namespace metadata denial, asserting that denial leaves workloads untouched.
+For live verification, use the scoped kubeconfig for both SHAs, check the
+namespace label and last-applied annotation, and verify the image's served
+identity after each rollout. Use server-side dry-run metadata patches to prove
+that `default` and an outside-prefix namespace are denied. Do not substitute
+`kubectl auth can-i` for admission testing: RBAC permission alone does not
+evaluate the namespace policy. The operator-owned reader Secret must already
+exist; a lane cannot read or provision its contents.
 
 After deployment, exercise the exact phone controls against two populated
 databases and compare the rendered totals with read-only Dolt queries:
