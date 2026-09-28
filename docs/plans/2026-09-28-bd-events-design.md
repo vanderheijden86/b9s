@@ -179,6 +179,52 @@ The journal is **off by default**. Retention is 7 days or the newest 100k
 records, whichever keeps more. A checkpoint below the retained floor fails with
 `events_journal_truncated` (exit 1, JSON on stdout with `floor` and `head`).
 
+### 3.5 Why a journal, and not a trigger that pushes
+
+A natural question is why a write must first land in a journal table that
+consumers then poll, instead of a listener on the issue tables that fires an
+event. The answer is in what Dolt can do.
+
+- **Dolt cannot push to a client.** It speaks the MySQL protocol, which has no
+  equivalent of PostgreSQL's `LISTEN`/`NOTIFY`. A client learns about a change
+  only by asking. Every design below still ends in a poll, or in a replication
+  stream (option G).
+- **A trigger can only write rows.** Dolt supports `CREATE TRIGGER`, and a
+  trigger fires for every SQL writer. But its only output is another row, so a
+  trigger-based design is still "write to a journal table, consumers poll it".
+  It moves who writes the journal, not how consumers learn about it.
+- **Embedded Dolt has no server process.** There is nothing running between
+  writes that could hold a connection open and push.
+- **Beads writes the journal in the application for its content.** `bd` knows
+  the semantic operation (`close`, not "status column changed"), the actor, and
+  the full issue after the change. A row trigger sees one table and one row, so
+  a `close` that touches `issues` and `events` would become several low-level
+  records that a consumer must stitch together.
+
+Where triggers would help is **coverage**. We tested this on Dolt 2.3.2 with
+`AFTER INSERT` and `AFTER UPDATE` triggers that write to a `dolt_ignore`d table,
+the same shape as `bd_events_journal`:
+
+| Write | Trigger fires |
+|---|---|
+| `INSERT`/`UPDATE` from any SQL client (`bd`, `bd sql`, a clone without the flag) | yes |
+| `DOLT_MERGE` that changes a row (the path under `bd dolt pull`) | **no** |
+
+A merge applies rows at the storage layer and bypasses the SQL engine, so no
+trigger runs. Triggers therefore close most gaps in [3.4](#34-coverage-what-the-journal-does-not-see)
+(unflagged clones, `bd sql`, direct library writes), but not pulls and merges.
+The hash poll stays necessary in every design, because it is the only signal
+that sees a merge.
+
+```
+             who writes the journal          what consumers do
+  today      bd, if the flag is set    ──▶   poll the journal (1 s)
+  triggers   the database, every SQL   ──▶   poll the journal (1 s)
+             writer except merges
+  binlog     the server, every commit  ──▶   hold a replication stream
+             on one branch                    (push, but see option G)
+```
+
 ## 4. Measurements
 
 | Operation | Time |
@@ -228,6 +274,20 @@ remote server. A long-running `--follow` pays the start-up once.**
   when it leaves preview (see [9.6](#96-bd-serve-out-of-preview-and-embedded-support)).
 - **E. Do nothing.** Rejected: the activity data (actor, op) exists only in the
   journal.
+- **F. Database triggers that write the journal.** Not ours to build: the
+  triggers would live in the Beads schema, and b9s must not change another
+  tool's schema. It is the strongest request we can make to Beads, because it
+  makes coverage a property of the database (see
+  [3.5](#35-why-a-journal-and-not-a-trigger-that-pushes) and
+  [9.5](#95-a-journal-flag-that-covers-a-shared-database)). Consumers would
+  still poll, and merges would still be invisible.
+- **G. Dolt binlog replication as a change feed.** Rejected for v1.4. It is
+  the only true push that Dolt offers: b9s would connect as a MySQL replica
+  and receive row events. But `log_bin` is off by default and needs server
+  configuration on the shared host, the replication privilege is global so it
+  would break the per-workspace credential boundary, the stream carries raw
+  rows without the actor or the operation, it covers one branch
+  (`log_bin_branch`), and it does not exist in embedded mode. Not tested here.
 
 ## 6. Design
 
@@ -595,6 +655,14 @@ remove. These go into the reply on #11.
 - **Would unlock:** coverage as a property of the database. With every writer
   covered, the explain window could shrink and the activity view would be
   complete.
+- **Stronger form:** let the database write the journal, with triggers on the
+  issue, dependency and comment tables, or at least store the flag in the
+  database. Triggers cover every SQL writer, including `bd sql` and clones
+  without the flag. They do not cover merges: our test on Dolt 2.3.2 showed
+  that `DOLT_MERGE` fires no trigger (see
+  [3.5](#35-why-a-journal-and-not-a-trigger-that-pushes)). So pulls must still
+  be signalled some other way, for example one `resync` record that `bd dolt pull`
+  writes after a merge.
 
 ### 9.6 `bd serve` out of preview, and embedded support
 
