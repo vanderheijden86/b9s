@@ -547,7 +547,7 @@ func TestTreeViewToggleExpand(t *testing.T) {
 				issues[i].CreatedAt = created.Add(-time.Duration(i) * time.Hour).Format(time.RFC3339)
 			}
 			writeTreeFixture(t, tempDir, issues)
-			keys := []keyStep{k("Z"), k("g")}
+			keys := []keyStep{k("Z"), k("\x1b[H")} // Home selects the first root
 			for i := 0; i < tc.toggles; i++ {
 				keys = append(keys, k("\t"))
 			}
