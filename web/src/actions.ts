@@ -646,7 +646,7 @@ async function loadProjects(): Promise<void> {
 export async function act(a: string): Promise<void> {
   const cur = detailId();
   switch (a) {
-    case "projects": openSheet("projects"); void loadProjects(); break;
+    case "projects": if (D.public) { toast("This demo shows one project"); break; } openSheet("projects"); void loadProjects(); break;
     case "health": openSheet("health"); api.health().then(h => { D.health = h; if (S.sheet?.kind === "health") renderSheet(); render(); }, () => { /* the snapshot's health still shows */ }); break;
     case "identity": openSheet("identity"); break;
     case "help": openSheet("help"); break;

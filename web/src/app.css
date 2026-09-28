@@ -47,6 +47,18 @@
   header.hd { flex: none; height: 32px; display: flex; align-items: center; gap: 2px; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); background: var(--bg2); touch-action: none; }
   .hd .proj { font-weight: 700; color: var(--accent); height: 32px; display: flex; align-items: center; gap: 4px; padding-right: 6px; }
   .hd .proj small { color: var(--muted); font-weight: 400; }
+  .banner {
+    flex: none; display: flex; align-items: center; justify-content: center; gap: 10px;
+    height: 22px; padding: 0 12px; overflow: hidden; white-space: nowrap;
+    font-size: 0.769rem; letter-spacing: 0.02em; color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(90deg, transparent, rgba(189, 147, 249, 0.07) 50%, transparent);
+  }
+  .banner[hidden] { display: none; }
+  .banner .t { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .banner .t::before { content: ""; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .banner a { flex: none; color: var(--accent); text-decoration: none; opacity: 0.85; }
+  .banner a:hover { opacity: 1; text-decoration: underline; }
   .hd .dot { width: 28px; height: 32px; display: grid; place-items: center; color: var(--green); }
   .hd .dot.pulse { animation: pulse 1.2s ease-out 2; }
   .hd .dot.bad { color: var(--orange); }

@@ -122,6 +122,9 @@ export interface WriteResult {
 export interface Session {
   csrf: string;
   query: string;
+  public: boolean;
+  banner: string;
+  banner_link: string;
 }
 
 export interface Event {

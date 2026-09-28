@@ -72,3 +72,25 @@ func TestWithCheckoutsUnderAddsEveryCheckoutOnce(t *testing.T) {
 		t.Fatalf("no root added projects: %v", again)
 	}
 }
+
+func TestWebPublicRejectsPairingAndProjectFlags(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	for _, extra := range [][]string{
+		{"--no-token"}, {"--new-token"}, {"--projects-root", "/tmp"},
+		{"--trust-header", "X-Forwarded-Email", "--owner", "a@b.c"},
+	} {
+		var out, errOut bytes.Buffer
+		args := append([]string{"--public", "--listen", "127.0.0.1:0"}, extra...)
+		if code := runWeb(args, &out, &errOut); code != 2 || !strings.Contains(errOut.String(), "--public cannot be combined") {
+			t.Errorf("%v: exit %d, stderr %q", extra, code, errOut.String())
+		}
+	}
+}
+
+func TestWebBannerLinkMustBeAWebAddress(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	var out, errOut bytes.Buffer
+	if code := runWeb([]string{"--public", "--banner-link", "javascript:alert(1)"}, &out, &errOut); code != 2 {
+		t.Fatalf("exit %d, stderr %q", code, errOut.String())
+	}
+}

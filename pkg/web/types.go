@@ -164,6 +164,13 @@ type WriteResult struct {
 type Session struct {
 	CSRF  string `json:"csrf"`
 	Query string `json:"query"`
+	// Public is true on a server anyone may open (b9s web --public). The
+	// browser then offers no project switching.
+	Public bool `json:"public"`
+	// Banner is a short line to show above the board, or "".
+	Banner string `json:"banner"`
+	// BannerLink is an http(s) URL the banner links to, or "".
+	BannerLink string `json:"banner_link"`
 }
 
 // Event is one Server-Sent Event: "hello" on connect, "changed" after the

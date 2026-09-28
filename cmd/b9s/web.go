@@ -47,6 +47,9 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	owner := fs.String("owner", "", "The `email` --trust-header must carry")
 	projectsRoot := fs.String("projects-root", "", "List every Beads checkout directly under `dir` in the project sheet, after the recent ones")
 	filter := fs.String("filter", "", "Start the browser with this issue query applied")
+	public := fs.Bool("public", false, "Serve this project to anyone, with no pairing, on any address. For a disposable demo only: visitors can write")
+	banner := fs.String("banner", "", "Show this `text` in a thin strip above the board")
+	bannerLink := fs.String("banner-link", "", "Link the banner to this http(s) `url`")
 	debugFlag := fs.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: b9s web [flags]")
@@ -68,6 +71,10 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	if err := checkPublicFlags(fs, *public, *bannerLink); err != nil {
+		fmt.Fprintf(stderr, "b9s web: %v\n", err)
+		return 2
+	}
 	if (*trustHeader == "") != (*owner == "") {
 		fmt.Fprintln(stderr, "b9s web: --trust-header and --owner go together")
 		return 2
@@ -78,7 +85,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var auth *web.Auth
-	if !*noToken {
+	if !*noToken && !*public {
 		secret, err := web.LoadOrCreateSecret(webSecretPath(), *newToken)
 		if err != nil {
 			fmt.Fprintf(stderr, "b9s web: pairing secret: %v\n", err)
@@ -94,7 +101,8 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	}
-	if err := web.CheckListen(*listen, auth); err != nil {
+	// A public server has no pairing by design, on whatever address it is given.
+	if err := web.CheckListen(*listen, auth); err != nil && !*public {
 		fmt.Fprintf(stderr, "b9s web: %v\n", err)
 		return 2
 	}
@@ -123,7 +131,8 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, formatOpenFailure(failure))
 		return 1
 	}
-	if cfgErr == nil {
+	// A public server writes no config: it serves one fixed project.
+	if cfgErr == nil && !*public {
 		if recent, ok := config.RecentFromCheckout(choice.Name, choice.Dir); ok {
 			rememberRecent(recent)
 		}
@@ -135,6 +144,9 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 		Auth:         auth,
 		StartupUser:  startupUser,
 		InitialQuery: *filter,
+		Public:       *public,
+		Banner:       *banner,
+		BannerLink:   *bannerLink,
 		Projects: func() []config.Project {
 			cfg, err := config.Load()
 			if err != nil {
@@ -144,7 +156,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 			return withCheckoutsUnder(ui.HeaderProjects(cfg.RecentProjects, target.Name, target.Dir), *projectsRoot)
 		},
 		Opened: func(p config.Project) {
-			if cfgErr == nil {
+			if cfgErr == nil && !*public {
 				rememberRecent(config.RecentProject{Name: p.Name, Database: p.Database, Host: p.Host, Path: p.Path})
 			}
 		},
@@ -160,7 +172,11 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	httpServer := &http.Server{Handler: srv, ReadHeaderTimeout: 10 * time.Second}
-	printWebBanner(stdout, choice.Name, ln.Addr().String(), auth)
+	if *public {
+		fmt.Fprintf(stdout, "b9s web is serving %s publicly on %s\nAnyone who reaches this address can read and change it. Press Ctrl+C to stop.\n", choice.Name, ln.Addr())
+	} else {
+		printWebBanner(stdout, choice.Name, ln.Addr().String(), auth)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -179,6 +195,27 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	defer cancel()
 	_ = httpServer.Shutdown(shutdownCtx)
 	return 0
+}
+
+// checkPublicFlags rejects --public beside any flag about pairing or other
+// projects, and a banner link that is not a web address.
+func checkPublicFlags(fs *flag.FlagSet, public bool, bannerLink string) error {
+	if bannerLink != "" && !strings.HasPrefix(bannerLink, "https://") && !strings.HasPrefix(bannerLink, "http://") {
+		return fmt.Errorf("--banner-link must start with https:// or http://")
+	}
+	if !public {
+		return nil
+	}
+	var conflict error
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "no-token", "new-token", "trust-header", "owner", "projects-root":
+			if conflict == nil {
+				conflict = fmt.Errorf("--public cannot be combined with --%s", f.Name)
+			}
+		}
+	})
+	return conflict
 }
 
 // withCheckoutsUnder appends every Beads checkout directly under root that

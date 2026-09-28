@@ -465,6 +465,8 @@ Every browser pairs once, by opening the link `b9s web` printed at start. The li
 
 Behind a login proxy, `b9s web --trust-header X-Forwarded-Email --owner you@example.com` replaces pairing: a request is served only when the proxy's header names the owner, and there is no link to open. Use it only where nothing but the proxy can reach the port. The hosted board at `<person>.beads.osen.co` runs this way (`scripts/web/README.md`).
 
+`b9s web --public` serves one project to anyone, with no pairing, and lets every visitor write. It exists for a disposable demo, such as `demo.b9s.osen.co` (`scripts/demo/README.md`, ADR 0029): the project switcher is gone, writes share a budget of 30 a minute, and `--banner "text"` with `--banner-link URL` shows one thin line above the board. Never point it at a real project.
+
 `b9s web --projects-root <dir>` lists every Beads checkout directly under `<dir>` in the project sheet, after the recent projects. The recent list holds nine, so a server that should offer more projects than that needs this flag.
 
 The database password never reaches the browser. The server reads the store and runs `bd`, and the browser only sends requests with its cookie and a CSRF header.

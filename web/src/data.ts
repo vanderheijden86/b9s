@@ -22,6 +22,8 @@ export const D = {
   kids: new Map<string, string[]>(),
   blocks: new Map<string, string[]>(),
   loaded: false,
+  /** a server anyone may open: one project, no switching */
+  public: false,
 };
 
 /** load replaces the data with a snapshot and returns the IDs it changed. */

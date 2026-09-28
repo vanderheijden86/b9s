@@ -17,7 +17,7 @@ import {
   setFocus, setStatus, switchProject, toast, toggleMark,
 } from "./actions";
 import * as api from "./api";
-import { eff, get, kids, laneOf, pool } from "./data";
+import { D, eff, get, kids, laneOf, pool } from "./data";
 import { detailKids, ensureVisible, render, renderBoard, siblings, wide } from "./render";
 import { S, saveChips, treeRows } from "./state";
 import { $, copyText, store } from "./util";
@@ -134,6 +134,7 @@ const slotHint = () => slotValues().map((v, n) => `${n + 1} ${v}`).join(" · ") 
 
 async function slot(n: number): Promise<void> {
   if (slots === "projects") {
+    if (D.public) { toast("This demo shows one project"); return; }
     try {
       const p = (await api.projects()).projects.find(x => x.slot === n);
       if (p) await switchProject(p.key); else toast("No project on " + n);

@@ -41,6 +41,17 @@ type Options struct {
 	Opened func(config.Project)
 	// InitialQuery is the query the browser starts with (--filter).
 	InitialQuery string
+	// Public serves the startup project to anyone, with Auth nil, on any
+	// address (ADR 0029). The project sheet offers no other project, and
+	// writes and reloads share one global budget.
+	Public bool
+	// Banner is a short line the browser shows above the board, and
+	// BannerLink an http(s) URL it links to.
+	Banner     string
+	BannerLink string
+	// MaxStreams caps open event streams; zero means no cap. Public mode
+	// defaults it to publicMaxStreams.
+	MaxStreams int
 }
 
 // Server is the b9s web HTTP handler.
@@ -52,6 +63,10 @@ type Server struct {
 	etagMu  sync.Mutex
 	writeMu sync.Mutex
 	idem    *idempotency
+	// writes is the public write budget; nil when the server is not public.
+	writes   *rateLimiter
+	streamMu sync.Mutex
+	streams  int
 }
 
 // NewServer builds the handler.
@@ -65,6 +80,14 @@ func NewServer(opts Options) (*Server, error) {
 	if opts.Projects == nil {
 		opts.Projects = func() []config.Project { return nil }
 	}
+	if opts.Public {
+		if opts.Auth != nil {
+			return nil, fmt.Errorf("web: a public server has no pairing")
+		}
+		if opts.MaxStreams == 0 {
+			opts.MaxStreams = publicMaxStreams
+		}
+	}
 	if opts.Heartbeat <= 0 {
 		opts.Heartbeat = 15 * time.Second
 	}
@@ -77,6 +100,9 @@ func NewServer(opts Options) (*Server, error) {
 		}
 	}
 	s := &Server{opts: opts, assets: assets, etags: map[string]string{}, idem: newIdempotency(512, 10*time.Minute)}
+	if opts.Public {
+		s.writes = newRateLimiter(publicWritesPerMinute, time.Minute)
+	}
 	s.mux = http.NewServeMux()
 	s.routes()
 	return s, nil
@@ -103,8 +129,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/events", s.paired(s.handleEvents))
 	s.mux.HandleFunc("GET /api/projects", s.paired(s.handleProjects))
 	s.mux.HandleFunc("POST /api/projects/open", s.paired(s.csrf(s.handleOpenProject)))
-	s.mux.HandleFunc("POST /api/reload", s.paired(s.csrf(s.handleReload)))
-	s.mux.HandleFunc("POST /api/write", s.paired(s.csrf(s.handleWrite)))
+	s.mux.HandleFunc("POST /api/reload", s.paired(s.csrf(s.limited(s.handleReload))))
+	s.mux.HandleFunc("POST /api/write", s.paired(s.csrf(s.limited(s.handleWrite))))
 	noAPI := func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no such API endpoint")
 	}
@@ -138,7 +164,7 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	if s.opts.Auth != nil {
 		csrf = s.opts.Auth.CSRF()
 	}
-	writeJSON(w, r, Session{CSRF: csrf, Query: s.opts.InitialQuery})
+	writeJSON(w, r, Session{CSRF: csrf, Query: s.opts.InitialQuery, Public: s.opts.Public, Banner: s.opts.Banner, BannerLink: s.opts.BannerLink})
 }
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
@@ -184,6 +210,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "streaming is not supported")
 		return
 	}
+	release, ok := s.acquireStream()
+	if !ok {
+		w.Header().Set("Retry-After", "30")
+		writeError(w, http.StatusServiceUnavailable, "too many live connections: try again shortly")
+		return
+	}
+	defer release()
 	events, cancel := s.opts.Store.Subscribe()
 	defer cancel()
 
@@ -226,6 +259,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Public {
+		// A public server probes nothing: listing a project would reach
+		// whatever database it names.
+		info := s.opts.Store.Info()
+		writeJSON(w, r, ProjectList{Projects: []ProjectEntry{{Key: info.Key, Name: info.Name, Active: true, Reach: "ok", Slot: 1}}})
+		return
+	}
 	projects := s.opts.Projects()
 	counts, reach := ui.ProbeProjects(projects, s.opts.StartupUser)
 	active := s.opts.Store.Info().Key
@@ -259,6 +299,10 @@ func (s *Server) handleProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleOpenProject(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Public {
+		writeError(w, http.StatusForbidden, "this public server shows one project only")
+		return
+	}
 	var req OpenProjectRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())

@@ -6,7 +6,7 @@ import { D } from "./data";
 import { applyTextSize, closeSheet, refresh, setRetryLive, setText, toast } from "./actions";
 import { busy, bindAll } from "./gestures";
 import { bindHistory, openHash, parseHash } from "./nav";
-import { ensureVisible, render, renderStale, revealInTree } from "./render";
+import { ensureVisible, render, renderBanner, renderStale, revealInTree } from "./render";
 import { S } from "./state";
 import { $, esc, store } from "./util";
 
@@ -68,6 +68,8 @@ async function boot(): Promise<void> {
   try {
     const s = await api.session();
     setText(s.query || store.get("text", ""));
+    D.public = s.public;
+    renderBanner(s.banner, s.banner_link);
     bindAll();
     bindHistory(render, closeSheet);
     // The view first, so the list does not flash the tree; the issue once loaded.

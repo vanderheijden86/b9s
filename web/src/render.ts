@@ -56,12 +56,22 @@ export function render(): void {
   syncHistory();
 }
 
+/** renderBanner fills the strip a server's --banner asks for, or hides it. */
+export function renderBanner(text: string, link: string): void {
+  const el = $("#banner");
+  el.hidden = !text;
+  if (!text) return;
+  const href = /^https?:\/\//.test(link) ? link : "";
+  el.innerHTML = `<span class="t">${esc(text)}</span>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener">Get b9s ↗</a>` : ""}`;
+}
+
 function renderHeader(): void {
   const P = pool();
   const n = (s: string) => P.filter(i => eff(i) === s).length;
   const pname = D.project.all ? "all" : D.project.name;
   const bad = S.live === "stale" || (D.health && !D.health.ok);
-  $("#hd").innerHTML = `<button class="proj" data-act="projects" aria-label="Switch project">b9s <small>·</small> ${esc(pname)}${D.project.read_only ? ` <span class="ro">ro</span>` : ""} <small>▾</small></button>
+  const proj = `b9s <small>·</small> ${esc(pname)}${D.project.read_only ? ` <span class="ro">ro</span>` : ""}`;
+  $("#hd").innerHTML = (D.public ? `<span class="proj">${proj}</span>` : `<button class="proj" data-act="projects" aria-label="Switch project">${proj} <small>▾</small></button>`) + `
     <button class="dot ${bad ? "bad" : ""}" id="hdot" data-act="health" aria-label="Data source health">●</button>
     <span class="cnt"><b>${n("open")}</b> open · <i>${n("in_progress")}</i> prog${n("blocked") ? ` · <span style="color:var(--red)">${n("blocked")}</span> blk` : ""}</span>
     <button class="ib follow ${S.follow ? "on" : ""}" data-act="follow" aria-label="Follow mode" aria-pressed="${S.follow}">F</button>
@@ -461,7 +471,7 @@ function renderMore(): void {
   const h = D.health;
   $("#moreList").innerHTML =
     `<div class="sec">Project</div>`
-    + it("projects", "▤", "Projects", "slots 1-9 · all projects", D.project.all ? "all" : D.project.name)
+    + (D.public ? "" : it("projects", "▤", "Projects", "slots 1-9 · all projects", D.project.all ? "all" : D.project.name))
     + it("health", "●", "Data source health", "source · watcher · fallbacks (D)", h ? (h.ok ? "ok" : "problem") : "…", !!h && h.ok)
     + it("identity", "@", "Acting as", "author of your issues and comments", D.actor || "unknown")
     + `<div class="sec">Views</div>`
