@@ -305,6 +305,58 @@ func TestNoTrackedSymlinkHasAbsoluteTarget(t *testing.T) {
 	}
 }
 
+// Generated exports and mockups copy the author's home directory into the
+// published tree; vendored code is third-party and not under review here.
+func TestNoTrackedFileContainsTheAuthorsHomeDirectory(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil || len(home) < 2 {
+		t.Skip("no usable home directory")
+	}
+	repoRoot := filepath.Join("..", "..")
+	out, err := exec.Command("git", "-C", repoRoot, "grep", "-lIF", home+string(filepath.Separator), "--", ".", ":!vendor").Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return
+		}
+		t.Skipf("git grep unavailable: %v", err)
+	}
+	t.Fatalf("tracked files contain the home directory %s:\n%s", home, out)
+}
+
+// Compiled executables in the source tree go stale against the code and carry
+// their build machine's paths and vulnerable dependencies.
+func TestNoTrackedCompiledExecutables(t *testing.T) {
+	repoRoot := filepath.Join("..", "..")
+	out, err := exec.Command("git", "-C", repoRoot, "ls-files", "-s", "--", ".", ":!vendor").Output()
+	if err != nil {
+		t.Skipf("git ls-files unavailable: %v", err)
+	}
+	magics := [][]byte{
+		{0x7f, 'E', 'L', 'F'},
+		{0xcf, 0xfa, 0xed, 0xfe}, {0xce, 0xfa, 0xed, 0xfe},
+		{0xca, 0xfe, 0xba, 0xbe},
+		{'M', 'Z'},
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 || fields[0] == "120000" {
+			continue
+		}
+		f, err := os.Open(filepath.Join(repoRoot, fields[3]))
+		if err != nil {
+			continue
+		}
+		head := make([]byte, 4)
+		n, _ := f.Read(head)
+		f.Close()
+		for _, magic := range magics {
+			if n >= len(magic) && string(head[:len(magic)]) == string(magic) {
+				t.Errorf("tracked file %s is a compiled executable", fields[3])
+			}
+		}
+	}
+}
+
 func TestInstallersUseCurrentIdentityAndRequireChecksums(t *testing.T) {
 	installShell, err := os.ReadFile(filepath.Join("..", "..", "install.sh"))
 	if err != nil {

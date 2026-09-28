@@ -88,3 +88,6 @@ target-*/
 /.b9s-e2e/
 /web/test-results/
 /web/playwright-report/
+/.beads/issues.jsonl
+/.beads/issues.jsonl.backup
+/.beads/beads.left.jsonl
