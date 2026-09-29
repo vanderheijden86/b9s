@@ -7,9 +7,13 @@
 
 **Try it in your browser, no install:** [demo.b9s.osen.co](https://demo.b9s.osen.co) opens a made-up space programme that anyone can edit. It resets every 30 minutes.
 
+**Or watch the 90-second demo:** the tree and the board in a terminal, then the same project on a phone over Tailscale ([MP4, 10 MB](docs/videos/b9s-tui-and-web-demo--main.mp4)).
+
+<a href="docs/videos/b9s-tui-and-web-demo--main.mp4"><img src="docs/videos/b9s-tui-and-web-demo--main.png" alt="First frame of the b9s demo video: the issue tree in a terminal, with captions" width="360"></a>
+
 | Terminal | Browser | Phone |
 |:---:|:---:|:---:|
-| ![b9s in a terminal, the issue tree beside the detail pane](docs/screenshot.png) | ![b9s web on a desktop browser, the board with one swimlane per epic](docs/screenshot-web-board.png) | <img src="docs/screenshot-phone.png" alt="b9s web on a phone, the issue tree" width="200"> |
+| ![b9s in a terminal, the issue tree of a sample project](docs/screenshot.png) | ![b9s web on a desktop browser, the board with one swimlane per epic](docs/screenshot-web-board.png) | <img src="docs/screenshot-phone.png" alt="b9s web on a phone, the issue tree" width="200"> |
 
 b9s is a keyboard-driven terminal UI modelled on [k9s](https://k9scli.io/): if you know k9s, you already know most of b9s. It opens any Beads project, including a fresh `bd init` with no server, and shows changes from `bd` or another agent as they happen. `b9s web` serves the same project, with every write, to a browser or a phone.
 
