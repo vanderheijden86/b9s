@@ -205,10 +205,14 @@ test("h from the first column selects the epic; Enter opens it and Tab folds its
   await expect(epic(page, "t-epic")).toHaveClass(/sel/);
   await page.keyboard.press("l");
   await expect(card(page, "t-2")).toHaveClass(/sel/);
+  // Each key acts on the selection the previous key left, so wait for it:
+  // Enter on the "none" lane opens nothing.
   await page.keyboard.press("h");
+  await expect(epic(page, "t-epic")).toHaveClass(/sel/);
   await page.keyboard.press("j");
   await expect(epic(page, "none")).toHaveClass(/sel/);
   await page.keyboard.press("k");
+  await expect(epic(page, "t-epic")).toHaveClass(/sel/);
   await page.keyboard.press("Enter");
   await expect(page.locator(".detail")).toHaveAttribute("data-id", "t-epic");
   await page.keyboard.press("Escape");
