@@ -3,11 +3,15 @@
 ![Go Version](https://img.shields.io/github/go-mod/go-version/vanderheijden86/b9s?style=for-the-badge&color=6272a4)
 ![License](https://img.shields.io/badge/License-MIT-50fa7b?style=for-the-badge)
 
-A keyboard-driven terminal UI for reading and editing [Beads](https://github.com/steveyegge/beads) issues, modelled on [k9s](https://k9scli.io/). If you know k9s, you already know most of b9s.
+**See your [Beads](https://github.com/steveyegge/beads) issues as a tree, a board and a dependency graph, and change them from the terminal, a browser or your phone.** Every change goes through the `bd` CLI, so b9s, `bd` and your agents always agree on what is stored.
 
-b9s shows a Beads project as a tree of issues under their parents, with a Markdown detail pane. It reads from a Dolt server, SQLite or JSONL, reloads when the data changes, and makes every change through the `bd` CLI, so b9s and `bd` always agree on what is stored.
+**Try it in your browser, no install:** [demo.b9s.osen.co](https://demo.b9s.osen.co) opens a made-up space programme that anyone can edit. It resets every 30 minutes.
 
-![b9s showing a project's issues beside the detail pane](docs/screenshot.png)
+| Terminal | Browser | Phone |
+|:---:|:---:|:---:|
+| ![b9s in a terminal, the issue tree beside the detail pane](docs/screenshot.png) | ![b9s web on a desktop browser, the board with one swimlane per epic](docs/screenshot-web-board.png) | <img src="docs/screenshot-phone.png" alt="b9s web on a phone, the issue tree" width="200"> |
+
+b9s is a keyboard-driven terminal UI modelled on [k9s](https://k9scli.io/): if you know k9s, you already know most of b9s. It opens any Beads project, including a fresh `bd init` with no server, and shows changes from `bd` or another agent as they happen. `b9s web` serves the same project, with every write, to a browser or a phone.
 
 ## Contents
 
@@ -83,7 +87,9 @@ Run `b9s` in a folder that has a `.beads` directory:
 b9s
 ```
 
-The tree shows every issue under its parent. Move with `j` and `k`, open an issue with `Enter`, search with `/` and run a command with `:`. `Ctrl-C` quits.
+The tree shows every issue under its parent. Move with `j` and `k`, open an issue with `Enter`, search with `/` and run a command with `:`. `b` shows the board, `S` changes the status of the issue under the cursor, and `Ctrl-C` quits.
+
+To open the same project on your phone, run `b9s web` in the same folder and follow [Phone and browser](#phone-and-browser).
 
 No Beads project at hand? Download the [sample project](examples/sample-project/), a made-up web shop with epics, blocked work and comments, and browse it:
 
