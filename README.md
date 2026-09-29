@@ -79,6 +79,8 @@ make install   # installs b9s to $GOPATH/bin
 
 b9s makes every write through the [Beads](https://github.com/steveyegge/beads) `bd` command, and reads embedded Dolt projects through it too, so `bd` must be on your `PATH`. **b9s is tested with bd 1.2.2 through 1.3.0.** A newer bd usually works. [docs/testing.md](docs/testing.md#bd-releases) says how to check one.
 
+**Tried it?** Tell me what worked and what did not in the [feedback thread](https://github.com/vanderheijden86/b9s/discussions/12).
+
 ## Quick start
 
 Run `b9s` in a folder that has a `.beads` directory:
