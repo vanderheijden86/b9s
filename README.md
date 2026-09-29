@@ -7,9 +7,9 @@
 
 **Try it in your browser, no install:** [demo.b9s.osen.co](https://demo.b9s.osen.co) opens a made-up space programme that anyone can edit. It resets every 30 minutes.
 
-**Or watch the 90-second demo:** the tree and the board in a terminal, then the same project on a phone over Tailscale ([MP4, 10 MB](docs/videos/b9s-tui-and-web-demo--main.mp4)).
+**Or watch the 90-second demo:** the tree and the board in a terminal, then the same project on a phone over Tailscale.
 
-<a href="docs/videos/b9s-tui-and-web-demo--main.mp4"><img src="docs/videos/b9s-tui-and-web-demo--main.png" alt="First frame of the b9s demo video: the issue tree in a terminal, with captions" width="360"></a>
+https://github.com/user-attachments/assets/ccc8ebc9-4daf-4867-8c41-3f91df364f42
 
 | Terminal | Browser | Phone |
 |:---:|:---:|:---:|
