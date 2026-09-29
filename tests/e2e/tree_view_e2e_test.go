@@ -521,10 +521,57 @@ func treeFinalFrame(out []byte) string {
 	return strings.Join(rows, "\n")
 }
 
+// titleHasBackground reports whether the SGR state in effect where title
+// starts in row sets a background colour. The runner's colour profile decides
+// the form: 256-colour and truecolor use 48;..., the 16-colour profile a CI
+// runner gets uses 40-47 or 100-107. Only the state since the last reset
+// counts, so a coloured badge earlier in the row (the OPEN status) does not
+// read as the row highlight.
+func titleHasBackground(row, title string) bool {
+	at := strings.Index(row, title)
+	if at < 0 {
+		return false
+	}
+	prefix := row[:at]
+	background := false
+	for {
+		start := strings.Index(prefix, "\x1b[")
+		if start < 0 {
+			return background
+		}
+		prefix = prefix[start+2:]
+		end := strings.IndexByte(prefix, 'm')
+		if end < 0 {
+			return background
+		}
+		params := strings.Split(prefix[:end], ";")
+		prefix = prefix[end+1:]
+		for i := 0; i < len(params); i++ {
+			switch p := params[i]; {
+			case p == "" || p == "0" || p == "49":
+				background = false
+			case p == "38" || p == "48":
+				// Extended colour: 5;n or 2;r;g;b follows and is not a code.
+				if p == "48" {
+					background = true
+				}
+				if i+1 < len(params) && params[i+1] == "5" {
+					i += 2
+				} else if i+1 < len(params) && params[i+1] == "2" {
+					i += 4
+				}
+			case len(p) == 2 && p[0] == '4' && p[1] >= '0' && p[1] <= '7',
+				len(p) == 3 && p[:2] == "10" && p[2] >= '0' && p[2] <= '7':
+				background = true
+			}
+		}
+	}
+}
+
 // TestTreeViewToggleExpand verifies Tab folds the selected root, as advertised
 // by the tree footer. Assertions cover the final screen, including selection.
 func TestTreeViewToggleExpand(t *testing.T) {
-	// The selected row is identified by its background, even in colorless CI.
+	// The selected row is identified by its background, so colour is forced on.
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("CLICOLOR_FORCE", "1")
 	t.Setenv("COLORTERM", "truecolor")
@@ -558,7 +605,7 @@ func TestTreeViewToggleExpand(t *testing.T) {
 			frame := treeFinalFrame(out)
 			selected := false
 			for _, row := range strings.Split(frame, "\n") {
-				if strings.Contains(ansi.Strip(row), "Epic One") && strings.Contains(row, "\x1b[48;") {
+				if titleHasBackground(row, "Epic One") {
 					selected = true
 				}
 			}
