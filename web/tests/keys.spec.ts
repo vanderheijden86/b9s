@@ -417,3 +417,35 @@ test.describe("board keys", () => {
     await expect(page.locator('#wboard [data-card="t-5"]')).toBeVisible();
   });
 });
+
+test.describe("view keys", () => {
+  test("b toggles the board and the tree", async ({ page, project }) => {
+    await open(page, project);
+    await page.keyboard.press("b");
+    await expect(page.locator("#vBoard")).toBeVisible();
+    await page.keyboard.press("b");
+    await expect(page.locator("#vTree")).toBeVisible();
+    await expect(page.locator("#vBoard")).toBeHidden();
+  });
+
+  test("t goes back to the tree from the board", async ({ page, project }) => {
+    await open(page, project);
+    await page.keyboard.press("b");
+    await expect(page.locator("#vBoard")).toBeVisible();
+    await page.keyboard.press("t");
+    await expect(page.locator("#vTree")).toBeVisible();
+    await expect(page.locator("#treeRows [data-chev]").first()).toBeVisible();
+  });
+
+  test("t in the tree shows the flat list, and t again the tree", async ({ page, project }) => {
+    await open(page, project);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:1");
+    await page.keyboard.press("t");
+    await expect(page.locator("#treeRows [data-chev]")).toHaveCount(0);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+    await expect(row(page, "t-5")).toBeVisible();
+    await page.keyboard.press("t");
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:1");
+    await expect(row(page, "t-epic").locator("[data-chev]")).toBeVisible();
+  });
+});

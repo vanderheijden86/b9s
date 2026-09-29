@@ -25,6 +25,8 @@ export const S = {
   focus: null as null | { id: string; mode: "branch" | "subtree" },
   /** O: the tree shows only matching issues, without the parents that give them context */
   onlyMatches: false,
+  /** t: the tree pane shows every match as one sorted list, without parents or nesting */
+  list: store.get("list", false),
   cursor: null as string | null,
   marks: new Set<string>(),
   marking: false,
@@ -125,6 +127,10 @@ export function treeRows(): { rows: TreeRow[]; matchCount: number } {
     show = new Set([...show].filter(x => keep.has(x)));
   }
   const cmp = SORTS[S.sort];
+  if (S.list) {
+    const flat = [...show].filter(x => match.has(x)).map(x => get(x)!).sort(cmp);
+    return { rows: flat.map(i => ({ i, d: 0 })), matchCount: match.size };
+  }
   const out: TreeRow[] = [];
   const seen = new Set<string>();
   const walk = (id: string, d: number) => {

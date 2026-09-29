@@ -98,7 +98,13 @@ let slots: Slots = "projects";
 
 function globalKey(k: string): boolean {
   switch (k) {
-    case "b": S.view = "board"; S.detail = null; render(); return true;
+    case "b": S.view = S.view === "board" ? "tree" : "board"; S.detail = null; render(); return true;
+    case "t": case "T":
+      if (S.view !== "tree") { S.view = "tree"; render(); return true; }
+      S.list = !S.list; store.set("list", S.list); render();
+      if (S.cursor) ensureVisible(S.cursor);
+      toast(S.list ? "Flat list" : "Tree");
+      return true;
     case "g": {
       const c = S.cursor && get(S.cursor);
       if (c) { S.graph = [c.id]; S.detail = null; S.view = "graph"; render(); } else void act("graph");

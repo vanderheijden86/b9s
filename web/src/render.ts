@@ -141,7 +141,7 @@ function renderTree(): void {
   const { rows } = treeRows();
   const el = $("#treeRows");
   el.className = S.wrap ? "wrap" : "";
-  el.innerHTML = rows.length ? rows.map(r => rowHTML(r)).join("")
+  el.innerHTML = rows.length ? rows.map(r => rowHTML(r, S.list)).join("")
     : `<div class="empty">No issues match <b>${esc(queryString())}</b>.<br><br><button data-act="allq">Show all statuses</button></div>`;
   treeList().style.paddingBottom = S.detail ? detailHeightPx() + "px" : "";
 }
