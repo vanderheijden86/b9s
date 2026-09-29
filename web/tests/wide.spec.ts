@@ -212,6 +212,7 @@ test("h from the first column selects the epic; Enter opens it and Tab folds its
   await page.keyboard.press("Enter");
   await expect(page.locator(".detail")).toHaveAttribute("data-id", "t-epic");
   await page.keyboard.press("Escape");
+  await expect(page.locator(".detail")).toHaveCount(0);
   await page.keyboard.press("Tab");
   await expect(card(page, "t-2")).toHaveCount(0);
   await page.keyboard.press("Tab");

@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -233,9 +234,14 @@ func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep
 	done := make(chan struct{})
 	t.Cleanup(func() { close(done) })
 
+	outPath := filepath.Join(t.TempDir(), "tui.out")
 	go func() {
-		// Wait for TUI to initialize
-		time.Sleep(300 * time.Millisecond)
+		// Keys typed before the TUI takes the terminal are echoed by the line
+		// discipline and never reach b9s, so a fixed delay loses them on a slow
+		// runner. The first frame proves the TUI is reading input.
+		if !waitForFirstFrame(ctx, done, outPath) {
+			return
+		}
 		for _, k := range keys {
 			select {
 			case <-done:
@@ -253,11 +259,36 @@ func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep
 		}
 	}()
 
-	out, err := runCmdToFile(t, cmd)
+	out, err := runCmdToPath(cmd, outPath)
 	if ctx.Err() == context.DeadlineExceeded {
 		t.Fatalf("b9s did not exit within %s; output:\n%s", treeTUIDeadline, out)
 	}
 	return out, err
+}
+
+// waitForFirstFrame polls the output file until the TUI has entered the
+// alternate screen and drawn the issue header. It returns false when the run
+// ends first.
+func waitForFirstFrame(ctx context.Context, done <-chan struct{}, outPath string) bool {
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		if out, err := os.ReadFile(outPath); err == nil && firstFrameDrawn(out) {
+			return true
+		}
+		select {
+		case <-done:
+			return false
+		case <-ctx.Done():
+			return false
+		case <-tick.C:
+		}
+	}
+}
+
+func firstFrameDrawn(out []byte) bool {
+	i := bytes.Index(out, []byte("\x1b[?1049h"))
+	return i >= 0 && bytes.Contains(out[i:], []byte("Issue"))
 }
 
 // keyStep represents a key to send with an optional delay before sending it.

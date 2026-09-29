@@ -276,7 +276,12 @@ func runCmdToFile(t *testing.T, cmd *exec.Cmd) ([]byte, error) {
 		}
 	}
 
-	outPath := filepath.Join(t.TempDir(), "cmd.out")
+	return runCmdToPath(cmd, filepath.Join(t.TempDir(), "cmd.out"))
+}
+
+// runCmdToPath is runCmdToFile with the output file named by the caller, so a
+// concurrent reader can watch the output while the command runs.
+func runCmdToPath(cmd *exec.Cmd, outPath string) ([]byte, error) {
 	f, err := os.Create(outPath)
 	if err != nil {
 		return nil, fmt.Errorf("create output file: %w", err)
