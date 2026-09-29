@@ -64,6 +64,12 @@ checksum:
 sboms:
   - artifacts: archive
 
+# A tag with a prerelease suffix (v1.3.0-rc.1) publishes as a GitHub
+# prerelease, which /releases/latest skips, so the updater and install.sh
+# keep offering the last full release.
+release:
+  prerelease: auto
+
 changelog:
   sort: asc
   filters:
@@ -79,6 +85,8 @@ brews:
       name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    # brew has no prerelease channel: a release candidate never reaches the tap.
+    skip_upload: auto
     directory: Formula
     homepage: https://github.com/vanderheijden86/b9s
     description: "Fast, focused TUI viewer and editor for beads projects"
