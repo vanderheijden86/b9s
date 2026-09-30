@@ -81,6 +81,8 @@ target-*/
 # Local runtime output
 .beads.gate.lock
 .beads/dolt-config.log
+# Per-user tree view state (expanded nodes, flat-list toggle, bookmarks)
+/.beads/tree-state.json
 .playwright-cli/
 *.err
 
