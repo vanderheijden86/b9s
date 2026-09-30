@@ -77,3 +77,37 @@ func TestTreePipeOpensAndClosesColumnPopup(t *testing.T) {
 		t.Fatal("| should close the column popup it opened")
 	}
 }
+
+// A popup sits on top of the filtered tree, so Escape belongs to the popup
+// and the accepted branch filter underneath must survive it.
+func TestEscapeClosesTreePopupsWithoutClearingBranchFilter(t *testing.T) {
+	cases := []struct {
+		name   string
+		open   func(*Model)
+		isOpen func(Model) bool
+	}{
+		{"columns", func(m *Model) { m.tree.OpenColumnPopup() }, func(m Model) bool { return m.tree.IsColumnPopupOpen() }},
+		{"sort", func(m *Model) { m.tree.OpenSortPopup() }, func(m Model) bool { return m.tree.IsSortPopupOpen() }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTreeShortcutModel(t)
+			m = pressTreeKey(m, 'f')
+			filter := m.queryState.Text()
+			if filter == "" {
+				t.Fatal("f should apply a branch filter")
+			}
+			tc.open(&m)
+
+			updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+			m = updated.(Model)
+
+			if tc.isOpen(m) {
+				t.Fatalf("Escape should close the %s popup", tc.name)
+			}
+			if got := m.queryState.Text(); got != filter {
+				t.Fatalf("Escape in the %s popup cleared the branch filter: got %q, want %q", tc.name, got, filter)
+			}
+		})
+	}
+}

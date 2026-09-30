@@ -2468,7 +2468,10 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			m.commandPrompt.Start()
 			return m, tea.Batch(cmds...)
 		}
-		if msg.String() == "esc" && m.queryState.Text() != "" {
+		// An open tree popup sits above the filtered tree, so its Escape
+		// closes the popup (handled below) and leaves the filter in place.
+		treePopupOpen := m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen()
+		if msg.String() == "esc" && m.queryState.Text() != "" && !treePopupOpen {
 			m.queryState.Clear()
 			m.setQueryText("")
 			return m, tea.Batch(cmds...)
