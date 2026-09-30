@@ -16,8 +16,8 @@ func ResolveActor(projectDir string) string {
 }
 
 // HeaderProjects is the project list the TUI header numbers 1-9.
-func HeaderProjects(recent []config.RecentProject, activeName, activePath string) []config.Project {
-	return headerProjects(recent, activeName, activePath)
+func HeaderProjects(recent []config.RecentProject, active config.RecentProject) []config.Project {
+	return headerProjects(recent, active)
 }
 
 // IsClosedLike reports whether status counts as closed in filters and counts.

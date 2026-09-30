@@ -152,8 +152,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 			if err != nil {
 				cfg = appCfg
 			}
-			target := store.Target()
-			return withCheckoutsUnder(ui.HeaderProjects(cfg.RecentProjects, target.Name, target.Dir), *projectsRoot)
+			return withCheckoutsUnder(ui.HeaderProjects(cfg.RecentProjects, recentFromTarget(store.Target())), *projectsRoot)
 		},
 		Opened: func(p config.Project) {
 			if cfgErr == nil && !*public {
@@ -353,4 +352,18 @@ func printQR(w io.Writer, url string) {
 	if err == nil {
 		fmt.Fprintf(w, "\n%s", out)
 	}
+}
+
+// recentFromTarget is the open project in the identity the recent list uses,
+// so the header finds its entry by database when that entry has no path.
+// A checkout names its server in .beads/metadata.json, which is read again on
+// each call because the open project changes when the browser switches.
+func recentFromTarget(target datasource.OpenTarget) config.RecentProject {
+	if target.Dolt != nil {
+		return config.RecentProject{Name: target.Name, Path: target.Dir, Database: target.Dolt.Database, Host: target.Dolt.Path}
+	}
+	if recent, ok := config.RecentFromCheckout(target.Name, target.Dir); ok {
+		return recent
+	}
+	return config.RecentProject{Name: target.Name, Path: target.Dir}
 }

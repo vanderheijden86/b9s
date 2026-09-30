@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 func TestWebRefusesNoTokenOffLoopback(t *testing.T) {
@@ -92,5 +94,23 @@ func TestWebBannerLinkMustBeAWebAddress(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := runWeb([]string{"--public", "--banner-link", "javascript:alert(1)"}, &out, &errOut); code != 2 {
 		t.Fatalf("exit %d, stderr %q", code, errOut.String())
+	}
+}
+
+func TestRecentFromTarget_ReadsServerOfCheckoutSoHeaderListsItOnce(t *testing.T) {
+	checkout := filepath.Join(t.TempDir(), "b9s")
+	if err := os.MkdirAll(filepath.Join(checkout, ".beads"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := `{"backend":"dolt","dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":3306,"dolt_server_user":"root","dolt_database":"b9s"}`
+	if err := os.WriteFile(filepath.Join(checkout, ".beads", "metadata.json"), []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	recent := []config.RecentProject{{Name: "b9s", Database: "b9s", Host: "127.0.0.1:3306"}}
+
+	got := ui.HeaderProjects(recent, recentFromTarget(datasource.OpenTarget{Name: "b9s", Dir: checkout}))
+
+	if len(got) != 1 || got[0].Path != checkout {
+		t.Errorf("header = %+v, want one b9s row with path %s", got, checkout)
 	}
 }

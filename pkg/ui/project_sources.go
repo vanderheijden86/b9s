@@ -40,6 +40,16 @@ func databaseSource(project config.Project, user string) datasource.DataSource {
 // activeProject is the active header project, including the database of a
 // project opened without a checkout, which the active name and path alone do
 // not carry.
+// activeRecent is the active project in the identity the recent list uses.
+func (m Model) activeRecent() config.RecentProject {
+	return config.RecentProject{
+		Name:     m.activeProjectName,
+		Path:     m.activeProjectPath,
+		Database: m.activeProjectServer.Database,
+		Host:     m.activeProjectServer.Host,
+	}
+}
+
 func (m Model) activeProject() config.Project {
 	for _, p := range m.allProjects {
 		if p.Name == m.activeProjectName && p.ResolvedPath() == m.activeProjectPath {
