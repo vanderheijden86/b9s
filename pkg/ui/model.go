@@ -2976,8 +2976,9 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				if m.modalRefusedBySwitch() {
 					return m, nil
 				}
-				if m.focused == focusTree && !m.tree.IsSearchMode() {
-					// Edit in tree view (skip during search, bd-9k90)
+				// The search bar only captures keys while the tree has focus
+				// (bd-9k90); the detail view edits the issue it shows.
+				if (m.focused == focusTree && !m.tree.IsSearchMode()) || m.focused == focusDetail {
 					if issue := m.getSelectedIssue(); issue != nil {
 						m.openEditModal(issue)
 						return m, m.editModal.Init()
