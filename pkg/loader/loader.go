@@ -203,16 +203,55 @@ func FindJSONLPathWithWarnings(beadsDir string, warnFunc func(msg string)) (stri
 		}
 	}
 
-	// Fall back to first non-empty candidate
+	// Fall back to a file under another name only when it holds issues. bd
+	// keeps other journals in .beads, and a Dolt-backed project has no export
+	// at all, so taking any .jsonl would load zero issues from a non-issue
+	// file and hide why the real source failed.
 	for _, name := range candidates {
 		path := filepath.Join(beadsDir, name)
-		if info, err := os.Stat(path); err == nil && info.Size() > 0 {
+		if startsWithIssueRecord(path) {
 			return path, nil
 		}
 	}
 
-	// Last resort: return first candidate even if empty
-	return filepath.Join(beadsDir, candidates[0]), nil
+	// An empty file under a canonical name is a project with no issues yet.
+	for _, preferred := range preferredNames {
+		for _, name := range candidates {
+			if name == preferred {
+				return filepath.Join(beadsDir, name), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no beads JSONL file found in %s", beadsDir)
+}
+
+// startsWithIssueRecord reports whether the first record in the file at path
+// is one the loader accepts as an issue.
+func startsWithIssueRecord(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	reader := bufio.NewReaderSize(f, DefaultMaxBufferSize)
+	for lineNum := 1; ; lineNum++ {
+		line, isPrefix, err := reader.ReadLine()
+		if err != nil || isPrefix {
+			return false
+		}
+		if lineNum == 1 {
+			line = stripBOM(line)
+		}
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		var issue model.Issue
+		if err := json.Unmarshal(line, &issue); err != nil {
+			return false
+		}
+		return acceptIssue(&issue) == nil
+	}
 }
 
 // LoadIssues reads issues from the beads directory.
@@ -416,10 +455,7 @@ func parseIssuesWithOptions(r io.Reader, opts ParseOptions, usePool bool) ([]mod
 				continue
 			}
 
-			issue.Status = normalizeIssueStatus(issue.Status)
-
-			// Validate issue
-			if err := issue.Validate(); err != nil {
+			if err := acceptIssue(issue); err != nil {
 				PutIssue(issue)
 				// Skip invalid issues
 				warn(fmt.Sprintf("skipping invalid issue on line %d: %v", lineNum, err))
@@ -441,10 +477,7 @@ func parseIssuesWithOptions(r io.Reader, opts ParseOptions, usePool bool) ([]mod
 				continue
 			}
 
-			issue.Status = normalizeIssueStatus(issue.Status)
-
-			// Validate issue
-			if err := issue.Validate(); err != nil {
+			if err := acceptIssue(&issue); err != nil {
 				// Skip invalid issues
 				warn(fmt.Sprintf("skipping invalid issue on line %d: %v", lineNum, err))
 				continue
@@ -459,6 +492,14 @@ func parseIssuesWithOptions(r io.Reader, opts ParseOptions, usePool bool) ([]mod
 	}
 
 	return issues, poolRefs, nil
+}
+
+// acceptIssue normalizes a decoded record and reports why the loader would
+// skip it. The source fallback in FindJSONLPath applies the same rule, so a
+// file it picks never loads as an empty project.
+func acceptIssue(issue *model.Issue) error {
+	issue.Status = normalizeIssueStatus(issue.Status)
+	return issue.Validate()
 }
 
 // stripBOM removes the UTF-8 Byte Order Mark if present

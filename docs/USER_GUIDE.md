@@ -388,7 +388,7 @@ A project that several agents or machines write to at once is better served by a
 
 ### Dolt connection
 
-b9s takes the Dolt host, port, user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. It sends that password only to a loopback address or to an exact `host:port` listed in `B9S_TRUSTED_DOLT_ENDPOINTS` (comma-separated), so a cloned repository cannot choose where your password goes. See [ADR 0013](adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
+b9s takes the Dolt user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. It finds the server's address the way bd does, so both always read the same server. The host comes from `BEADS_DOLT_SERVER_HOST`, then `metadata.json`, then `dolt.host` in `config.yaml`, else `127.0.0.1`. The port comes from `BEADS_DOLT_SERVER_PORT`, then `.beads/dolt-server.port` (the port of a server bd started), then `listener.port` in the Dolt data directory, then `dolt.port` in `config.yaml`, then `dolt_server_port` in `metadata.json`. For a remote host b9s ignores the port file and defaults to 3307, as bd does. In shared server mode (`BEADS_DOLT_SHARED_SERVER`) the port file is `~/.beads/shared-server/dolt-server.port`, with 3308 as the default. It sends that password only to a loopback address or to an exact `host:port` listed in `B9S_TRUSTED_DOLT_ENDPOINTS` (comma-separated), so a cloned repository cannot choose where your password goes. See [ADR 0013](adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
 
 ### Live reload
 

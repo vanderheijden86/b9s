@@ -208,7 +208,7 @@ func DiscoverSources(opts DiscoveryOptions) ([]DataSource, error) {
 type beadsMetadata struct {
 	DoltMode       string `json:"dolt_mode"`        // "embedded" or "server"
 	DoltServerHost string `json:"dolt_server_host"` // default: 127.0.0.1
-	DoltServerPort int    `json:"dolt_server_port"` // default: 3306
+	DoltServerPort int    `json:"dolt_server_port"` // deprecated by bd; see resolveDoltAddress
 	DoltServerUser string `json:"dolt_server_user"` // default: root
 	DoltDatabase   string `json:"dolt_database"`    // default: beads
 	Database       string `json:"database"`         // legacy: "dolt" or "beads.db"
@@ -239,14 +239,7 @@ func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, 
 		return nil, nil
 	}
 
-	host := meta.DoltServerHost
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	port := meta.DoltServerPort
-	if port == 0 {
-		port = 3306
-	}
+	addr := resolveDoltAddress(beadsDir, meta)
 	user := meta.DoltServerUser
 	if user == "" {
 		user = "root"
@@ -264,7 +257,6 @@ func discoverDoltSources(beadsDir string, opts DiscoveryOptions) ([]DataSource, 
 		modTime = info.ModTime()
 	}
 
-	addr := fmt.Sprintf("%s:%d", host, port)
 	source := DataSource{
 		Type:     SourceTypeDolt,
 		Path:     addr,

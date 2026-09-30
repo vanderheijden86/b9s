@@ -82,7 +82,7 @@ func (f *OpenFailure) Try() []string {
 		}
 	case OpenServerDown:
 		return []string{
-			fmt.Sprintf("Check that the Dolt server or SSH tunnel for %s is running", f.Server),
+			fmt.Sprintf("Check that %s is the Dolt server's address and that this computer can reach it", f.Server),
 			"Test the connection with bd: bd list",
 		}
 	case OpenDenied:
@@ -101,14 +101,11 @@ func (f *OpenFailure) Try() []string {
 			"Re-export the issues: bd export",
 		}
 	case OpenTimedOut:
-		server := f.Server
-		if server == "" {
-			server = "this project"
+		reach := "Check that this computer can reach the Dolt server"
+		if f.Server != "" {
+			reach = fmt.Sprintf("Check that %s is the Dolt server's address and that this computer can reach it", f.Server)
 		}
-		return []string{
-			"Retry: the server may be busy",
-			fmt.Sprintf("Check that the Dolt server or SSH tunnel for %s is running", server),
-		}
+		return []string{"Retry: the server may be busy", reach}
 	case OpenNoBD:
 		return []string{
 			"Install bd: https://github.com/steveyegge/beads",

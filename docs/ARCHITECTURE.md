@@ -103,9 +103,11 @@ sequenceDiagram
 
 A Dolt server always wins. If the connection fails, `cmd/b9s` falls back to SQLite and then JSONL and records the error for the `D` health popup.
 
+`loader.FindJSONLPath` picks the JSONL file. It takes a non-empty file under a canonical name (`beads.jsonl`, `issues.jsonl`, `beads.base.jsonl`) first. A file under another name counts only when its first record is one the loader accepts as an issue, because bd keeps other journals in `.beads` (prefix routes, interactions) and a Dolt project keeps no export at all. An empty file counts only under a canonical name. With no file left, there is no JSONL fallback, and a Dolt project whose server refuses the connection opens as server down instead of as an empty project.
+
 Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd export` with `BEADS_DIR` set and parses stdout only, because `bd` holds the store's lock for as long as a process has it open. When the export fails, `OpenProject` reports it (`OpenNoBD` when `bd` is missing) and does not fall back to an `issues.jsonl` beside the store. See [ADR 0025](adr/0025-read-embedded-dolt-through-bd-export.md).
 
-`DoltReader` connects with the host, port, user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. The password is sent only to a loopback address or an endpoint listed in `B9S_TRUSTED_DOLT_ENDPOINTS`, so a cloned repository cannot redirect it. See [ADR 0013](adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
+`DoltReader` connects with the user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. `resolveDoltAddress` (`internal/datasource/dolt_address.go`) picks the host and port with bd's own precedence: environment, then the port file bd writes for a server it started, then the Dolt server's `listener.port`, then `dolt.port` in `config.yaml`, then `metadata.json`. A project whose `metadata.json` names no port is the common case, because bd starts its server on a free port and records it only in `.beads/dolt-server.port`. The password is sent only to a loopback address or an endpoint listed in `B9S_TRUSTED_DOLT_ENDPOINTS`, so a cloned repository cannot redirect it. See [ADR 0013](adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
 
 `MultiDoltReader` in `dolt_multi.go` opens one `DoltReader` per database for the all-projects view (`0`). It is read-only.
 

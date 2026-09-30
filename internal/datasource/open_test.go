@@ -55,6 +55,21 @@ func TestEveryOpenReasonHasMessageAndNextSteps(t *testing.T) {
 	}
 }
 
+// A server may be local, remote or behind a tunnel, so the hints name the
+// address to check and never assume one way of reaching it.
+func TestUnreachableServerHintsNameTheAddressNotATunnel(t *testing.T) {
+	for _, reason := range []OpenReason{OpenServerDown, OpenTimedOut} {
+		f := &OpenFailure{Reason: reason, Server: "db.example:3306"}
+		hints := strings.Join(f.Try(), "\n")
+		if strings.Contains(strings.ToLower(hints), "tunnel") {
+			t.Errorf("reason %d hints mention a tunnel:\n%s", reason, hints)
+		}
+		if !strings.Contains(hints, "db.example:3306") {
+			t.Errorf("reason %d hints do not name the address:\n%s", reason, hints)
+		}
+	}
+}
+
 func TestOpenProjectWithoutBeadsDirIsNotAProject(t *testing.T) {
 	_, failure := OpenProject(OpenTarget{Name: "plain", Dir: t.TempDir()})
 
@@ -74,6 +89,23 @@ func TestOpenProjectReportsUnreachableServerNotMissingExport(t *testing.T) {
 	}
 	if failure.Server != unreachableServer || failure.Database != "ghost" {
 		t.Errorf("failure names server %q database %q, want %q ghost", failure.Server, failure.Database, unreachableServer)
+	}
+}
+
+// Other bd journals in .beads are not an export. Opening one as the issue
+// file showed an empty project and hid the refused connection.
+func TestOpenProjectReportsUnreachableServerBesideNonIssueJournal(t *testing.T) {
+	dir, beadsDir := beadsProject(t)
+	writeServerMetadata(t, beadsDir, "ghost")
+	routes := `{"prefix":"g-","path":"."}`
+	if err := os.WriteFile(filepath.Join(beadsDir, "routes.jsonl"), []byte(routes+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	opened, failure := OpenProject(OpenTarget{Name: "ghost", Dir: dir})
+
+	if failure == nil || failure.Reason != OpenServerDown {
+		t.Fatalf("opened %s with %d issues, failure = %+v; want server down", opened.Source.Path, len(opened.Issues), failure)
 	}
 }
 
