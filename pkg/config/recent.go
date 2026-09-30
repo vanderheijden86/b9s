@@ -30,10 +30,10 @@ type RecentProject struct {
 	OpenedAt time.Time `yaml:"opened_at,omitempty"`
 }
 
-// sameProject compares server identity only when both entries carry one. An
+// SameProject compares server identity only when both entries carry one. An
 // entry written by hand may lack the database of a Dolt checkout, and must
 // still match that checkout by path rather than gain a duplicate.
-func (p RecentProject) sameProject(other RecentProject) bool {
+func (p RecentProject) SameProject(other RecentProject) bool {
 	if p.Database != "" && other.Database != "" {
 		return p.Host == other.Host && p.Database == other.Database
 	}
@@ -56,7 +56,7 @@ func (c *Config) TouchRecent(p RecentProject) bool {
 
 func containsRecent(list []RecentProject, p RecentProject) bool {
 	for _, existing := range list {
-		if existing.sameProject(p) {
+		if existing.SameProject(p) {
 			return true
 		}
 	}
@@ -92,7 +92,7 @@ func mergeRecent(mine, onDisk []RecentProject, locked bool) []RecentProject {
 
 func indexRecent(list []RecentProject, p RecentProject) int {
 	for i, existing := range list {
-		if existing.sameProject(p) {
+		if existing.SameProject(p) {
 			return i
 		}
 	}
@@ -216,7 +216,7 @@ func SaveRecentTo(path string, recent []RecentProject, locked bool) error {
 // an entry already in the list, so it never moves a project to a new slot.
 func (c *Config) MarkOpened(p RecentProject, at time.Time) bool {
 	for i := range c.RecentProjects {
-		if c.RecentProjects[i].sameProject(p) {
+		if c.RecentProjects[i].SameProject(p) {
 			c.RecentProjects[i].OpenedAt = at
 			return true
 		}
@@ -230,7 +230,7 @@ func (c *Config) LastOpened(except RecentProject) (RecentProject, bool) {
 	var last RecentProject
 	found := false
 	for _, p := range c.RecentProjects {
-		if p.OpenedAt.IsZero() || p.sameProject(except) {
+		if p.OpenedAt.IsZero() || p.SameProject(except) {
 			continue
 		}
 		if !found || p.OpenedAt.After(last.OpenedAt) {

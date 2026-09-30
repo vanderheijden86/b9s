@@ -682,6 +682,9 @@ type Model struct {
 	// Project switching (bd-q5z, bd-ey3)
 	activeProjectName string // Name of the currently loaded project
 	activeProjectPath string // Path to the project directory
+	// activeProjectServer is the active project's Dolt host and database, so
+	// the header recognises its recent entry when that entry has no path.
+	activeProjectServer config.RecentProject
 	// projectGeneration counts every time activeProjectPath actually changes.
 	// Every overlay that captures an issue ID against the current project
 	// (edit modal, attach form, status picker, close/delete confirmation)
@@ -1212,6 +1215,7 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
+	m.activeProjectServer, _ = config.RecentFromCheckout(projectName, projectPath)
 	checkout, _ := NewCheckout(projectPath)
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(projectName)
@@ -1219,7 +1223,7 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 		m.board.SetEpicView(view)
 	}
 	m.updateListDelegate()
-	m.allProjects = headerProjects(cfg.RecentProjects, projectName, projectPath)
+	m.allProjects = headerProjects(cfg.RecentProjects, m.activeRecent())
 	entries := m.buildProjectEntries()
 	m.projectPicker = NewProjectPicker(entries, m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)

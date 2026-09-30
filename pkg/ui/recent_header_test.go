@@ -1,6 +1,8 @@
 package ui_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -93,5 +95,52 @@ func TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout(t *testing.T) 
 	want := config.Project{Name: "remote", Database: "remote_db", Host: "10.0.0.5:3306"}
 	if switchMsg.Project != want {
 		t.Errorf("switch project = %+v, want %+v", switchMsg.Project, want)
+	}
+}
+
+func TestHeaderProjects_StartupMatchesRecentEntryWithoutPathByDatabase(t *testing.T) {
+	recent := []config.RecentProject{
+		{Name: "LP_Team", Database: "LP_Team", Host: "127.0.0.1:3306"},
+		{Name: "b9s", Database: "b9s", Host: "127.0.0.1:3306"},
+	}
+	startup := config.RecentProject{Name: "b9s", Path: "/src/b9s", Database: "b9s", Host: "127.0.0.1:3306"}
+
+	got := ui.HeaderProjects(recent, startup)
+
+	want := []config.Project{
+		{Name: "LP_Team", Database: "LP_Team", Host: "127.0.0.1:3306"},
+		{Name: "b9s", Path: "/src/b9s", Database: "b9s", Host: "127.0.0.1:3306"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("header = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("row %d = %+v, want %+v", i+1, got[i], want[i])
+		}
+	}
+}
+
+func TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath(t *testing.T) {
+	checkout := filepath.Join(t.TempDir(), "b9s")
+	if err := os.MkdirAll(filepath.Join(checkout, ".beads"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := `{"backend":"dolt","dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":3306,"dolt_server_user":"root","dolt_database":"b9s"}`
+	if err := os.WriteFile(filepath.Join(checkout, ".beads", "metadata.json"), []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{RecentProjects: []config.RecentProject{
+		{Name: "b9s", Database: "b9s", Host: "127.0.0.1:3306"},
+		{Name: "LP_Team", Database: "LP_Team", Host: "127.0.0.1:3306"},
+	}}
+
+	m := headerModel(t, cfg, config.Project{Name: "b9s", Path: checkout})
+
+	if got := m.ProjectPickerFilteredCount(); got != 2 {
+		t.Fatalf("header has %d projects, want 2", got)
+	}
+	if got := switchTargetForKey(t, m, "2"); got != "LP_Team" {
+		t.Errorf("key 2 switches to %q, want LP_Team", got)
 	}
 }

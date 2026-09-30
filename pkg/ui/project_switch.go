@@ -235,6 +235,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	// Switch to a different project (bd-q5z, bd-ey3, bd-87w)
 	m.activeProjectName = project.Name
 	m.activeProjectPath = project.ResolvedPath()
+	m.activeProjectServer = config.RecentProject{Database: project.Database, Host: project.Host}
 	// Every overlay open against the previous project stamped the generation
 	// this bump invalidates; discardOpenModals above already closed the ones
 	// it knows about, and writeAllowedForGeneration refuses any write from

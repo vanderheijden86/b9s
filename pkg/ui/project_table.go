@@ -260,7 +260,7 @@ func (m *Model) rememberRecentProject(project config.Project) {
 		m.statusMsg = fmt.Sprintf("Could not save recent projects: %v", err)
 		m.statusIsError = true
 	}
-	m.allProjects = headerProjects(m.appConfig.RecentProjects, m.activeProjectName, m.activeProjectPath)
+	m.allProjects = headerProjects(m.appConfig.RecentProjects, m.activeRecent())
 	m.projectPicker = NewProjectPicker(m.buildProjectEntries(), m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)
 	m.projectPicker.SetSize(m.width, m.height)
