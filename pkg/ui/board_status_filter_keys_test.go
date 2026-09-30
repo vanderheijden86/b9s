@@ -87,3 +87,24 @@ func TestBoardClosedKeyShowsTheClosedColumn(t *testing.T) {
 		t.Fatalf("C must select the closed card, got %v", m.board.SelectedIssue())
 	}
 }
+
+// The tree's o and r filters hide closed work. They stay set when b opens the
+// board, so c must drop them, or the closed column it shows stays empty.
+func TestBoardClosedKeyDropsATreeFilterThatHidesClosedWork(t *testing.T) {
+	for _, treeKey := range []string{"o", "r"} {
+		t.Run(treeKey, func(t *testing.T) {
+			m := NewModel([]model.Issue{
+				{ID: "sf-1", Title: "Open one", Status: model.StatusOpen, IssueType: model.TypeTask},
+				{ID: "sf-3", Title: "Done one", Status: model.StatusClosed, IssueType: model.TypeTask},
+			}, "")
+			updated, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 40})
+			m = pressBoard(t, updated.(Model), runeKey(treeKey), runeKey("b"), runeKey("c"))
+			if !m.board.ShowsClosedColumn() {
+				t.Fatal("c must show the closed column")
+			}
+			if !m.board.SelectIssueByID("sf-3") {
+				t.Fatalf("after tree %s, c must put the closed issue on the board", treeKey)
+			}
+		})
+	}
+}

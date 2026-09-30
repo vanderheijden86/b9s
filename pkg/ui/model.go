@@ -3394,6 +3394,14 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.statusMsg = "Closed column hidden"
 		if m.board.ShowsClosedColumn() {
 			m.statusMsg = "Closed column shown"
+			// The tree's o and r filters carry over to the board and hide
+			// closed work, which would leave the column c just showed empty.
+			if m.currentFilter == "open" || m.currentFilter == "ready" {
+				m.currentFilter = "all"
+				m.applyFilter()
+				m.tree.ApplyFilter(m.currentFilter)
+				m.statusMsg = "Closed column shown, tree status filter cleared"
+			}
 		}
 		m.statusIsError = false
 		m.syncBoardToDetail()
