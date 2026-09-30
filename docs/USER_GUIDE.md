@@ -110,10 +110,15 @@ Ready means open with no open blocker. Filters compose with each other and with 
 | Keys | Action |
 |------|--------|
 | `s` | Pick the sort field and direction for this session |
-| `\|` | Choose for each optional column whether it is automatic, shown or hidden: Lane state, Creator, Assignee, Updated and ID |
+| `\|` | Choose for each optional column whether it is automatic, shown or hidden: Lane state, Updated, ID, Creator, Assignee, Created, Deferred and Due |
+| `T` | Switch every time column between an age (`2h ago`, `in 3d`) and the local date and minute (`30-09 14:05`, or `09-30 14:05` in a month-first locale) |
 | `Ctrl-W` | Toggle wide columns |
 
-The sort fields are priority, created, updated, title, status, type and deps. The default comes from the [configuration file](#configuration), and the tree starts sorted by creation date, newest first.
+The four time columns each show one field, whatever the sort: Created (`created_at`), Updated (`updated_at`), Deferred (`defer_until`, set by `bd defer --until`) and Due (`due_at`). Only Created shows by default, as an age. An issue without a defer or due date leaves that cell blank. The current sort shows beside the Issue header, for example `Issue [Created ▼]`.
+
+Dates put the day first (`30-09`) unless the locale is month-first, as in the United States, Canada and the Philippines. On macOS b9s takes the region from System Settings (`AppleLocale`), because terminals often export `LC_ALL=en_US.UTF-8` whatever the region. Elsewhere it reads `LC_ALL`, `LC_TIME` and then `LANG`. Set `ui.date_order` to `dmy` or `mdy` to choose the order yourself.
+
+The sort fields are priority, created, updated, title, status, type, deps, pagerank and deferred. Deferred puts the issue that comes back soonest first, and issues without a defer date last in either direction. The default comes from the [configuration file](#configuration), and the tree starts sorted by creation date, newest first.
 
 ### Other tree keys
 
@@ -401,8 +406,9 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 ```yaml
 ui:
   board_epics: rail       # rail or rows; v switches
+  date_order: auto        # auto, dmy or mdy: day or month first in dates (T)
   sort:
-    field: created      # priority, created, updated, title, status, type or deps
+    field: created      # priority, created, updated, title, status, type, deps, pagerank or deferred
     direction: desc     # asc or desc; leave out for the field's natural order
 refresh:
   poll_interval: 500ms  # Dolt hash polling; at least 100ms; restart b9s after a change

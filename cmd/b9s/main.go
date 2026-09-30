@@ -330,6 +330,7 @@ func main() {
 		WithDoltFailure(doltFailure).
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath).
+		WithMonthFirst(appCfg.UI.DateOrder.MonthFirst(config.SystemLocale)).
 		WithInitialQuery(*initialFilter).
 		WithStartupFailure(choice.StartupFailure).
 		WithCommentsLoadErr(choice.Opened.CommentsErr)

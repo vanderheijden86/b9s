@@ -34,6 +34,7 @@ type UIConfig struct {
 	SplitRatio  float64    `yaml:"split_ratio,omitempty"`  // Default split pane ratio (0.2-0.8)
 	Headless    bool       `yaml:"headless,omitempty"`     // Compact header mode
 	Sort        SortConfig `yaml:"sort,omitempty"`         // Tree sort applied at startup
+	DateOrder   DateOrder  `yaml:"date_order,omitempty"`   // auto, dmy or mdy for absolute dates
 }
 
 // SortConfig is the tree sort b9s starts with. The sort popup overrides it for
@@ -46,7 +47,7 @@ type SortConfig struct {
 
 // sortFieldNames must stay in step with ui.SortField; the ui package tests that
 // every name maps to a field, because ui imports config and not the reverse.
-var sortFieldNames = []string{"priority", "created", "updated", "title", "status", "type", "deps", "pagerank"}
+var sortFieldNames = []string{"priority", "created", "updated", "title", "status", "type", "deps", "pagerank", "deferred"}
 
 // SortFieldNames returns the accepted ui.sort.field values.
 func SortFieldNames() []string {

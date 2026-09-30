@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
@@ -269,6 +270,9 @@ const (
 	TreeColumnID
 	TreeColumnCreator
 	TreeColumnAssignee
+	TreeColumnCreated
+	TreeColumnDeferred
+	TreeColumnDue
 	treeColumnCount
 )
 
@@ -284,6 +288,12 @@ func (c TreeColumn) String() string {
 		return "Creator"
 	case TreeColumnAssignee:
 		return "Assignee"
+	case TreeColumnCreated:
+		return "Created"
+	case TreeColumnDeferred:
+		return "Deferred"
+	case TreeColumnDue:
+		return "Due"
 	default:
 		return "Unknown"
 	}
@@ -293,7 +303,10 @@ type treeColumnLayout struct {
 	laneStage  bool
 	creator    bool
 	assignee   bool
+	created    bool
 	updated    bool
+	deferred   bool
+	due        bool
 	id         bool
 	maxIDWidth int
 }
@@ -357,6 +370,11 @@ type TreeModel struct {
 	columnPreferences [treeColumnCount]ColumnPreference
 	columnLayoutCache treeColumnLayout
 	columnLayoutValid bool
+	// absoluteTimes shows the time columns as a date and minute instead of an
+	// age. monthFirst picks MM-DD over DD-MM; the zero value is day first,
+	// which most regions use.
+	absoluteTimes bool
+	monthFirst    bool
 
 	// Search state (bd-uus)
 	searchMode       bool             // Is search input active?
@@ -897,6 +915,18 @@ func (t *TreeModel) compareByField(a, b *model.Issue) bool {
 		if !a.UpdatedAt.Equal(b.UpdatedAt) {
 			return a.UpdatedAt.Before(b.UpdatedAt)
 		}
+	case SortFieldDeferred:
+		switch {
+		case a.DeferUntil != nil && b.DeferUntil != nil:
+			if !a.DeferUntil.Equal(*b.DeferUntil) {
+				return a.DeferUntil.Before(*b.DeferUntil)
+			}
+		case a.DeferUntil != nil || b.DeferUntil != nil:
+			// Descending sorting calls this with a and b swapped, so an
+			// undated issue goes last only if the answer flips with the
+			// direction too.
+			return (a.DeferUntil != nil) == (t.sortDirection == SortAscending)
+		}
 	case SortFieldPriority:
 		if a.Priority != b.Priority {
 			return a.Priority < b.Priority
@@ -1179,6 +1209,18 @@ func (t *TreeModel) RenderColumnPopup() string {
 				}
 			case TreeColumnAssignee:
 				if layout.assignee {
+					resolved = "shown"
+				}
+			case TreeColumnCreated:
+				if layout.created {
+					resolved = "shown"
+				}
+			case TreeColumnDeferred:
+				if layout.deferred {
+					resolved = "shown"
+				}
+			case TreeColumnDue:
+				if layout.due {
 					resolved = "shown"
 				}
 			}
@@ -1691,16 +1733,16 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 		leftPrefix += strings.Repeat(" ", issueCol-leftPrefixWidth)
 	}
 	leftPrefix += "Issue"
-	leftPrefixWidth = lipgloss.Width(leftPrefix)
 
-	// Right side: sort badge (left-aligned in age column) + ID label (left-aligned)
-	sortBadge := fmt.Sprintf("[%s %s]", t.sortField.String(), t.sortDirection.Indicator())
+	// The sort badge sits beside the Issue label rather than over a column,
+	// because the sort field and the column contents are independent.
+	sortBadge := fmt.Sprintf(" [%s %s]", t.sortField.String(), t.sortDirection.Indicator())
 
 	// Right side matches the row. The dispatcher-owned lane stage gets its own
 	// column on layouts wide enough to keep the issue title useful.
-	rightParts := make([]string, 0, 5)
+	rightParts := make([]string, 0, 9)
 	if layout.laneStage {
-		rightParts = append(rightParts, fmt.Sprintf("%12s", "LANE STATE"))
+		rightParts = append(rightParts, fmt.Sprintf("%-12s", "LANE STATE"))
 	}
 	if layout.creator {
 		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "CREATOR"))
@@ -1708,14 +1750,19 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 	if layout.assignee {
 		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "ASSIGNEE"))
 	}
-	if layout.updated {
-		rightParts = append(rightParts, fmt.Sprintf("%-12s", sortBadge))
+	for _, column := range layout.timeColumns() {
+		rightParts = append(rightParts, fmt.Sprintf("%*s", treeTimeColumnWidth, strings.ToUpper(column.String())))
 	}
 	if layout.id {
 		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.maxIDWidth, "ID"))
 	}
 	rightSide := strings.Join(rightParts, "  ")
 	rightWidth := lipgloss.Width(rightSide)
+
+	if lipgloss.Width(leftPrefix)+lipgloss.Width(sortBadge)+rightWidth+2 <= width {
+		leftPrefix += sortBadge
+	}
+	leftPrefixWidth = lipgloss.Width(leftPrefix)
 
 	// Fill space between "Issue" label and right columns.
 	// Keep the right cluster offset in sync with renderNode() so "ID" starts on
@@ -1854,14 +1901,13 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	if layout.assignee {
 		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.Assignee)))
 	}
-
-	if layout.updated {
-		ageStr := FormatTimeRel(issue.UpdatedAt)
-		ageStyle := t.theme.MutedText
-		if isSelected {
-			ageStyle = r.NewStyle().Foreground(darkFg)
-		}
-		rightParts = append(rightParts, ageStyle.Render(fmt.Sprintf("%12s", ageStr)))
+	timeStyle := t.theme.MutedText
+	if isSelected {
+		timeStyle = r.NewStyle().Foreground(darkFg)
+	}
+	for _, column := range layout.timeColumns() {
+		cell := formatTimeCell(issueTime(issue, column), t.absoluteTimeLayout(), time.Now())
+		rightParts = append(rightParts, timeStyle.Render(cell))
 	}
 
 	// Short ID suffix at the far right, left-aligned to maxIDWidth for column alignment (bd-03l, bd-uyzc)
@@ -2009,11 +2055,15 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 		effectiveWidth = 80
 	}
 	layout := treeColumnLayout{
-		updated: resolveColumnPreference(t.ColumnPreference(TreeColumnUpdated), effectiveWidth > 60),
+		created: resolveColumnPreference(t.ColumnPreference(TreeColumnCreated), effectiveWidth > 60),
 		id:      resolveColumnPreference(t.ColumnPreference(TreeColumnID), true),
-		// People columns cost title width on every row, so they appear only on request.
+		// People and the other time columns cost title width on every row, so
+		// they appear only on request.
 		creator:  resolveColumnPreference(t.ColumnPreference(TreeColumnCreator), false),
 		assignee: resolveColumnPreference(t.ColumnPreference(TreeColumnAssignee), false),
+		updated:  resolveColumnPreference(t.ColumnPreference(TreeColumnUpdated), false),
+		deferred: resolveColumnPreference(t.ColumnPreference(TreeColumnDeferred), false),
+		due:      resolveColumnPreference(t.ColumnPreference(TreeColumnDue), false),
 	}
 	if layout.id {
 		layout.maxIDWidth = t.displayedMaxIDWidth()
@@ -2041,6 +2091,95 @@ func formatPersonCell(name string) string {
 	}
 	cell := truncateRunesHelper("@"+name, treePersonColumnWidth, "…")
 	return fmt.Sprintf("%-*s", treePersonColumnWidth, cell)
+}
+
+// The absolute layouts show the date and the time to the minute in local time.
+// The year is left out: every row pays for each character, and the age format
+// already covers anything old enough for the year to matter. Both layouts have
+// the same width, so the date order never moves a column.
+const (
+	treeDayFirstTimeLayout   = "02-01 15:04"
+	treeMonthFirstTimeLayout = "01-02 15:04"
+	treeTimeColumnWidth      = len(treeDayFirstTimeLayout)
+)
+
+// timeColumns lists the visible time columns in their on-screen order.
+func (l treeColumnLayout) timeColumns() []TreeColumn {
+	columns := make([]TreeColumn, 0, 4)
+	if l.created {
+		columns = append(columns, TreeColumnCreated)
+	}
+	if l.updated {
+		columns = append(columns, TreeColumnUpdated)
+	}
+	if l.deferred {
+		columns = append(columns, TreeColumnDeferred)
+	}
+	if l.due {
+		columns = append(columns, TreeColumnDue)
+	}
+	return columns
+}
+
+// issueTime returns the timestamp a time column shows, or nil when the issue
+// has none.
+func issueTime(issue *model.Issue, column TreeColumn) *time.Time {
+	switch column {
+	case TreeColumnCreated:
+		return &issue.CreatedAt
+	case TreeColumnUpdated:
+		return &issue.UpdatedAt
+	case TreeColumnDeferred:
+		return issue.DeferUntil
+	case TreeColumnDue:
+		return issue.DueDate
+	default:
+		return nil
+	}
+}
+
+// formatTimeCell renders a right-aligned time cell: an age ("5m ago", "in 3d")
+// or, when absoluteLayout is set, the local date and minute in that layout.
+func formatTimeCell(at *time.Time, absoluteLayout string, now time.Time) string {
+	if at == nil || at.IsZero() {
+		return strings.Repeat(" ", treeTimeColumnWidth)
+	}
+	var cell string
+	switch d := at.Sub(now); {
+	case absoluteLayout != "":
+		cell = at.Local().Format(absoluteLayout)
+	case d >= time.Minute:
+		cell = "in " + durationLabel(d)
+	case d > -time.Minute:
+		cell = "now"
+	default:
+		cell = durationLabel(-d) + " ago"
+	}
+	return fmt.Sprintf("%*s", treeTimeColumnWidth, cell)
+}
+
+// ToggleTimeFormat switches every time column between ages and absolute
+// timestamps.
+func (t *TreeModel) ToggleTimeFormat() {
+	t.absoluteTimes = !t.absoluteTimes
+}
+
+// SetMonthFirst chooses MM-DD over DD-MM for absolute timestamps.
+func (t *TreeModel) SetMonthFirst(monthFirst bool) {
+	t.monthFirst = monthFirst
+}
+
+// absoluteTimeLayout returns the layout for absolute timestamps, or "" while
+// the time columns show ages.
+func (t *TreeModel) absoluteTimeLayout() string {
+	switch {
+	case !t.absoluteTimes:
+		return ""
+	case t.monthFirst:
+		return treeMonthFirstTimeLayout
+	default:
+		return treeDayFirstTimeLayout
+	}
 }
 
 func resolveColumnPreference(preference ColumnPreference, autoVisible bool) bool {
@@ -2101,7 +2240,7 @@ func (t *TreeModel) titleWidthForLayout(node *IssueTreeNode, layout treeColumnLa
 		fixedWidth += 2
 	}
 
-	rightWidths := make([]int, 0, 5)
+	rightWidths := make([]int, 0, 6)
 	if layout.laneStage {
 		rightWidths = append(rightWidths, 12)
 	}
@@ -2111,8 +2250,8 @@ func (t *TreeModel) titleWidthForLayout(node *IssueTreeNode, layout treeColumnLa
 	if layout.assignee {
 		rightWidths = append(rightWidths, treePersonColumnWidth)
 	}
-	if layout.updated {
-		rightWidths = append(rightWidths, 12)
+	for range layout.timeColumns() {
+		rightWidths = append(rightWidths, treeTimeColumnWidth)
 	}
 	if layout.id {
 		rightWidths = append(rightWidths, layout.maxIDWidth)

@@ -143,6 +143,7 @@ const (
 	SortFieldType                       // Issue type (epic, feature, task, ...)
 	SortFieldDepsCount                  // Number of dependencies
 	SortFieldPageRank                   // PageRank score
+	SortFieldDeferred                   // Defer-until date
 	NumSortFields                       // Sentinel: total number of sort fields
 )
 
@@ -165,6 +166,8 @@ func (f SortField) String() string {
 		return "Deps"
 	case SortFieldPageRank:
 		return "PageRank"
+	case SortFieldDeferred:
+		return "Deferred"
 	default:
 		return "Unknown"
 	}
@@ -181,6 +184,8 @@ func (f SortField) DefaultDirection() SortDirection {
 		return SortAscending // open before closed
 	case SortFieldType:
 		return SortAscending // epic before chore
+	case SortFieldDeferred:
+		return SortAscending // the next issue to come back first
 	default:
 		return SortDescending // newest/highest first for dates, counts, scores
 	}
@@ -1190,6 +1195,13 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		openProject: datasource.OpenProject,
 		attachTemp:  &attachTempState{},
 	}
+}
+
+// WithMonthFirst chooses MM-DD over DD-MM for absolute timestamps. The caller
+// resolves it from config and the system locale, which the model never reads.
+func (m Model) WithMonthFirst(monthFirst bool) Model {
+	m.tree.SetMonthFirst(monthFirst)
+	return m
 }
 
 // WithConfig sets the application config and project info on the model.
@@ -3663,6 +3675,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		m.tree.OpenSortPopup()
 	case "|":
 		m.tree.OpenColumnPopup()
+	case "T":
+		m.tree.ToggleTimeFormat()
 	case "/":
 		m.queryState.StartEditing()
 	case "f":
@@ -4936,6 +4950,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"o/C/r/a", "Filter: open/closed/ready/all"},
 		{"s", "Sort popup"},
 		{"|", "Choose columns"},
+		{"T", "Times: age / date"},
 		{"/", "Search tree"},
 		{"f", "Toggle highlighted branch"},
 		{"n/N", "Next/prev match"},

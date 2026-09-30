@@ -2739,8 +2739,8 @@ func TestSortModeBackwardsCompatibility(t *testing.T) {
 
 // TestSortFieldCount verifies the total number of sort fields
 func TestSortFieldCount(t *testing.T) {
-	if NumSortFields != 8 {
-		t.Errorf("expected 8 sort fields, got %d", NumSortFields)
+	if NumSortFields != 9 {
+		t.Errorf("expected 9 sort fields, got %d", NumSortFields)
 	}
 }
 
@@ -4412,9 +4412,9 @@ func TestTreeViewRendersLaneStageColumn(t *testing.T) {
 }
 
 // A dispatcher lane transition bumps updated_at but never created_at, so the
-// row's age must follow updated_at or a freshly moved lane task reads as weeks
-// stale beside its new lane state.
-func TestTreeViewAgeColumnShowsUpdatedAt(t *testing.T) {
+// Updated column must follow updated_at or a freshly moved lane task reads as
+// weeks stale beside its new lane state.
+func TestTreeViewUpdatedColumnShowsUpdatedAt(t *testing.T) {
 	now := time.Now()
 	issues := []model.Issue{
 		{
@@ -4430,6 +4430,8 @@ func TestTreeViewAgeColumnShowsUpdatedAt(t *testing.T) {
 	tree := NewTreeModel(newTreeTestTheme())
 	tree.Build(issues)
 	tree.SetSize(140, 20)
+	tree.SetColumnPreference(TreeColumnCreated, ColumnHide)
+	tree.SetColumnPreference(TreeColumnUpdated, ColumnShow)
 
 	row := ""
 	for _, line := range strings.Split(stripANSI(tree.View()), "\n") {
@@ -4469,7 +4471,9 @@ func TestTreeViewRendersLaneStageAtMinimumColumnWidth(t *testing.T) {
 		t.Fatalf("lane header and row must use the same width threshold: %q", view)
 	}
 	lines := strings.Split(view, "\n")
-	if got, want := strings.Index(lines[1], "RUNNING"), strings.Index(lines[0], "LANE STATE"); got != want {
+	// Compare cells, not bytes: the header's sort badge holds a multi-byte arrow.
+	cellIndex := func(line, s string) int { return lipgloss.Width(line[:strings.Index(line, s)]) }
+	if got, want := cellIndex(lines[1], "RUNNING"), cellIndex(lines[0], "LANE STATE"); got != want {
 		t.Fatalf("lane state must align with its header: header column=%d row column=%d\n%s", want, got, view)
 	}
 }

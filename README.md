@@ -129,7 +129,8 @@ In the tree:
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
 | `f`, `x` | Show only the cursor's top-level branch, or its subtree. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
-| `s`, `\|`, `Ctrl-W` | Sort, pick columns, toggle wide columns |
+| `s`, `\|`, `Ctrl-W` | Sort, pick columns (Created, Updated, Deferred, Due and more), toggle wide columns |
+| `T` | Show the time columns as an age (`2h ago`) or a date and minute (`30-09 14:05`, or `09-30 14:05` in a month-first locale) |
 | `Space`, `V`, `u`, `Ctrl-\` | Mark the issue, mark a range, unmark the issue, clear the marks |
 | `e`, `S`, `K`, `Delete` | Edit, set the status, close, delete |
 | `Ctrl-N`, `c` | Create an issue, copy the ID and title |
@@ -227,8 +228,9 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 ```yaml
 ui:
   board_epics: rail       # rail or rows; v switches
+  date_order: auto        # auto, dmy or mdy: day or month first in dates (T)
   sort:
-    field: created      # priority, created, updated, title, status, type or deps
+    field: created      # priority, created, updated, title, status, type, deps, pagerank or deferred
     direction: desc     # asc or desc; leave out for the field's natural order
 refresh:
   poll_interval: 500ms  # at least 100ms; restart b9s after a change
