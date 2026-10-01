@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>b9s light modes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --page: #DCDDD9;
+  --ink: #23262A;
+  --ink-soft: #545A60;
+  --rule: #B9BCB6;
+  --nav: rgba(220, 221, 217, 0.92);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #1C1E21;
+    --ink: #DCDDD9;
+    --ink-soft: #9DA3A8;
+    --rule: #3A3E43;
+    --nav: rgba(28, 30, 33, 0.92);
+  }
+}
+:root[data-theme="dark"] {
+  --page: #1C1E21;
+  --ink: #DCDDD9;
+  --ink-soft: #9DA3A8;
+  --rule: #3A3E43;
+  --nav: rgba(28, 30, 33, 0.92);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 400 16px/1.55 "Instrument Sans", system-ui, sans-serif;
+}
+
+.intro { max-width: 68ch; padding: 56px 16px 32px; margin: 0 auto 0 max(16px, calc((100vw - 1180px) / 2)); }
+.intro h1 { font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0 0 16px; letter-spacing: -0.01em; }
+.intro p { margin: 0 0 12px; color: var(--ink-soft); }
+
+nav {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--nav);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--rule);
+}
+nav ul { list-style: none; margin: 0 auto; padding: 10px 16px; max-width: 1212px; display: flex; gap: 6px; flex-wrap: wrap; }
+nav a {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px 5px 6px; border-radius: 999px;
+  color: var(--ink); text-decoration: none; font-weight: 500; font-size: 14px;
+}
+nav a:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+nav a:focus-visible, .opt a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+nav .dot { width: 18px; height: 18px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); }
+
+.opt { padding: 48px 0 56px; scroll-margin-top: 52px; }
+.opt .wrap { max-width: 1212px; margin: 0 auto; padding: 0 16px; }
+.opt header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 32px; align-items: end; margin-bottom: 20px; }
+.opt h2 { margin: 0; font-size: 26px; font-weight: 600; line-height: 1.2; }
+.opt h2 small { font-size: 15px; font-weight: 500; opacity: 0.7; margin-left: 10px; }
+.opt .why { margin: 6px 0 0; max-width: 66ch; }
+.opt .metrics { display: flex; gap: 24px; font-size: 14px; }
+.opt .metrics b { display: block; font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+.term {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 12px 32px -18px rgba(0,0,0,0.35);
+}
+.term .bar { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 12px; }
+.term .bar i { width: 11px; height: 11px; border-radius: 50%; background: currentColor; opacity: 0.28; }
+.term .bar span { margin-left: 10px; font-size: 12px; opacity: 0.75; }
+.screen { overflow-x: auto; }
+.screen pre {
+  margin: 0; padding: 14px 18px 12px;
+  font: 400 13px/1.42 "JetBrains Mono", ui-monospace, monospace;
+  width: max-content; min-width: 100%;
+}
+.screen pre .b { font-weight: 700; }
+.screen pre .row { display: block; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 20px; font-size: 13px; }
+.chip { display: flex; align-items: center; gap: 8px; min-width: 150px; }
+.chip i { width: 22px; height: 22px; border-radius: 5px; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
+.chip code { font: 400 12px "JetBrains Mono", monospace; opacity: 0.8; }
+.chip .r { font-variant-numeric: tabular-nums; opacity: 0.8; }
+.chip .r.low { color: #9B1C1C; opacity: 1; font-weight: 600; }
+
+.baseline { border-top: 1px solid var(--rule); }
+.baseline h2, .baseline .why, .baseline .metrics { color: var(--ink); }
+
+@media (max-width: 720px) {
+  .intro h1 { font-size: 27px; }
+  .opt header { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Five light modes for b9s</h1>
+  <p>The light theme b9s ships today is the dark theme inverted onto pure white. Black text on #FFFFFF sits at 21:1 contrast and turns the whole terminal into a lamp. These five options lower the background brightness and the text contrast, and keep every text colour at or above WCAG AA (4.5:1).</p>
+  <p>Each option is the real tree view with the same issues, so only the palette changes. The current theme is at the end for comparison.</p>
+</div>
+
+<nav aria-label="Options"><ul id="nav"></ul></nav>
+<main id="opts"></main>
+
+<script>
+const THEMES = [
+  {
+    id: "celadon", name: "Celadon", note: "grey-green glaze",
+    why: "The grey-green of a celadon pot. The eye is most sensitive to green, so a desaturated green field reads as calm without looking tinted. Keys and the selection use jade, and status colours keep their usual hues at a lower saturation.",
+    desk: "#D5DDD3", chrome: "#CAD3C8",
+    bg: "#E3E9E1", text: "#26332C", sub: "#56655C", faint: "#9AA79F", sel: "#C5D6CB", selText: "#1E2B24",
+    primary: "#3B6E5A", logo: "#6E8A62",
+    open: "#2F6B45", prog: "#2C5F78", blkd: "#A23B3B", defr: "#7A5410", done: "#5D6A62",
+    bug: "#A23B3B", feature: "#356E45", task: "#3A6688", epic: "#6A4F8A", chore: "#42686C",
+  },
+  {
+    id: "overcast", name: "Overcast", note: "cool slate on fog",
+    why: "The light of a cloudy afternoon in the north: blue-grey paper and slate ink. No colour in the palette is fully saturated. Status is told apart by hue, not by brightness, so no single row shouts.",
+    desk: "#D3D9DF", chrome: "#C8CFD6",
+    bg: "#E2E6EA", text: "#232B35", sub: "#4F5B68", faint: "#9AA4AF", sel: "#C9D3DE", selText: "#1B2430",
+    primary: "#3D5A80", logo: "#6B7F99",
+    open: "#2E6A50", prog: "#2F5D8A", blkd: "#9C3A45", defr: "#7A5812", done: "#5B6571",
+    bug: "#9C3A45", feature: "#2E6A50", task: "#2F5D8A", epic: "#5E4C8C", chore: "#3F6E78",
+  },
+  {
+    id: "heather", name: "Heather", note: "b9s purple at dusk",
+    why: "A lilac-grey that keeps the purple identity of the dark theme and turns it down. The selection bar is soft lavender in place of the electric cyan, so the cursor stays visible without flaring.",
+    desk: "#DAD5DF", chrome: "#CFC9D6",
+    bg: "#E6E2EA", text: "#2D2533", sub: "#5E5466", faint: "#A69DAD", sel: "#D4C9E0", selText: "#241C2B",
+    primary: "#5E4589", logo: "#8470A8",
+    open: "#3C6B4A", prog: "#2F6380", blkd: "#A03A4E", defr: "#7E5414", done: "#625A69",
+    bug: "#A03A4E", feature: "#3C6B4A", task: "#3A5F8F", epic: "#5E4589", chore: "#366466",
+  },
+  {
+    id: "sepia", name: "Sepia", note: "e-reader paper",
+    why: "The sepia mode of an e-reader, made for hours of reading. The tan paper removes most of the blue from the background. Accents are ink blue, moss and oxblood, the colours of print rather than of a screen.",
+    desk: "#DDD1BA", chrome: "#D3C6AC",
+    bg: "#E9DFCB", text: "#3A2F22", sub: "#66573F", faint: "#ADA088", sel: "#D8C9A8", selText: "#2E2418",
+    primary: "#2F4F6F", logo: "#8A7247",
+    open: "#4A6A2A", prog: "#2F5878", blkd: "#8E2F2F", defr: "#7D500C", done: "#685C47",
+    bug: "#8E2F2F", feature: "#4A6A2A", task: "#2F5878", epic: "#5A3F6E", chore: "#3F6660",
+  },
+  {
+    id: "pumice", name: "Pumice", note: "dim light for the evening",
+    why: "A light mode with the brightness turned down. The background sits at about 60% of white, so the screen stops acting as a light source in a dim room, and text contrast still stays near 10:1.",
+    desk: "#C2C4BF", chrome: "#B8BAB4",
+    bg: "#CDCFCA", text: "#1F2220", sub: "#3F443F", faint: "#7F847E", sel: "#B4BAB0", selText: "#161917",
+    primary: "#2F4C5C", logo: "#4C5A52",
+    open: "#245C2C", prog: "#1C4A78", blkd: "#8A2A2A", defr: "#5F4006", done: "#4A504B",
+    bug: "#8A2A2A", feature: "#245C2C", task: "#1C4A78", epic: "#4F3A72", chore: "#2F5A58",
+  },
+  {
+    id: "current", name: "Today", note: "the shipped light theme", baseline: true,
+    why: "For comparison: the light half of the AdaptiveColor pairs in theme.go and styles.go, on a white terminal.",
+    desk: "#EDEDED", chrome: "#E2E2E2",
+    bg: "#FFFFFF", text: "#000000", sub: "#666666", faint: "#AAAAAA", sel: "#B3E5FC", selText: "#000000",
+    primary: "#6B47D9", logo: "#B36B00",
+    open: "#007700", prog: "#006080", blkd: "#CC0000", defr: "#B06800", done: "#555555",
+    bug: "#CC0000", feature: "#36B37E", task: "#2684FF", epic: "#6B47D9", chore: "#006080",
+  },
+];
+
+// ── contrast ────────────────────────────────────────────────────────────────
+const lum = h => {
+  const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+};
+const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+// ── screen content (the tree view from docs/screenshot.png) ─────────────────
+const TYPE = { bug: "●", feature: "▲", task: "✔", epic: "◆", chore: "○" };
+const STATUS = { OPEN: "open", PROG: "prog", BLKD: "blkd", DEFR: "defr", DONE: "done" };
+// [depth, type, status, deps, title, id, hasChildren, last]
+const ROWS = [
+  [0, "task", "OPEN", 2, "Crewed Landing", "1x5"],
+  [0, "task", "OPEN", 3, "Lunar Demo", "lrz"],
+  [0, "task", "DONE", 0, "Flight Test 1", "btv", false, false, true],
+  [0, "chore", "DONE", 0, "Move flight software to the new compiler release", "nm9"],
+  [0, "chore", "DEFR", 0, "Rewrite the pad safety briefing", "2kv"],
+  [0, "epic", "OPEN", 0, "Ground and launch operations", "ati", true],
+  [1, "task", "OPEN", 0, "Clear the sea range within 4 hours of the window", "ati.3"],
+  [1, "bug", "PROG", 0, "Oxygen fill valve sticks below -180 C", "ati.4"],
+  [1, "chore", "DONE", 0, "Replace the upper-level wind balloon station", "ati.5"],
+  [1, "feature", "PROG", 0, "Tank farm fills a full stack in 45 minutes", "ati.1", true],
+  [1, "task", "DONE", 0, "Water deluge plate survives ten launches", "ati.2", false, true],
+  [0, "epic", "OPEN", 1, "Mars cargo flight in a launch window", "z7r", true],
+  [1, "task", "DONE", 0, "Choose the transfer trajectory for the next window", "z7r.1"],
+  [1, "feature", "OPEN", 0, "Entry, descent and landing on Mars", "z7r.2", true],
+  [1, "task", "DEFR", 0, "Pack the cargo manifest: rovers, solar arrays, spare parts", "z7r.4"],
+  [1, "task", "OPEN", 1, "Six-month cruise with the tanks cold", "z7r.3", false, true],
+  [0, "epic", "OPEN", 0, "Ship-to-ship propellant transfer in orbit", "c9k", true],
+  [1, "feature", "OPEN", 0, "Automated tanker docking", "c9k.2", true],
+  [1, "feature", "PROG", 0, "Depot ship holds propellant for 30 days", "c9k.1", true],
+  [1, "task", "OPEN", 0, "Settling thrust keeps liquid over the tank outlet", "c9k.3"],
+  [1, "bug", "PROG", 0, "Tank level sensor drifts 3% in microgravity", "c9k.5"],
+  [1, "task", "BLKD", 3, "Transfer 100 t of liquid oxygen between two ships", "c9k.4", false, true],
+  [0, "epic", "DONE", 0, "Integrated flight test 1", "f88", true],
+  [1, "task", "DONE", 0, "Certify the flight termination system", "f88.3"],
+  [1, "task", "DONE", 0, "Full-duration static fire of all booster engines", "f88.2"],
+  [1, "task", "DONE", 0, "Stack ship on booster with the tower arms", "f88.1", false, true],
+];
+const COLS = 132;
+
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+// A line is a list of [text, colourRole, bold?] segments.
+function line(segs, t, bg) {
+  const style = bg ? ` style="background:${bg}"` : "";
+  return `<span class="row"${style}>` + segs.map(([s, role, b]) =>
+    `<span${b ? ' class="b"' : ""} style="color:${t[role] || role}">${esc(s)}</span>`).join("") + "</span>";
+}
+const pad = (s, n) => s.length >= n ? s : s + " ".repeat(n - s.length);
+
+function header(t) {
+  const logo = [
+    "__________  ________",
+    "\\______   \\/   __   \\______",
+    " |    |  _/\\____    /  ___/",
+    " |    |   \\   /    /\\___ \\",
+    " |______  /  /____//____  >",
+    "        \\/              \\/",
+  ];
+  const keysA = [["o", "Open"], ["c", "Closed"], ["r", "Ready"], ["a", "All"], ["b", "Board"], ["/", "Search"]];
+  const keysB = [["P", "Projects"], ["L", "Labels"], ["A", "Assignees"], ["H", "Hide/Show"], ["[]", "Scroll"], ["esc", "Back"]];
+  const types = [null, ["bug", "Bug"], ["feature", "Feature"], ["task", "Task"], ["epic", "Epic"], ["chore", "Chore"]];
+  const left = [
+    [["          ", "text"], ["O", "sub", 1], ["    ", "text"], ["P", "sub", 1], ["    ", "text"], ["R", "sub", 1]],
+    [["<1> ", "primary", 1], ["space", "text", 1], ["   ", "text"], ["35", "primary", 1], ["   ", "text"], ["11", "primary", 1], ["   ", "text"], ["31", "primary", 1]],
+    [["<0> ", "primary", 1], ["All", "text", 1]],
+    [], [], [],
+  ];
+  const len = segs => segs.reduce((n, s) => n + s[0].length, 0);
+  const out = [];
+  for (let i = 0; i < 6; i++) {
+    const segs = [...left[i]];
+    segs.push([" ".repeat(64 - len(segs)), "text"]);
+    segs.push([pad(keysA[i][0], 2), "primary", 1], [pad(keysA[i][1], 10), "text"]);
+    segs.push([pad(keysB[i][0], 4), "primary", 1], [pad(keysB[i][1], 11), "text"]);
+    if (i === 0) segs.push([pad("Types", 10), "text", 1]);
+    else segs.push([TYPE[types[i][0]] + " ", types[i][0]], [pad(types[i][1], 8), "sub"]);
+    segs.push(["   ", "text"], [logo[i], "logo", 1]);
+    out.push(line(segs, t));
+  }
+  return out;
+}
+
+function rows(t) {
+  const out = [];
+  const head = [["            ", "text"], [pad("Issue", 91), "text", 1], ["LANE STATE  ", "text", 1], ["[Created ▾]  ", "text", 1], ["ID", "text", 1]];
+  out.push(line(head, t));
+  for (const [depth, type, st, deps, title, id, kids, last, selected] of ROWS) {
+    const segs = [];
+    let used;
+    if (depth === 0) {
+      if (type === "epic") segs.push(["▾ ", "faint"], [TYPE.epic + " ", "epic"]);
+      else segs.push(["  ", "text"], [(type === "chore" ? "○" : "·") + " ", type === "chore" ? "chore" : "faint"]);
+      segs.push([pad(st, 5), STATUS[st], 1]);
+      segs.push(deps ? ["◆" + deps + " ", "epic"] : ["   ", "text"]);
+      used = 12;
+    } else {
+      segs.push([last ? "  └── " : "  ├── ", "faint"], [kids ? "▸ " : "  ", "faint"], [TYPE[type] + " ", type]);
+      segs.push([pad(st, 5), STATUS[st], 1]);
+      segs.push(deps ? ["◆" + deps + " ", "epic"] : ["   ", "text"]);
+      used = 18;
+    }
+    const titleWidth = 103 - used;
+    segs.push([pad(title, titleWidth), selected ? "selText" : "text", selected]);
+    segs.push([pad("13h ago", 13), selected ? "selText" : "sub"]);
+    segs.push([pad(id, 6), selected ? "selText" : "sub"]);
+    out.push(line(segs, t, selected ? t.sel : null));
+  }
+  return out;
+}
+
+function footer(t) {
+  const keys = [["0-9", "project"], ["^R", "refresh"], ["tab", "fold"], ["⇧tab", "fold all"], ["enter", "detail"], ["g", "deps"],
+    ["j/k", "nav"], ["s", "sort"], ["c", "copy"], ["|", "columns"], ["/", "search"], ["f", "branch"], ["e", "edit"], ["K", "close"]];
+  const segs = [["  ", "text"]];
+  keys.forEach(([k, v]) => segs.push([k, "primary", 1], [":" + v + "  ", "sub"]));
+  return [line([[" ", "text"]], t), line(segs, t)];
+}
+
+function screen(t) {
+  return [...header(t), line([[" ", "text"]], t), ...rows(t), ...footer(t)].join("");
+}
+
+// ── page ────────────────────────────────────────────────────────────────────
+const CHIP_ROLES = [
+  ["text", "Text"], ["sub", "Secondary"], ["primary", "Keys"], ["sel", "Selection"],
+  ["open", "Open"], ["prog", "In progress"], ["blkd", "Blocked"], ["defr", "Deferred"], ["done", "Closed"],
+  ["feature", "Feature"], ["task", "Task"], ["epic", "Epic"], ["chore", "Chore"],
+];
+
+const nav = document.getElementById("nav");
+const main = document.getElementById("opts");
+for (const t of THEMES) {
+  nav.insertAdjacentHTML("beforeend",
+    `<li><a href="#${t.id}"><span class="dot" style="background:${t.bg}"></span>${t.name}</a></li>`);
+
+  const chips = CHIP_ROLES.map(([role, label]) => {
+    const isBg = role === "sel";
+    const r = isBg ? ratio(t.selText, t.sel) : ratio(t[role], t.bg);
+    const low = r < 4.5;
+    const what = isBg ? "text on it" : "on paper";
+    return `<span class="chip"><i style="background:${t[role]}"></i><span>${label}<br><code>${t[role]}</code>
+      <span class="r${low ? " low" : ""}" title="Contrast, ${what}">${r.toFixed(1)}:1</span></span></span>`;
+  }).join("");
+
+  const brightness = Math.round(lum(t.bg) * 100);
+  main.insertAdjacentHTML("beforeend", `
+  <section class="opt${t.baseline ? " baseline" : ""}" id="${t.id}" style="background:${t.baseline ? "var(--page)" : t.desk};color:${t.baseline ? "var(--ink)" : t.text}">
+    <div class="wrap">
+      <header>
+        <div>
+          <h2>${t.name}<small>${t.note}</small></h2>
+          <p class="why">${t.why}</p>
+        </div>
+        <div class="metrics">
+          <div><b>${ratio(t.text, t.bg).toFixed(1)}:1</b>body text</div>
+          <div><b>${brightness}%</b>of white's light</div>
+        </div>
+      </header>
+      <div class="term" style="background:${t.bg};color:${t.text}">
+        <div class="bar" style="background:${t.chrome};color:${t.text}"><i></i><i></i><i></i><span>b9s, project space</span></div>
+        <div class="screen"><pre>${screen(t)}</pre></div>
+      </div>
+      <div class="chips">${chips}</div>
+    </div>
+  </section>`);
+}
+</script>
+</body>
+</html>
