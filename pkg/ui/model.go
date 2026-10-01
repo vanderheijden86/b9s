@@ -1751,6 +1751,10 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		for _, item := range msg.Snapshot.ListItems {
 			issue := item.Issue
 
+			if !m.queryState.Matches(issue) {
+				continue
+			}
+
 			// Workspace repo filter (nil = all repos)
 			if m.workspaceMode && m.activeRepos != nil {
 				repoKey := strings.ToLower(item.RepoPrefix)
@@ -1820,10 +1824,11 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 
 		m.sortFilteredItems(filteredItems, filteredIssues)
 		m.list.SetItems(filteredItems)
-		if m.snapshot != nil && m.snapshot.BoardState != nil && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues) {
+		boardIssues := m.boardIssuesForCurrentFilter()
+		if m.snapshot != nil && m.snapshot.BoardState != nil && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(boardIssues) == len(m.snapshot.Issues) {
 			m.board.SetSnapshot(m.snapshot)
 		} else {
-			m.board.SetIssues(filteredIssues)
+			m.board.SetIssues(boardIssues)
 		}
 		m.board.SetEpicUniverse(m.issues)
 
@@ -5347,10 +5352,12 @@ func (m *Model) clearAllFilters() {
 }
 
 func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
-	if !m.queryState.Matches(issue) {
-		return false
-	}
+	return m.queryState.Matches(issue) && m.passesScopeFilters(issue)
+}
 
+// passesScopeFilters checks the repo, label, assignee and status filters,
+// which bound both query hits and the branch context revealed around them.
+func (m *Model) passesScopeFilters(issue model.Issue) bool {
 	// Workspace repo filter (nil = all repos)
 	if m.workspaceMode && m.activeRepos != nil {
 		repoKey := strings.ToLower(ExtractRepoPrefix(issue.ID))
@@ -5580,12 +5587,61 @@ func (m *Model) filteredIssuesForActiveView() []model.Issue {
 	return filtered
 }
 
+// boardIssuesForCurrentFilter is the filtered set plus, for a text query, the
+// descendants of every hit that pass the scope filters: the branch the tree
+// reveals (bd-xkxb). A child's ID need not contain its epic's, so without this
+// a matched epic loses every child reparented from elsewhere. A descendant
+// failing a scope filter takes its subtree with it, as in the tree.
+func (m *Model) boardIssuesForCurrentFilter() []model.Issue {
+	if m.queryState.Query().Empty() {
+		return m.filteredIssuesForActiveView()
+	}
+	children := make(map[string][]int)
+	for i, issue := range m.issues {
+		for _, dep := range issue.Dependencies {
+			if dep != nil && dep.Type == model.DepParentChild && dep.DependsOnID != "" {
+				children[dep.DependsOnID] = append(children[dep.DependsOnID], i)
+				break
+			}
+		}
+	}
+	keep := make(map[string]bool)
+	var hits []string
+	for _, issue := range m.issues {
+		if m.matchesCurrentFilter(issue) {
+			keep[issue.ID] = true
+			hits = append(hits, issue.ID)
+		}
+	}
+	var reveal func(id string)
+	reveal = func(id string) {
+		for _, i := range children[id] {
+			child := m.issues[i]
+			if keep[child.ID] || !m.passesScopeFilters(child) {
+				continue
+			}
+			keep[child.ID] = true
+			reveal(child.ID)
+		}
+	}
+	for _, id := range hits {
+		reveal(id)
+	}
+	shown := make([]model.Issue, 0, len(keep))
+	for _, issue := range m.issues {
+		if keep[issue.ID] {
+			shown = append(shown, issue)
+		}
+	}
+	return shown
+}
+
 func (m *Model) refreshBoardAndGraphForCurrentFilter() {
 	if !m.isBoardView {
 		return
 	}
 
-	filteredIssues := m.filteredIssuesForActiveView()
+	filteredIssues := m.boardIssuesForCurrentFilter()
 	useSnapshot := m.snapshot != nil && m.snapshot.BoardState != nil && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues)
 	if useSnapshot {
 		// Only use snapshot when no filters are active (bd-u90z)
@@ -5620,10 +5676,11 @@ func (m *Model) applyFilter() {
 	m.sortFilteredItems(filteredItems, filteredIssues)
 
 	m.list.SetItems(filteredItems)
-	if m.snapshot != nil && m.snapshot.BoardState != nil && m.currentFilter == "all" && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(filteredIssues) == len(m.snapshot.Issues) {
+	boardIssues := m.boardIssuesForCurrentFilter()
+	if m.snapshot != nil && m.snapshot.BoardState != nil && m.currentFilter == "all" && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(boardIssues) == len(m.snapshot.Issues) {
 		m.board.SetSnapshot(m.snapshot)
 	} else {
-		m.board.SetIssues(filteredIssues)
+		m.board.SetIssues(boardIssues)
 	}
 	m.board.SetIssueQuery(m.queryState.Query())
 	m.board.SetEpicUniverse(m.issues)

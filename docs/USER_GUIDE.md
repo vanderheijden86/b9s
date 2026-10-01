@@ -188,7 +188,7 @@ priority:p1 label:frontend !assignee:me  someone else's P1 frontend work
 
 ### What the tree shows
 
-A hit keeps its whole branch: the parents up to the top-level issue, and everything below it. Branches without a hit are hidden, so matching an epic shows its features and tasks, and a matching standalone task shows on its own. Hit rows keep their colours and the rest of the branch is dimmed. `Tab` still folds a revealed branch.
+A hit keeps its whole branch: the parents up to the top-level issue, and everything below it. Branches without a hit are hidden, so matching an epic shows its features and tasks, and a matching standalone task shows on its own. Hit rows keep their colours and the rest of the branch is dimmed. `Tab` still folds a revealed branch. The board keeps the same descendants, so a child shows under its matched epic even when its own ID does not contain the epic's.
 
 ```text
 query "tunnel"                              query "acceptance"
