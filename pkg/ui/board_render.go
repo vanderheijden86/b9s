@@ -319,11 +319,19 @@ func (b *BoardModel) rowSurface(selected bool, col, row int) string {
 	t := b.theme
 	switch {
 	case selected:
-		return bgSeqFromColor(t.Highlight, t.Renderer)
+		return b.selectionSurface()
 	case b.IsMatchHighlighted(col, row):
 		return bgSeqFromColor(lipgloss.AdaptiveColor{Light: sepiaPlumTint, Dark: "#4a148c"}, t.Renderer)
 	}
 	return ""
+}
+
+func (b *BoardModel) selectionSurface() string {
+	color := lipgloss.TerminalColor(b.theme.Highlight)
+	if !b.theme.Renderer.HasDarkBackground() {
+		color = lipgloss.Color(sepiaBoardSelection)
+	}
+	return bgSeqFromColor(color, b.theme.Renderer)
 }
 
 func (b *BoardModel) fg(selected bool, c lipgloss.TerminalColor) lipgloss.Style {

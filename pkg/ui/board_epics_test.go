@@ -49,6 +49,51 @@ func newEpicBoard(view BoardEpicView) BoardModel {
 	return b
 }
 
+func TestSepiaBoardUsesQuietPaperRows(t *testing.T) {
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.TrueColor)
+	renderer.SetHasDarkBackground(false)
+	b := NewBoardModel(epicBoardIssues(), DefaultTheme(renderer))
+	b.SetActiveProjectName("spectroscope")
+	b.SelectIssueByID("spectroscope-eg0.1")
+	b.ToggleClosedColumn()
+
+	for _, epicView := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b.SetEpicView(epicView)
+		view := b.View(180, 36)
+		plain := stripANSI(view)
+		for _, want := range []string{"Parse capture headers", "eg0.1", "Pick the capture format"} {
+			if !strings.Contains(plain, want) {
+				t.Fatalf("%s: Quiet Paper lost %q:\n%s", epicView, want, plain)
+			}
+		}
+		if strings.ContainsAny(plain, "╭╮╰╯") {
+			t.Fatalf("%s: Quiet Paper has rounded boxes:\n%s", epicView, plain)
+		}
+		if !strings.Contains(plain, "┃") {
+			t.Fatalf("%s: Quiet Paper lost its selection or epic accent:\n%s", epicView, plain)
+		}
+		if !strings.Contains(view, bgSeqFromColor(lipgloss.Color("#D2D5CC"), renderer)) {
+			t.Fatalf("%s: Quiet Paper lost the selected row fill", epicView)
+		}
+		assertFits(t, epicView.String(), view, 180, 36)
+	}
+}
+
+func TestSepiaBoardFitsNarrowWidths(t *testing.T) {
+	renderer := lipgloss.NewRenderer(io.Discard)
+	renderer.SetColorProfile(termenv.TrueColor)
+	renderer.SetHasDarkBackground(false)
+	b := NewBoardModel(epicBoardIssues(), DefaultTheme(renderer))
+	b.SetActiveProjectName("spectroscope")
+	for _, epicView := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b.SetEpicView(epicView)
+		for _, width := range []int{60, 80, 110, 160, 220} {
+			assertFits(t, epicView.String(), b.View(width, 24), width, 24)
+		}
+	}
+}
+
 func columnIDs(b BoardModel, col int) []string {
 	var ids []string
 	for _, is := range b.columns[col] {

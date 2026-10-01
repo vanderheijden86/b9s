@@ -280,7 +280,7 @@ The Dolt SQL login, for example `bd_b9s`, is one credential shared by every agen
 | Priority | P0 Critical, P1 High, P2 Medium, P3+ Other |
 | Type | Bug, Feature, Task, Epic |
 
-Columns with issues share the width equally. Each issue is a boxed card: the title on up to two lines, a tag line with `blocked by X`, `lane: stage` and `blocks N` when they apply, and a footer with the type icon, the ID, the priority and the age. Empty columns fold into narrow rails; `h` or `l` onto a rail opens it. The closed column is hidden until `c` shows it, and the bar above the board counts the hidden closed issues.
+Columns with issues share the width equally. In Dracula, each issue is a rounded card. In Sepia, the board uses Quiet Paper: flat rows, fine dividers, a filled selected row, and an epic rail without boxes. Each issue shows its type icon, ID, title, priority, age, and applicable `blocked by X`, `lane: stage`, or `blocks N` tags. Empty columns fold into narrow rails; `h` or `l` onto a rail opens it. The closed column is hidden until `c` shows it, and the bar above the board counts the hidden closed issues.
 
 An issue belongs to its nearest epic ancestor through parent-child links. The board puts the issues of each epic in one horizontal lane, aligned across the columns, and has two designs for the epic itself ([ADR 0018](adr/0018-show-epics-as-a-rail-or-rows-and-hide-closed.md)). `v` switches between them and keeps the selection, and `ui.board_epics` in the config sets the one used at start.
 
@@ -456,6 +456,8 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 Tap the `◐` button in the header to choose Automatic, Sepia, or Dracula.
 Automatic follows the device color scheme. The browser saves its own choice,
 so changing the terminal theme does not change the browser theme.
+The Sepia board uses Quiet Paper on phones and wide screens. Fine rules
+separate its issue rows, and the selected row has a muted paper fill.
 
 ```bash
 b9s web                        # 127.0.0.1:7979, pairing on

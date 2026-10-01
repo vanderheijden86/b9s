@@ -13,8 +13,10 @@ func TestSelectedCardTextColor_HighContrast(t *testing.T) {
 	if selectedCardTextColor.Light != sepiaInkStrong {
 		t.Fatalf("selectedCardTextColor.Light = %q, want %q", selectedCardTextColor.Light, sepiaInkStrong)
 	}
-	if ratio := contrastRatio(selectedCardTextColor.Light, sepiaSelection); ratio < 4.5 {
-		t.Fatalf("selected card text contrast = %.2f:1, want at least 4.5:1", ratio)
+	for _, background := range []string{sepiaSelection, sepiaBoardSelection} {
+		if ratio := contrastRatio(selectedCardTextColor.Light, background); ratio < 4.5 {
+			t.Fatalf("selected card text contrast on %s = %.2f:1, want at least 4.5:1", background, ratio)
+		}
 	}
 }
 

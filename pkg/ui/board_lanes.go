@@ -145,9 +145,9 @@ type boardLane struct {
 	epic     string
 	start    int
 	height   int      // lines from start, the rows design's header included
-	rail     []string // the epic cell's content, boxed by railBox
+	rail     []string // the epic cell's content, framed by railBox
 	selected bool
-	head     []string // the full-width header box in the rows design
+	head     []string // the full-width header in the rows design
 }
 
 // lanesBody renders the epic lanes as exactly height lines of width cells:
@@ -189,7 +189,10 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 		cellSpans := make([]map[int]span, len(regions))
 		laneH := 0
 		if railW > 0 {
-			laneH = len(lane.rail) + 2 // the box's top and bottom edges
+			laneH = len(lane.rail)
+			if t.Renderer.HasDarkBackground() {
+				laneH += 2 // the box's top and bottom edges
+			}
 		}
 		for i, r := range regions {
 			if folded && railW == 0 {
@@ -250,7 +253,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 		if epicSelected {
 			selSpan = span{lane.start, lane.start + len(lane.head) - 1}
 			if railW > 0 {
-				selSpan.end = lane.start + len(lane.rail) + 1
+				selSpan.end = lane.start + laneH - 1
 			}
 		}
 		lanes = append(lanes, lane)
@@ -286,7 +289,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 		colsPart := b.colsText(l, regions, colsW)
 		// A lane cut by the top edge keeps its row in view (rows design).
 		if i == from && from > 0 && railW == 0 && l.lane >= 0 && !l.laneHead && selSpan.start != from {
-			colsPart = lanes[l.lane].head[1] // the header's content line
+			colsPart = lanes[l.lane].head[len(lanes[l.lane].head)-1]
 		}
 		if railW == 0 {
 			out = append(out, padCells(colsPart, width))
@@ -383,8 +386,7 @@ func (b *BoardModel) laneIssueCount(epic string) int {
 	return n
 }
 
-// railLines returns the content of one lane's epic cell, which railBox
-// frames:
+// railLines returns the content of one lane's epic cell:
 //
 //	▾ ◆ eg0
 //	Stream capture
@@ -425,17 +427,17 @@ func (b *BoardModel) railLines(epic string, width int, folded, selected bool) []
 	return lines
 }
 
-// railInner is the content width of an epic cell: a side and a space each side.
+// railInner is the content width of an epic cell.
 func railInner(width int) int { return max(width-4, 1) }
 
-// railBox frames a lane's epic cell as a box height lines tall, as a card is
-// framed, so the cell runs the lane's full height. The left side carries the
-// epic's color; a selected epic takes the selected card's border and fill.
-// Below three lines there is no room for a box, and the content stands alone
-// behind the colored side.
+// railBox frames a lane's epic cell across its full height. The left side
+// carries the epic's color; selection changes its color and fill.
 func (b *BoardModel) railBox(lane boardLane, width, height int) []string {
 	if height <= 0 {
 		return nil
+	}
+	if !b.theme.Renderer.HasDarkBackground() {
+		return b.quietRail(lane, width, height)
 	}
 	side, edge, bg := b.epicFrame(lane.epic, lane.selected)
 	inner := railInner(width)
@@ -452,6 +454,32 @@ func (b *BoardModel) railBox(lane boardLane, width, height int) []string {
 	content := make([]string, height-2)
 	copy(content, lane.rail)
 	return frameLines(content, width, side, edge, bg)
+}
+
+func (b *BoardModel) quietRail(lane boardLane, width, height int) []string {
+	t := b.theme
+	sideColor := lipgloss.TerminalColor(t.Border)
+	if lane.epic != "" {
+		sideColor = b.epics[lane.epic].color
+	}
+	if lane.selected {
+		sideColor = t.Primary
+	}
+	side := t.Renderer.NewStyle().Foreground(sideColor).Render("┃")
+	bg := bgSeqFromColor(ThemeBg(sepiaPaperDeep), t.Renderer)
+	if lane.selected {
+		bg = b.selectionSurface()
+	}
+	inner := railInner(width)
+	out := make([]string, height)
+	for i := range out {
+		content := ""
+		if i < len(lane.rail) {
+			content = lane.rail[i]
+		}
+		out[i] = side + surface(" "+padCells(content, inner), width-1, bg)
+	}
+	return out
 }
 
 // epicFrame returns the pieces of an epic's box: the left side in the epic's
@@ -481,17 +509,38 @@ func frameLines(content []string, width int, side string, edge lipgloss.Style, b
 	return append(out, edge.Render("╰"+strings.Repeat("─", max(width-2, 0))+"╯"))
 }
 
-// laneBox draws the full-width epic header of the rows design as a box:
+// laneBox draws the full-width epic header of the rows design. In Dracula it
+// has this frame:
 //
 //	╭──────────────────────────────────────────────────────────────────────╮
 //	┃ ▾ ◆ eg0 Stream capture pipeline  3 issues          ━━━━──────── 1/4 │
 //	╰──────────────────────────────────────────────────────────────────────╯
 func (b *BoardModel) laneBox(epic string, width int, folded, selected bool) []string {
+	if !b.theme.Renderer.HasDarkBackground() {
+		return []string{b.quietLaneRow(epic, width, folded, selected)}
+	}
 	side, edge, bg := b.epicFrame(epic, selected)
 	return frameLines([]string{b.laneRow(epic, max(width-4, 1), folded, selected)}, width, side, edge, bg)
 }
 
-// laneRow is the content line of an epic header box, width cells wide.
+func (b *BoardModel) quietLaneRow(epic string, width int, folded, selected bool) string {
+	t := b.theme
+	sideColor := lipgloss.TerminalColor(t.Border)
+	if epic != "" {
+		sideColor = b.epics[epic].color
+	}
+	if selected {
+		sideColor = t.Primary
+	}
+	side := t.Renderer.NewStyle().Foreground(sideColor).Render("┃")
+	bg := bgSeqFromColor(ThemeBg(sepiaPaperDeep), t.Renderer)
+	if selected {
+		bg = b.selectionSurface()
+	}
+	return side + surface(" "+padCells(b.laneRow(epic, max(width-3, 1), folded, selected), max(width-3, 1)), width-1, bg)
+}
+
+// laneRow is the content line of an epic header, width cells wide.
 func (b *BoardModel) laneRow(epic string, width int, folded, selected bool) string {
 	t := b.theme
 	muted := b.fg(selected, t.Secondary)
@@ -590,7 +639,7 @@ func (b *BoardModel) cardHeight(issue model.Issue, width int) int {
 	return h
 }
 
-// cardLines draws one issue as a rounded box:
+// cardLines draws one issue. In Dracula it has a rounded box:
 //
 //	╭──────────────────────────────╮
 //	│ Wire the flow subscription   │
@@ -602,6 +651,9 @@ func (b *BoardModel) cardHeight(issue model.Issue, width int) int {
 // The title takes at most two lines. The tag line appears only when the card
 // waits on a dependency, sits in a dispatcher lane or blocks other work.
 func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col, row int) []string {
+	if !b.theme.Renderer.HasDarkBackground() {
+		return b.quietCardLines(issue, width, selected, col, row)
+	}
 	t := b.theme
 	card := b.cardView(issue)
 	inner := max(width-4, 1)
@@ -646,5 +698,38 @@ func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col,
 	}
 	lines = append(lines, box(footer))
 	lines = append(lines, edge.Render("╰"+strings.Repeat("─", max(width-2, 0))+"╯"))
+	return lines
+}
+
+func (b *BoardModel) quietCardLines(issue model.Issue, width int, selected bool, col, row int) []string {
+	t := b.theme
+	card := b.cardView(issue)
+	inner := max(width-4, 1)
+	bg := b.rowSurface(selected, col, row)
+	mark := "  "
+	if selected || b.IsSearchMatch(col, row) {
+		mark = t.Renderer.NewStyle().Foreground(t.Primary).Render("┃") + " "
+	}
+	line := func(content string) string {
+		return mark + surface(" "+padCells(content, inner)+" ", width-2, bg)
+	}
+	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
+	id := b.fg(selected, iconColor).Render(icon) + " " +
+		b.fg(selected, t.Primary).Bold(true).Render(truncateRunesHelper(card.ShortID, max(inner-lipgloss.Width(icon)-1, 1), "…"))
+	lines := []string{line(id)}
+	for _, title := range clampLines(wrapTitleLines(card.Title, inner), cardTitleMaxLines, inner) {
+		lines = append(lines, line(b.fg(selected, t.Base.GetForeground()).Bold(selected).Render(title)))
+	}
+	var tags []string
+	for _, tag := range b.cardTags(card, inner) {
+		tags = append(tags, b.fg(selected, tag.color).Render(tag.text))
+	}
+	if len(tags) > 0 {
+		lines = append(lines, line(strings.Join(tags, "  ")))
+	}
+	meta := b.priorityStyle(issue, selected).Render(card.Priority) + b.fg(selected, t.Secondary).Render(" · ") +
+		b.fg(selected, getAgeColor(issue.UpdatedAt)).Render(card.Age)
+	lines = append(lines, line(meta))
+	lines = append(lines, t.Renderer.NewStyle().Foreground(t.Border).Render(strings.Repeat("─", width)))
 	return lines
 }
