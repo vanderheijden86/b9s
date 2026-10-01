@@ -163,11 +163,11 @@ func RenderStatusBadge(status string) string {
 		fg, bg, label = ColorMuted, ColorBgSubtle, "????"
 	}
 
-	return lipgloss.NewStyle().
-		Foreground(fg).
-		Background(bg).
-		Padding(0, 0).
-		Render(label)
+	style := lipgloss.NewStyle().Foreground(fg).Padding(0, 0)
+	if status == "closed" && !lipgloss.HasDarkBackground() {
+		return style.Render(label)
+	}
+	return style.Background(bg).Render(label)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

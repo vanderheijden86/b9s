@@ -51,6 +51,7 @@ current choice. b9s saves it as `ui.theme` in `~/.config/b9s/config.yaml`.
 Automatic follows the terminal's original background. b9s restores the
 terminal's default background when the TUI exits. Terminal support for OSC 11
 and OSC 111 controls whether the background changes outside styled cells.
+In Sepia mode, closed issues show plain `DONE` text without a filled badge.
 See the [light terminal screenshot](screenshot-sepia.png).
 
 ```text

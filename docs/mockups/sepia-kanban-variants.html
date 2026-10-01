@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sepia Kanban board variants | b9s</title>
+<style>
+  :root { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #30271d; background: #c9baa0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  button { font: inherit; cursor: pointer; }
+  .page { max-width: 1720px; margin: 0 auto; padding: 32px 24px 48px; }
+  .intro { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  h1 { font: 700 clamp(28px, 3vw, 42px)/1.15 system-ui, sans-serif; letter-spacing: -.035em; margin: 0 0 8px; }
+  .intro p { font: 16px/1.5 system-ui, sans-serif; max-width: 770px; margin: 0; color: #574b3b; }
+  .badge { font: 700 12px/1.2 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; border: 1px solid #8d7c63; border-radius: 20px; padding: 8px 12px; }
+  .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .choice { text-align: left; border: 1px solid #9e8e75; background: #e7d9bf; color: #3c3024; border-radius: 10px; padding: 15px 17px; min-height: 112px; }
+  .choice:hover { border-color: #2f5878; }
+  .choice[aria-pressed="true"] { background: #f4ead7; border: 2px solid #2f5878; padding: 14px 16px; box-shadow: 0 3px 0 #2f5878; }
+  .choice strong { display: block; font: 700 19px/1.2 system-ui, sans-serif; margin-bottom: 6px; }
+  .choice span { display: block; font: 14px/1.4 system-ui, sans-serif; color: #62533f; }
+  .notes { display: flex; flex-wrap: wrap; gap: 8px 24px; min-height: 28px; margin: 0 0 12px; color: #45382a; font: 13px/1.4 system-ui, sans-serif; }
+  .notes b { color: #2f4f6f; }
+  .scroll { overflow-x: auto; border-radius: 12px; box-shadow: 0 14px 34px #57453038; }
+
+  .preview {
+    --paper: #e9dfcb; --surface: #e9dfcb; --surface-2: #ddd1ba; --line: #ab9c81;
+    --ink: #3a2f22; --muted: #66573f; --blue: #2f5878; --moss: #4a6a2a;
+    --oxblood: #8e2f2f; --ochre: #7d500c; --selected: #d2d5cc;
+    min-width: 1160px; color: var(--ink); background: var(--paper); border: 1px solid #8e806b;
+    border-radius: 12px; overflow: hidden; font: 14px/1.36 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .variant-b {
+    --paper: #f2e8d5; --surface: #f9f0df; --surface-2: #e5d5b8; --line: #b5a386;
+    --ink: #392c20; --muted: #6a5943; --blue: #315676; --moss: #496829;
+    --oxblood: #8b3030; --ochre: #77500e; --selected: #e5eadf;
+  }
+  .variant-c {
+    --paper: #d9c9aa; --surface: #deceb0; --surface-2: #cbb997; --line: #988469;
+    --ink: #30271d; --muted: #5e4d38; --blue: #294c68; --moss: #405d25;
+    --oxblood: #792929; --ochre: #6f4608; --selected: #c3cbb9;
+  }
+  .term-bar { height: 30px; padding: 6px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); color: var(--muted); }
+  .term-bar strong { color: var(--ink); }
+  .term-bar .right { float: right; }
+  .top { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 12px; padding: 16px 18px 14px; border-bottom: 1px solid var(--line); }
+  .top strong { color: var(--blue); }
+  .top .title { font-weight: 700; font-size: 16px; }
+  .top .sub { margin-top: 4px; color: var(--muted); }
+  .top .shortcuts { text-align: right; color: var(--muted); }
+  .top .shortcuts b { color: var(--blue); }
+  .board-head, .lane { display: grid; grid-template-columns: 218px repeat(3, minmax(0, 1fr)) 172px; }
+  .board-head { background: var(--surface-2); border-bottom: 1px solid var(--line); }
+  .board-head > div { padding: 13px 14px; border-right: 1px solid var(--line); }
+  .board-head > div:last-child, .lane > div:last-child { border-right: 0; }
+  .board-head b { display: block; font-size: 14px; letter-spacing: .035em; }
+  .board-head small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .head-open b { color: var(--moss); } .head-progress b { color: var(--blue); }
+  .head-blocked b { color: var(--oxblood); } .head-done b { color: var(--muted); }
+  .lane { min-height: 232px; border-bottom: 1px solid var(--line); }
+  .lane:last-of-type { border-bottom: 0; }
+  .lane > div { min-width: 0; padding: 14px 12px; border-right: 1px solid var(--line); }
+  .epic { background: var(--surface-2); }
+  .epic .id { color: var(--blue); font-weight: 700; }
+  .epic .name { font-weight: 700; margin-top: 9px; font-size: 15px; }
+  .epic .progress { height: 4px; background: #8b795e55; margin: 18px 0 8px; }
+  .epic .progress i { display: block; height: 100%; background: var(--ochre); }
+  .epic .meta { font-size: 12px; color: var(--muted); }
+  .cell { background: var(--surface); }
+  .issue { padding: 10px 11px; margin-bottom: 7px; min-height: 82px; }
+  .issue:last-child { margin-bottom: 0; }
+  .issue .issue-id { color: var(--blue); font-weight: 700; font-size: 12px; }
+  .issue .issue-title { margin-top: 4px; font-weight: 600; }
+  .issue .issue-meta { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px 12px; color: var(--muted); font-size: 12px; }
+  .issue .issue-meta .danger { color: var(--oxblood); font-weight: 700; }
+  .issue .issue-meta .good { color: var(--moss); }
+  .issue .issue-meta .priority { color: var(--ochre); font-weight: 700; }
+  .issue.done .issue-title { font-weight: 500; color: var(--muted); }
+  .issue.done .issue-meta .done-label { color: var(--muted); font-weight: 700; }
+  .empty { color: var(--muted); padding: 20px 11px; font-size: 12px; }
+  .footer { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 16px; color: var(--muted); border-top: 1px solid var(--line); background: var(--surface-2); font-size: 12px; }
+  .footer b { color: var(--blue); }
+
+  /* A: one quiet sheet of paper. The selected item is the only filled row. */
+  .variant-a .issue { border-bottom: 1px solid var(--line); border-radius: 0; margin: 0; min-height: 76px; }
+  .variant-a .issue:last-child { border-bottom: 0; }
+  .variant-a .issue.selected { background: var(--selected); box-shadow: inset 3px 0 var(--blue); }
+  .variant-a .cell { padding: 5px 10px; }
+  .variant-a .epic { border-left: 4px solid var(--ochre); }
+
+  /* B: soft index cards and a brighter writing surface. */
+  .variant-b .issue { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 2px 0 #8f785422; }
+  .variant-b .issue.selected { background: var(--selected); border: 2px solid var(--blue); padding: 9px 10px; }
+  .variant-b .cell { background: var(--paper); }
+  .variant-b .epic { border-left: 4px solid var(--moss); }
+
+  /* C: denser type and ruled columns on darker paper. */
+  .variant-c .board-head, .variant-c .epic { background: var(--surface-2); }
+  .variant-c .issue { border-left: 2px solid var(--line); border-bottom: 1px solid var(--line); min-height: 68px; margin-bottom: 4px; padding: 7px 10px; }
+  .variant-c .issue.selected { border-left: 4px solid var(--blue); padding-left: 8px; background: var(--selected); }
+  .variant-c .issue .issue-title { margin-top: 2px; }
+  .variant-c .issue .issue-meta { margin-top: 4px; }
+  .variant-c .epic .name { font-size: 14px; }
+  .variant-c .epic { border-left: 4px solid var(--blue); }
+  .variant-c .lane { min-height: 205px; }
+
+  @media (max-width: 780px) {
+    .page { padding: 20px 12px 32px; }
+    .choices { grid-template-columns: 1fr; }
+    .choice { min-height: 0; }
+    .intro { align-items: start; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="intro">
+    <div><h1>Sepia board, three directions</h1><p>The same Kanban data in three Sepia treatments. Compare card weight, row density, and how the epic rail reads. Finished work uses plain DONE text in every variant.</p></div>
+    <span class="badge">Design mockup · no writes</span>
+  </div>
+  <div class="choices" aria-label="Sepia variants">
+    <button class="choice" type="button" data-variant="a" aria-pressed="true"><strong>A · Quiet paper</strong><span>Flat issue rows, low visual weight, and one clear selection.</span></button>
+    <button class="choice" type="button" data-variant="b" aria-pressed="false"><strong>B · Index cards</strong><span>Warm card surfaces and a brighter paper background.</span></button>
+    <button class="choice" type="button" data-variant="c" aria-pressed="false"><strong>C · Ruled journal</strong><span>Deeper paper, compact rows, and editorial column rules.</span></button>
+  </div>
+  <div class="notes" id="notes" role="status"><span><b>Why:</b> minimum chrome makes issue titles the focus.</span><span><b>Tradeoff:</b> flat rows have less separation at a glance.</span></div>
+  <div class="scroll">
+  <section class="preview variant-a" id="preview" aria-label="Sepia Kanban board mockup">
+    <div class="term-bar"><strong>b9s</strong> · project space · Board <span class="right">Sepia · concept A</span></div>
+    <div class="top">
+      <div><div class="title"><strong>BOARD</strong> · Epic rail · by status · 9 issues</div><div class="sub">Open 4 · In progress 2 · Blocked 1 · Closed 2 shown for comparison</div></div>
+      <div class="shortcuts"><b>← →</b> column &nbsp; <b>↑ ↓</b> card &nbsp; <b>v</b> epic view &nbsp; <b>c</b> closed</div>
+    </div>
+    <div class="board-head">
+      <div><b>EPIC</b><small>completion across all children</small></div>
+      <div class="head-open"><b>OPEN · 4</b><small>planned work</small></div>
+      <div class="head-progress"><b>IN PROGRESS · 2</b><small>work moving now</small></div>
+      <div class="head-blocked"><b>BLOCKED · 1</b><small>stored blocked status</small></div>
+      <div class="head-done"><b>CLOSED · 2</b><small>normally hidden by c</small></div>
+    </div>
+    <div class="lane">
+      <div class="epic"><div class="id">◆ 6e8h</div><div class="name">Recent projects and navigation</div><div class="progress"><i style="width:25%"></i></div><div class="meta">1 / 4 complete · 4 issues</div></div>
+      <div class="cell">
+        <div class="issue selected"><div class="issue-id">✓ 6e8h.9</div><div class="issue-title">Resolve duplicate recent projects from symlinked checkouts</div><div class="issue-meta"><span class="priority">P2</span><span>task</span><span>2w ago</span></div></div>
+        <div class="issue"><div class="issue-id">✓ 6e8h.10</div><div class="issue-title">Keep the project switcher readable at narrow widths</div><div class="issue-meta"><span>P3</span><span>task</span><span>4d ago</span></div></div>
+      </div>
+      <div class="cell"><div class="issue"><div class="issue-id">✓ 6e8h.11</div><div class="issue-title">Refresh the active project after a source change</div><div class="issue-meta"><span class="priority">P2</span><span>task</span><span class="good">lane: implementing</span></div></div></div>
+      <div class="cell"><div class="empty">No blocked issues in this epic.</div></div>
+      <div class="cell"><div class="issue done"><div class="issue-id">✓ 6e8h.7</div><div class="issue-title">Forget a recent project</div><div class="issue-meta"><span class="done-label">DONE</span><span>2w ago</span></div></div></div>
+    </div>
+    <div class="lane">
+      <div class="epic"><div class="id">◆ 8w66</div><div class="name">Follow the Beads events journal</div><div class="progress"><i style="width:20%"></i></div><div class="meta">1 / 5 complete · 5 issues</div></div>
+      <div class="cell">
+        <div class="issue"><div class="issue-id">✓ vd9g.1.1</div><div class="issue-title">Supervise bd events tail and parse journal records</div><div class="issue-meta"><span class="priority">P1</span><span>task</span><span class="good">blocks 1</span></div></div>
+        <div class="issue"><div class="issue-id">✓ vd9g.1.4</div><div class="issue-title">Wire the event stream into TUI reload paths</div><div class="issue-meta"><span class="priority">P1</span><span>task</span><span class="danger">blocked by vd9g.1.3</span></div></div>
+      </div>
+      <div class="cell"><div class="issue"><div class="issue-id">✓ vd9g.1.3</div><div class="issue-title">Reconcile windows and check the journal hash</div><div class="issue-meta"><span class="priority">P1</span><span>task</span><span class="good">lane: reviewing</span></div></div></div>
+      <div class="cell"><div class="issue"><div class="issue-id">✓ vd9g.1.2</div><div class="issue-title">Apply journal records to the in-memory issue list</div><div class="issue-meta"><span class="priority">P1</span><span class="danger">blocked by yv9a</span></div></div></div>
+      <div class="cell"><div class="issue done"><div class="issue-id">✓ vd9g.1.8</div><div class="issue-title">Define a bounded event replay window</div><div class="issue-meta"><span class="done-label">DONE</span><span>3d ago</span></div></div></div>
+    </div>
+    <div class="footer"><span><b>j/k</b> card</span><span><b>h/l</b> column</span><span><b>tab</b> fold epic</span><span><b>enter</b> detail</span><span><b>c</b> hide closed</span><span>Mockup only</span></div>
+  </section>
+  </div>
+</main>
+<script>
+  const preview = document.getElementById('preview');
+  const notes = document.getElementById('notes');
+  const descriptions = {
+    a: ['minimum chrome makes issue titles the focus.', 'flat rows have less separation at a glance.'],
+    b: ['soft cards keep each issue distinct without bright white.', 'borders add weight on a dense board.'],
+    c: ['ruled rows use space well when the board grows.', 'the deeper paper feels less airy.']
+  };
+  for (const button of document.querySelectorAll('[data-variant]')) {
+    button.addEventListener('click', () => {
+      const variant = button.dataset.variant;
+      if (!descriptions[variant]) return;
+      for (const choice of document.querySelectorAll('[data-variant]')) choice.setAttribute('aria-pressed', String(choice === button));
+      preview.className = 'preview variant-' + variant;
+      preview.querySelector('.term-bar .right').textContent = 'Sepia · concept ' + variant.toUpperCase();
+      const [why, tradeoff] = descriptions[variant];
+      notes.innerHTML = '<span><b>Why:</b> ' + why + '</span><span><b>Tradeoff:</b> ' + tradeoff + '</span>';
+    });
+  }
+</script>
+</body>
+</html>

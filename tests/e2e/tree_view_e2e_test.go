@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -386,6 +387,31 @@ func TestLightTUIRestoresTerminalPaper(t *testing.T) {
 	}
 	if i := bytes.LastIndex(out, reset); i < bytes.Index(out, set) {
 		t.Fatalf("light TUI did not restore terminal paper after the set: %q", out)
+	}
+}
+
+func TestSepiaClosedStatusHasNoBadgeBackground(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, []treeFixtureIssue{{
+		ID: "done-1", Title: "Completed issue", Status: "closed", Priority: 2,
+		IssueType: "task", CreatedAt: time.Now().Format(time.RFC3339),
+	}})
+	out, err := runTreeTUIWithEnv(t, tempDir, 1600, []keyStep{k("a")}, "COLORFGBG=0;15", "COLORTERM=truecolor", "NO_COLOR=", "XDG_CONFIG_HOME="+t.TempDir())
+	if err != nil {
+		t.Fatalf("TUI run failed: %v", err)
+	}
+	badges := regexp.MustCompile("\x1b\\[[0-9;]*mDONE").FindAll(out, -1)
+	if len(badges) == 0 {
+		if at := bytes.Index(out, []byte("DONE")); at >= 0 {
+			start := max(0, at-80)
+			t.Fatalf("DONE had no ANSI foreground: %q", out[start:at+4])
+		}
+		t.Fatalf("no DONE label in TUI output: %q", ansi.Strip(string(out)))
+	}
+	for _, badge := range badges {
+		if bytes.Contains(badge, []byte(";48;")) || bytes.Contains(badge, []byte("[48;")) {
+			t.Fatalf("Sepia TUI painted a box behind DONE: %q", badge)
+		}
 	}
 }
 

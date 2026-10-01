@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 func TestRenderPriorityBadge(t *testing.T) {
@@ -54,6 +55,28 @@ func TestRenderStatusBadge(t *testing.T) {
 		if !strings.Contains(got, tt.want) {
 			t.Errorf("RenderStatusBadge(%q) = %q, want to contain %q", tt.status, got, tt.want)
 		}
+	}
+}
+
+func TestClosedStatusHasNoBoxOnSepiaPaper(t *testing.T) {
+	profile := lipgloss.ColorProfile()
+	dark := lipgloss.HasDarkBackground()
+	defer lipgloss.SetColorProfile(profile)
+	defer lipgloss.SetHasDarkBackground(dark)
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	lipgloss.SetHasDarkBackground(false)
+	light := RenderStatusBadge("closed")
+	if strings.Contains(light, ";48;") || strings.Contains(light, "\x1b[48;") {
+		t.Fatalf("Sepia DONE has a background box: %q", light)
+	}
+	if !strings.Contains(light, "DONE") || !strings.Contains(light, "\x1b[38;") {
+		t.Fatalf("Sepia DONE lost its colored text: %q", light)
+	}
+
+	lipgloss.SetHasDarkBackground(true)
+	if darkBadge := RenderStatusBadge("closed"); !strings.Contains(darkBadge, ";48;") && !strings.Contains(darkBadge, "\x1b[48;") {
+		t.Fatalf("Dracula DONE lost its background: %q", darkBadge)
 	}
 }
 
