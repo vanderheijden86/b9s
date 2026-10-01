@@ -1,0 +1,659 @@
+package graph
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/AlexanderGrooff/mermaid-ascii/pkg/diagram"
+	"github.com/elliotchance/orderedmap/v2"
+	log "github.com/sirupsen/logrus"
+)
+
+// Default layout settings, the same as diagram.DefaultConfig.
+const (
+	defaultBoxBorderPadding = 1
+	defaultPaddingX         = 5
+	defaultPaddingY         = 5
+)
+
+// Properties is a parsed graph together with its layout settings.
+// Parse fills in the graph and the defaults; Apply overrides the
+// settings from a Config.
+type Properties struct {
+	// ShowCoords overlays grid coordinates on the drawing, for
+	// debugging layout.
+	ShowCoords bool
+
+	data             *orderedmap.OrderedMap[string, []textEdge]
+	nodeSpecs        map[string]graphNodeSpec
+	styleClasses     *map[string]styleClass
+	boxBorderPadding int
+	graphDirection   string
+	styleType        string
+	paddingX         int
+	paddingY         int
+	subgraphs        []*textSubgraph
+	useAscii         bool
+}
+
+type textNode struct {
+	name       string
+	label      graphLabel
+	hasLabel   bool
+	styleClass string
+}
+
+type graphNodeSpec struct {
+	label           graphLabel
+	labelIsExplicit bool
+	styleClass      string
+}
+
+type textEdge struct {
+	parent          textNode
+	child           textNode
+	label           string
+	isBidirectional bool
+	stroke          edgeStroke
+	head            edgeHead
+}
+
+type textSubgraph struct {
+	id       string
+	name     string
+	label    graphLabel
+	nodes    []string
+	parent   *textSubgraph
+	children []*textSubgraph
+}
+
+func parseSubgraphHeader(header string) textSubgraph {
+	trimmed := strings.TrimSpace(header)
+	labelText := trimmed
+	id := ""
+
+	if match := regexp.MustCompile(`^(\S+)\s*\[(.+)\]$`).FindStringSubmatch(trimmed); match != nil {
+		id = strings.TrimSpace(match[1])
+		labelText = strings.TrimSpace(match[2])
+		labelText = strings.Trim(labelText, `"`)
+	}
+
+	return textSubgraph{
+		id:    id,
+		name:  labelText,
+		label: newGraphLabel(labelText),
+		nodes: []string{},
+	}
+}
+
+func isEscaped(text string, index int) bool {
+	backslashes := 0
+	for i := index - 1; i >= 0 && text[i] == '\\'; i-- {
+		backslashes++
+	}
+	return backslashes%2 == 1
+}
+
+func stripUnquotedComment(line string) string {
+	inQuotes := false
+	for i := 0; i < len(line); i++ {
+		if line[i] == '"' && !isEscaped(line, i) {
+			inQuotes = !inQuotes
+			continue
+		}
+		if !inQuotes && strings.HasPrefix(line[i:], "%%") {
+			return strings.TrimSpace(line[:i])
+		}
+	}
+	return strings.TrimSpace(line)
+}
+
+func lastUnquotedSubstring(text, substring string) int {
+	last := -1
+	inQuotes := false
+	for i := 0; i < len(text); i++ {
+		if text[i] == '"' && !isEscaped(text, i) {
+			inQuotes = !inQuotes
+			continue
+		}
+		if !inQuotes && strings.HasPrefix(text[i:], substring) {
+			last = i
+			i += len(substring) - 1
+		}
+	}
+	return last
+}
+
+func splitGraphLines(mermaid string) []string {
+	lines := []string{}
+	var current strings.Builder
+	bracketDepth := 0
+	inQuotes := false
+
+	for i := 0; i < len(mermaid); i++ {
+		switch mermaid[i] {
+		case '"':
+			if !isEscaped(mermaid, i) {
+				inQuotes = !inQuotes
+			}
+		case '[':
+			if !inQuotes {
+				bracketDepth++
+			}
+		case ']':
+			if !inQuotes && bracketDepth > 0 {
+				bracketDepth--
+			}
+		case '\n':
+			if bracketDepth == 0 {
+				lines = append(lines, current.String())
+				current.Reset()
+				continue
+			}
+		case '\\':
+			if i+1 < len(mermaid) && mermaid[i+1] == 'n' && bracketDepth == 0 {
+				lines = append(lines, current.String())
+				current.Reset()
+				i++
+				continue
+			}
+		}
+
+		current.WriteByte(mermaid[i])
+	}
+
+	return append(lines, current.String())
+}
+
+func trimIntentionalOuterQuotes(labelText string) string {
+	if len(labelText) >= 2 && labelText[0] == '"' && labelText[len(labelText)-1] == '"' {
+		return labelText[1 : len(labelText)-1]
+	}
+	return labelText
+}
+
+func containsUnquotedClosingDelimiter(labelText, close string) bool {
+	inQuotes := false
+	for i := 0; i < len(labelText); i++ {
+		if labelText[i] == '"' {
+			inQuotes = !inQuotes
+			continue
+		}
+		if !strings.ContainsRune(close, rune(labelText[i])) {
+			continue
+		}
+		if !inQuotes {
+			return true
+		}
+
+		// An unmatched quote must not hide a structural delimiter that follows
+		// it. A later quote would close the quoted section, so only treat this
+		// delimiter as structural when no such quote exists.
+		if !strings.ContainsRune(labelText[i+1:], '"') {
+			return true
+		}
+	}
+	return false
+}
+
+func parseNode(line string) textNode {
+	// Trim any whitespace from the line that might be left after comment removal
+	trimmedLine := strings.TrimSpace(line)
+	styleClass := ""
+	if idx := lastUnquotedSubstring(trimmedLine, ":::"); idx != -1 {
+		styleClass = strings.TrimSpace(trimmedLine[idx+3:])
+		trimmedLine = strings.TrimSpace(trimmedLine[:idx])
+	}
+
+	name := trimmedLine
+	labelText := trimmedLine
+	for _, shape := range []struct {
+		open  string
+		close string
+	}{
+		{open: "[(", close: ")]"},
+		{open: "{{", close: "}}"},
+		{open: "{", close: "}"},
+		{open: "[", close: "]"},
+		{open: "(", close: ")"},
+		{open: ">", close: "]"},
+	} {
+		if open := strings.Index(trimmedLine, shape.open); open > 0 && strings.HasSuffix(trimmedLine, shape.close) {
+			candidateLabel := strings.TrimSpace(trimmedLine[open+len(shape.open) : len(trimmedLine)-len(shape.close)])
+			if containsUnquotedClosingDelimiter(candidateLabel, shape.close) {
+				continue
+			}
+			name = strings.TrimSpace(trimmedLine[:open])
+			labelText = trimIntentionalOuterQuotes(candidateLabel)
+			return textNode{name: name, label: newGraphLabel(labelText), hasLabel: true, styleClass: styleClass}
+		}
+	}
+
+	return textNode{name: name, label: newGraphLabel(labelText), styleClass: styleClass}
+}
+
+func parseStyleClass(matchedLine []string) (styleClass, error) {
+	if len(matchedLine) < 2 {
+		return styleClass{}, errors.New("classDef requires a class name and styles")
+	}
+	className := strings.TrimSpace(matchedLine[0])
+	styles := strings.TrimSpace(matchedLine[1])
+	if className == "" || styles == "" {
+		return styleClass{}, errors.New("classDef requires a class name and styles")
+	}
+
+	// Styles are comma separated and key-values are separated by a colon.
+	// Example: fill:#f9f,stroke:#333,stroke-width:4px
+	styleMap := make(map[string]string)
+	for _, style := range strings.Split(styles, ",") {
+		kv := strings.SplitN(strings.TrimSpace(style), ":", 2)
+		if len(kv) != 2 || strings.TrimSpace(kv[0]) == "" || strings.TrimSpace(kv[1]) == "" {
+			return styleClass{}, fmt.Errorf("invalid classDef style %q", style)
+		}
+		styleMap[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+	}
+	return styleClass{className, styleMap}, nil
+}
+
+func setArrowWithStyle(lhs, rhs []textNode, label string, isBidirectional bool, stroke edgeStroke, head edgeHead, gp *Properties) []textNode {
+	log.Debug("Setting arrow from ", lhs, " to ", rhs, " with label ", label)
+	for _, l := range lhs {
+		for _, r := range rhs {
+			setData(l, textEdge{l, r, label, isBidirectional, stroke, head}, gp.data, gp.nodeSpecs)
+		}
+	}
+	return rhs
+}
+
+func setArrowWithLabel(lhs, rhs []textNode, label string, isBidirectional bool, gp *Properties) []textNode {
+	return setArrowWithStyle(lhs, rhs, label, isBidirectional, strokeSolid, headArrow, gp)
+}
+
+func setArrow(lhs, rhs []textNode, gp *Properties) []textNode {
+	return setArrowWithLabel(lhs, rhs, "", false, gp)
+}
+
+func setBidirectionalArrow(lhs, rhs []textNode, gp *Properties) []textNode {
+	return setArrowWithLabel(lhs, rhs, "", true, gp)
+}
+
+func rememberNode(node textNode, nodeSpecs map[string]graphNodeSpec) {
+	spec := nodeSpecs[node.name]
+	if node.hasLabel || len(spec.label.lines) == 0 {
+		spec.label = node.label
+		spec.labelIsExplicit = node.hasLabel
+	}
+	if node.styleClass != "" {
+		spec.styleClass = node.styleClass
+	}
+	nodeSpecs[node.name] = spec
+}
+
+func addNode(node textNode, data *orderedmap.OrderedMap[string, []textEdge], nodeSpecs map[string]graphNodeSpec) {
+	rememberNode(node, nodeSpecs)
+	if _, ok := data.Get(node.name); !ok {
+		data.Set(node.name, []textEdge{})
+	}
+}
+
+func setData(parent textNode, edge textEdge, data *orderedmap.OrderedMap[string, []textEdge], nodeSpecs map[string]graphNodeSpec) {
+	rememberNode(parent, nodeSpecs)
+	rememberNode(edge.child, nodeSpecs)
+	// Check if the parent is in the map
+	if children, ok := data.Get(parent.name); ok {
+		// If it is, append the child to the list of children
+		data.Set(parent.name, append(children, edge))
+	} else {
+		// If it isn't, add it to the map
+		data.Set(parent.name, []textEdge{edge})
+	}
+	// Check if the child is in the map
+	if _, ok := data.Get(edge.child.name); ok {
+		// If it is, do nothing
+	} else {
+		// If it isn't, add it to the map
+		data.Set(edge.child.name, []textEdge{})
+	}
+}
+
+// edgeArrowPattern matches the classic arrow (-->) plus the dotted, thick,
+// open, circle, and cross link operators Mermaid also supports (-.->, ==>,
+// ---, --o, --x). It's a capturing group so classifyArrowToken can tell them
+// apart afterwards.
+const edgeArrowPattern = `(-->|-\.->|==>|---|--o|--x)`
+
+// classifyArrowToken maps a flowchart link operator to the line style and
+// arrowhead it renders with.
+func classifyArrowToken(token string) (edgeStroke, edgeHead) {
+	switch token {
+	case "-.->":
+		return strokeDotted, headArrow
+	case "==>":
+		return strokeThick, headArrow
+	case "---":
+		return strokeSolid, headNone
+	case "--o":
+		return strokeSolid, headCircle
+	case "--x":
+		return strokeSolid, headCross
+	default: // "-->"
+		return strokeSolid, headArrow
+	}
+}
+
+func (gp *Properties) parseString(line string) ([]textNode, error) {
+	log.Debugf("Parsing line: %v", line)
+	var lhs, rhs []textNode
+	var err error
+	// Patterns are matched in order
+	patterns := []struct {
+		regex   *regexp.Regexp
+		handler func([]string) ([]textNode, error)
+	}{
+		{
+			regex: regexp.MustCompile(`^\s*$`),
+			handler: func(match []string) ([]textNode, error) {
+				// Ignore empty lines
+				return []textNode{}, nil
+			},
+		},
+		{
+			regex: regexp.MustCompile(`(?s)^(.+)\s*<-->\s*\|(.+)\|\s*(.+)$`),
+			handler: func(match []string) ([]textNode, error) {
+				if lhs, err = gp.parseString(match[0]); err != nil {
+					lhs = []textNode{parseNode(match[0])}
+				}
+				if rhs, err = gp.parseString(match[2]); err != nil {
+					rhs = []textNode{parseNode(match[2])}
+				}
+				return setArrowWithLabel(lhs, rhs, match[1], true, gp), nil
+			},
+		},
+		{
+			regex: regexp.MustCompile(`(?s)^(.+)\s*<-->\s*(.+)$`),
+			handler: func(match []string) ([]textNode, error) {
+				if lhs, err = gp.parseString(match[0]); err != nil {
+					lhs = []textNode{parseNode(match[0])}
+				}
+				if rhs, err = gp.parseString(match[1]); err != nil {
+					rhs = []textNode{parseNode(match[1])}
+				}
+				return setBidirectionalArrow(lhs, rhs, gp), nil
+			},
+		},
+		{
+			regex: regexp.MustCompile(`(?s)^(.+)\s*` + edgeArrowPattern + `\s*\|(.+)\|\s*(.+)$`),
+			handler: func(match []string) ([]textNode, error) {
+				if lhs, err = gp.parseString(match[0]); err != nil {
+					lhs = []textNode{parseNode(match[0])}
+				}
+				if rhs, err = gp.parseString(match[3]); err != nil {
+					rhs = []textNode{parseNode(match[3])}
+				}
+				stroke, head := classifyArrowToken(match[1])
+				return setArrowWithStyle(lhs, rhs, match[2], false, stroke, head, gp), nil
+			},
+		},
+		{
+			regex: regexp.MustCompile(`(?s)^(.+)\s*` + edgeArrowPattern + `\s*(.+)$`),
+			handler: func(match []string) ([]textNode, error) {
+				if lhs, err = gp.parseString(match[0]); err != nil {
+					lhs = []textNode{parseNode(match[0])}
+				}
+				if rhs, err = gp.parseString(match[2]); err != nil {
+					rhs = []textNode{parseNode(match[2])}
+				}
+				stroke, head := classifyArrowToken(match[1])
+				return setArrowWithStyle(lhs, rhs, "", false, stroke, head, gp), nil
+			},
+		},
+		{
+			regex: regexp.MustCompile(`^classDef\s+(.+)\s+(.+)$`),
+			handler: func(match []string) ([]textNode, error) {
+				s, err := parseStyleClass(match)
+				if err != nil {
+					return nil, err
+				}
+				(*gp.styleClasses)[s.name] = s
+				return []textNode{}, nil
+			},
+		},
+		{
+			regex: regexp.MustCompile(`(?s)^(.+) & (.+)$`),
+			handler: func(match []string) ([]textNode, error) {
+				log.Debugf("Found & pattern node %v to %v", match[0], match[1])
+				var node textNode
+				if lhs, err = gp.parseString(match[0]); err != nil {
+					node = parseNode(match[0])
+					lhs = []textNode{node}
+				}
+				if rhs, err = gp.parseString(match[1]); err != nil {
+					node = parseNode(match[1])
+					rhs = []textNode{node}
+				}
+				return append(lhs, rhs...), nil
+			},
+		},
+	}
+	for _, pattern := range patterns {
+		if match := pattern.regex.FindStringSubmatch(line); match != nil {
+			nodes, err := pattern.handler(match[1:])
+			if err == nil {
+				return nodes, nil
+			}
+		}
+	}
+	return []textNode{}, errors.New("Could not parse line: " + line)
+}
+
+// Parse reads a flowchart or graph diagram. styleType is "cli" or
+// "web"; it selects how node styles are rendered.
+func Parse(mermaid, styleType string) (*Properties, error) {
+	rawLines := splitGraphLines(mermaid)
+
+	// Process lines to remove comments
+	lines := []string{}
+	for _, line := range rawLines {
+		// Stop processing at "---" separator (used in test files)
+		if line == "---" {
+			break
+		}
+
+		// Skip lines that start with %% (comment lines)
+		if strings.HasPrefix(strings.TrimSpace(line), "%%") {
+			continue
+		}
+
+		// Remove inline comments outside quoted labels. A quoted %% sequence is
+		// part of the label text, not a Mermaid comment.
+		line = stripUnquotedComment(line)
+
+		// Skip empty lines after comment removal
+		if len(strings.TrimSpace(line)) > 0 {
+			lines = append(lines, line)
+		}
+	}
+
+	data := orderedmap.NewOrderedMap[string, []textEdge]()
+	styleClasses := make(map[string]styleClass)
+	properties := Properties{
+		data:             data,
+		nodeSpecs:        make(map[string]graphNodeSpec),
+		styleClasses:     &styleClasses,
+		boxBorderPadding: defaultBoxBorderPadding,
+		graphDirection:   "",
+		styleType:        styleType,
+		paddingX:         defaultPaddingX,
+		paddingY:         defaultPaddingY,
+		subgraphs:        []*textSubgraph{},
+	}
+
+	// Pick up optional padding directives before the graph definition
+	paddingRegex := regexp.MustCompile(`^(?i)padding([xy])\s*=\s*(\d+)$`)
+	for len(lines) > 0 {
+		trimmed := strings.TrimSpace(lines[0])
+		if trimmed == "" {
+			lines = lines[1:]
+			continue
+		}
+		if match := paddingRegex.FindStringSubmatch(trimmed); match != nil {
+			paddingValue, err := strconv.Atoi(match[2])
+			if err != nil {
+				return &properties, err
+			}
+			if strings.EqualFold(match[1], "x") {
+				properties.paddingX = paddingValue
+			} else {
+				properties.paddingY = paddingValue
+			}
+			lines = lines[1:]
+			continue
+		}
+		break
+	}
+
+	if len(lines) == 0 {
+		return &properties, errors.New("missing graph definition")
+	}
+
+	// The first line declares the diagram: "graph" or "flowchart" followed by an
+	// optional direction (e.g. "flowchart LR", "graph TD", or a bare "graph").
+	// strings.Fields collapses any surrounding or repeated whitespace, so
+	// indented or trailing-padded declarations parse correctly; TrimRight drops a
+	// trailing separator (mermaid allows "graph TD;").
+	fields := strings.Fields(strings.TrimRight(lines[0], "; \t\r"))
+	if len(fields) == 0 || (fields[0] != "graph" && fields[0] != "flowchart") {
+		return &properties, fmt.Errorf("unsupported graph type '%s'. Supported types: 'graph' or 'flowchart' with an optional direction (TD, TB, BT, LR, RL)", strings.TrimSpace(lines[0]))
+	}
+	if len(fields) > 2 {
+		return &properties, fmt.Errorf("unexpected tokens after graph direction: %q", strings.Join(fields[2:], " "))
+	}
+
+	// Mermaid defaults to top-down when no direction is given. The renderer only
+	// lays out along the horizontal (LR) or vertical (TD) axis; the reverse
+	// directions RL and BT are accepted but drawn on their axis without the
+	// reversal (RL renders left-to-right, BT top-down).
+	properties.graphDirection = "TD"
+	if len(fields) == 2 {
+		switch fields[1] {
+		case "LR", "RL":
+			properties.graphDirection = "LR"
+		case "TD", "TB", "BT":
+			properties.graphDirection = "TD"
+		default:
+			return &properties, fmt.Errorf("unsupported graph direction '%s'. Supported directions: TD, TB, BT, LR, RL", fields[1])
+		}
+	}
+	lines = lines[1:]
+
+	// Track subgraph context using a stack
+	subgraphStack := []*textSubgraph{}
+	subgraphRegex := regexp.MustCompile(`^\s*subgraph\s+(.+)$`)
+	endRegex := regexp.MustCompile(`^\s*end\s*$`)
+	classDefRegex := regexp.MustCompile(`^classDef(?:\s|$)`)
+
+	// Iterate over the lines
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+
+		// Check for subgraph start
+		if match := subgraphRegex.FindStringSubmatch(trimmedLine); match != nil {
+			header := parseSubgraphHeader(match[1])
+			newSubgraph := &textSubgraph{
+				id:       header.id,
+				name:     header.name,
+				label:    header.label,
+				nodes:    []string{},
+				children: []*textSubgraph{},
+			}
+
+			// Set parent relationship if we're nested
+			if len(subgraphStack) > 0 {
+				parent := subgraphStack[len(subgraphStack)-1]
+				newSubgraph.parent = parent
+				parent.children = append(parent.children, newSubgraph)
+			}
+
+			subgraphStack = append(subgraphStack, newSubgraph)
+			properties.subgraphs = append(properties.subgraphs, newSubgraph)
+			log.Debugf("Started subgraph %s", newSubgraph.name)
+			continue
+		}
+
+		// Check for subgraph end
+		if endRegex.MatchString(trimmedLine) {
+			if len(subgraphStack) > 0 {
+				closedSubgraph := subgraphStack[len(subgraphStack)-1]
+				subgraphStack = subgraphStack[:len(subgraphStack)-1]
+				log.Debugf("Ended subgraph %s", closedSubgraph.name)
+			}
+			continue
+		}
+
+		// Remember nodes before parsing this line
+		existingNodes := make(map[string]bool)
+		for el := data.Front(); el != nil; el = el.Next() {
+			existingNodes[el.Key] = true
+		}
+
+		// Parse nodes and edges normally
+		nodes, err := properties.parseString(line)
+		if err != nil {
+			if classDefRegex.MatchString(trimmedLine) {
+				return &properties, err
+			}
+			log.Debugf("Parsing remaining text to node %v", line)
+			node := parseNode(line)
+			addNode(node, properties.data, properties.nodeSpecs)
+		} else {
+			// Ensure all returned nodes are in the map
+			for _, node := range nodes {
+				addNode(node, properties.data, properties.nodeSpecs)
+			}
+		}
+
+		// Add all new nodes to current subgraph(s)
+		if len(subgraphStack) > 0 {
+			for el := data.Front(); el != nil; el = el.Next() {
+				nodeName := el.Key
+				// If this is a new node (wasn't in existingNodes), add it to subgraph
+				if !existingNodes[nodeName] {
+					for _, sg := range subgraphStack {
+						// Check if node is not already in the subgraph
+						found := false
+						for _, n := range sg.nodes {
+							if n == nodeName {
+								found = true
+								break
+							}
+						}
+						if !found {
+							sg.nodes = append(sg.nodes, nodeName)
+							log.Debugf("Added node %s to subgraph %s", nodeName, sg.name)
+						}
+					}
+				}
+			}
+		}
+	}
+	return &properties, nil
+}
+
+// Apply takes the layout settings from config: padding, style type,
+// the ASCII / box-drawing character choice and the coordinate overlay.
+func (p *Properties) Apply(config *diagram.Config) {
+	if config == nil {
+		return
+	}
+	p.boxBorderPadding = config.BoxBorderPadding
+	p.paddingX = config.PaddingBetweenX
+	p.paddingY = config.PaddingBetweenY
+	if config.StyleType != "" {
+		p.styleType = config.StyleType
+	}
+	p.useAscii = config.UseAscii
+	p.ShowCoords = config.ShowCoords
+}
