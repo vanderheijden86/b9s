@@ -83,6 +83,23 @@ export const store = {
   },
 };
 
+export type ThemeMode = "auto" | "light" | "dark";
+export function themeMode(): ThemeMode {
+  const saved = store.get<string>("theme", "auto");
+  return saved === "light" || saved === "dark" ? saved : "auto";
+}
+
+export function applyTheme(mode: ThemeMode = themeMode()): void {
+  const light = mode === "light" || mode === "auto" && window.matchMedia("(prefers-color-scheme: light)").matches;
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#E9DFCB" : "#1c1e26");
+}
+
+export function chooseTheme(mode: ThemeMode): void {
+  store.set("theme", mode);
+  applyTheme(mode);
+}
+
 export function haptic(ms: number): void {
   try { if (navigator.vibrate) navigator.vibrate(ms); } catch { /* not every platform vibrates */ }
 }

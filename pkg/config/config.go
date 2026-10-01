@@ -29,12 +29,35 @@ type Project struct {
 
 // UIConfig holds UI preference settings.
 type UIConfig struct {
+	Theme       ThemeMode  `yaml:"theme,omitempty"`        // auto, light or dark
 	DefaultView string     `yaml:"default_view,omitempty"` // list, tree, board, split
 	BoardEpics  string     `yaml:"board_epics,omitempty"`  // rail or rows; v switches at runtime
 	SplitRatio  float64    `yaml:"split_ratio,omitempty"`  // Default split pane ratio (0.2-0.8)
 	Headless    bool       `yaml:"headless,omitempty"`     // Compact header mode
 	Sort        SortConfig `yaml:"sort,omitempty"`         // Tree sort applied at startup
 	DateOrder   DateOrder  `yaml:"date_order,omitempty"`   // auto, dmy or mdy for absolute dates
+}
+
+type ThemeMode string
+
+const (
+	ThemeAuto  ThemeMode = "auto"
+	ThemeLight ThemeMode = "light"
+	ThemeDark  ThemeMode = "dark"
+)
+
+func (m *ThemeMode) UnmarshalYAML(node *yaml.Node) error {
+	var value string
+	if err := node.Decode(&value); err != nil {
+		return err
+	}
+	switch ThemeMode(value) {
+	case ThemeAuto, ThemeLight, ThemeDark:
+		*m = ThemeMode(value)
+		return nil
+	default:
+		return fmt.Errorf("invalid ui.theme %q: want auto, light or dark", value)
+	}
 }
 
 // SortConfig is the tree sort b9s starts with. The sort popup overrides it for
@@ -144,6 +167,7 @@ func (l legacyConfig) findProject(name string) *Project {
 func DefaultConfig() Config {
 	return Config{
 		UI: UIConfig{
+			Theme:       ThemeAuto,
 			DefaultView: "list",
 			SplitRatio:  0.4,
 			Sort:        SortConfig{Field: "created", Direction: "desc"},

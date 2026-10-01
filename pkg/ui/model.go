@@ -512,13 +512,15 @@ type Model struct {
 	lastForceRefresh time.Time
 
 	// UI Components
-	list     list.Model
-	viewport viewport.Model
-	renderer *MarkdownRenderer
-	board    BoardModel
-	tree     TreeModel // Hierarchical tree view (bv-gllx)
-	graph    GraphModel
-	theme    Theme
+	list         list.Model
+	viewport     viewport.Model
+	renderer     *MarkdownRenderer
+	board        BoardModel
+	tree         TreeModel // Hierarchical tree view (bv-gllx)
+	graph        GraphModel
+	theme        Theme
+	originalDark bool
+	paperTouched *bool
 
 	// Update State
 	updateAvailable bool
@@ -693,7 +695,8 @@ type Model struct {
 	// overlay left open across a project switch can never write into the new
 	// project under the old project's issue ID (bd-l66t).
 	projectGeneration uint64
-	appConfig         config.Config    // Loaded app configuration
+	appConfig         config.Config // Loaded app configuration
+	configLoadFailed  bool
 	allProjects       []config.Project // All known projects
 	projectPicker     ProjectPickerModel
 	projectCountCache map[string]projectCounts
@@ -1172,6 +1175,8 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		tree:                treeModel,
 		graph:               graph,
 		theme:               theme,
+		originalDark:        theme.Renderer.HasDarkBackground(),
+		paperTouched:        new(bool),
 		currentFilter:       "all",
 		focused:             focusTree, // Tree view is the default on launch (bd-dxc)
 		treeViewActive:      true,      // Tree view is the default on launch (bd-dxc)
@@ -1211,6 +1216,7 @@ func (m Model) WithMonthFirst(monthFirst bool) Model {
 // Call this after NewModel to enable project switching and favorites.
 func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Model {
 	m.appConfig = cfg
+	m.applyThemeMode(cfg.UI.Theme)
 	m.doltPollInterval = cfg.RefreshPollInterval()
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
@@ -1228,6 +1234,48 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.projectPicker = NewProjectPicker(entries, m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)
 	return m
+}
+
+// WithConfigLoadError prevents a theme choice from replacing an unreadable config.
+func (m Model) WithConfigLoadError(err error) Model {
+	m.configLoadFailed = err != nil
+	return m
+}
+
+func (m *Model) applyThemeMode(mode config.ThemeMode) {
+	if mode == "" {
+		mode = config.ThemeAuto
+	}
+	m.appConfig.UI.Theme = mode
+	if m.paperTouched != nil && (mode != config.ThemeAuto || !m.originalDark) {
+		*m.paperTouched = true
+	}
+	dark := mode == config.ThemeDark || mode == config.ThemeAuto && m.originalDark
+	m.theme.Renderer.SetHasDarkBackground(dark)
+	lipgloss.SetHasDarkBackground(dark)
+	if m.showEditModal && m.editModal.form != nil {
+		m.editModal.form.WithTheme(formTheme(m.theme))
+	}
+	if m.showAttachAddModal && m.attachAddModal.form != nil {
+		m.attachAddModal.form.WithTheme(formTheme(m.theme))
+	}
+	if m.renderer != nil {
+		m.renderer = NewMarkdownRendererWithTheme(m.renderer.width, m.theme)
+		m.updateViewportContent()
+	}
+}
+
+// TerminalPaperSequence sets the background before the alternate screen appears.
+func (m Model) TerminalPaperSequence() string {
+	if m.appConfig.UI.Theme == config.ThemeAuto && m.originalDark && !m.PaperTouched() {
+		return ""
+	}
+	return terminalSequenceForThemeMode(m.appConfig.UI.Theme, m.originalDark)
+}
+
+// PaperTouched reports whether this session changed the terminal background.
+func (m Model) PaperTouched() bool {
+	return m.paperTouched != nil && *m.paperTouched
 }
 
 // WithSourceType sets the backend source type on the model. This determines
@@ -2260,6 +2308,18 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		m.statusIsError = false
 		m.statusHyperlink = ""
 		m.statusHyperlinkFor = ""
+		if msg.String() == "ctrl+t" && m.list.FilterState() != list.Filtering && m.queryState.Mode() != QueryEditing && m.commandPrompt.Mode() != PromptEditing {
+			mode := nextThemeMode(m.appConfig.UI.Theme)
+			m.applyThemeMode(mode)
+			if m.configLoadFailed {
+				m.statusMsg = "Theme is temporary: config could not be read"
+				m.statusIsError = true
+			} else if err := config.Save(m.appConfig); err != nil {
+				m.statusMsg = "Saving theme: " + err.Error()
+				m.statusIsError = true
+			}
+			return m, nil
+		}
 
 		// The help search owns every key while editing, ahead of the global
 		// single-key bindings (?, :, `) that would otherwise close help.
@@ -4169,7 +4229,8 @@ func (m Model) renderLoadingScreen() string {
 	return lipgloss.Place(m.width, m.height-1, lipgloss.Center, lipgloss.Center, content)
 }
 
-func (m Model) View() string {
+func (m Model) View() (result string) {
+	defer func() { result = m.TerminalPaperSequence() + result }()
 	if !m.ready {
 		return "Initializing..."
 	}
@@ -5281,6 +5342,7 @@ func (m *Model) renderFooter() string {
 		hints = append(hints, hint{"P", pickerLabel})
 	}
 
+	hints = append([]hint{{"^T", "theme:" + string(m.appConfig.UI.Theme)}}, hints...)
 	var hintParts []string
 	for _, h := range hints {
 		hintParts = append(hintParts, keyStyle.Render(h.key)+":"+labelStyle.Render(h.label))

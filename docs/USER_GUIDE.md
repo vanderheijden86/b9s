@@ -46,10 +46,11 @@ b9s --repo api
 
 ## The screen
 
-On a light terminal, b9s uses sepia paper and muted ink colors. It restores the
-terminal's default background when the TUI exits. Dark terminals keep the
-Dracula palette. Terminal support for OSC 11 and OSC 111 controls whether the
-paper background changes outside styled cells.
+Press `Ctrl-T` to cycle Automatic, Sepia, and Dracula. The footer shows the
+current choice. b9s saves it as `ui.theme` in `~/.config/b9s/config.yaml`.
+Automatic follows the terminal's original background. b9s restores the
+terminal's default background when the TUI exits. Terminal support for OSC 11
+and OSC 111 controls whether the background changes outside styled cells.
 See the [light terminal screenshot](screenshot-sepia.png).
 
 ```text
@@ -450,6 +451,10 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 ## Phone and browser
 
 `b9s web` serves the project in the current folder to a browser, sized for a phone. It opens the project the same way `b9s` does and never falls back to another one: a server started in the wrong folder exits rather than show other data.
+
+Tap the `◐` button in the header to choose Automatic, Sepia, or Dracula.
+Automatic follows the device color scheme. The browser saves its own choice,
+so changing the terminal theme does not change the browser theme.
 
 ```bash
 b9s web                        # 127.0.0.1:7979, pairing on

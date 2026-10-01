@@ -208,7 +208,7 @@ func buildEditForm(m *EditModal) *huh.Form {
 			labelsInput,
 			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
-	).WithTheme(huh.ThemeDracula()).
+	).WithTheme(formTheme(m.theme)).
 		WithKeyMap(editFormKeyMap()).
 		WithShowHelp(true).
 		WithShowErrors(true)
@@ -237,7 +237,7 @@ func buildCreateForm(m *EditModal) *huh.Form {
 			labelsInput,
 			huh.NewText().Title("Notes").Value(m.notes).Lines(3),
 		),
-	).WithTheme(huh.ThemeDracula()).
+	).WithTheme(formTheme(m.theme)).
 		WithKeyMap(editFormKeyMap()).
 		WithShowHelp(true).
 		WithShowErrors(true)

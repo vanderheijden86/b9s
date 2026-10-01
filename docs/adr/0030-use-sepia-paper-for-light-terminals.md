@@ -2,8 +2,9 @@
 type: ADR
 id: "0030"
 title: "Use sepia paper for light terminals"
-status: active
+status: superseded
 date: 2026-10-01
+superseded_by: "0031"
 ---
 
 ## Context

@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/yaml.v3"
 
 	"github.com/vanderheijden86/b9s/internal/datasource"
@@ -331,6 +330,7 @@ func main() {
 		WithDoltFailure(doltFailure).
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath).
+		WithConfigLoadError(cfgErr).
 		WithMonthFirst(appCfg.UI.DateOrder.MonthFirst(config.SystemLocale)).
 		WithInitialQuery(*initialFilter).
 		WithStartupFailure(choice.StartupFailure).
@@ -344,12 +344,16 @@ func main() {
 }
 
 func runTUIProgram(m ui.Model) error {
-	setPaper, resetPaper := ui.PaperSequences(lipgloss.HasDarkBackground())
+	setPaper := m.TerminalPaperSequence()
+	defer func() {
+		if m.PaperTouched() {
+			_, _ = os.Stdout.WriteString("\x1b]111\x07")
+		}
+	}()
 	if setPaper != "" {
 		if _, err := os.Stdout.WriteString(setPaper); err != nil {
 			return fmt.Errorf("setting terminal paper: %w", err)
 		}
-		defer os.Stdout.WriteString(resetPaper)
 	}
 
 	p := tea.NewProgram(

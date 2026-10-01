@@ -133,7 +133,8 @@ func (mr *MarkdownRenderer) SetWidthWithTheme(width int, theme Theme) {
 	}
 
 	// Allow recreation even if width is the same (theme might have changed)
-	styleConfig := buildStyleFromTheme(theme, mr.isDark)
+	isDark := theme.Renderer.HasDarkBackground()
+	styleConfig := buildStyleFromTheme(theme, isDark)
 
 	r, err := glamour.NewTermRenderer(
 		glamour.WithStyles(styleConfig),
@@ -154,6 +155,7 @@ func (mr *MarkdownRenderer) SetWidthWithTheme(width int, theme Theme) {
 	}
 	if r != nil {
 		mr.renderer = r
+		mr.isDark = isDark
 		mr.width = width
 		mr.theme = &theme
 		mr.useTheme = true

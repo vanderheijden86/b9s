@@ -1,10 +1,15 @@
 package ui
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 func TestDefaultTheme(t *testing.T) {
@@ -20,6 +25,60 @@ func TestDefaultTheme(t *testing.T) {
 	}
 	if isColorEmpty(theme.Open) {
 		t.Error("DefaultTheme Open color is empty")
+	}
+}
+
+func TestThemeModeCycle(t *testing.T) {
+	if nextThemeMode("auto") != "light" || nextThemeMode("light") != "dark" || nextThemeMode("dark") != "auto" {
+		t.Fatal("theme mode must cycle Automatic, Sepia and Dracula")
+	}
+}
+
+func TestTerminalSequenceForThemeMode(t *testing.T) {
+	if got := terminalSequenceForThemeMode("light", true); got != "\x1b]11;#E9DFCB\x07" {
+		t.Fatalf("forced Sepia on dark terminal = %q", got)
+	}
+	if got := terminalSequenceForThemeMode("dark", false); got != "\x1b]11;#282A36\x07" {
+		t.Fatalf("forced Dracula on light terminal = %q", got)
+	}
+	if got := terminalSequenceForThemeMode("auto", true); got != "\x1b]111\x07" {
+		t.Fatalf("automatic dark must restore terminal default, got %q", got)
+	}
+}
+
+func TestAutomaticDarkDoesNotTouchPaperUntilThemeChanges(t *testing.T) {
+	originalGlobalDark := lipgloss.HasDarkBackground()
+	defer lipgloss.SetHasDarkBackground(originalGlobalDark)
+	m := Model{theme: DefaultTheme(lipgloss.NewRenderer(nil)), originalDark: true, paperTouched: new(bool)}
+	m.appConfig.UI.Theme = config.ThemeAuto
+	if got := m.TerminalPaperSequence(); got != "" {
+		t.Fatalf("initial automatic dark changed paper: %q", got)
+	}
+	m.applyThemeMode(config.ThemeLight)
+	m.applyThemeMode(config.ThemeAuto)
+	if got := m.TerminalPaperSequence(); got != "\x1b]111\x07" || !m.PaperTouched() {
+		t.Fatalf("returning to automatic dark did not restore paper: %q", got)
+	}
+}
+
+func TestThemeShortcutDoesNotReplaceUnreadableConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	path := config.ConfigPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const original = "ui: [invalid\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m := NewModel(nil, "").WithConfig(config.DefaultConfig(), "", "").WithConfigLoadError(errors.New("bad yaml"))
+	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlT})
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != original {
+		t.Fatalf("unreadable config was replaced: %q", data)
 	}
 }
 

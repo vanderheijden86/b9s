@@ -389,6 +389,39 @@ func TestLightTUIRestoresTerminalPaper(t *testing.T) {
 	}
 }
 
+func TestThemeShortcutSwitchesAndPersists(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
+	configHome := t.TempDir()
+	out, err := runTreeTUIWithEnv(t, tempDir, 2000, []keyStep{
+		{key: "\x14", delay: 100 * time.Millisecond},
+		{key: "\x14", delay: 100 * time.Millisecond},
+	}, "COLORFGBG=7;0", "XDG_CONFIG_HOME="+configHome)
+	if err != nil {
+		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+	}
+	if !bytes.Contains(out, []byte("\x1b]11;#E9DFCB\x07")) || !bytes.Contains(out, []byte("\x1b]11;#282A36\x07")) {
+		t.Fatalf("theme shortcut did not paint Sepia and Dracula: %q", out)
+	}
+	if bytes.LastIndex(out, []byte("\x1b]111\x07")) < bytes.LastIndex(out, []byte("\x1b]11;#282A36\x07")) {
+		t.Fatalf("terminal background was not restored on exit: %q", out)
+	}
+	cfg, err := os.ReadFile(filepath.Join(configHome, "b9s", "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(cfg, []byte("theme: dark")) {
+		t.Fatalf("theme choice was not saved: %s", cfg)
+	}
+	restarted, err := runTreeTUIWithEnv(t, tempDir, 1200, nil, "COLORFGBG=7;0", "XDG_CONFIG_HOME="+configHome)
+	if err != nil {
+		t.Fatalf("restarting TUI: %v", err)
+	}
+	if !bytes.Contains(restarted, []byte("theme:dark")) || !bytes.Contains(restarted, []byte("\x1b]11;#282A36\x07")) {
+		t.Fatalf("restart did not load the saved theme: %q", restarted)
+	}
+}
+
 func TestTreeViewShiftKShowsCloseConfirmation(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, []treeFixtureIssue{

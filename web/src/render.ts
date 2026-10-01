@@ -75,6 +75,7 @@ function renderHeader(): void {
     <button class="dot ${bad ? "bad" : ""}" id="hdot" data-act="health" aria-label="Data source health">●</button>
     <span class="cnt"><b>${n("open")}</b> open · <i>${n("in_progress")}</i> prog${n("blocked") ? ` · <span style="color:var(--red)">${n("blocked")}</span> blk` : ""}</span>
     <button class="ib follow ${S.follow ? "on" : ""}" data-act="follow" aria-label="Follow mode" aria-pressed="${S.follow}">F</button>
+    <button class="ib" data-act="theme" aria-label="Theme" title="Theme">◐</button>
     <button class="ib" data-act="create" aria-label="Create issue">+</button>
     <button class="ib" data-act="help" aria-label="Gestures">?</button>`;
 }

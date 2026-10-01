@@ -8,7 +8,7 @@ import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type
 import { ALL, boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, treeList, wide } from "./render";
 import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveChips, stOf, type Sheet, type SortKey } from "./state";
 import { syncSoon } from "./nav";
-import { $, $opt, copyText, esc, fmtDate, haptic, store } from "./util";
+import { $, $opt, chooseTheme, copyText, esc, fmtDate, haptic, store, themeMode, type ThemeMode } from "./util";
 
 /* ================= toast ================= */
 
@@ -376,6 +376,14 @@ function formHTML(sh: Sheet): string {
 function sheetBody(sh: Sheet): [string, string, string] {
   const i = sh.id ? get(sh.id) : undefined;
   switch (sh.kind) {
+    case "theme": {
+      const current = themeMode();
+      return ["Appearance", "Choose this browser's color theme", [
+        opt("settheme", "◐", "Automatic", "Follow this device", { val: "auto", cls: current === "auto" ? "cur" : "" }),
+        opt("settheme", "☼", "Sepia", "Warm paper and dark ink", { val: "light", cls: current === "light" ? "cur" : "" }),
+        opt("settheme", "☾", "Dracula", "Dark background", { val: "dark", cls: current === "dark" ? "cur" : "" }),
+      ].join("")];
+    }
     case "status": {
       const ids = sh.ids || [sh.id!];
       const cur = ids.length === 1 && get(ids[0]) ? get(ids[0])!.status : null;
@@ -536,6 +544,7 @@ export async function sheetAction(a: string, val: string | undefined): Promise<v
   const sh = S.sheet || ({ kind: "" } as Sheet);
   switch (a) {
     case "cancel": closeSheet(); break;
+    case "settheme": chooseTheme(val as ThemeMode); closeSheet(); render(); break;
     case "setstatus": {
       const ids = sh.ids || [sh.id!];
       if (val === "closed") { openSheet("closereason", { ids }); break; }
@@ -646,6 +655,7 @@ async function loadProjects(): Promise<void> {
 export async function act(a: string): Promise<void> {
   const cur = detailId();
   switch (a) {
+    case "theme": openSheet("theme"); break;
     case "projects": if (D.public) { toast("This demo shows one project"); break; } openSheet("projects"); void loadProjects(); break;
     case "health": openSheet("health"); api.health().then(h => { D.health = h; if (S.sheet?.kind === "health") renderSheet(); render(); }, () => { /* the snapshot's health still shows */ }); break;
     case "identity": openSheet("identity"); break;

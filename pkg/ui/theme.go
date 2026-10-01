@@ -4,8 +4,59 @@ import (
 	"os"
 
 	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
+
+func formTheme(theme Theme) *huh.Theme {
+	if theme.Renderer.HasDarkBackground() {
+		return huh.ThemeDracula()
+	}
+	t := huh.ThemeBase()
+	t.Focused.Base = t.Focused.Base.BorderForeground(lipgloss.Color(sepiaNavy))
+	t.Focused.Card = t.Focused.Base
+	t.Focused.Title = t.Focused.Title.Foreground(lipgloss.Color(sepiaPlum)).Bold(true)
+	t.Focused.NoteTitle = t.Focused.Title
+	t.Focused.Description = t.Focused.Description.Foreground(lipgloss.Color(sepiaInkSoft))
+	t.Focused.Option = t.Focused.Option.Foreground(lipgloss.Color(sepiaInk))
+	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(lipgloss.Color(sepiaMoss))
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(lipgloss.Color(sepiaNavy))
+	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(lipgloss.Color(sepiaNavy))
+	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(lipgloss.Color(sepiaNavy))
+	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(lipgloss.Color(sepiaInkSoft))
+	t.Focused.FocusedButton = t.Focused.FocusedButton.Foreground(lipgloss.Color(sepiaPaper)).Background(lipgloss.Color(sepiaNavy))
+	t.Focused.BlurredButton = t.Focused.BlurredButton.Foreground(lipgloss.Color(sepiaInk)).Background(lipgloss.Color(sepiaPaperDeep))
+	t.Blurred = t.Focused
+	t.Blurred.Base = t.Blurred.Base.BorderStyle(lipgloss.HiddenBorder())
+	t.Blurred.Card = t.Blurred.Base
+	return t
+}
+
+func nextThemeMode(mode config.ThemeMode) config.ThemeMode {
+	switch mode {
+	case config.ThemeAuto:
+		return config.ThemeLight
+	case config.ThemeLight:
+		return config.ThemeDark
+	default:
+		return config.ThemeAuto
+	}
+}
+
+func terminalSequenceForThemeMode(mode config.ThemeMode, originalDark bool) string {
+	switch mode {
+	case config.ThemeLight:
+		return "\x1b]11;" + sepiaPaper + "\x07"
+	case config.ThemeDark:
+		return "\x1b]11;#282A36\x07"
+	default:
+		if originalDark {
+			return "\x1b]111\x07"
+		}
+		return "\x1b]11;" + sepiaPaper + "\x07"
+	}
+}
 
 // TermProfile holds the detected terminal color profile. Computed once at
 // package init so every style helper can branch without re-detecting.

@@ -76,7 +76,7 @@ func buildAttachAddForm(m *AttachAddModal) *huh.Form {
 				Value(m.paths).
 				Lines(6),
 		),
-	).WithTheme(huh.ThemeDracula()).
+	).WithTheme(formTheme(m.theme)).
 		WithKeyMap(editFormKeyMap()).
 		WithShowHelp(true).
 		WithShowErrors(true)

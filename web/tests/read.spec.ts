@@ -82,4 +82,29 @@ test.describe("reading", () => {
     await page.locator('[data-act="help"]').click();
     await expect(page.locator(".msheet .gtable tr")).toHaveCount(25);
   });
+
+  test("theme chooser switches and saves the browser appearance", async ({ page, project }) => {
+    const browserErrors: string[] = [];
+    page.on("pageerror", error => browserErrors.push(error.message));
+    page.on("console", message => { if (message.type() === "error") browserErrors.push(message.text()); });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await open(page, project);
+    await page.locator('[data-act="theme"]').click();
+    await page.locator('[data-sa="settheme"][data-val="light"]').click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect.poll(() => page.locator("body").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(233, 223, 203)");
+    await page.locator('#bar [data-view="board"]').click();
+    await expect(page.locator("#vBoard")).toBeVisible();
+    await page.locator('#bar [data-view="tree"]').click();
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await page.locator('[data-act="theme"]').click();
+    await page.locator('[data-sa="settheme"][data-val="dark"]').click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await page.locator('[data-act="theme"]').click();
+    await page.locator('[data-sa="settheme"][data-val="auto"]').click();
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    expect(browserErrors).toEqual([]);
+  });
 });

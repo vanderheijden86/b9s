@@ -8,7 +8,7 @@ import { busy, bindAll } from "./gestures";
 import { bindHistory, openHash, parseHash } from "./nav";
 import { ensureVisible, render, renderBanner, renderStale, revealInTree } from "./render";
 import { S } from "./state";
-import { $, esc, store } from "./util";
+import { $, applyTheme, esc, store } from "./util";
 
 function pulse(): void {
   const dot = document.getElementById("hdot");
@@ -90,4 +90,6 @@ async function boot(): Promise<void> {
   }
 }
 
+applyTheme();
+window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => applyTheme());
 void boot();

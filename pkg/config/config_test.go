@@ -335,3 +335,29 @@ func TestLoadFrom_UISortRejectsUnknownDirection(t *testing.T) {
 		t.Fatal("expected unknown sort direction to fail config loading")
 	}
 }
+
+func TestUIThemePreferenceRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	cfg := DefaultConfig()
+	cfg.UI.Theme = ThemeLight
+	if err := SaveTo(cfg, path); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.UI.Theme != ThemeLight {
+		t.Fatalf("theme = %q, want %q", loaded.UI.Theme, ThemeLight)
+	}
+}
+
+func TestUIThemeRejectsUnknownValue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("ui:\n  theme: neon\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFrom(path); err == nil {
+		t.Fatal("unknown ui.theme must fail config loading")
+	}
+}
