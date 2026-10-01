@@ -484,7 +484,7 @@ The database password never reaches the browser. The server reads the store and 
 | Tree | The TUI tree: epics, children, status glyphs, a second line with priority, type, assignee, age, progress, blockers, comment count and labels (choose them under Tree options) |
 | Board | One column at a time on a phone, every column side by side on a wider screen, grouped by status, priority or type. Columns fold into rails, and epics show as cards, rows or a side rail |
 | Search | The [query language](#search) with completions. Results update as you type, and Apply puts the query on the tree |
-| Detail | A sheet over the list, half height on a phone until you scroll its text or tap its head: fields, parent, children, blockers, text sections as Markdown, comments, and Status, Edit, Comment, Branch and More |
+| Detail | A sheet over the list, half height on a phone until you scroll its text or tap its head: fields, parent, children, blockers, Markdown text with rendered Mermaid diagrams, comments, and Status, Edit, Comment, Branch and More. Wide diagrams scroll sideways. Copy and Edit retain the source. |
 | Graph | The chains of blockers and blocked issues around one issue, with parent, children and discovered-from |
 | More | Projects, health, the write log, identity, pairing, board and tree options |
 

@@ -287,6 +287,8 @@ The detail pane shows an issue's attachments above its comments, and `R` lists t
 
 `b9s web` serves the same project to a phone browser: the tree, the board, search with the TUI query language, the detail sheet, the dependency graph, and every write the TUI makes, through the same `bd` calls. Changes from anywhere show up live.
 
+Mermaid fences in the web detail sheet render as diagrams when opened. Large diagrams scroll sideways, and invalid diagrams stay as source code. Copy and Edit keep the original Mermaid text.
+
 ```bash
 cd ~/code/my-project       # a folder with .beads, as for b9s itself
 b9s web                    # serves 127.0.0.1:7979 and prints a pairing link
