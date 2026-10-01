@@ -293,6 +293,34 @@ func Render(sd *SequenceDiagram, config *diagram.Config) (string, error) {
 	lines = append(lines, renderEvents(events, layout, chars, act)...)
 
 	lines = append(lines, buildLifeline(layout, chars, act))
+	footer := func(i int, draw func(int) string) string {
+		if act.dead[sd.Participants[i]] || act.unborn[sd.Participants[i]] {
+			return strings.Repeat(" ", layout.participantWidths[i]+boxBorderWidth)
+		}
+		return draw(i)
+	}
+	lines = append(lines, buildLine(sd.Participants, layout, func(i int) string {
+		return footer(i, func(i int) string {
+			w := layout.participantWidths[i]
+			return string(chars.TopLeft) + strings.Repeat(string(chars.Horizontal), w/2) +
+				string(chars.TeeUp) + strings.Repeat(string(chars.Horizontal), w-w/2-1) +
+				string(chars.TopRight)
+		})
+	}))
+	lines = append(lines, buildLine(sd.Participants, layout, func(i int) string {
+		return footer(i, func(i int) string {
+			w := layout.participantWidths[i]
+			labelLen := displayWidth(sd.Participants[i].Label)
+			pad := (w - labelLen) / 2
+			return string(chars.Vertical) + strings.Repeat(" ", pad) + sd.Participants[i].Label +
+				strings.Repeat(" ", w-pad-labelLen) + string(chars.Vertical)
+		})
+	}))
+	lines = append(lines, buildLine(sd.Participants, layout, func(i int) string {
+		return footer(i, func(i int) string {
+			return string(chars.BottomLeft) + strings.Repeat(string(chars.Horizontal), layout.participantWidths[i]) + string(chars.BottomRight)
+		})
+	}))
 
 	// Participant-group boxes wrap their columns for the whole diagram height:
 	// a titled top border above the headers, side borders overlaid on every

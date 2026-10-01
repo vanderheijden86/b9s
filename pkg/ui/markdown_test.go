@@ -85,6 +85,26 @@ func TestMarkdownRendererMermaidSequence(t *testing.T) {
 	}
 }
 
+func TestMarkdownRendererMermaidSequenceMirrorsParticipants(t *testing.T) {
+	out, err := NewMarkdownRenderer(80).Render("```mermaid\nsequenceDiagram\nparticipant User\nparticipant b9s\nUser->>b9s: Open detail\nb9s-->>User: Render diagram\n```")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := stripANSI(out)
+	for _, label := range []string{"User", "b9s"} {
+		if strings.Count(plain, label) != 2 {
+			t.Fatalf("participant %q must appear in top and bottom boxes: %q", label, plain)
+		}
+	}
+	if strings.LastIndex(plain, "User") < strings.Index(plain, "Render diagram") ||
+		strings.LastIndex(plain, "b9s") < strings.Index(plain, "Render diagram") {
+		t.Fatalf("bottom participant boxes must follow the last message: %q", plain)
+	}
+	if !strings.Contains(plain, "┴") || !strings.Contains(plain[strings.LastIndex(plain, "User"):], "└") {
+		t.Fatalf("bottom participant labels need connected, closed boxes: %q", plain)
+	}
+}
+
 func TestMarkdownRendererMermaidFallbacks(t *testing.T) {
 	for name, source := range map[string]string{
 		"unsupported":    "classDiagram\nA <|-- B",

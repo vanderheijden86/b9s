@@ -31,4 +31,9 @@ func TestMermaidDetailRenderingE2E(t *testing.T) {
 			t.Fatalf("rendered diagram retained %q:\n%s", source, frame)
 		}
 	}
+	for _, participant := range []string{"Alice", "Bob"} {
+		if strings.Count(frame, participant) != 2 {
+			t.Fatalf("sequence participant %q needs top and bottom boxes:\n%s", participant, frame)
+		}
+	}
 }
