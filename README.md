@@ -134,6 +134,7 @@ In the tree:
 | `Space`, `V`, `u`, `Ctrl-\` | Mark the issue, mark a range, unmark the issue, clear the marks |
 | `e`, `S`, `K`, `Delete` | Edit, set the status, close, delete |
 | `Ctrl-N`, `c` | Create an issue, copy the ID and title |
+| `U` | Open the update confirmation when a newer b9s release is available |
 
 Everywhere:
 

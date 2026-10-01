@@ -105,7 +105,7 @@ const contextHelpList = `## List View
   K         Close issue (confirm)
   Del       Delete issue (confirm)
   t/T       Time-travel
-  U         Self-update bv`
+  U         Update b9s`
 
 const contextHelpTree = `## Tree View
 
@@ -137,7 +137,7 @@ const contextHelpTree = `## Tree View
   b/B  Bookmark/cycle   m/M  Mark
 
 **Actions**
-	K  Close   Del  Delete   g  Dependency graph`
+  K  Close   Del  Delete   g  Graph   U  Update b9s`
 
 const contextHelpGraph = `## Dependency Graph
 

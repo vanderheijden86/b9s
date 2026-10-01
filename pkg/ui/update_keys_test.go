@@ -154,6 +154,27 @@ func TestUpdateMsgSetsUpdateAvailable(t *testing.T) {
 	}
 }
 
+func TestUppercaseUOpensAvailableUpdateFromTreeAndDetail(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		focus focus
+	}{{"tree", focusTree}, {"detail", focusDetail}} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewModel([]model.Issue{{ID: "bd-1", Title: "One", Status: model.StatusOpen}}, "")
+			m.updateAvailable = true
+			m.updateTag = "v9.9.9"
+			m.updateURL = "https://example.com/release"
+			m.focused = tc.focus
+
+			updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("U")})
+			m = updated.(Model)
+			if !m.showUpdateModal || m.focused != focusUpdateModal {
+				t.Fatalf("U must open the update modal from %v, got shown=%t focus=%v", tc.focus, m.showUpdateModal, m.focused)
+			}
+		})
+	}
+}
+
 // TestNarrowWindowTreeDetailHidden verifies that in a narrow window (width <= SplitViewThreshold),
 // treeDetailHidden is true so Enter opens full-screen detail (bd-6eg, bd-1of).
 func TestNarrowWindowTreeDetailHidden(t *testing.T) {

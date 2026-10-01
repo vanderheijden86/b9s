@@ -39,13 +39,13 @@ func TestLowercaseUDoesNotMarkUnmarkedRow(t *testing.T) {
 	}
 }
 
-func TestUppercaseUClearsMarks(t *testing.T) {
+func TestUppercaseMClearsMarks(t *testing.T) {
 	m := markRows(t, newBulkMarkModel(t), "bd-1", "bd-3")
 
-	m, _ = pressBulkKey(t, m, runeKey("U"))
+	m, _ = pressBulkKey(t, m, runeKey("M"))
 
 	if got := m.tree.MarkedCount(); got != 0 {
-		t.Fatalf("U must clear marks, %d remain", got)
+		t.Fatalf("M must clear marks, %d remain", got)
 	}
 }
 

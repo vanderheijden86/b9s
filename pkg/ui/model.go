@@ -2891,6 +2891,13 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.rebuildPickerEntries()
 				return m, nil
 
+			case "U":
+				if m.focused == focusLabelPicker || m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen() {
+					break
+				}
+				m.showSelfUpdateModal()
+				return m, nil
+
 			case "R":
 				// Attachment picker over the selected issue's attachments
 				// (bd-t8j5.9). Skipped when a popup or the label filter
@@ -3766,7 +3773,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// macOS claims ctrl+space for input-source switching by default, so
 		// it often never arrives and V is the range key that always does.
 		m.tree.SpanMark()
-	case "ctrl+\\", "M", "U":
+	case "ctrl+\\", "M":
 		m.tree.UnmarkAll()
 	case "x":
 		// Toggle XRay drill-down mode (bd-0rc)
@@ -3984,10 +3991,6 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 	case "s":
 		// Cycle sort mode (bv-3ita)
 		m.cycleSortMode()
-		return m, true
-	case "U":
-		// Show self-update modal (bv-182)
-		m.showSelfUpdateModal()
 		return m, true
 	case "y":
 		// Copy ID to clipboard (consistent with board view - bv-yg39)

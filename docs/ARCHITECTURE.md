@@ -134,7 +134,7 @@ Every TUI instance serves `internal/control` on a unix socket in a 0700 state di
 
 1. Modal overlays: the tutorial, the help overlay, the edit form, the status picker, the confirmation, the project table and the command prompt each take every key while open.
 2. The query field, while it is being edited. Every key goes into the query, so a query letter never triggers an action.
-3. Global keys: project digits, `L` and `A` pickers, `b` and `g` for the board and the graph, `e`, `K`, `Delete`, `Ctrl-N`, `Ctrl-E`, `?`, `:` and `/`.
+3. Global keys: project digits, `L` and `A` pickers, `b` and `g` for the board and the graph, `e`, `K`, `Delete`, `U` for the update confirmation, `Ctrl-N`, `Ctrl-E`, `?`, `:` and `/`.
 4. The focused pane: `handleTreeKeys`, `handleBoardKeys`, `handleGraphKeys` or the detail pane.
 
 A key that a global handler consumes never reaches a pane. `b` is the board everywhere, so the tree's bookmark on `b` is unreachable. Keys that fall into this trap are tracked in Beads rather than documented as features.
