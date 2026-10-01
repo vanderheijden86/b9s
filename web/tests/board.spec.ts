@@ -1,5 +1,19 @@
 import { expect, longPress, open, test } from "./harness";
 
+test("Sepia phone board renders flat Quiet Paper issue rows", async ({ page, project }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await open(page, project);
+  await page.locator('[data-act="theme"]').click();
+  await page.locator('[data-sa="settheme"][data-val="light"]').click();
+  await page.locator('#bar [data-view="board"]').click();
+  const issue = page.locator('#bcol [data-card="t-2"]');
+  await expect(issue).toBeVisible();
+  await expect.poll(() => issue.evaluate(el => {
+    const style = getComputedStyle(el);
+    return [style.borderTopWidth, style.borderBottomWidth, style.borderRadius, style.backgroundColor];
+  })).toEqual(["0px", "1px", "0px", "rgb(233, 223, 203)"]);
+});
+
 test("board lists columns and moves a card by drag onto a tab", async ({ page, project }) => {
   await open(page, project);
   await page.locator('#bar [data-view="board"]').click();

@@ -23,6 +23,35 @@ async function drag(page: Page, from: { x: number; y: number }, to: { x: number;
 
 const mid = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
 
+test("Sepia board uses Quiet Paper rows and an unboxed epic rail", async ({ page, project }) => {
+  const browserErrors: string[] = [];
+  page.on("pageerror", error => browserErrors.push(error.message));
+  page.on("console", message => { if (message.type() === "error") browserErrors.push(message.text()); });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await board(page, project);
+  await page.locator('[data-act="theme"]').click();
+  await page.locator('[data-sa="settheme"][data-val="light"]').click();
+  const issue = card(page, "t-2");
+  const epic = page.locator('#wboard .wepic[data-epic="t-epic"]');
+  await expect(issue).toBeVisible();
+  await expect(epic).toBeVisible();
+  await expect.poll(() => issue.evaluate(el => {
+    const style = getComputedStyle(el);
+    return [style.borderTopWidth, style.borderBottomWidth, style.borderRadius, style.backgroundColor];
+  })).toEqual(["0px", "1px", "0px", "rgb(233, 223, 203)"]);
+  await expect.poll(() => epic.evaluate(el => {
+    const style = getComputedStyle(el);
+    return [style.borderTopWidth, style.borderBottomWidth, style.borderRadius];
+  })).toEqual(["0px", "0px", "0px"]);
+  await issue.click();
+  await expect.poll(() => issue.evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(210, 213, 204)");
+
+  await page.locator('[data-act="theme"]').click();
+  await page.locator('[data-sa="settheme"][data-val="dark"]').click();
+  await expect.poll(() => issue.evaluate(el => getComputedStyle(el).borderTopWidth)).toBe("1px");
+  expect(browserErrors).toEqual([]);
+});
+
 test("every column shows side by side", async ({ page, project }) => {
   await board(page, project);
   const heads = page.locator('#wboard .whead[data-tab]');

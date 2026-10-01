@@ -226,6 +226,17 @@
   .wepic .en { color: var(--dim); font-variant-numeric: tabular-nums; }
   .wepic .ec { grid-column: 1 / -1; color: var(--muted); }
   .wcell .hid { color: var(--muted); font-size: 0.846rem; }
+  [data-theme="light"] .card {
+    background: var(--bg); border: 0; border-bottom: 1px solid var(--line);
+    border-radius: 0; margin-bottom: 0; padding: 9px 10px 10px;
+  }
+  [data-theme="light"] .card.sel { background: #D2D5CC; box-shadow: inset 3px 0 var(--hi); }
+  [data-theme="light"] .wboard .card:hover:not(.sel) { background: #E5DAC4; border-color: var(--line); }
+  [data-theme="light"] .wepic {
+    background: var(--bg2); border: 0; border-left: 4px solid var(--ec); border-radius: 0;
+  }
+  [data-theme="light"] .wepic:hover:not(.sel) { border-color: var(--ec); background: #E5DAC4; }
+  [data-theme="light"] .wepic.sel { border-color: var(--ec); }
   .edgehint { position: absolute; top: 0; bottom: 0; width: 36px; z-index: 5; display: none; align-items: center; justify-content: center; color: var(--yellow); background: rgba(241,250,140,.08); pointer-events: none; }
   .dragging .edgehint { display: flex; }
   .edgehint.l { left: 0; } .edgehint.r { right: 0; }
