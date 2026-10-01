@@ -1,6 +1,11 @@
 package ui
 
 import (
+	"errors"
+	"strings"
+
+	"github.com/AlexanderGrooff/mermaid-ascii/pkg/diagram"
+	mermaidrender "github.com/AlexanderGrooff/mermaid-ascii/pkg/render"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
@@ -82,8 +87,169 @@ func (mr *MarkdownRenderer) Render(markdown string) (string, error) {
 	if mr.renderer == nil {
 		return markdown, nil
 	}
-	return mr.renderer.Render(markdown)
+	lines := strings.SplitAfter(markdown, "\n")
+	start := 0
+	var parts []string
+	for i := 0; i < len(lines); i++ {
+		marker, info, ok := markdownFence(lines[i])
+		if !ok {
+			continue
+		}
+		indent := len(lines[i]) - len(strings.TrimLeft(lines[i], " "))
+		end := i + 1
+		for end < len(lines) && !closesMarkdownFence(lines[end], marker) {
+			end++
+		}
+		if end == len(lines) {
+			break
+		}
+		if info == "mermaid" {
+			source := strings.Join(lines[i+1:end], "")
+			if supportedMermaid(source) {
+				if rendered, err := renderMermaidDiagram(source, mr.width-indent); err == nil && rendered != "" {
+					if indent > 0 {
+						prefix := strings.Repeat(" ", indent)
+						rendered = prefix + strings.ReplaceAll(rendered, "\n", "\n"+prefix)
+					}
+					if lipgloss.Width(rendered) > mr.width {
+						prose, err := mr.renderer.Render(strings.Join(lines[start:end+1], ""))
+						if err != nil {
+							return "", err
+						}
+						parts = append(parts, strings.Trim(prose, "\n"), mr.mermaidWidthHint())
+						start = end + 1
+						i = end
+						continue
+					}
+					if i > start {
+						prose, err := mr.renderer.Render(strings.Join(lines[start:i], ""))
+						if err != nil {
+							return "", err
+						}
+						parts = append(parts, strings.Trim(prose, "\n"))
+					}
+					parts = append(parts, strings.Trim(sanitizeTerminalText(rendered), "\n"))
+					start = end + 1
+				}
+			}
+		}
+		i = end
+	}
+	if len(parts) == 0 {
+		return mr.renderer.Render(markdown)
+	}
+	if start < len(lines) {
+		prose, err := mr.renderer.Render(strings.Join(lines[start:], ""))
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, strings.Trim(prose, "\n"))
+	}
+	return strings.Join(parts, "\n"), nil
 }
+
+func (mr *MarkdownRenderer) mermaidWidthHint() string {
+	hint := "diagram too wide, widen the pane"
+	if mr.width < lipgloss.Width(hint) {
+		hint = "diagram too wide"
+	}
+	if mr.width < lipgloss.Width(hint) {
+		hint = "too wide"
+	}
+	if mr.theme != nil {
+		return mr.theme.Renderer.NewStyle().Foreground(mr.theme.Muted).Render(hint)
+	}
+	return hint
+}
+
+func markdownFence(line string) (marker, info string, ok bool) {
+	line = strings.TrimSuffix(line, "\n")
+	spaces := len(line) - len(strings.TrimLeft(line, " "))
+	if spaces > 3 || spaces == len(line) {
+		return "", "", false
+	}
+	line = line[spaces:]
+	if line[0] != '`' && line[0] != '~' {
+		return "", "", false
+	}
+	n := 0
+	for n < len(line) && line[n] == line[0] {
+		n++
+	}
+	if n < 3 {
+		return "", "", false
+	}
+	return line[:n], strings.TrimSpace(line[n:]), true
+}
+
+func closesMarkdownFence(line, marker string) bool {
+	line = strings.TrimSuffix(line, "\n")
+	spaces := len(line) - len(strings.TrimLeft(line, " "))
+	if spaces > 3 {
+		return false
+	}
+	line = line[spaces:]
+	n := 0
+	for n < len(line) && line[n] == marker[0] {
+		n++
+	}
+	return n >= len(marker) && strings.Trim(line[n:], " \t") == ""
+}
+
+func supportedMermaid(source string) bool {
+	lines := strings.Split(source, "\n")
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "%%") {
+			continue
+		}
+		if line == "sequenceDiagram" {
+			return true
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 2 || (fields[0] != "graph" && fields[0] != "flowchart") ||
+			(fields[1] != "TD" && fields[1] != "TB" && fields[1] != "LR") {
+			return false
+		}
+		for _, statement := range lines[i+1:] {
+			statement = strings.TrimSpace(statement)
+			for _, edge := range []string{"-->", "==>", "-.->", "---", "--o", "--x"} {
+				if strings.HasPrefix(statement, edge) || strings.HasSuffix(statement, edge) {
+					return false
+				}
+			}
+			for _, directive := range []string{"click ", "class ", "classDef ", "style ", "linkStyle "} {
+				if strings.HasPrefix(statement, directive) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func renderMermaidDiagram(source string, width int) (output string, err error) {
+	defer func() {
+		if recover() != nil {
+			output = ""
+			err = errMermaidPanic
+		}
+	}()
+	config := diagram.DefaultConfig()
+	config.MaxWidth = width
+	output, err = mermaidrender.RenderDiagram(source, config)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(output, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+var errMermaidPanic = errors.New("Mermaid renderer panicked")
 
 // SetWidth updates the word wrap width and recreates the renderer.
 // If the renderer was created with a theme, the theme is preserved.

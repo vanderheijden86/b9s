@@ -71,6 +71,40 @@ func TestRenderIssueDetail_SectionsAndComments(t *testing.T) {
 	}
 }
 
+func TestRenderIssueDetail_MermaidInTextSections(t *testing.T) {
+	for _, section := range []string{"description", "design", "acceptance", "notes"} {
+		t.Run(section, func(t *testing.T) {
+			issue, issueMap := detailFixture()
+			source := "```mermaid\ngraph LR\nA --> B\n```"
+			switch section {
+			case "description":
+				issue.Description = source
+			case "design":
+				issue.Design = source
+			case "acceptance":
+				issue.AcceptanceCriteria = source
+			case "notes":
+				issue.Notes = source
+			}
+			theme := DefaultTheme(lipgloss.NewRenderer(nil))
+			out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+			if !strings.Contains(out, "┌") || strings.Contains(out, "graph LR") {
+				t.Fatalf("diagram not rendered in %s:\n%s", section, out)
+			}
+		})
+	}
+}
+
+func TestRenderIssueDetail_MermaidInComment(t *testing.T) {
+	issue, issueMap := detailFixture()
+	issue.Comments[0].Text = "```mermaid\nsequenceDiagram\nAlice->>Bob: Hello\n```"
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	if !strings.Contains(out, "┌") || strings.Contains(out, "sequenceDiagram") {
+		t.Fatalf("comment diagram not rendered:\n%s", out)
+	}
+}
+
 func TestRenderIssueDetail_UpdateNoticeIsOneQuietLine(t *testing.T) {
 	out := renderDetailFixture(t, &detailUpdateNotice{Tag: "v1.1.0"})
 	if !strings.Contains(out, "v1.1.0 available") {
