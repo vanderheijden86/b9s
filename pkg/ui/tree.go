@@ -1080,7 +1080,7 @@ func (t *TreeModel) RenderSortPopup() string {
 			line = style.Render("▸ " + label)
 		} else {
 			style := r.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"})
+				Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#E8E8E8"})
 			line = style.Render("  " + label)
 		}
 
@@ -1230,7 +1230,7 @@ func (t *TreeModel) RenderColumnPopup() string {
 		if int(column) == t.columnPopupCursor {
 			line = r.NewStyle().Foreground(t.theme.Primary).Bold(true).Render("▸ " + line)
 		} else {
-			line = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"}).Render("  " + line)
+			line = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#E8E8E8"}).Render("  " + line)
 		}
 		sb.WriteString(line)
 		sb.WriteString("\n")
@@ -1489,8 +1489,8 @@ func (t *TreeModel) View() string {
 	// Show [FOLLOW] badge when follow mode is active (bd-c0c)
 	if t.followMode {
 		followBadge := t.theme.Renderer.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
-			Background(lipgloss.AdaptiveColor{Light: "#27AE60", Dark: "#50FA7B"}).
+			Foreground(lipgloss.AdaptiveColor{Light: sepiaPaper, Dark: "#282A36"}).
+			Background(lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"}).
 			Bold(true).
 			Render(" FOLLOW ")
 		sb.WriteString(" ")
@@ -1707,7 +1707,7 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 		width = 80
 	}
 	headerStyle := t.theme.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
+		Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"}).
 		Bold(true).
 		Width(width)
 
@@ -1868,7 +1868,7 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	}
 	blockerStyle := r.NewStyle().Foreground(t.theme.Highlight)
 	if isSelected {
-		blockerStyle = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"})
+		blockerStyle = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: sepiaInkStrong, Dark: "#1A1A1A"})
 	}
 	leftSide.WriteString(blockerStyle.Render(fmt.Sprintf("%-3s", blockerBadge)))
 	leftSide.WriteString(" ")
@@ -1882,7 +1882,7 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	// Use dark text when selected (highlight background needs contrast, bd-hdgh)
 	rightWidth := 0
 	var rightParts []string
-	darkFg := lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}
+	darkFg := lipgloss.AdaptiveColor{Light: sepiaInkStrong, Dark: "#1A1A1A"}
 	if layout.laneStage {
 		stage := truncateRunesHelper(dispatcherLaneStage(issue.Labels), 12, "…")
 		stageStyle := t.theme.SecondaryText
@@ -1925,7 +1925,7 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	// ── Bookmark indicator (bd-k4n) ──
 	isBookmarked := t.bookmarks[rawIssue.ID]
 	if isBookmarked {
-		bookmarkStyle := r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#F1FA8C"})
+		bookmarkStyle := r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#F1FA8C"})
 		leftSide.WriteString(bookmarkStyle.Render("\u2605"))
 		leftSide.WriteString(" ")
 		fixedWidth += 2 // account for the star + space in width calculation
@@ -1953,9 +1953,9 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	// and branch context is dimmed, so the cursor is the only emphasis (bd-xkxb).
 	titleStyle := r.NewStyle()
 	if isSelected {
-		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}).Bold(true)
+		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: sepiaInkStrong, Dark: "#1A1A1A"}).Bold(true)
 	} else {
-		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#E8E8E8"})
+		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#E8E8E8"})
 	}
 
 	// ── Right side ──

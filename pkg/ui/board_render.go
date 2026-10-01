@@ -160,17 +160,17 @@ func (b *BoardModel) columnColor(col int) lipgloss.TerminalColor {
 	switch b.swimLaneMode {
 	case SwimByPriority:
 		return []lipgloss.AdaptiveColor{
-			{Light: "#c62828", Dark: "#ef5350"},
-			{Light: "#f57c00", Dark: "#ffb74d"},
-			{Light: "#1565c0", Dark: "#64b5f6"},
-			{Light: "#616161", Dark: "#9e9e9e"},
+			{Light: sepiaOxblood, Dark: "#ef5350"},
+			{Light: sepiaOchre, Dark: "#ffb74d"},
+			{Light: sepiaInkBlue, Dark: "#64b5f6"},
+			{Light: sepiaClosed, Dark: "#9e9e9e"},
 		}[col]
 	case SwimByType:
 		return []lipgloss.AdaptiveColor{
-			{Light: "#c62828", Dark: "#ef5350"},
-			{Light: "#2e7d32", Dark: "#81c784"},
-			{Light: "#1565c0", Dark: "#64b5f6"},
-			{Light: "#7b1fa2", Dark: "#ce93d8"},
+			{Light: sepiaOxblood, Dark: "#ef5350"},
+			{Light: sepiaMoss, Dark: "#81c784"},
+			{Light: sepiaInkBlue, Dark: "#64b5f6"},
+			{Light: sepiaPlum, Dark: "#ce93d8"},
 		}[col]
 	}
 	return []lipgloss.AdaptiveColor{b.theme.Open, b.theme.InProgress, b.theme.Blocked, b.theme.Closed}[col]
@@ -321,7 +321,7 @@ func (b *BoardModel) rowSurface(selected bool, col, row int) string {
 	case selected:
 		return bgSeqFromColor(t.Highlight, t.Renderer)
 	case b.IsMatchHighlighted(col, row):
-		return bgSeqFromColor(lipgloss.AdaptiveColor{Light: "#e1bee7", Dark: "#4a148c"}, t.Renderer)
+		return bgSeqFromColor(lipgloss.AdaptiveColor{Light: sepiaPlumTint, Dark: "#4a148c"}, t.Renderer)
 	}
 	return ""
 }
@@ -335,7 +335,7 @@ func (b *BoardModel) fg(selected bool, c lipgloss.TerminalColor) lipgloss.Style 
 
 func (b *BoardModel) priorityStyle(issue model.Issue, selected bool) lipgloss.Style {
 	if issue.Priority <= 1 {
-		return b.fg(selected, lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"}).Bold(true)
+		return b.fg(selected, lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#ef5350"}).Bold(true)
 	}
 	return b.fg(selected, b.theme.Secondary)
 }

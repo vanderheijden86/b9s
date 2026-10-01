@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/yaml.v3"
 
 	"github.com/vanderheijden86/b9s/internal/datasource"
@@ -343,6 +344,14 @@ func main() {
 }
 
 func runTUIProgram(m ui.Model) error {
+	setPaper, resetPaper := ui.PaperSequences(lipgloss.HasDarkBackground())
+	if setPaper != "" {
+		if _, err := os.Stdout.WriteString(setPaper); err != nil {
+			return fmt.Errorf("setting terminal paper: %w", err)
+		}
+		defer os.Stdout.WriteString(resetPaper)
+	}
+
 	p := tea.NewProgram(
 		m,
 		tea.WithAltScreen(),

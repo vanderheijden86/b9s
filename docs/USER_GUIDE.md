@@ -46,6 +46,12 @@ b9s --repo api
 
 ## The screen
 
+On a light terminal, b9s uses sepia paper and muted ink colors. It restores the
+terminal's default background when the TUI exits. Dark terminals keep the
+Dracula palette. Terminal support for OSC 11 and OSC 111 controls whether the
+paper background changes outside styled cells.
+See the [light terminal screenshot](screenshot-sepia.png).
+
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
 │ #  NAME      O  P  R │ shortcuts             │  b9s logo             │  header

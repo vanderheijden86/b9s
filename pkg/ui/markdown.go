@@ -187,7 +187,7 @@ func buildStyleFromTheme(theme Theme, isDark bool) ansi.StyleConfig {
 	if isDark {
 		docFg = "#f8f8f2"
 	} else {
-		docFg = "#000000"
+		docFg = sepiaInk
 	}
 
 	return ansi.StyleConfig{

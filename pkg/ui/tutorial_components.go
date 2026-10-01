@@ -97,7 +97,7 @@ func (kt KeyTable) Render(theme Theme, width int) string {
 
 			// Subtle alternating row colors for better visual scanning
 			if row%2 == 0 {
-				return baseStyle.Background(lipgloss.AdaptiveColor{Light: "#F8F8F8", Dark: "#2D2D2D"})
+				return baseStyle.Background(lipgloss.AdaptiveColor{Light: sepiaPaperDeep, Dark: "#2D2D2D"})
 			}
 			return baseStyle
 		})
@@ -188,7 +188,7 @@ func (c Code) Render(theme Theme, width int) string {
 
 	style := r.NewStyle().
 		Foreground(theme.Open).
-		Background(lipgloss.AdaptiveColor{Light: "#F5F5F5", Dark: "#282A36"}).
+		Background(lipgloss.AdaptiveColor{Light: sepiaPaperDeep, Dark: "#282A36"}).
 		Border(accentBorder).
 		BorderForeground(theme.Primary).
 		PaddingLeft(1).
@@ -438,7 +438,7 @@ func (st StyledTable) Render(theme Theme, width int) string {
 				Padding(0, 1)
 
 			if row%2 == 0 {
-				return baseStyle.Background(lipgloss.AdaptiveColor{Light: "#F8F8F8", Dark: "#2D2D2D"})
+				return baseStyle.Background(lipgloss.AdaptiveColor{Light: sepiaPaperDeep, Dark: "#2D2D2D"})
 			}
 			return baseStyle
 		})
@@ -485,7 +485,7 @@ func (pi ProgressIndicator) Render(theme Theme, width int) string {
 
 	emptyStyle := r.NewStyle().
 		Foreground(theme.Muted).
-		Background(lipgloss.AdaptiveColor{Light: "#E0E0E0", Dark: "#3D3D3D"})
+		Background(lipgloss.AdaptiveColor{Light: sepiaClosedTint, Dark: "#3D3D3D"})
 
 	filled := filledStyle.Render(strings.Repeat("█", filledWidth))
 	empty := emptyStyle.Render(strings.Repeat("░", emptyWidth))

@@ -285,8 +285,8 @@ func TestBuildStyleFromTheme(t *testing.T) {
 
 	// Test light mode
 	lightConfig := buildStyleFromTheme(theme, false)
-	if *lightConfig.Document.Color != "#000000" {
-		t.Errorf("expected light mode doc color #000000, got %s", *lightConfig.Document.Color)
+	if *lightConfig.Document.Color != sepiaInk {
+		t.Errorf("expected light mode doc color %s, got %s", sepiaInk, *lightConfig.Document.Color)
 	}
 	// Light mode should have nil background (use terminal default)
 	if lightConfig.Document.BackgroundColor != nil {

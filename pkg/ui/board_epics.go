@@ -73,14 +73,14 @@ const maxEpicDepth = 32
 // epicPalette gives each epic a stable color. The hues avoid the status and
 // priority reds so an epic bar never reads as a warning.
 var epicPalette = []lipgloss.AdaptiveColor{
-	{Light: "#00838f", Dark: "#4dd0e1"},
-	{Light: "#6a1b9a", Dark: "#ce93d8"},
-	{Light: "#2e7d32", Dark: "#81c784"},
-	{Light: "#ef6c00", Dark: "#ffb74d"},
-	{Light: "#283593", Dark: "#9fa8da"},
-	{Light: "#ad1457", Dark: "#f48fb1"},
-	{Light: "#558b2f", Dark: "#c5e1a5"},
-	{Light: "#4e342e", Dark: "#bcaaa4"},
+	{Light: sepiaAccents[0], Dark: "#4dd0e1"},
+	{Light: sepiaAccents[1], Dark: "#ce93d8"},
+	{Light: sepiaAccents[2], Dark: "#81c784"},
+	{Light: sepiaAccents[3], Dark: "#ffb74d"},
+	{Light: sepiaAccents[4], Dark: "#9fa8da"},
+	{Light: sepiaAccents[5], Dark: "#f48fb1"},
+	{Light: sepiaAccents[6], Dark: "#c5e1a5"},
+	{Light: sepiaAccents[7], Dark: "#bcaaa4"},
 }
 
 func epicColor(id string) lipgloss.AdaptiveColor {

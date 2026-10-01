@@ -85,38 +85,36 @@ type Theme struct {
 	TriageUnblocksAlt lipgloss.Style // Secondary unblocks ↪
 }
 
-// DefaultTheme returns the standard Dracula-inspired theme (adaptive)
+// DefaultTheme returns the sepia light and Dracula dark themes.
 func DefaultTheme(r *lipgloss.Renderer) Theme {
 	t := Theme{
 		Renderer: r,
 
-		// Dracula / Light Mode equivalent
-		// Light mode colors improved for WCAG AA compliance (bv-3fcg)
-		Primary:   lipgloss.AdaptiveColor{Light: "#6B47D9", Dark: "#BD93F9"}, // Purple (darker for contrast)
-		Secondary: lipgloss.AdaptiveColor{Light: "#555555", Dark: "#6272A4"}, // Gray
-		Subtext:   lipgloss.AdaptiveColor{Light: "#666666", Dark: "#BFBFBF"}, // Dim (was #999999, now ~6:1)
+		Primary:   lipgloss.AdaptiveColor{Light: sepiaNavy, Dark: "#BD93F9"},
+		Secondary: lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#6272A4"},
+		Subtext:   lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#BFBFBF"},
 
-		Open:       lipgloss.AdaptiveColor{Light: "#007700", Dark: "#50FA7B"}, // Green (was #00A800, now ~4.6:1)
-		InProgress: lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}, // Cyan (darker for contrast)
-		Blocked:    lipgloss.AdaptiveColor{Light: "#CC0000", Dark: "#FF5555"}, // Red (slightly adjusted)
-		Deferred:   lipgloss.AdaptiveColor{Light: "#B06800", Dark: "#FFB86C"}, // Orange - on ice
-		Pinned:     lipgloss.AdaptiveColor{Light: "#0066CC", Dark: "#6699FF"}, // Blue - persistent
-		Hooked:     lipgloss.AdaptiveColor{Light: "#008080", Dark: "#00CED1"}, // Teal - agent-attached
-		Closed:     lipgloss.AdaptiveColor{Light: "#555555", Dark: "#6272A4"}, // Gray
-		Tombstone:  lipgloss.AdaptiveColor{Light: "#888888", Dark: "#44475A"}, // Muted gray - deleted
+		Open:       lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"},
+		InProgress: lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#8BE9FD"},
+		Blocked:    lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"},
+		Deferred:   lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#FFB86C"},
+		Pinned:     lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#6699FF"},
+		Hooked:     lipgloss.AdaptiveColor{Light: sepiaTeal, Dark: "#00CED1"},
+		Closed:     lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#6272A4"},
+		Tombstone:  lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#44475A"},
 
-		Bug:     lipgloss.AdaptiveColor{Light: "#CC0000", Dark: "#FF5555"}, // Red (JIRA bug)
-		Feature: lipgloss.AdaptiveColor{Light: "#36B37E", Dark: "#57D9A3"}, // Green (JIRA story/feature)
-		Epic:    lipgloss.AdaptiveColor{Light: "#6B47D9", Dark: "#BD93F9"}, // Purple (JIRA epic)
-		Task:    lipgloss.AdaptiveColor{Light: "#2684FF", Dark: "#4C9AFF"}, // Blue (JIRA task)
-		Chore:   lipgloss.AdaptiveColor{Light: "#006080", Dark: "#8BE9FD"}, // Cyan (darker)
+		Bug:     lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"},
+		Feature: lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#57D9A3"},
+		Epic:    lipgloss.AdaptiveColor{Light: sepiaPlum, Dark: "#BD93F9"},
+		Task:    lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#4C9AFF"},
+		Chore:   lipgloss.AdaptiveColor{Light: sepiaTeal, Dark: "#8BE9FD"},
 
-		Border:    lipgloss.AdaptiveColor{Light: "#AAAAAA", Dark: "#44475A"}, // Border (was #DDDDDD)
-		Highlight: lipgloss.AdaptiveColor{Light: "#B3E5FC", Dark: "#4FC1E9"}, // Bright cyan (k9s-style)
-		Muted:     lipgloss.AdaptiveColor{Light: "#555555", Dark: "#6272A4"}, // Dimmed text (was #888888, now ~7:1)
+		Border:    lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#44475A"},
+		Highlight: lipgloss.AdaptiveColor{Light: sepiaSelection, Dark: "#4FC1E9"},
+		Muted:     lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#6272A4"},
 	}
 
-	t.Base = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#F8F8F2"})
+	t.Base = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"})
 
 	t.Selected = r.NewStyle().
 		Background(t.Highlight).
@@ -124,7 +122,7 @@ func DefaultTheme(r *lipgloss.Renderer) Theme {
 
 	t.Header = r.NewStyle().
 		Background(t.Primary).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Foreground(lipgloss.AdaptiveColor{Light: sepiaPaper, Dark: "#282A36"}).
 		Bold(true).
 		Padding(0, 1)
 

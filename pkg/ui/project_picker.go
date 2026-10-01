@@ -731,7 +731,7 @@ func (m *ProjectPickerModel) RenderTypeLegendColumn() []string {
 func (m *ProjectPickerModel) renderLogoColumn() []string {
 	t := m.theme
 	logoStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#B36B00", Dark: "#E6B800"})
+		Foreground(lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#E6B800"})
 
 	logo := b9sLogo()
 	lines := make([]string, panelRows)

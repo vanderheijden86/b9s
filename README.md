@@ -46,7 +46,7 @@ b9s takes its interaction model from k9s, the Kubernetes terminal UI. Where k9s 
 - **Filter.** `/` opens the query. `Enter` hides the field and keeps the filter, and `Esc` clears it.
 - **Marking.** `Space` marks an issue, `V` or `Ctrl-Space` marks a range and `Ctrl-\` clears the marks. Close, delete and status changes apply to every marked issue, or to the cursor row when nothing is marked.
 - **Table navigation.** `Ctrl-F` and `Ctrl-B` page, and `Ctrl-W` toggles wide columns. When the issue under the cursor is closed or deleted, the next issue takes its row.
-- **Look.** A bright cyan full-row cursor, one line for status and key hints, and plain-text tokens instead of emoji.
+- **Look.** A full-row cursor, one line for status and key hints, and plain-text tokens instead of emoji. Light terminals use [sepia paper and muted ink colors](docs/screenshot-sepia.png). Dark terminals keep the Dracula palette.
 
 ## Install
 

@@ -608,7 +608,7 @@ func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col,
 	edgeColor := lipgloss.TerminalColor(t.Border)
 	idColor := lipgloss.TerminalColor(t.Primary)
 	if b.IsSearchMatch(col, row) {
-		edgeColor = lipgloss.AdaptiveColor{Light: "#1565c0", Dark: "#64b5f6"}
+		edgeColor = lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#64b5f6"}
 		idColor = edgeColor
 	}
 	if selected {

@@ -371,6 +371,24 @@ func TestTUIEnablesMouseCellMotion(t *testing.T) {
 	}
 }
 
+func TestLightTUIRestoresTerminalPaper(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
+
+	out, err := runTreeTUIWithEnv(t, tempDir, 1200, nil, "COLORFGBG=0;15")
+	if err != nil {
+		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+	}
+	set := []byte("\x1b]11;#E9DFCB\x07")
+	reset := []byte("\x1b]111\x07")
+	if !bytes.Contains(out, set) {
+		t.Fatalf("light TUI did not set terminal paper: %q", out)
+	}
+	if i := bytes.LastIndex(out, reset); i < bytes.Index(out, set) {
+		t.Fatalf("light TUI did not restore terminal paper after the set: %q", out)
+	}
+}
+
 func TestTreeViewShiftKShowsCloseConfirmation(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, []treeFixtureIssue{

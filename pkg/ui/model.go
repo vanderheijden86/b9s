@@ -4626,7 +4626,7 @@ func (m Model) renderListWithHeader() string {
 
 	// Render column header
 	headerStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
+		Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"}).
 		Bold(true).
 		Width(m.width - 2)
 
@@ -4714,7 +4714,7 @@ func (m Model) renderSplitView() string {
 
 	// Create header row for list
 	headerStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
+		Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"}).
 		Bold(true).
 		Width(listInnerWidth)
 
@@ -4802,14 +4802,14 @@ func (m *Model) renderHelpOverlay() string {
 		colWidth = 28
 	}
 
-	// Define color palette (Dracula-inspired gradient)
+	// Each panel keeps a distinct accent on either terminal background.
 	colors := []lipgloss.AdaptiveColor{
-		{Light: "#7D56F4", Dark: "#BD93F9"}, // Purple
-		{Light: "#FF79C6", Dark: "#FF79C6"}, // Pink
-		{Light: "#8BE9FD", Dark: "#8BE9FD"}, // Cyan
-		{Light: "#50FA7B", Dark: "#50FA7B"}, // Green
-		{Light: "#FFB86C", Dark: "#FFB86C"}, // Orange
-		{Light: "#F1FA8C", Dark: "#F1FA8C"}, // Yellow
+		{Light: sepiaAccents[0], Dark: "#BD93F9"},
+		{Light: sepiaAccents[1], Dark: "#FF79C6"},
+		{Light: sepiaAccents[2], Dark: "#8BE9FD"},
+		{Light: sepiaAccents[3], Dark: "#50FA7B"},
+		{Light: sepiaAccents[4], Dark: "#FFB86C"},
+		{Light: sepiaAccents[5], Dark: "#F1FA8C"},
 	}
 
 	// Helper to render a section panel
@@ -7317,7 +7317,7 @@ func (m Model) renderLabelBar() string {
 
 const unifiedQueryBarHeight = 3
 
-var unifiedQueryBorder = lipgloss.AdaptiveColor{Light: "#285B35", Dark: "#1F5E3B"}
+var unifiedQueryBorder = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#1F5E3B"}
 
 // queryBarVisible reports whether the title bar is shown: while typing a query
 // or a ':' command, and while an accepted query still filters the view, so an

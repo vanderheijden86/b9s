@@ -68,12 +68,12 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	title := r.NewStyle().Bold(true).Foreground(t.Base.GetForeground()).Render(item.Title)
 
 	chip := r.NewStyle().Bold(true).Padding(0, 1).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Foreground(lipgloss.AdaptiveColor{Light: sepiaPaper, Dark: "#282A36"}).
 		Background(statusColor).
 		Render(strings.ToUpper(strings.ReplaceAll(string(item.Status), "_", " ")))
 	prioStyle := r.NewStyle().Bold(true).Foreground(t.Secondary)
 	if item.Priority <= 1 {
-		prioStyle = prioStyle.Foreground(lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"})
+		prioStyle = prioStyle.Foreground(lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#ef5350"})
 	}
 	people := muted.Render("creator ") + detailPerson(r, t, item.CreatedBy, "unknown") +
 		muted.Render("  assignee ") + detailPerson(r, t, item.Assignee, "none")
