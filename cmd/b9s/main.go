@@ -29,6 +29,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "memories" {
+		os.Exit(runMemories(os.Args[2:], os.Stdout, os.Stderr))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "ctl" {
 		os.Exit(runCtl(os.Args[2:], os.Stdout, os.Stderr))
 	}

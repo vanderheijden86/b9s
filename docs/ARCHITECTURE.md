@@ -8,6 +8,7 @@ b9s is a Go program built on [Bubble Tea](https://github.com/charmbracelet/bubbl
 - [Packages](#packages)
 - [Startup](#startup)
 - [Data sources](#data-sources)
+- [Memory preview adapter](#memory-preview-adapter)
 - [Live reload](#live-reload)
 - [Control socket](#control-socket)
 - [The UI model](#the-ui-model)
@@ -110,6 +111,10 @@ Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd e
 `DoltReader` connects with the user and database from `metadata.json` and the password from `BEADS_DOLT_PASSWORD`. `resolveDoltAddress` (`internal/datasource/dolt_address.go`) picks the host and port with bd's own precedence: environment, then the port file bd writes for a server it started, then the Dolt server's `listener.port`, then `dolt.port` in `config.yaml`, then `metadata.json`. A project whose `metadata.json` names no port is the common case, because bd starts its server on a free port and records it only in `.beads/dolt-server.port`. The password is sent only to a loopback address or an endpoint listed in `B9S_TRUSTED_DOLT_ENDPOINTS`, so a cloned repository cannot redirect it. See [ADR 0013](adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md).
 
 `MultiDoltReader` in `dolt_multi.go` opens one `DoltReader` per database for the all-projects view (`0`). It is read-only.
+
+## Memory preview adapter
+
+`b9s memories` reads an isolated graph preview workspace through its matching `bd` binary. `internal/datasource/graph_preview.go` checks `graph_mode` and `graph_ready`, then parses `bd list --format records-json --all`. It rejects `hasMore`, since the current CLI has no continuation cursor. It calls `bd links` for each Memory because Issue-owned informational Links do not appear in the inventory's `owned` field. The adapter reads current records only and opens no Dolt store directly. See [ADR 0030](adr/0030-read-memory-preview-through-bd-cli.md).
 
 ## Live reload
 

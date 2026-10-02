@@ -14,6 +14,7 @@ b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/b
 - [Creators, assignees and identities](#creators-assignees-and-identities)
 - [Board view](#board-view)
 - [Dependency graph](#dependency-graph)
+- [Memory Beads preview](#memory-beads-preview)
 - [Command prompt](#command-prompt)
 - [Projects](#projects)
 - [Data sources](#data-sources)
@@ -312,6 +313,21 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 ## Dependency graph
 
 `g` opens the blocking neighbourhood of the issue under the cursor: what blocks it, and what it blocks. `j` and `k` move, `Enter` opens the selected issue in the detail pane, and `Esc` returns to the tree.
+
+## Memory Beads preview
+
+The [Memory Beads integration preview](https://blog.gascity.com/posts/extending-beads-memories-versions-and-the-wire-protocol/) uses a new graph workspace format. Create a **new** workspace with the preview build of `bd`. Do not point it at an existing Beads project.
+
+With that `bd` binary on `PATH`, run:
+
+```bash
+b9s memories --project /path/to/new/graph-workspace
+b9s memories --project /path/to/new/graph-workspace --id policy
+```
+
+The read-only view prints each Memory's title, body, current version token and typed Links. `→` is an outgoing Link and `←` is an incoming Link. A linked Issue appears with its title. The view calls `bd list --format records-json --all` and `bd links` for each Memory, so it also sees Issue-to-Memory citations. It refuses an incomplete inventory. The preview CLI currently limits the inventory to 1,000 Beads.
+
+This command reads the current graph snapshot. It does not edit Memories or inspect earlier versions. The ordinary b9s TUI and browser still use the released Issue model.
 
 ## Command prompt
 
