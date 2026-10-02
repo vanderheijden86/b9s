@@ -1,31 +1,53 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/ui"
+	"golang.org/x/term"
 )
 
-// runMemories renders the graph preview through bd's read-only records command.
+// runMemories browses the graph preview's Memories in a TUI on a terminal and
+// prints them otherwise. Every read goes through the preview bd (ADR 0031).
 func runMemories(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("memories", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	project := flags.String("project", ".", "graph preview project directory")
-	id := flags.String("id", "", "show one Memory by local or canonical ID")
+	id := flags.String("id", "", "print one Memory by local or canonical ID")
+	printOnly := flags.Bool("print", false, "print Memories instead of opening the browser")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 	if flags.NArg() != 0 {
-		fmt.Fprintln(stderr, "Usage: b9s memories [--project DIR] [--id ID]")
+		fmt.Fprintln(stderr, "Usage: b9s memories [--project DIR] [--print] [--id ID]")
 		return 2
 	}
-	graph, err := datasource.LoadGraphPreview(*project)
+	client, err := datasource.OpenGraphPreview(*project)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if !*printOnly && *id == "" && isTerminal(stdout) && term.IsTerminal(int(os.Stdin.Fd())) {
+		if err := runMemoryBrowser(client, *project); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return 0
+	}
+	graph, err := loadMemoryGraph(client, *id)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -37,6 +59,73 @@ func runMemories(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stdout, view)
 	return 0
+}
+
+func isTerminal(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}
+
+// loadMemoryGraph reads the inventory, then the incident Links of the
+// Memories that will be printed. Incoming Links are owned by other Beads, so
+// only bd links reports them per Memory.
+func loadMemoryGraph(client *datasource.GraphPreviewClient, selected string) (datasource.GraphPreview, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	graph, err := client.Inventory(ctx)
+	if err != nil {
+		return datasource.GraphPreview{}, err
+	}
+	links := make(map[string]datasource.GraphLink)
+	for _, link := range graph.Links {
+		links[link.ID] = link
+	}
+	for _, bead := range graph.Beads {
+		if bead.Kind != "memory" || (selected != "" && !memoryMatches(bead, selected)) {
+			continue
+		}
+		incident, err := client.Links(ctx, bead.ID)
+		if err != nil {
+			return datasource.GraphPreview{}, err
+		}
+		for _, link := range incident {
+			links[link.ID] = link
+		}
+	}
+	graph.Links = graph.Links[:0]
+	for _, link := range links {
+		graph.Links = append(graph.Links, link)
+	}
+	sort.Slice(graph.Links, func(i, j int) bool { return graph.Links[i].ID < graph.Links[j].ID })
+	return graph, nil
+}
+
+func memoryMatches(bead datasource.GraphBead, selected string) bool {
+	return bead.ID == selected || graphLocalID(bead.ID) == selected || strings.TrimPrefix(graphLocalID(bead.ID), "beads/") == selected
+}
+
+// memoryProgram adapts the browser's typed Update to tea.Model.
+type memoryProgram struct{ ui.MemoryBrowser }
+
+func (p memoryProgram) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	browser, cmd := p.MemoryBrowser.Update(msg)
+	return memoryProgram{browser}, cmd
+}
+
+func runMemoryBrowser(client *datasource.GraphPreviewClient, project string) error {
+	name := filepath.Base(project)
+	if abs, err := filepath.Abs(project); err == nil {
+		name = filepath.Base(abs)
+	}
+	program := tea.NewProgram(memoryProgram{ui.NewMemoryBrowser(client, name)}, tea.WithAltScreen())
+	if v := os.Getenv("B9S_TUI_AUTOCLOSE_MS"); v != "" {
+		if ms, err := strconv.Atoi(v); err == nil && ms > 0 {
+			timer := time.AfterFunc(time.Duration(ms)*time.Millisecond, program.Quit)
+			defer timer.Stop()
+		}
+	}
+	_, err := program.Run()
+	return err
 }
 
 func renderMemories(graph datasource.GraphPreview, selected string) (string, error) {
@@ -52,7 +141,7 @@ func renderMemories(graph datasource.GraphPreview, selected string) (string, err
 	if selected != "" {
 		matches := memories[:0]
 		for _, bead := range memories {
-			if bead.ID == selected || graphLocalID(bead.ID) == selected || strings.TrimPrefix(graphLocalID(bead.ID), "beads/") == selected {
+			if memoryMatches(bead, selected) {
 				matches = append(matches, bead)
 			}
 		}

@@ -1,13 +1,13 @@
 package datasource
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -95,62 +95,180 @@ func ParseGraphPreviewLinks(r io.Reader) ([]GraphLink, error) {
 	return payload.Result, nil
 }
 
-// LoadGraphPreview invokes the matching bd binary for a new graph workspace.
-// It does not open the preview's Dolt store or alter its contents.
-func LoadGraphPreview(projectDir string) (GraphPreview, error) {
+// GraphPreviewClient runs read-only preview bd commands against one graph
+// workspace. It never opens the preview's Dolt store, which an open embedded
+// store would lock against bd itself.
+type GraphPreviewClient struct {
+	projectDir string
+	beadsDir   string
+	bd         string
+}
+
+// MemorySummary is one compact result of bd memories. Search is a literal
+// title and body match, so a summary carries which fields matched.
+type MemorySummary struct {
+	ID            string   `json:"id"`
+	Title         string   `json:"title"`
+	Version       string   `json:"version"`
+	MatchedFields []string `json:"matchedFields"`
+	Excerpt       struct {
+		Field     string `json:"field"`
+		Text      string `json:"text"`
+		Truncated bool   `json:"truncated"`
+	} `json:"excerpt"`
+	Details struct {
+		OwnedLinkCount int `json:"ownedLinkCount"`
+	} `json:"details"`
+}
+
+// GraphVersion is one retained version of a graph Resource. The token is the
+// only stable reference; the ordinal orders versions within this store.
+type GraphVersion struct {
+	Version  string    `json:"version"`
+	Ordinal  int       `json:"ordinal"`
+	ChangeAt time.Time `json:"change_at"`
+	Actor    string    `json:"actor"`
+	Removed  bool      `json:"removed"`
+}
+
+// OpenGraphPreview checks that projectDir is a ready graph workspace and finds
+// the bd binary to read it with.
+func OpenGraphPreview(projectDir string) (*GraphPreviewClient, error) {
+	bd, ok := bdrun.Resolve()
+	if !ok {
+		return nil, ErrBDNotFound
+	}
+	return newGraphPreviewClient(projectDir, bd)
+}
+
+func newGraphPreviewClient(projectDir, bd string) (*GraphPreviewClient, error) {
 	beadsDir := filepath.Join(projectDir, ".beads")
 	metadata, err := os.ReadFile(filepath.Join(beadsDir, "metadata.json"))
 	if err != nil {
-		return GraphPreview{}, fmt.Errorf("read graph workspace metadata: %w", err)
+		return nil, fmt.Errorf("read graph workspace metadata: %w", err)
 	}
 	var meta struct {
 		GraphMode  string `json:"graph_mode"`
 		GraphReady bool   `json:"graph_ready"`
 	}
 	if err := json.Unmarshal(metadata, &meta); err != nil {
-		return GraphPreview{}, fmt.Errorf("parse graph workspace metadata: %w", err)
+		return nil, fmt.Errorf("parse graph workspace metadata: %w", err)
 	}
 	if meta.GraphMode != "link" || !meta.GraphReady {
-		return GraphPreview{}, fmt.Errorf("%s is not a ready Memory Beads graph workspace", projectDir)
+		return nil, fmt.Errorf("%s is not a ready Memory Beads graph workspace", projectDir)
 	}
-	bd, ok := bdrun.Resolve()
-	if !ok {
-		return GraphPreview{}, ErrBDNotFound
+	return &GraphPreviewClient{projectDir: projectDir, beadsDir: beadsDir, bd: bd}, nil
+}
+
+// run returns bd's stdout. A refused preview read prints a JSON error with a
+// stable code on stdout and exits non-zero; that code is the useful part of
+// the failure, so it leads the returned error.
+func (c *GraphPreviewClient) run(ctx context.Context, args ...string) ([]byte, error) {
+	out, stderr, err := bdrun.Output(ctx, c.bd, c.projectDir, []string{"BEADS_DIR=" + c.beadsDir}, args...)
+	if err == nil {
+		return out, nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	out, stderr, err := bdrun.Output(ctx, bd, projectDir, []string{"BEADS_DIR=" + beadsDir}, "list", "--format", "records-json", "--all")
-	if err != nil {
-		return GraphPreview{}, fmt.Errorf("bd graph list: %w: %s", err, stderr)
+	var refusal struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
 	}
-	graph, err := ParseGraphPreview(strings.NewReader(string(out)))
+	if json.Unmarshal(out, &refusal) == nil && refusal.Code != "" {
+		return nil, fmt.Errorf("bd %s: %s: %s", args[0], refusal.Code, refusal.Message)
+	}
+	return nil, fmt.Errorf("bd %s: %w: %s", args[0], err, stderr)
+}
+
+// Inventory returns every current Bead with its owned Links. Incoming Links
+// owned by other Beads appear only on their owners; use Links for one Bead.
+func (c *GraphPreviewClient) Inventory(ctx context.Context) (GraphPreview, error) {
+	out, err := c.run(ctx, "list", "--format", "records-json", "--all")
 	if err != nil {
 		return GraphPreview{}, err
 	}
-	links := make(map[string]GraphLink)
-	for _, link := range graph.Links {
-		links[link.ID] = link
+	return ParseGraphPreview(bytes.NewReader(out))
+}
+
+// SearchMemories lists Memory summaries whose title or body contains query
+// literally. An empty query lists every Memory.
+func (c *GraphPreviewClient) SearchMemories(ctx context.Context, query string) ([]MemorySummary, error) {
+	args := []string{"memories"}
+	if query != "" {
+		args = append(args, query)
 	}
-	for _, bead := range graph.Beads {
-		if bead.Kind != "memory" {
-			continue
-		}
-		out, stderr, err := bdrun.Output(ctx, bd, projectDir, []string{"BEADS_DIR=" + beadsDir}, "links", bead.ID, "--json")
-		if err != nil {
-			return GraphPreview{}, fmt.Errorf("bd links for %s: %w: %s", bead.ID, err, stderr)
-		}
-		incident, err := ParseGraphPreviewLinks(strings.NewReader(string(out)))
-		if err != nil {
-			return GraphPreview{}, err
-		}
-		for _, link := range incident {
-			links[link.ID] = link
-		}
+	out, err := c.run(ctx, append(args, "--all", "--details", "--format", "records-json")...)
+	if err != nil {
+		return nil, err
 	}
-	graph.Links = graph.Links[:0]
-	for _, link := range links {
-		graph.Links = append(graph.Links, link)
+	var payload struct {
+		Preview bool `json:"preview"`
+		Result  struct {
+			Items   []MemorySummary `json:"items"`
+			HasMore bool            `json:"hasMore"`
+		} `json:"result"`
 	}
-	sort.Slice(graph.Links, func(i, j int) bool { return graph.Links[i].ID < graph.Links[j].ID })
-	return graph, nil
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return nil, fmt.Errorf("parse graph memory summaries: %w", err)
+	}
+	if !payload.Preview {
+		return nil, fmt.Errorf("bd did not return graph memory summaries")
+	}
+	if payload.Result.HasMore {
+		return nil, fmt.Errorf("graph memory search exceeds the CLI limit; no complete result is available")
+	}
+	return payload.Result.Items, nil
+}
+
+// Memory reads one Bead record: the current version when version is empty,
+// otherwise that exact retained version. Owned holds the outgoing Links as
+// of the version read.
+func (c *GraphPreviewClient) Memory(ctx context.Context, id, version string) (GraphBead, error) {
+	args := []string{"show", id, "--json"}
+	if version != "" {
+		args = append(args, "--version", version)
+	}
+	out, err := c.run(ctx, args...)
+	if err != nil {
+		return GraphBead{}, err
+	}
+	var payload struct {
+		Preview bool      `json:"preview"`
+		Result  GraphBead `json:"result"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return GraphBead{}, fmt.Errorf("parse graph record: %w", err)
+	}
+	if !payload.Preview {
+		return GraphBead{}, fmt.Errorf("bd did not return a graph record")
+	}
+	return payload.Result, nil
+}
+
+// Links returns the current Links in both directions for one Bead.
+func (c *GraphPreviewClient) Links(ctx context.Context, id string) ([]GraphLink, error) {
+	out, err := c.run(ctx, "links", id, "--json")
+	if err != nil {
+		return nil, err
+	}
+	return ParseGraphPreviewLinks(bytes.NewReader(out))
+}
+
+// Versions returns the retained versions of one Resource, newest first.
+func (c *GraphPreviewClient) Versions(ctx context.Context, id string) ([]GraphVersion, error) {
+	out, err := c.run(ctx, "versions", id, "--json")
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		Preview bool `json:"preview"`
+		Result  struct {
+			Versions []GraphVersion `json:"versions"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return nil, fmt.Errorf("parse graph versions: %w", err)
+	}
+	if !payload.Preview {
+		return nil, fmt.Errorf("bd did not return graph versions")
+	}
+	return payload.Result.Versions, nil
 }

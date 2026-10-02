@@ -323,11 +323,25 @@ With that `bd` binary on `PATH`, run:
 ```bash
 b9s memories --project /path/to/new/graph-workspace
 b9s memories --project /path/to/new/graph-workspace --id policy
+b9s memories --project /path/to/new/graph-workspace --print
 ```
 
-The read-only view prints each Memory's title, body, current version token and typed Links. `→` is an outgoing Link and `←` is an incoming Link. A linked Issue appears with its title. The view calls `bd list --format records-json --all` and `bd links` for each Memory, so it also sees Issue-to-Memory citations. It refuses an incomplete inventory. The preview CLI currently limits the inventory to 1,000 Beads.
+On a terminal, the first command opens a read-only Memory browser. The left pane lists every Memory, and the right pane shows the selected Memory's body, its version token and its informational Links. `→` is an outgoing Link and `←` is an incoming Link, including citations from Issues. Links have no effect on scheduling. b9s reads a Memory only when you select it.
 
-This command reads the current graph snapshot. It does not edit Memories or inspect earlier versions. The ordinary b9s TUI and browser still use the released Issue model.
+| Key | Effect |
+|-----|--------|
+| `j` / `k` | Move in the list, or between Links in the detail pane |
+| `Enter`, `l`, `Tab` | Open the detail pane |
+| `Enter` on a Link | Follow a Link to another Memory. For an Issue, b9s names the `bd show` command |
+| `Esc`, `h` | Go back |
+| `Ctrl+D` / `Ctrl+U` | Scroll the body |
+| `v` | List the versions bd retains. `Enter` reads the selected version |
+| `/` | Literal search over title and body. There are no synonyms |
+| `q` | Quit |
+
+The versions list holds only what bd retains, not full history. A retained version is labelled "not current". Its outgoing Links are those of that version, and its incoming Links come from the current graph.
+
+`--id` and `--print` print Memories instead, as does any run whose output is not a terminal. The browser does not parse a status from ADR titles, and it does not edit Memories. The preview CLI currently limits an inventory to 1,000 Beads, and b9s refuses an incomplete one. The ordinary b9s TUI and browser still use the released Issue model.
 
 ## Command prompt
 

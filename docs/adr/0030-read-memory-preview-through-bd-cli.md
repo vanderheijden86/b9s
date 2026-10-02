@@ -2,8 +2,9 @@
 type: ADR
 id: "0030"
 title: "Read the Memory Beads preview through its CLI"
-status: active
+status: superseded
 date: 2026-10-02
+superseded_by: "0031"
 ---
 
 ## Context

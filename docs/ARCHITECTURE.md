@@ -114,7 +114,9 @@ Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd e
 
 ## Memory preview adapter
 
-`b9s memories` reads an isolated graph preview workspace through its matching `bd` binary. `internal/datasource/graph_preview.go` checks `graph_mode` and `graph_ready`, then parses `bd list --format records-json --all`. It rejects `hasMore`, since the current CLI has no continuation cursor. It calls `bd links` for each Memory because Issue-owned informational Links do not appear in the inventory's `owned` field. The adapter reads current records only and opens no Dolt store directly. See [ADR 0030](adr/0030-read-memory-preview-through-bd-cli.md).
+`b9s memories` reads an isolated graph preview workspace through its matching `bd` binary. `internal/datasource/graph_preview.go` checks `graph_mode` and `graph_ready`, and its `GraphPreviewClient` wraps the preview reads: `bd memories` for summaries and literal search, `bd list --format records-json --all` for the inventory, `bd show --version` for a body at a retained version, `bd links` for incident Links and `bd versions` for the retained versions. It rejects `hasMore`, since the current CLI has no continuation cursor, and reports bd's refusal code in its errors. It opens no Dolt store directly.
+
+On a terminal the command opens `pkg/ui/memory_view.go`, a separate Bubble Tea program. It lists summaries at startup and reads a Memory's body and Links only when selected, caching them per Memory and version. `bd links` is still needed per selected Memory, because Issue-owned informational Links do not appear in the Memory's own record. With `--print`, `--id` or a non-terminal, the command prints instead, reading Links only for the Memories it prints. See [ADR 0031](adr/0031-browse-memory-preview-in-a-lazy-tui.md).
 
 ## Live reload
 
