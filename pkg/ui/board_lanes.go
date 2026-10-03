@@ -749,6 +749,7 @@ func (b *BoardModel) cardHeight(issue model.Issue, width int, selected bool) int
 //
 //	✔ eg0.4.2 Wire the flow subscription transport   blocked eg0.4.1 · P1
 //
+// A card below its parent in the same cell is indented (board_hierarchy.go).
 // The selected card is cardBox.
 func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col, row int) []string {
 	if !selected {
@@ -801,12 +802,13 @@ func (b *BoardModel) cardLine(issue model.Issue, width, col, row int) string {
 		idColor = lipgloss.AdaptiveColor{Light: "#1565c0", Dark: "#64b5f6"}
 	}
 	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
+	indent := b.cardIndent(issue.ID, full)
 	left := []textPart{
-		{text: icon + " ", color: iconColor},
+		{text: strings.Repeat(" ", indent) + icon + " ", color: iconColor},
 		{text: card.ShortID, color: idColor, bold: true},
 		{text: " " + card.Title, color: t.Base.GetForeground()},
 	}
-	headW := lipgloss.Width(icon) + 1 + lipgloss.Width(card.ShortID) + 1
+	headW := indent + lipgloss.Width(icon) + 1 + lipgloss.Width(card.ShortID) + 1
 
 	tags := b.lineTags(issue, card)
 	for len(tags) > 0 && width-headW-partsWidth(b.joinParts(tags))-2 < cardLineTitleMin {

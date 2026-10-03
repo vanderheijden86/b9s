@@ -40,7 +40,12 @@ type BoardModel struct {
 	epicUniverse []model.Issue // whole project; nil means allIssues
 	epicOf       map[string]string
 	epics        map[string]*boardEpic
-	foldedEpics  map[string]bool
+	// parentOf maps an issue to its parent over the epic universe. cardDepth
+	// is how many of a card's ancestors sit above it in its own cell, which
+	// is how far the card is indented (board_hierarchy.go).
+	parentOf    map[string]string
+	cardDepth   map[string]int
+	foldedEpics map[string]bool
 
 	// The epics form the first column of a lane board. While onEpicColumn is
 	// set, the selection is the epic of lane epicColumnLane ("" being the

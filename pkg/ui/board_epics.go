@@ -147,6 +147,8 @@ func (b *BoardModel) rebuildEpicIndex() {
 		}
 	}
 
+	b.parentOf = parent
+
 	b.rootOf = make(map[string]string, len(universe))
 	for _, is := range universe {
 		root := is.ID
@@ -231,10 +233,14 @@ func (b *BoardModel) epicOrder() map[string]int {
 
 // arrangeColumns derives b.columns from b.rawColumns: each column sorted into
 // epic lanes, the epic's own issue first, issues without an epic last, and
-// the children of a folded epic left out.
+// the children of a folded epic left out. Inside a lane the cards are in tree
+// order (board_hierarchy.go).
 func (b *BoardModel) arrangeColumns() {
+	b.cardDepth = make(map[string]int)
 	if len(b.epics) == 0 {
-		b.columns = b.rawColumns
+		for col := range b.rawColumns {
+			b.columns[col] = b.treeOrder(b.rawColumns[col])
+		}
 		return
 	}
 	order := b.epicOrder()
@@ -264,7 +270,7 @@ func (b *BoardModel) arrangeColumns() {
 			}
 			return si < sj
 		})
-		b.columns[col] = arranged
+		b.columns[col] = b.treeOrder(arranged)
 	}
 }
 
