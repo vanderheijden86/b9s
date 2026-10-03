@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Metro</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .stage svg { display: block; min-width: 900px; width: 100%; }
+  .col rect.hit { fill: transparent; cursor: pointer; }
+  .col.superseded rect.band { fill: url(#hatch); }
+  .col.proposed rect.band { fill: var(--prop-bg); }
+  .col:hover rect.hit, .col.hl rect.hit { fill: var(--soft); opacity: .6; }
+  .ctitle { font-size: 11px; }
+  .cnum { font-family: var(--mono); font-weight: 700; font-size: 12px; }
+  .row { cursor: pointer; }
+  .row rect.hit { fill: transparent; }
+  .row:hover rect.hit, .row.hl rect.hit { fill: var(--soft); }
+  .row text { font-size: 12.5px; }
+  .row .id { font-family: var(--mono); font-weight: 600; }
+  .lane { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; fill: var(--muted); }
+  .track { stroke-width: 4; stroke-linecap: round; opacity: .35; }
+  .stop.follows { stroke-width: 2.5; }
+  .stop.cites { fill: var(--panel); stroke-width: 2; }
+  svg.dimc .row { opacity: .25; } svg.dimc .row.hl { opacity: 1; }
+  .count { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+</style>
+</head>
+<body>
+<nav class="top"></nav>
+<header class="intro">
+  <h1>4 · Decision metro</h1>
+  <p>Decisions are stations in the order they were made. Each Issue is a line that stops at the decisions it uses. Read down a column for impact ("who rides through 0026?"), read across a row for grounding ("what does xx9w.2 rest on?"). A line stopping in a hatched column runs on a dead decision.</p>
+</header>
+<div class="legend">
+  <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--issue)" stroke="var(--issue)"/></svg>follows</span>
+  <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--panel)" stroke="var(--issue)" stroke-width="2"/></svg>cites</span>
+  <span><svg width="22" height="14"><rect width="22" height="14" fill="var(--prop-bg)"/></svg>proposed decision</span>
+  <span><svg width="22" height="14"><rect width="22" height="14" fill="url(#hatch)"/></svg>superseded decision</span>
+  <span><svg width="30" height="14"><path d="M2,12 C8,0 22,0 28,12" fill="none" stroke="var(--superseded)" stroke-width="2"/></svg>replaced by</span>
+</div>
+<div class="layout">
+  <div class="stage"><svg id="g"></svg></div>
+  <aside class="panel" id="panel"><div class="kicker">Hover a column for impact, a row for grounding. Click to read.</div></aside>
+</div>
+<script src="data.js"></script>
+<script>
+renderNav('4-metro.html');
+const svg = document.getElementById('g'), panel = document.getElementById('panel');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+
+const cols = MEMORIES.slice().sort((a, b) => a.date.localeCompare(b.date) || a.n.localeCompare(b.n));
+const LW = 300, CW = 48, HEAD = 170, RH = 26;
+const W = LW + cols.length * CW + 20;
+const cx = id => LW + cols.findIndex(c => c.id === id) * CW + CW / 2;
+
+const defs = el('defs', {}, svg);
+const pat = el('pattern', { id: 'hatch', width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+el('rect', { width: 6, height: 6, fill: 'var(--dead-bg)' }, pat);
+el('line', { x1: 0, y1: 0, x2: 0, y2: 6, stroke: 'var(--superseded)', 'stroke-width': 1.5, opacity: .35 }, pat);
+// The legend's hatch swatch lives in another SVG; give it the same pattern.
+document.querySelectorAll('.legend svg').forEach(s => s.insertAdjacentHTML('afterbegin', defs.outerHTML));
+
+// Lanes: one per epic tree that owns linked work, then loose Issues, then the uncovered.
+const root = id => { let n = G.nodes.get(id); while (n.parent) n = G.nodes.get(n.parent); return n.id; };
+const linked = ISSUES.filter(i => G.decisionEdges(i.id).length);
+const lanes = [];
+const byRoot = {};
+linked.forEach(i => { const r = G.nodes.get(i.id).parent ? root(i.id) : null; (byRoot[r] = byRoot[r] || []).push(i); });
+Object.keys(byRoot).filter(k => k !== 'null').forEach(k => lanes.push({ name: `${k} · ${G.nodes.get(k).title}`, items: byRoot[k] }));
+if (byRoot.null) lanes.push({ name: 'No epic', items: byRoot.null });
+const uncovered = ISSUES.filter(i => i.type !== 'epic' && !G.decisionEdges(i.id).length);
+lanes.push({ name: 'No decision recorded', items: uncovered, none: true });
+
+let rowsH = 0; lanes.forEach(l => rowsH += 24 + l.items.length * RH);
+const H = HEAD + rowsH + 40;
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.height = H + 'px';
+
+// Columns
+const gCols = el('g', {}, svg);
+cols.forEach((m, i) => {
+  const x = LW + i * CW;
+  const g = el('g', { class: `col ${m.status}`, 'data-id': m.id }, gCols);
+  el('rect', { class: 'band', x: x + 2, y: HEAD - 8, width: CW - 4, height: rowsH + 14, rx: 4, fill: 'transparent' }, g);
+  el('rect', { class: 'hit', x: x + 2, y: 0, width: CW - 4, height: H - 20, rx: 4 }, g);
+  el('circle', { cx: x + CW / 2, cy: HEAD - 22, r: 7, fill: `var(--${m.status})` }, g);
+  el('text', { class: 'cnum', x: x + CW / 2, y: HEAD - 36, 'text-anchor': 'middle' }, g).textContent = m.n;
+  const t = el('text', { class: 'ctitle', transform: `translate(${x + CW / 2 + 4},${HEAD - 50}) rotate(-38)` }, g);
+  t.textContent = m.title.length > 30 ? m.title.slice(0, 29) + '…' : m.title;
+  const used = G.followers(m.id).length + G.citers(m.id).length;
+  el('text', { class: 'count', x: x + CW / 2, y: H - 22, 'text-anchor': 'middle' }, g).textContent = used || '·';
+  const tip = el('title', {}, g); tip.textContent = `ADR ${m.n} · ${m.status} · ${m.date}\n${m.title}`;
+});
+el('text', { class: 'count', x: LW - 10, y: H - 22, 'text-anchor': 'end' }, svg).textContent = 'Issues using it';
+G.edges.filter(e => e.kind === 'supersedes').forEach(e => {
+  const a = cx(e.to), b = cx(e.from), y = HEAD - 14;
+  el('path', { d: `M${a},${y} C${a},${y + 22} ${b},${y + 22} ${b},${y}`, fill: 'none', stroke: 'var(--superseded)', 'stroke-width': 2, 'marker-end': '' }, svg);
+});
+
+// Rows
+let y = HEAD + 4;
+const rows = [];
+lanes.forEach(l => {
+  el('text', { class: 'lane', x: 12, y: y + 14 }, svg).textContent = l.name.length > 44 ? l.name.slice(0, 43) + '…' : l.name;
+  y += 24;
+  l.items.forEach(i => {
+    const g = el('g', { class: 'row', 'data-id': i.id, transform: `translate(0,${y})` }, svg);
+    el('rect', { class: 'hit', x: 6, y: 0, width: W - 12, height: RH - 2, rx: 5 }, g);
+    const t = el('text', { x: 14, y: RH / 2 + 3 }, g);
+    t.innerHTML = `<tspan class="id">${i.id}</tspan> ${esc(i.title.length > 32 ? i.title.slice(0, 31) + '…' : i.title)}`;
+    const h = G.health(i.id);
+    const colour = h === 'dead' ? 'var(--superseded)' : h === 'proposed' ? 'var(--proposed)' : 'var(--issue)';
+    const stops = G.decisionEdges(i.id).map(e => ({ e, x: cx(e.to) })).sort((a, b) => a.x - b.x);
+    if (stops.length > 1) el('line', { class: 'track', x1: stops[0].x, x2: stops[stops.length - 1].x, y1: RH / 2 - 1, y2: RH / 2 - 1, stroke: colour }, g);
+    stops.forEach(s => el('circle', { class: `stop ${s.e.kind}`, cx: s.x, cy: RH / 2 - 1, r: 6, fill: s.e.kind === 'follows' ? colour : 'var(--panel)', stroke: colour }, g));
+    if (l.none) el('text', { x: LW + 8, y: RH / 2 + 3, style: 'fill:var(--muted);font-style:italic;font-size:11.5px' }, g).textContent = 'no stops: nothing records which decisions govern this work';
+    rows.push(g);
+    y += RH;
+  });
+});
+
+function hlColumn(id) {
+  svg.classList.toggle('dimc', !!id);
+  svg.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
+  if (!id) return;
+  svg.querySelector(`.col[data-id="${id}"]`).classList.add('hl');
+  G.inc(id).forEach(e => { const r = svg.querySelector(`.row[data-id="${CSS.escape(e.from)}"]`); r && r.classList.add('hl'); });
+}
+function hlRow(id) {
+  svg.classList.toggle('dimc', !!id);
+  svg.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
+  if (!id) return;
+  svg.querySelector(`.row[data-id="${CSS.escape(id)}"]`).classList.add('hl');
+  G.decisionEdges(id).forEach(e => svg.querySelector(`.col[data-id="${e.to}"]`).classList.add('hl'));
+}
+let pinned = null;
+svg.addEventListener('mousemove', e => {
+  if (pinned) return;
+  const r = e.target.closest('.row'), c = e.target.closest('.col');
+  if (r) hlRow(r.dataset.id); else if (c) hlColumn(c.dataset.id); else hlColumn(null);
+});
+svg.addEventListener('mouseleave', () => { if (!pinned) hlColumn(null); });
+function pick(id) {
+  pinned = id;
+  if (!id) { hlColumn(null); panel.innerHTML = '<div class="kicker">Hover a column for impact, a row for grounding. Click to read.</div>'; return; }
+  G.nodes.get(id).kind === 'memory' ? hlColumn(id) : hlRow(id);
+  panel.innerHTML = detailHTML(id);
+}
+svg.addEventListener('click', e => { const r = e.target.closest('.row') || e.target.closest('.col'); pick(r ? r.dataset.id : null); });
+panel.addEventListener('click', e => { const li = e.target.closest('[data-id]'); if (li) pick(li.dataset.id); });
+</script>
+</body>
+</html>
