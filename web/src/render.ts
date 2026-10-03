@@ -7,6 +7,7 @@ import type { Issue } from "./api.gen";
 import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, openBlockers, pool, progress, projectOf, shortId, type Item } from "./data";
 import { PC, S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
+import { renderMermaidBlocks } from "./mermaid";
 import { $, WIDE, age, esc, fmtDate, md, store, wide } from "./util";
 
 export function l2HTML(i: Item, opts: { proj?: boolean; status?: boolean } = {}): string {
@@ -629,6 +630,7 @@ export function renderDetail(): void {
   </section>`;
   const sec = host.querySelector<HTMLElement>(".detail")!;
   sec.querySelector(".dbody")!.scrollTop = scrollTop;
+  renderMermaidBlocks(sec);
   if (!existing) requestAnimationFrame(() => requestAnimationFrame(() => sec.classList.remove("enter")));
 }
 

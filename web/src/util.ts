@@ -34,6 +34,7 @@ export function md(src: string): string {
   const out: string[] = [];
   let list: { t: "ul" | "ol"; items: string[] } | null = null;
   let code: string[] | null = null;
+  let codeLanguage = "";
   const inline = (s: string) => esc(s)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
@@ -43,7 +44,11 @@ export function md(src: string): string {
   };
   for (const line of src.split("\n")) {
     if (line.startsWith("```")) {
-      if (code) { out.push(`<pre><code>${esc(code.join("\n"))}</code></pre>`); code = null; } else { flush(); code = []; }
+      if (code) {
+        const source = esc(code.join("\n"));
+        out.push(codeLanguage === "mermaid" ? `<div class="mermaid-diagram"><pre><code>${source}</code></pre></div>` : `<pre><code>${source}</code></pre>`);
+        code = null;
+      } else { flush(); code = []; codeLanguage = line.slice(3).trim().toLowerCase(); }
       continue;
     }
     if (code) { code.push(line); continue; }

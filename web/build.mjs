@@ -8,14 +8,13 @@
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "..", "pkg", "web", "dist");
 
-rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
 await build({
@@ -30,6 +29,7 @@ await build({
 });
 
 copyFileSync(join(root, "src", "app.css"), join(dist, "app.css"));
+copyFileSync(join(root, "node_modules", "mermaid", "dist", "mermaid.min.js"), join(dist, "mermaid.min.js"));
 for (const name of readdirSync(join(root, "public"))) copyFileSync(join(root, "public", name), join(dist, name));
 
 writeFileSync(join(dist, "icon-192.png"), icon(192));

@@ -193,8 +193,16 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 			}
 			head := r.NewStyle().Bold(true).Foreground(t.Primary).Render(sanitizeTerminalLine(c.Author)) +
 				muted.Render(" · "+FormatTimeRel(c.CreatedAt))
-			text := attachref.StripMachineLines(c.Text)
-			blocks = append(blocks, wrap.Render(head), body.Render(sanitizeTerminalText(text)), "")
+			text := sanitizeTerminalText(attachref.StripMachineLines(c.Text))
+			if md != nil {
+				originalWidth := md.width
+				md.SetWidth(width - 4)
+				if rendered, err := md.Render(text); err == nil {
+					text = strings.Trim(rendered, "\n")
+				}
+				md.SetWidth(originalWidth)
+			}
+			blocks = append(blocks, wrap.Render(head), body.Render(text), "")
 		}
 	}
 

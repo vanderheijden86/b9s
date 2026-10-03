@@ -153,6 +153,8 @@ In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a ne
 
 The detail pane opens with a card framed in the issue's status color: type, ID and last update, the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, and the comments come last.
 
+In the detail pane, Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with TD, TB or LR direction, and for `sequenceDiagram`. Other types, diagrams that fail to render, and diagrams wider than the pane stay as code. Widen the pane to retry a wide diagram. Copying an issue keeps the Mermaid source.
+
 In the detail pane, `j` and `k` scroll, `Home` and `End` jump to the top and bottom, `n` and `p` go to the next and previous sibling, and `c` copies the issue as Markdown. The detail numbers the first nine children: `1`-`9` open that child instead of a project, and `Backspace` goes back to the issue the number was pressed on.
 
 On the board, `h` and `l` change the column, `j` and `k` move between issues, `o`, `i` and `C` toggle `status:open`, `status:in_progress` and `status:closed` in the query bar (they combine, and `Esc` clears them), `r` shows ready issues, `z` folds the focused column into a rail (on OPEN it leaves only the work in progress) and `Z` unfolds all, `s` changes the swimlanes, `e` hides empty columns and `y` copies the issue ID. `f` shows only the card's top-level branch, the issue at the top of its parents and everything below it, and `f` again shows the whole board. Each issue is a boxed card, and empty columns fold into rails. The closed column stays hidden until `c` shows it. `c` also clears an open or ready filter set in the tree, which would otherwise keep closed issues off the board. Issues sit in one horizontal lane per epic. `v` switches between two designs: the epic rail shows each epic with its completion in a column on the left, and epic rows put that as a header row above the lane. The epics form the first column: `Left` and `Right` move between it and the status columns inside the selected lane, and skip a column where the lane has no card. `Up` and `Down` move through the column's cards, or change the epic in the epic column. `{` and `}` go to the previous and next epic. `Tab` folds the selected epic's lane and `Shift-Tab` folds or unfolds all of them.
@@ -285,6 +287,8 @@ The detail pane shows an issue's attachments above its comments, and `R` lists t
 ## Phone and browser
 
 `b9s web` serves the same project to a phone browser: the tree, the board, search with the TUI query language, the detail sheet, the dependency graph, and every write the TUI makes, through the same `bd` calls. Changes from anywhere show up live.
+
+Mermaid fences in the web detail sheet render as diagrams when opened. Large diagrams scroll sideways, and invalid diagrams stay as source code. Copy and Edit keep the original Mermaid text.
 
 ```bash
 cd ~/code/my-project       # a folder with .beads, as for b9s itself
