@@ -9,9 +9,10 @@ import { PC, S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow 
 import { syncHistory } from "./nav";
 import { $, WIDE, age, esc, fmtDate, md, store, wide } from "./util";
 
-export function l2HTML(i: Item, opts: { proj?: boolean } = {}): string {
+export function l2HTML(i: Item, opts: { proj?: boolean; status?: boolean } = {}): string {
   const bits: string[] = [];
   const [tg, tc] = tyOf(i.type);
+  if (S.cols.has("status") && opts.status !== false) { const st = stOf(eff(i)); bits.push(`<span class="stw" style="color:${st.c}">${esc(st.w)}</span>`); }
   if (S.cols.has("prio")) bits.push(`<span style="color:${PC[i.priority] || "var(--muted)"}">P${i.priority}</span>`);
   if (S.cols.has("type")) bits.push(`<span style="color:${tc}">${tg} ${esc(i.type)}</span>`);
   if (S.cols.has("who") && i.assignee) bits.push(`<span style="color:var(--dim)">@${esc(i.assignee)}</span>`);
@@ -225,7 +226,7 @@ function parentLineHTML(i: Item): string {
 function cardHTML(i: Item): string {
   const st = stOf(eff(i));
   const [, tc] = tyOf(i.type);
-  return `<div class="card ${S.cursor === i.id ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span></div>${l2HTML(i, { proj: true })}${parentLineHTML(i)}</div>`;
+  return `<div class="card ${S.cursor === i.id ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span></div>${l2HTML(i, { proj: true, status: S.board.group !== "status" })}${parentLineHTML(i)}</div>`;
 }
 
 /** laneKeys orders epic lanes the way both boards do: biggest first, loose cards last. */

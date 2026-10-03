@@ -18,7 +18,7 @@ export const S = {
   text: "",
   qres: null as null | { text: string; version: number; ids: Set<string>; error: string },
   sort: store.get<SortKey>("sort", "priority"),
-  cols: new Set<string>(store.get<string[]>("cols", ["type", "prio", "who", "age", "deps", "kids", "notes"])),
+  cols: initialCols(),
   wrap: store.get("wrap", false),
   textSize: store.get("textSize", 100),
   folded: new Set<string>(),
@@ -54,9 +54,21 @@ export const S = {
   retryIn: 0,
 };
 
+/** initialCols reads the second-line columns. A choice saved before the
+ *  status column existed never had the chance to include it, so it gains
+ *  status once; turning it off afterwards sticks. */
+function initialCols(): Set<string> {
+  const cols = new Set<string>(store.get<string[]>("cols", ["status", "type", "prio", "who", "age", "deps", "kids", "notes"]));
+  if (!store.get("colsStatus", false)) {
+    cols.add("status");
+    store.set("colsStatus", true);
+  }
+  return cols;
+}
+
 export const ST: Record<string, { g: string; c: string; w: string }> = {
   open: { g: "○", c: "var(--green)", w: "open" },
-  in_progress: { g: "◐", c: "var(--cyan)", w: "in_progress" },
+  in_progress: { g: "◐", c: "var(--cyan)", w: "in progress" },
   blocked: { g: "⊘", c: "var(--red)", w: "blocked" },
   deferred: { g: "◌", c: "var(--orange)", w: "deferred" },
   review: { g: "◑", c: "var(--yellow)", w: "review" },

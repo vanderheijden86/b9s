@@ -17,6 +17,19 @@ test.describe("reading", () => {
     expect(ids.indexOf("t-epic")).toBeLessThan(ids.indexOf("t-1"));
   });
 
+  test("each row names its status first on the second line", async ({ page, project }) => {
+    await open(page, project);
+    await expect(row(page, "t-1").locator(".l2 .stw")).toHaveText("in progress");
+    await expect(row(page, "t-3").locator(".l2 .stw")).toHaveText("blocked");
+    await expect(row(page, "t-2").locator(".l2 > span").first()).toHaveText("open");
+  });
+
+  test("a saved column choice from before the status column still shows status", async ({ page, project }) => {
+    await page.addInitScript(() => localStorage.setItem("b9s.cols", JSON.stringify(["prio"])));
+    await open(page, project);
+    await expect(row(page, "t-2").locator(".l2 .stw")).toHaveText("open");
+  });
+
   test("tapping the chevron folds the epic", async ({ page, project }) => {
     await open(page, project);
     await row(page, "t-epic").locator("[data-chev]").click();
