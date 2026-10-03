@@ -26,6 +26,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.30
 	github.com/muesli/termenv v0.16.0
 	github.com/sigstore/sigstore-go v1.2.1
+	golang.org/x/image v0.38.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1

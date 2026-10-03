@@ -1,0 +1,131 @@
+# Sepia, b9s's built-in light skin: dark ink on warm paper (ADR 0030), with the
+# Quiet Paper board selection (ADR 0032). k9s can load this file too.
+# Every text colour reaches WCAG AA (4.5:1) on paper; pkg/ui tests enforce it.
+
+paper: &paper "#E9DFCB"
+paper_deep: &paper_deep "#DDD1BA"
+selection: &selection "#D8C9A8"
+ink: &ink "#3A2F22"
+ink_strong: &ink_strong "#2E2418"
+ink_soft: &ink_soft "#66573F"
+closed: &closed "#685C47"
+navy: &navy "#2F4F6F"
+ink_blue: &ink_blue "#2F5878"
+moss: &moss "#4A6A2A"
+oxblood: &oxblood "#8E2F2F"
+ochre: &ochre "#7D500C"
+plum: &plum "#5A3F6E"
+teal: &teal "#3F6660"
+umber: &umber "#6B4A2F"
+olive: &olive "#5F5A14"
+moss_tint: &moss_tint "#D0CCB1"
+blue_tint: &blue_tint "#CBC9BE"
+red_tint: &red_tint "#DAC3B2"
+ochre_tint: &ochre_tint "#D8C8AC"
+plum_tint: &plum_tint "#D2C5BC"
+teal_tint: &teal_tint "#CECCBA"
+closed_tint: &closed_tint "#D4CAB6"
+
+k9s:
+  body:
+    fgColor: *ink
+    bgColor: *paper
+    logoColor: *navy
+  prompt:
+    fgColor: *ink
+    bgColor: *paper
+    suggestColor: *plum
+  info:
+    fgColor: *olive
+    sectionColor: *ink
+  dialog:
+    fgColor: *ink
+    bgColor: *paper
+    buttonFgColor: *paper
+    buttonBgColor: *navy
+    buttonFocusFgColor: *paper
+    buttonFocusBgColor: *plum
+    labelFgColor: *plum
+    fieldFgColor: *ink
+  frame:
+    border:
+      fgColor: *closed
+      focusColor: *navy
+    menu:
+      fgColor: *ink
+      keyColor: *teal
+      numKeyColor: *plum
+    crumbs:
+      fgColor: *paper
+      bgColor: *navy
+      activeColor: *plum
+    status:
+      newColor: *ink_blue
+      modifyColor: *plum
+      addColor: *moss
+      errorColor: *oxblood
+      pendingColor: *ochre
+      highlightColor: *ochre
+      killColor: *closed
+      completedColor: *closed
+    title:
+      fgColor: *ink
+      bgColor: *paper
+      highlightColor: *ochre
+      counterColor: *plum
+      filterColor: *teal
+  views:
+    table:
+      fgColor: *ink
+      bgColor: *paper
+      cursorFgColor: *ink_strong
+      cursorBgColor: *selection
+      markColor: *ochre
+      header:
+        fgColor: *ink
+        bgColor: *paper
+        sorterColor: *navy
+    xray:
+      fgColor: *ink
+      bgColor: *paper
+      cursorColor: *selection
+      graphicColor: *plum
+    yaml:
+      keyColor: *teal
+      colonColor: *ink_soft
+      valueColor: *ink
+    logs:
+      fgColor: *ink
+      bgColor: *paper
+
+b9s:
+  bgDeep: *paper_deep
+  bgSubtle: *paper_deep
+  boardSelection: "#D2D5CC"
+  match: *plum_tint
+  headerText: *paper
+  subtext: *ink_soft
+  muted: *ink_soft
+  secondary: *ink_soft
+  info: *ink_blue
+  warning: *ochre
+  pinned: *ink_blue
+  hooked: *teal
+  tombstone: *closed
+  openTint: *moss_tint
+  inProgressTint: *blue_tint
+  blockedTint: *red_tint
+  deferredTint: *ochre_tint
+  pinnedTint: *blue_tint
+  hookedTint: *teal_tint
+  reviewTint: *plum_tint
+  closedTint: *closed_tint
+  tombstoneTint: *closed_tint
+  prioMedium: *olive
+  prioCriticalTint: *red_tint
+  prioHighTint: *ochre_tint
+  prioMediumTint: *ochre_tint
+  prioLowTint: *moss_tint
+  epic: *plum
+  chore: *teal
+  accents: [*navy, *plum, *moss, *ochre, *ink_blue, *oxblood, *teal, *umber]

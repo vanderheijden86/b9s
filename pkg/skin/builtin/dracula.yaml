@@ -1,0 +1,165 @@
+# Dracula, b9s's built-in dark skin. The k9s section is the upstream k9s
+# dracula skin (github.com/derailed/k9s/skins/dracula.yaml, Apache-2.0); the
+# b9s block keeps the colours b9s has always shown on dark terminals.
+# Styles...
+foreground: &foreground "#f8f8f2"
+background: &background "#282a36"
+current_line: &current_line "#44475a"
+selection: &selection "#44475a"
+comment: &comment "#6272a4"
+cyan: &cyan "#8be9fd"
+green: &green "#50fa7b"
+orange: &orange "#ffb86c"
+pink: &pink "#ff79c6"
+purple: &purple "#bd93f9"
+red: &red "#ff5555"
+yellow: &yellow "#f1fa8c"
+
+# Skin...
+k9s:
+  # General K9s styles
+  body:
+    fgColor: *foreground
+    bgColor: *background
+    logoColor: *purple
+  # Command prompt styles
+  prompt:
+    fgColor: *foreground
+    bgColor: *background
+    suggestColor: *purple
+  # ClusterInfoView styles.
+  info:
+    fgColor: *pink
+    sectionColor: *foreground
+  # Dialog styles.
+  dialog:
+    fgColor: *foreground
+    bgColor: *background
+    buttonFgColor: *foreground
+    buttonBgColor: *purple
+    buttonFocusFgColor: *yellow
+    buttonFocusBgColor: *pink
+    labelFgColor: *orange
+    fieldFgColor: *foreground
+  frame:
+    # Borders styles.
+    border:
+      fgColor: *selection
+      focusColor: *current_line
+    menu:
+      fgColor: *foreground
+      keyColor: *pink
+      # Used for favorite namespaces
+      numKeyColor: *pink
+    # CrumbView attributes for history navigation.
+    crumbs:
+      fgColor: *foreground
+      bgColor: *current_line
+      activeColor: *current_line
+    # Resource status and update styles
+    status:
+      newColor: *cyan
+      modifyColor: *purple
+      addColor: *green
+      errorColor: *red
+      highlightColor: *orange
+      killColor: *comment
+      completedColor: *comment
+    # Border title styles.
+    title:
+      fgColor: *foreground
+      bgColor: *current_line
+      highlightColor: *orange
+      counterColor: *purple
+      filterColor: *pink
+  views:
+    # Charts skins...
+    charts:
+      bgColor: default
+      defaultDialColors:
+        - *purple
+        - *red
+      defaultChartColors:
+        - *purple
+        - *red
+    # TableView attributes.
+    table:
+      fgColor: *foreground
+      bgColor: *background
+      # Header row styles.
+      header:
+        fgColor: *foreground
+        bgColor: *background
+        sorterColor: *cyan
+    # Xray view attributes.
+    xray:
+      fgColor: *foreground
+      bgColor: *background
+      cursorColor: *current_line
+      graphicColor: *purple
+      showIcons: false
+    # YAML info styles.
+    yaml:
+      keyColor: *pink
+      colonColor: *purple
+      valueColor: *foreground
+    # Logs styles.
+    logs:
+      fgColor: *foreground
+      bgColor: *background
+      indicator:
+        fgColor: *foreground
+        bgColor: *purple
+        toggleOnColor: *green
+        toggleOffColor: *cyan
+b9s:
+  bg: "#282A36"
+  bgDeep: "#1E1F29"
+  bgSubtle: "#363949"
+  selection: "#4FC1E9"
+  selectionText: "#101010"
+  boardSelection: "#4FC1E9"
+  match: "#4A148C"
+  headerText: "#282A36"
+  text: "#F8F8F2"
+  subtext: "#BFBFBF"
+  muted: "#6272A4"
+  primary: "#BD93F9"
+  secondary: "#6272A4"
+  info: "#8BE9FD"
+  success: "#50FA7B"
+  warning: "#FFB86C"
+  danger: "#FF5555"
+  border: "#44475A"
+  open: "#50FA7B"
+  inProgress: "#8BE9FD"
+  blocked: "#FF5555"
+  deferred: "#FFB86C"
+  pinned: "#6699FF"
+  hooked: "#00CED1"
+  review: "#BD93F9"
+  closed: "#6272A4"
+  tombstone: "#44475A"
+  openTint: "#1A3D2A"
+  inProgressTint: "#1A3344"
+  blockedTint: "#3D1A1A"
+  deferredTint: "#3D2A1A"
+  pinnedTint: "#1A2A44"
+  hookedTint: "#1A3D3D"
+  reviewTint: "#2A1A44"
+  closedTint: "#2A2A3D"
+  tombstoneTint: "#1E1F29"
+  prioCritical: "#FF5555"
+  prioHigh: "#FFB86C"
+  prioMedium: "#F1FA8C"
+  prioLow: "#50FA7B"
+  prioCriticalTint: "#3D1A1A"
+  prioHighTint: "#3D2A1A"
+  prioMediumTint: "#3D3D1A"
+  prioLowTint: "#1A3D2A"
+  bug: "#FF5555"
+  feature: "#57D9A3"
+  task: "#4C9AFF"
+  epic: "#BD93F9"
+  chore: "#8BE9FD"
+  accents: ["#BD93F9", "#FF79C6", "#8BE9FD", "#50FA7B", "#FFB86C", "#F1FA8C", "#6699FF", "#57D9A3"]
