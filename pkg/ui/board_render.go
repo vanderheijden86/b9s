@@ -98,7 +98,7 @@ func (b *BoardModel) regionInputs() []boardRegionInput {
 // width cells: epic lanes when the board shows an epic, plain columns
 // otherwise.
 func (b *BoardModel) columnsBody(width, height int) []string {
-	if b.hasEpicLanes() {
+	if b.hasEpicLanes() || b.hasFeatureGroups() {
 		return b.lanesBody(width, height)
 	}
 	regions := planBoardRegions(width, b.regionInputs(), b.actualFocusedCol(), adaptiveBreakpoints)

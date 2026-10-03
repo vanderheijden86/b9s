@@ -276,6 +276,8 @@ Columns with issues share the width equally. Each issue is one line: the type ic
 
 An issue belongs to its nearest epic ancestor through parent-child links. The board puts the issues of each epic in one horizontal lane, aligned across the columns, and has two designs for the epic itself ([ADR 0018](adr/0018-show-epics-as-a-rail-or-rows-and-hide-closed.md), [ADR 0030](adr/0030-compact-board-with-one-line-cards-and-epic-context.md)). `v` switches between them and keeps the selection, and `ui.board_epics` in the config sets the one used at start.
 
+Within each column, muted square brackets group a feature and its descendants. Parents inside a feature get nested brackets. Each bracket names its parent, even when a filter hides that parent's card. Arrow keys follow the grouped card order and skip bracket headings. Ungrouped cards follow the feature groups. Narrow columns reduce the bracket depth to preserve card space. This works in both epic designs and in projects without epics ([ADR 0032](adr/0032-group-board-cards-with-feature-brackets.md)).
+
 | Design | What it shows |
 |--------|---------------|
 | Epic rail (default) | A column on the left holds each lane's epic as a box as tall as the lane: its ID and title, the first sentence of its description, a completion bar with done/total and the open P0 and P1 count, the in-progress, waiting and ready counts, and its labels, owner, due date and last change. A due date in the past shows in red. A folded epic shows only its title and bar. The epic stays in view while its lane scrolls. A selected epic gets the same highlighted border and fill as a selected card. |

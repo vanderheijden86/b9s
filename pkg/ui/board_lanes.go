@@ -30,7 +30,7 @@ var overdueColor = lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"}
 
 // railWidth is the width of the epic rail, or 0 in the rows design.
 func (b *BoardModel) railWidth(width int) int {
-	if b.epicView != BoardEpicRail {
+	if b.epicView != BoardEpicRail || !b.hasEpicLanes() {
 		return 0
 	}
 	return min(max(width/5, laneRailMin), laneRailMax)
@@ -51,6 +51,17 @@ func (b *BoardModel) hasEpicLanes() bool {
 	for _, col := range b.activeColIdx {
 		for _, is := range b.columns[col] {
 			if b.epicOf[is.ID] != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (b *BoardModel) hasFeatureGroups() bool {
+	for _, col := range b.activeColIdx {
+		for _, is := range b.columns[col] {
+			if len(b.groupPaths[is.ID]) > 0 {
 				return true
 			}
 		}
@@ -107,9 +118,10 @@ type boardLine struct {
 // cellLine is one line of a region: plain text, or line off of a card that is
 // drawn on first use.
 type cellLine struct {
-	text string
-	card *lazyCard
-	off  int
+	text           string
+	card           *lazyCard
+	off            int
+	prefix, suffix string
 }
 
 type lazyCard struct {
@@ -131,7 +143,23 @@ func (b *BoardModel) cellText(c cellLine, width int) string {
 		k := c.card
 		k.lines = b.cardLines(k.issue, k.width, k.selected, k.col, k.row)
 	}
-	return c.card.lines[c.off]
+	return c.prefix + c.card.lines[c.off] + c.suffix
+}
+
+// Brackets use the border palette, leaving the selected card as the only
+// highlighted surface. Deep groups stop indenting before cards lose room.
+func (b *BoardModel) groupEdge(path []string, width int, opening bool) cellLine {
+	depth := len(path) - 1
+	edge := b.theme.Renderer.NewStyle().Foreground(b.theme.Border)
+	inner := width - depth*4
+	line := "└" + strings.Repeat("─", max(inner-2, 0)) + "┘"
+	if opening {
+		id := path[depth]
+		label := "─ " + b.displayID(id) + " " + b.groupTitles[id] + " "
+		label = truncateRunesHelper(label, max(inner-2, 0), "…")
+		line = "┌" + label + strings.Repeat("─", max(inner-2-lipgloss.Width(label), 0)) + "┐"
+	}
+	return cellLine{text: edge.Render(strings.Repeat("│ ", depth) + line + strings.Repeat(" │", depth))}
 }
 
 // colsText joins a line's region cells, drawing the cards it crosses.
@@ -185,7 +213,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 		top := 0
 		if railW > 0 {
 			lane.rail = b.railLines(epic, railW, folded, epicSelected)
-		} else {
+		} else if b.hasEpicLanes() {
 			lane.head = b.laneBox(epic, width, folded, epicSelected)
 			top = len(lane.head)
 		}
@@ -214,18 +242,40 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 				cells[i] = []cellLine{{text: padCells(muted.Render(countOrDot(b.laneCount(epic, r.col), " hidden")), r.width)}}
 			default:
 				cellSpans[i] = map[int]span{}
+				var path []string
+				transition := func(next []string) {
+					common := 0
+					for common < len(path) && common < len(next) && path[common] == next[common] {
+						common++
+					}
+					for depth := len(path); depth > common; depth-- {
+						cells[i] = append(cells[i], b.groupEdge(path[:depth], r.width, false))
+					}
+					for depth := common + 1; depth <= len(next); depth++ {
+						cells[i] = append(cells[i], b.groupEdge(next[:depth], r.width, true))
+					}
+					path = next
+				}
 				for row, is := range b.columns[r.col] {
 					if b.epicOf[is.ID] != epic || is.ID == epic {
 						continue
 					}
+					next := b.groupPaths[is.ID]
+					maxDepth := max((r.width-12)/4, 0)
+					next = next[:min(len(next), maxDepth)]
+					transition(next)
 					s := len(cells[i])
 					selected := r.col == focused && row == b.selectedRow[r.col]
-					card := &lazyCard{issue: is, width: r.width, selected: selected, col: r.col, row: row}
-					for off := range b.cardHeight(is, r.width, selected) {
-						cells[i] = append(cells[i], cellLine{card: card, off: off})
+					cardW := r.width - 4*len(path)
+					card := &lazyCard{issue: is, width: cardW, selected: selected, col: r.col, row: row}
+					edge := t.Renderer.NewStyle().Foreground(t.Border)
+					for off := range b.cardHeight(is, cardW, selected) {
+						cells[i] = append(cells[i], cellLine{card: card, off: off,
+							prefix: edge.Render(strings.Repeat("│ ", len(path))), suffix: edge.Render(strings.Repeat(" │", len(path)))})
 					}
 					cellSpans[i][row] = span{s, len(cells[i]) - 1}
 				}
+				transition(nil)
 			}
 			laneH = max(laneH, len(cells[i]))
 		}
@@ -290,7 +340,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 		l := lines[i]
 		colsPart := b.colsText(l, regions, colsW)
 		// A lane cut by the top edge keeps its row in view (rows design).
-		if i == from && from > 0 && railW == 0 && l.lane >= 0 && !l.laneHead && selSpan.start != from {
+		if i == from && from > 0 && railW == 0 && l.lane >= 0 && !l.laneHead && selSpan.start != from && len(lanes[l.lane].head) > 1 {
 			colsPart = lanes[l.lane].head[1] // the header's content line
 		}
 		if railW == 0 {

@@ -133,3 +133,154 @@ func TestBoardCard_KeepsARightMargin(t *testing.T) {
 		t.Fatalf("tags must end %d cells before the edge, got %q", cardLineMargin, got)
 	}
 }
+
+func featureBracketIssues() []model.Issue {
+	makeIssue := func(id, title, parent string, typ model.IssueType, priority int) model.Issue {
+		is := model.Issue{ID: id, Title: title, IssueType: typ, Status: model.StatusClosed, Priority: priority}
+		if parent != "" {
+			is.Dependencies = epicChildDeps(id, parent)
+		}
+		return is
+	}
+	return []model.Issue{
+		makeIssue("p-e", "Board", "", model.TypeEpic, 2),
+		makeIssue("p-a", "Navigation", "p-e", model.TypeFeature, 2),
+		makeIssue("p-b", "Editing", "p-e", model.TypeFeature, 2),
+		makeIssue("p-a1", "First navigation task", "p-a", model.TypeTask, 0),
+		makeIssue("p-b1", "Edit title", "p-b", model.TypeTask, 1),
+		makeIssue("p-sub", "Keyboard", "p-a", model.TypeTask, 2),
+		makeIssue("p-key", "Arrow keys", "p-sub", model.TypeTask, 3),
+		makeIssue("p-loose", "Unrelated", "p-e", model.TypeTask, 2),
+	}
+}
+
+func TestBoardFeatureBrackets_NestedGroups(t *testing.T) {
+	for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+		b := NewBoardModel(featureBracketIssues(), DefaultTheme(lipgloss.DefaultRenderer()))
+		b.ToggleClosedColumn()
+		b.SetEpicView(view)
+		b.SelectIssueByID("p-e")
+		got := stripANSI(b.View(240, 60))
+		for _, text := range []string{"┌─ p-a Navigation", "┌─ p-b Editing", "│ ┌─ p-sub Keyboard", "│ │", "└─"} {
+			if !strings.Contains(got, text) {
+				t.Errorf("%s missing %q:\n%s", view, text, got)
+			}
+		}
+	}
+}
+
+func TestBoardFeatureBrackets_WithoutEpic(t *testing.T) {
+	issues := featureBracketIssues()[1:]
+	for i := range issues {
+		if issues[i].ID == "p-a" || issues[i].ID == "p-b" || issues[i].ID == "p-loose" {
+			issues[i].Dependencies = nil
+		}
+	}
+	b := NewBoardModel(issues, DefaultTheme(lipgloss.DefaultRenderer()))
+	b.ToggleClosedColumn()
+	if got := stripANSI(b.View(200, 40)); !strings.Contains(got, "┌─ p-a Navigation") {
+		t.Fatal("features without an epic need brackets too")
+	}
+}
+
+func TestBoardFeatureBrackets_WithoutEpicScrolls(t *testing.T) {
+	b := NewBoardModel(featureBracketIssues()[1:], DefaultTheme(lipgloss.DefaultRenderer()))
+	b.ToggleClosedColumn()
+	b.SelectIssueByID("p-loose")
+	if got := stripANSI(b.View(120, 12)); !strings.Contains(got, "Unrelated") {
+		t.Fatal("scroll lost selected card")
+	}
+}
+
+func TestBoardFeatureBrackets_ViewportKeepsSelectedCard(t *testing.T) {
+	for _, width := range []int{40, 80, 120, 240} {
+		for _, view := range []BoardEpicView{BoardEpicRail, BoardEpicRows} {
+			b := NewBoardModel(featureBracketIssues(), DefaultTheme(lipgloss.DefaultRenderer()))
+			b.ToggleClosedColumn()
+			b.SetEpicView(view)
+			b.SelectIssueByID("p-key")
+			got := b.View(width, 16)
+			if !strings.Contains(stripANSI(got), "Arrow keys") {
+				t.Errorf("%s at %d loses selected card", view, width)
+			}
+			for _, line := range strings.Split(got, "\n") {
+				if lipgloss.Width(line) > width {
+					t.Errorf("%s at %d overflows: %d", view, width, lipgloss.Width(line))
+				}
+			}
+		}
+	}
+}
+
+func TestBoardFeatureBrackets_NavigationFollowsGroups(t *testing.T) {
+	b := NewBoardModel(featureBracketIssues(), DefaultTheme(lipgloss.DefaultRenderer()))
+	b.ToggleClosedColumn()
+	b.SelectIssueByID("p-a")
+	for _, want := range []string{"p-a1", "p-sub", "p-key", "p-b", "p-b1", "p-loose"} {
+		b.MoveDown()
+		if got := b.SelectedIssue(); got == nil || got.ID != want {
+			t.Fatalf("want %s, got %+v", want, got)
+		}
+	}
+}
+
+func TestBoardFeatureBrackets_FilteredParentContext(t *testing.T) {
+	all := featureBracketIssues()
+	b := NewBoardModel([]model.Issue{all[6]}, DefaultTheme(lipgloss.DefaultRenderer()))
+	b.SetEpicUniverse(all)
+	b.ToggleClosedColumn()
+	got := stripANSI(b.View(200, 30))
+	for _, text := range []string{"Navigation", "Keyboard", "Arrow keys"} {
+		if !strings.Contains(got, text) {
+			t.Fatalf("missing %s:\n%s", text, got)
+		}
+	}
+	if b.TotalCount() != 1 {
+		t.Fatalf("context headings must not add issues: %d", b.TotalCount())
+	}
+}
+
+func TestBoardFeatureBrackets_IgnoreBlockingLinks(t *testing.T) {
+	all := featureBracketIssues()
+	all[3].Dependencies[0].Type = model.DepBlocks
+	b := NewBoardModel(all, DefaultTheme(lipgloss.DefaultRenderer()))
+	if len(b.groupPaths["p-a1"]) != 0 {
+		t.Fatal("a blocker must not make a task a feature member")
+	}
+}
+
+func TestBoardFeatureBrackets_CyclicParentsStayBounded(t *testing.T) {
+	all := featureBracketIssues()
+	all[1].Dependencies = epicChildDeps("p-a", "p-sub")
+	b := NewBoardModel(all, DefaultTheme(lipgloss.DefaultRenderer()))
+	b.ToggleClosedColumn()
+	seen := map[string]bool{}
+	for _, is := range b.columns[ColClosed] {
+		if seen[is.ID] {
+			t.Fatalf("duplicate card %s", is.ID)
+		}
+		seen[is.ID] = true
+		if len(b.groupPaths[is.ID]) > maxEpicDepth {
+			t.Fatal("unbounded group ancestry")
+		}
+	}
+	if len(seen) != len(all) {
+		t.Fatalf("lost cards: got %d want %d", len(seen), len(all))
+	}
+	_ = b.View(80, 20)
+}
+
+func TestBoardFeatureBrackets_SearchSelectsGroupedCard(t *testing.T) {
+	b := NewBoardModel(featureBracketIssues(), DefaultTheme(lipgloss.DefaultRenderer()))
+	b.ToggleClosedColumn()
+	b.StartSearch()
+	for _, r := range "Arrow keys" {
+		b.AppendSearchChar(r)
+	}
+	if b.SearchMatchCount() != 1 {
+		t.Fatalf("want one match, got %d", b.SearchMatchCount())
+	}
+	if is := b.SelectedIssue(); is == nil || is.ID != "p-key" {
+		t.Fatalf("wrong search selection: %+v", is)
+	}
+}

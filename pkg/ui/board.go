@@ -41,6 +41,8 @@ type BoardModel struct {
 	epicOf       map[string]string
 	epics        map[string]*boardEpic
 	foldedEpics  map[string]bool
+	groupPaths   map[string][]string
+	groupTitles  map[string]string
 
 	// The epics form the first column of a lane board. While onEpicColumn is
 	// set, the selection is the epic of lane epicColumnLane ("" being the

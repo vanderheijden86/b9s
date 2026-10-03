@@ -74,3 +74,33 @@ func TestBoardBranchToggleWithF(t *testing.T) {
 	}
 	containsAll(t, out, []string{"branch ", "f shows the whole board", "Whole board"})
 }
+
+func TestBoardNestedFeatureBrackets(t *testing.T) {
+	rows := []struct{ id, title, kind, parent string }{
+		{"br-e", "Board delivery", "epic", ""},
+		{"br-f", "Navigation", "feature", "br-e"},
+		{"br-s", "Keyboard", "task", "br-f"},
+		{"br-t", "Arrow keys", "task", "br-s"},
+		{"br-g", "Editing", "feature", "br-e"},
+		{"br-u", "Edit title", "task", "br-g"},
+	}
+	var issues []treeFixtureIssue
+	for _, row := range rows {
+		is := treeFixtureIssue{ID: row.id, Title: row.title, IssueType: row.kind, Status: "closed", Priority: 2, CreatedAt: "2026-10-01T12:00:00Z"}
+		if row.parent != "" {
+			is.Dependencies = []*treeFixtureDep{{IssueID: row.id, DependsOnID: row.parent, Type: "parent-child"}}
+		}
+		issues = append(issues, is)
+	}
+	dir := t.TempDir()
+	writeTreeFixture(t, dir, issues)
+	out, err := runTreeTUI(t, dir, 3200, []keyStep{
+		kd("b", 600*time.Millisecond),
+		kd("c", 600*time.Millisecond),
+		kd("v", 600*time.Millisecond),
+	})
+	if err != nil {
+		t.Fatalf("run grouped board: %v", err)
+	}
+	containsAll(t, out, []string{"┌─ f Navigation", "│ ┌─ s Keyboard", "┌─ g Editing", "Arrow keys", "Epic rows 2/2"})
+}

@@ -207,6 +207,79 @@ func (b *BoardModel) rebuildEpicIndex() {
 			info.Ready++
 		}
 	}
+	b.rebuildFeatureGroups(byID, parent)
+}
+
+// Group ancestry comes from the full universe so a status or text filter
+// cannot detach a task from its feature. Only parent-child links count.
+func (b *BoardModel) rebuildFeatureGroups(byID map[string]*model.Issue, parent map[string]string) {
+	b.groupPaths = make(map[string][]string, len(byID))
+	b.groupTitles = make(map[string]string)
+	hasChildren := make(map[string]bool)
+	for _, id := range parent {
+		hasChildren[id] = true
+	}
+	for id := range byID {
+		var reverse []string
+		seen := map[string]bool{}
+		for p := id; p != "" && len(seen) < maxEpicDepth; p = parent[p] {
+			is := byID[p]
+			if is == nil || is.IssueType == model.TypeEpic || seen[p] {
+				break
+			}
+			seen[p] = true
+			if hasChildren[p] || is.IssueType == model.TypeFeature {
+				reverse = append(reverse, p)
+			}
+		}
+		var path []string
+		for i := len(reverse) - 1; i >= 0; i-- {
+			p := reverse[i]
+			if len(path) == 0 && byID[p].IssueType != model.TypeFeature {
+				continue
+			}
+			path = append(path, p)
+			b.groupTitles[p] = withoutOwnIDPrefix(sanitizeTerminalLine(byID[p].Title), p)
+		}
+		b.groupPaths[id] = path
+	}
+}
+
+// Sibling groups retain the first member's priority/date rank. Parents lead
+// their descendants, and every group is contiguous for both drawing and keys.
+func (b *BoardModel) groupFeatureCards(issues []model.Issue, depth int) []model.Issue {
+	var out []model.Issue
+	buckets := make(map[string][]model.Issue)
+	var order []string
+	for _, is := range issues {
+		path := b.groupPaths[is.ID]
+		if len(path) <= depth {
+			out = append(out, is)
+			continue
+		}
+		id := path[depth]
+		if _, exists := buckets[id]; !exists {
+			order = append(order, id)
+		}
+		buckets[id] = append(buckets[id], is)
+	}
+	var grouped []model.Issue
+	for _, id := range order {
+		grouped = append(grouped, b.groupFeatureCards(buckets[id], depth+1)...)
+	}
+	// A group's own issue is context and remains selectable in its status.
+	if depth > 0 {
+		for i, is := range out {
+			path := b.groupPaths[is.ID]
+			if len(path) == depth && path[depth-1] == is.ID {
+				out = append(out[:i], out[i+1:]...)
+				out = append([]model.Issue{is}, out...)
+				break
+			}
+		}
+		return append(out, grouped...)
+	}
+	return append(grouped, out...)
 }
 
 // epicOrder returns the epic IDs by rank, then by ID.
@@ -233,7 +306,7 @@ func (b *BoardModel) epicOrder() map[string]int {
 // epic lanes, the epic's own issue first, issues without an epic last, and
 // the children of a folded epic left out.
 func (b *BoardModel) arrangeColumns() {
-	if len(b.epics) == 0 {
+	if len(b.epics) == 0 && len(b.groupTitles) == 0 {
 		b.columns = b.rawColumns
 		return
 	}
@@ -264,7 +337,21 @@ func (b *BoardModel) arrangeColumns() {
 			}
 			return si < sj
 		})
-		b.columns[col] = arranged
+		var grouped []model.Issue
+		for start := 0; start < len(arranged); {
+			if b.epicOf[arranged[start].ID] == arranged[start].ID {
+				grouped = append(grouped, arranged[start])
+				start++
+				continue
+			}
+			end := start + 1
+			for end < len(arranged) && b.epicOf[arranged[end].ID] == b.epicOf[arranged[start].ID] {
+				end++
+			}
+			grouped = append(grouped, b.groupFeatureCards(arranged[start:end], 0)...)
+			start = end
+		}
+		b.columns[col] = grouped
 	}
 }
 
