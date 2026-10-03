@@ -1,0 +1,135 @@
+package ui
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/vanderheijden86/b9s/pkg/model"
+)
+
+// sparseIssue returns the sparse board's copy of id, so the card sees the
+// board's blocker and downstream indexes.
+func sparseIssue(t *testing.T, b BoardModel, id string) model.Issue {
+	t.Helper()
+	is := b.issueMap[id]
+	if is == nil {
+		t.Fatalf("no issue %s on the sparse board", id)
+	}
+	return *is
+}
+
+func TestBoardCard_UnselectedIsOneLine(t *testing.T) {
+	b := newSparseBoard()
+	lines := b.cardLines(sparseIssue(t, b, "spectroscope-eg0.4.1"), 100, false, 0, 0)
+	if len(lines) != 1 {
+		t.Fatalf("got %d lines, want 1:\n%s", len(lines), strings.Join(lines, "\n"))
+	}
+	got := strings.TrimRight(stripANSI(lines[0]), " ")
+	if !strings.HasPrefix(got, "✔ eg0.4.1 Add packet append API with cursor semantics") {
+		t.Fatalf("line must start with icon, ID and title, got %q", got)
+	}
+	if !strings.HasSuffix(got, "lane: reviewing · blocks 1 · P1") {
+		t.Fatalf("tags must be right-aligned in order, got %q", got)
+	}
+	if w := lipgloss.Width(lines[0]); w != 100 {
+		t.Fatalf("line width %d, want 100", w)
+	}
+	blocked := strings.TrimRight(stripANSI(b.cardLines(sparseIssue(t, b, "spectroscope-eg0.4.2"), 80, false, 0, 0)[0]), " ")
+	if !strings.HasSuffix(blocked, "blocked eg0.4.1 · P1") {
+		t.Fatalf("a blocked card names its blocker first, got %q", blocked)
+	}
+}
+
+func TestBoardCard_TagsDropFromTheRightBeforeTheTitle(t *testing.T) {
+	b := newSparseBoard()
+	is := sparseIssue(t, b, "spectroscope-eg0.4.1")
+	got := strings.TrimRight(stripANSI(b.cardLines(is, 44, false, 0, 0)[0]), " ")
+	if strings.Contains(got, "P1") || strings.Contains(got, "blocks") {
+		t.Fatalf("at 44 cells the later tags go first, got %q", got)
+	}
+	if !strings.Contains(got, "lane: reviewing") || !strings.Contains(got, "Add packe") || !strings.Contains(got, "…") {
+		t.Fatalf("the first tag and a cut title must stay, got %q", got)
+	}
+	narrow := strings.TrimRight(stripANSI(b.cardLines(is, 14, false, 0, 0)[0]), " ")
+	if !strings.HasPrefix(narrow, "✔ eg0.4.1") {
+		t.Fatalf("the ID is never dropped, got %q", narrow)
+	}
+	for w := 4; w <= 90; w += 5 {
+		if lw := lipgloss.Width(b.cardLines(is, w, false, 0, 0)[0]); lw != w {
+			t.Errorf("card at %d cells is %d wide", w, lw)
+		}
+	}
+}
+
+func TestBoardCard_LowPriorityHasNoPriorityTag(t *testing.T) {
+	b := newSparseBoard()
+	got := strings.TrimRight(stripANSI(b.cardLines(sparseIssue(t, b, "spectroscope-eg0.3"), 60, false, 0, 0)[0]), " ")
+	if got != "✔ eg0.3 Open work item 3" {
+		t.Fatalf("a P2 card with no tags is icon, ID and title only, got %q", got)
+	}
+}
+
+func TestBoardCard_SelectedIsTheBox(t *testing.T) {
+	b := newSparseBoard()
+	lines := plainLines(b.cardLines(sparseIssue(t, b, "spectroscope-eg0.4.2"), 40, true, 0, 0))
+	if len(lines) < 5 || !strings.HasPrefix(lines[0], "╭") || !strings.HasPrefix(lines[len(lines)-1], "╰") {
+		t.Fatalf("the selected card must be the rounded box:\n%s", strings.Join(lines, "\n"))
+	}
+	if !strings.Contains(strings.Join(lines, "\n"), "blocked by eg0.4.1") {
+		t.Fatalf("the box keeps the tag line:\n%s", strings.Join(lines, "\n"))
+	}
+}
+
+func TestBoardCardHeight_FollowsTheSelection(t *testing.T) {
+	b := newSparseBoard()
+	is := sparseIssue(t, b, "spectroscope-eg0.4.2")
+	for w := 8; w <= 80; w += 9 {
+		if got := b.cardHeight(is, w, false); got != 1 {
+			t.Errorf("unselected at %d: height %d, want 1", w, got)
+		}
+		if got, want := b.cardHeight(is, w, true), len(b.cardLines(is, w, true, 0, 0)); got != want {
+			t.Errorf("selected at %d: height %d, drawn %d", w, got, want)
+		}
+	}
+}
+
+// The selected card's box makes its lane taller, so the lane below starts
+// further down than when the selection is elsewhere. The eg0 lane sits
+// between the k3s lane (it ranks first, with a P0) and the No epic lane.
+func TestBoardLanes_SelectedCardGrowsItsLane(t *testing.T) {
+	at := func(lines []string, s string) int {
+		for i, l := range lines {
+			if strings.Contains(l, s) {
+				return i
+			}
+		}
+		return -1
+	}
+	gap := func(sel string) int {
+		b := newEpicBoard(BoardEpicRows)
+		if !b.SelectIssueByID(sel) {
+			t.Fatalf("cannot select %s", sel)
+		}
+		lines := strings.Split(stripANSI(b.View(200, 60)), "\n")
+		eg0, next := at(lines, "◆ eg0"), at(lines, "◇ No epic")
+		if eg0 < 0 || next < eg0 {
+			t.Fatalf("lanes not drawn in order:\n%s", strings.Join(lines, "\n"))
+		}
+		return next - eg0
+	}
+	if outside, inside := gap("spectroscope-x1"), gap("spectroscope-eg0.1"); inside <= outside {
+		t.Fatalf("selecting a card of a lane must make it taller: %d lines, %d with the selection elsewhere", inside, outside)
+	}
+}
+
+// Side by side, one-line cards would touch across the one-cell column gap,
+// so a card keeps a right margin before the next column.
+func TestBoardCard_KeepsARightMargin(t *testing.T) {
+	b := newSparseBoard()
+	got := stripANSI(b.cardLines(sparseIssue(t, b, "spectroscope-eg0.4.1"), 100, false, 0, 0)[0])
+	if !strings.HasSuffix(got, "P1"+strings.Repeat(" ", cardLineMargin)) {
+		t.Fatalf("tags must end %d cells before the edge, got %q", cardLineMargin, got)
+	}
+}

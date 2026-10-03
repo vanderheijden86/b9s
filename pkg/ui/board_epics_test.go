@@ -140,14 +140,21 @@ func TestBoardEpicRail_EpicSitsInALeftRail(t *testing.T) {
 	}
 }
 
-func TestBoardEpicRail_CardsAreBoxes(t *testing.T) {
+// An unselected card is one line: icon, ID and title, without the age or a
+// P2 priority (docs/adr/0030).
+func TestBoardEpicRail_CardsAreOneLine(t *testing.T) {
 	b := newEpicBoard(BoardEpicRail)
+	b.SelectIssueByID("spectroscope-x1")
 	view := stripANSI(b.View(200, 40))
-	for _, want := range []string{"╭", "╰", "Parse capture headers", "eg0.1", "P2"} {
-		if !strings.Contains(view, want) {
-			t.Fatalf("rail view misses %q:\n%s", want, view)
+	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "eg0.1 ") {
+			if !strings.Contains(line, "✔ eg0.1 Parse capture headers") || strings.Contains(line, "P2") {
+				t.Fatalf("card line = %q, want icon, ID and title only", line)
+			}
+			return
 		}
 	}
+	t.Fatalf("rail view misses the eg0.1 card:\n%s", view)
 }
 
 func TestBoardEpicRows_HeaderRowAboveTheCards(t *testing.T) {
@@ -503,7 +510,7 @@ func TestBoardCardHeight_MatchesDrawnCard(t *testing.T) {
 	for _, is := range issues {
 		for w := 8; w <= 48; w += 5 {
 			for _, sel := range []bool{false, true} {
-				got := b.cardHeight(is, w)
+				got := b.cardHeight(is, w, sel)
 				want := len(b.cardLines(is, w, sel, 0, 0))
 				if got != want {
 					t.Fatalf("%s at width %d: cardHeight %d, drawn %d lines", is.ID, w, got, want)

@@ -2,8 +2,9 @@
 type: ADR
 id: "0018"
 title: "Show epics as a rail or as rows, and hide the closed column"
-status: active
+status: superseded
 date: 2026-09-25
+superseded_by: "0030"
 ---
 
 ## Context

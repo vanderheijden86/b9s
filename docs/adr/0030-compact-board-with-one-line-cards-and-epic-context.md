@@ -2,7 +2,7 @@
 type: ADR
 id: "0030"
 title: "Compact the board: one-line cards and an epic cell that says what the epic is and where it stands"
-status: proposed
+status: active
 date: 2026-10-02
 ---
 

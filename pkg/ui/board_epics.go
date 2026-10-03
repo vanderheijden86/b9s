@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -61,6 +62,17 @@ type boardEpic struct {
 	Title string
 	Done  int
 	Total int
+	// The facts the epic cell shows (docs/adr/0030), also over the whole
+	// project, so a filter never changes what an epic says about itself.
+	Description  string     // first sentence, safe for the terminal
+	Labels       []string   // the epic issue's own labels
+	Owner        string     // assignee, or owner when there is no assignee
+	Due          *time.Time // the epic issue's due date
+	Urgent       int        // open P0 and P1 issues under the epic
+	InProgress   int
+	Waiting      int       // open, with an open blocker
+	Ready        int       // open, no open blocker, not deferred
+	LastActivity time.Time // newest UpdatedAt of the epic and its issues
 	// rank orders the bands: the most urgent open work first.
 	rank  int
 	color lipgloss.AdaptiveColor
@@ -161,11 +173,19 @@ func (b *BoardModel) rebuildEpicIndex() {
 		info := b.epics[epic]
 		if info == nil {
 			e := byID[epic]
-			info = &boardEpic{ID: epic, Title: withoutOwnIDPrefix(sanitizeTerminalLine(e.Title), epic), rank: 99, color: epicColor(epic)}
+			info = &boardEpic{ID: epic, Title: withoutOwnIDPrefix(sanitizeTerminalLine(e.Title), epic), rank: 99, color: epicColor(epic),
+				Description: sanitizeTerminalLine(firstSentence(e.Description)), Labels: e.Labels, Owner: e.Assignee, Due: e.DueDate,
+				LastActivity: e.UpdatedAt}
+			if info.Owner == "" {
+				info.Owner = e.Owner
+			}
 			b.epics[epic] = info
 		}
 		if !isClosedLikeStatus(is.Status) && is.Priority < info.rank {
 			info.rank = is.Priority
+		}
+		if is.UpdatedAt.After(info.LastActivity) {
+			info.LastActivity = is.UpdatedAt
 		}
 		if is.ID == epic {
 			continue
@@ -173,6 +193,18 @@ func (b *BoardModel) rebuildEpicIndex() {
 		info.Total++
 		if isClosedLikeStatus(is.Status) {
 			info.Done++
+			continue
+		}
+		if is.Priority <= 1 {
+			info.Urgent++
+		}
+		switch {
+		case is.Status == model.StatusInProgress:
+			info.InProgress++
+		case b.openBlockerIn(is, byID) != "":
+			info.Waiting++
+		case is.Status != model.StatusDeferred:
+			info.Ready++
 		}
 	}
 }

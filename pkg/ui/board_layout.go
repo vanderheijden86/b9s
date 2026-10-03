@@ -219,12 +219,16 @@ func withoutOwnIDPrefix(title, id string) string {
 
 // openBlocker returns the first blocking dependency that is not closed. A
 // dependency on an unknown issue counts as open: the board cannot prove it done.
-func (b *BoardModel) openBlocker(issue model.Issue) string {
+func (b *BoardModel) openBlocker(issue model.Issue) string { return b.openBlockerIn(issue, b.issueMap) }
+
+// openBlockerIn is openBlocker over an explicit issue map, for counts taken
+// over the epic universe rather than the filtered board.
+func (b *BoardModel) openBlockerIn(issue model.Issue, byID map[string]*model.Issue) string {
 	for _, dep := range issue.Dependencies {
 		if dep == nil || !dep.Type.IsBlocking() {
 			continue
 		}
-		if blocker, ok := b.issueMap[dep.DependsOnID]; ok && blocker != nil && isClosedLikeStatus(blocker.Status) {
+		if blocker, ok := byID[dep.DependsOnID]; ok && blocker != nil && isClosedLikeStatus(blocker.Status) {
 			continue
 		}
 		return dep.DependsOnID

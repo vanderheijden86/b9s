@@ -67,7 +67,7 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 | `web` | The browser app in TypeScript, built with esbuild into `pkg/web/dist`, and its Playwright tests |
 | `tests/e2e` | End-to-end tests that run the built binary in a pseudo-terminal |
 
-`pkg/ui` is large because Bubble Tea keeps one model per program. The files split it by concern: `model.go` holds the root `Update` and key routing, `tree.go` the tree, `board.go` the board, `graph.go` the graph, `query_state.go` the query, `commands.go` the prompt aliases, `edit_modal.go` the forms, `issue_writer.go` the `bd` calls, and `project_*.go` the project header, table and switch.
+`pkg/ui` is large because Bubble Tea keeps one model per program. The files split it by concern: `model.go` holds the root `Update` and key routing, `tree.go` the tree, `board.go` the board, `board_lanes.go` the epic lanes and cards, `board_epics.go` the epic index and the facts each epic cell shows (ADR 0030), `graph.go` the graph, `query_state.go` the query, `commands.go` the prompt aliases, `edit_modal.go` the forms, `issue_writer.go` the `bd` calls, and `project_*.go` the project header, table and switch.
 
 ## Startup
 

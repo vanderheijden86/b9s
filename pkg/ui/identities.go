@@ -76,6 +76,7 @@ func (m Model) applyIdentities(msg identitiesLoadedMsg) Model {
 func (m *Model) setIdentities(reg *identity.Registry) {
 	m.identities = reg
 	m.tree.identities = reg
+	m.board.SetIdentities(reg)
 }
 
 // assigneeMatches reports whether an issue passes the assignee filter. The

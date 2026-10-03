@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanderheijden86/b9s/pkg/identity"
 	"github.com/vanderheijden86/b9s/pkg/model"
 
 	"github.com/charmbracelet/lipgloss"
@@ -79,6 +80,26 @@ type BoardModel struct {
 	// Active project name for the prefix badge on cards (bd-dy6r)
 	// Empty string means all-projects mode: fall back to ExtractRepoPrefix.
 	activeProjectName string
+	// identities resolves an epic's owner to its display name (ADR 0014).
+	identities *identity.Registry
+}
+
+// SetIdentities gives the board the alias registry, so an epic's owner shows
+// as its configured name.
+func (b *BoardModel) SetIdentities(reg *identity.Registry) { b.identities = reg }
+
+// ownerLabel is "@name" for an owner, or "" for nobody. A nil registry
+// resolves every name to itself. Beads records an owner as an email address,
+// and an address the registry does not name shows its local part.
+func (b *BoardModel) ownerLabel(owner string) string {
+	if owner == "" {
+		return ""
+	}
+	name := b.identities.DisplayName(owner)
+	if local, _, ok := strings.Cut(name, "@"); ok && local != "" {
+		name = local
+	}
+	return "@" + sanitizeTerminalLine(name)
 }
 
 // SetActiveProjectName sets the project name shown as a badge on each card (bd-dy6r).

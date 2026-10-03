@@ -4,31 +4,36 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
-// Epic lanes (docs/adr/0018). The board is cut into one horizontal lane per
+// Epic lanes (docs/adr/0018, compacted by docs/adr/0030). The board is cut into one horizontal lane per
 // epic, aligned across every column. The rail design names the epic in a
 // column left of the status columns; the rows design names it in a
 // full-width row above its cards. The epic's own issue is not drawn as a
 // card: selecting it highlights the lane's rail or row instead.
 
 const (
-	laneRailMin       = 12
-	laneRailMax       = 26
-	laneRailTitleMax  = 3
-	cardTitleMaxLines = 2
+	laneRailMin        = 16
+	laneRailMax        = 34
+	laneRailTitleMax   = 2
+	laneRailSummaryMax = 2
+	cardTitleMaxLines  = 2
 )
+
+// overdueColor marks a past due date and the P0 and P1 tags.
+var overdueColor = lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"}
 
 // railWidth is the width of the epic rail, or 0 in the rows design.
 func (b *BoardModel) railWidth(width int) int {
 	if b.epicView != BoardEpicRail {
 		return 0
 	}
-	return min(max(width/6, laneRailMin), laneRailMax)
+	return min(max(width/5, laneRailMin), laneRailMax)
 }
 
 // progressBar draws done/total as width cells of heavy and light rule.
@@ -216,7 +221,7 @@ func (b *BoardModel) lanesBody(width, height int) []string {
 					s := len(cells[i])
 					selected := r.col == focused && row == b.selectedRow[r.col]
 					card := &lazyCard{issue: is, width: r.width, selected: selected, col: r.col, row: row}
-					for off := range b.cardHeight(is, r.width) {
+					for off := range b.cardHeight(is, r.width, selected) {
 						cells[i] = append(cells[i], cellLine{card: card, off: off})
 					}
 					cellSpans[i][row] = span{s, len(cells[i]) - 1}
@@ -384,45 +389,182 @@ func (b *BoardModel) laneIssueCount(epic string) int {
 }
 
 // railLines returns the content of one lane's epic cell, which railBox
-// frames:
+// frames (docs/adr/0030):
 //
-//	▾ ◆ eg0
-//	Stream capture
-//	pipeline
-//	━━━━──────── 1/4
-//	3 issues
+//	▾ ◆ eg0 Stream capture pipeline
+//	Capture bd events as a stream.
+//	━━━━━━━━──────── 1/4 · P1 2
+//	wip 1 · waiting 2 · ready 1
+//	#tui · @andre · due 14 Oct · 4d
+//
+// The title and the description take at most two lines each. The description
+// and the last line are left out when empty, and the activity then ends the
+// counts line, or stands alone below it when both do not fit. A folded cell
+// is the title on one line and the bar.
 func (b *BoardModel) railLines(epic string, width int, folded, selected bool) []string {
 	t := b.theme
 	muted := b.fg(selected, t.Secondary)
 	inner := railInner(width)
-	var lines []string
 	if epic == "" {
-		lines = append(lines, muted.Bold(true).Render(truncateRunesHelper("◇ No epic", inner, "…")))
-	} else {
-		info := b.epics[epic]
-		marker := "▾ "
-		if folded {
-			marker = "▸ "
+		lines := []string{muted.Bold(true).Render(truncateRunesHelper("◇ No epic", inner, "…"))}
+		if !folded {
+			lines = append(lines, muted.Render(truncateRunesHelper(issueCount(b.laneIssueCount(epic)), inner, "…")))
 		}
-		lines = append(lines, b.fg(selected, info.color).Bold(true).Render(truncateRunesHelper(marker+"◆ "+b.displayID(epic), inner, "…")))
-		maxTitle := laneRailTitleMax
-		if folded {
-			maxTitle = 1
-		}
-		for _, l := range clampLines(wrapTitleLines(info.Title, inner), maxTitle, inner) {
-			lines = append(lines, b.fg(selected, t.Base.GetForeground()).Bold(true).Render(l))
-		}
-		count := fmt.Sprintf(" %d/%d", info.Done, info.Total)
-		if barW := inner - lipgloss.Width(count); barW >= 3 {
-			lines = append(lines, b.fg(selected, info.color).Render(progressBar(info.Done, info.Total, barW))+muted.Render(count))
+		return lines
+	}
+	info := b.epics[epic]
+	marker := "▾ "
+	if folded {
+		marker = "▸ "
+	}
+	head := marker + "◆ " + b.displayID(epic)
+	maxTitle := laneRailTitleMax
+	if folded {
+		maxTitle = 1
+	}
+	titleStyle := b.fg(selected, t.Base.GetForeground()).Bold(true)
+	var lines []string
+	for i, l := range clampLines(wrapTitleLines(head+" "+info.Title, inner), maxTitle, inner) {
+		if i == 0 && strings.HasPrefix(l, head) {
+			l = b.fg(selected, info.color).Bold(true).Render(head) + titleStyle.Render(l[len(head):])
 		} else {
-			lines = append(lines, muted.Render(strings.TrimSpace(count)))
+			l = titleStyle.Render(l)
+		}
+		lines = append(lines, l)
+	}
+	if !folded && info.Description != "" {
+		for _, l := range clampLines(wrapTitleLines(info.Description, inner), laneRailSummaryMax, inner) {
+			lines = append(lines, muted.Render(l))
 		}
 	}
-	if !folded {
-		lines = append(lines, muted.Render(truncateRunesHelper(issueCount(b.laneIssueCount(epic)), inner, "…")))
+	lines = append(lines, b.epicBarLine(info, inner, selected))
+	if folded {
+		return lines
 	}
-	return lines
+
+	activity := compactActivity(info.LastActivity)
+	tail := muted.Render(" · ") + b.fg(selected, getAgeColor(info.LastActivity)).Render(activity)
+	tailW := 3 + lipgloss.Width(activity)
+	counts := []textPart{{text: fmt.Sprintf("wip %d · waiting %d · ready %d", info.InProgress, info.Waiting, info.Ready), color: t.Secondary}}
+	meta := b.epicMetaParts(info)
+	if len(meta) == 0 {
+		if partsWidth(counts)+tailW <= inner {
+			return append(lines, b.fitParts(counts, inner-tailW, selected)+tail)
+		}
+		return append(lines, b.fitParts(counts, inner, selected), b.fg(selected, getAgeColor(info.LastActivity)).Render(activity))
+	}
+	lines = append(lines, b.fitParts(counts, inner, selected))
+	return append(lines, b.fitParts(meta, inner-tailW, selected)+tail)
+}
+
+// epicBarLine is the progress bar, done/total and the open P0 and P1 count.
+func (b *BoardModel) epicBarLine(info *boardEpic, inner int, selected bool) string {
+	muted := b.fg(selected, b.theme.Secondary)
+	tail := " " + epicDoneText(info)
+	if barW := inner - lipgloss.Width(tail); barW >= 3 {
+		return b.fg(selected, info.color).Render(progressBar(info.Done, info.Total, barW)) + muted.Render(tail)
+	}
+	return muted.Render(truncateRunesHelper(strings.TrimSpace(tail), inner, "…"))
+}
+
+// epicDoneText is "done/total", followed by "· P1 n" when n open issues are P0
+// or P1.
+func epicDoneText(info *boardEpic) string {
+	s := fmt.Sprintf("%d/%d", info.Done, info.Total)
+	if info.Urgent > 0 {
+		s += fmt.Sprintf(" · P1 %d", info.Urgent)
+	}
+	return s
+}
+
+// epicMetaParts lists the labels, the owner and the due date, separated, or
+// nothing when the epic has none of them. A past due date is red.
+func (b *BoardModel) epicMetaParts(info *boardEpic) []textPart {
+	t := b.theme
+	var facts []textPart
+	if len(info.Labels) > 0 {
+		labels := make([]string, len(info.Labels))
+		for i, l := range info.Labels {
+			labels[i] = "#" + sanitizeTerminalLine(l)
+		}
+		facts = append(facts, textPart{text: strings.Join(labels, " "), color: t.Secondary})
+	}
+	if owner := b.ownerLabel(info.Owner); owner != "" {
+		facts = append(facts, textPart{text: owner, color: t.Secondary})
+	}
+	if info.Due != nil {
+		c := lipgloss.TerminalColor(t.Secondary)
+		if info.Due.Before(time.Now()) {
+			c = overdueColor
+		}
+		facts = append(facts, textPart{text: "due " + info.Due.Format("2 Jan"), color: c})
+	}
+	return b.joinParts(facts)
+}
+
+// joinParts puts a muted " · " between parts.
+func (b *BoardModel) joinParts(parts []textPart) []textPart {
+	var out []textPart
+	for i, p := range parts {
+		if i > 0 {
+			out = append(out, textPart{text: " · ", color: b.theme.Secondary})
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// textPart is a run of text in one color, a piece of a line fitParts cuts.
+type textPart struct {
+	text  string
+	color lipgloss.TerminalColor
+	bold  bool
+}
+
+// partsWidth is the width of the parts drawn side by side.
+func partsWidth(parts []textPart) int {
+	w := 0
+	for _, p := range parts {
+		w += lipgloss.Width(p.text)
+	}
+	return w
+}
+
+// fitParts draws parts into at most width cells. A line that does not fit is
+// cut and ends in an ellipsis, so the cut is visible.
+func (b *BoardModel) fitParts(parts []textPart, width int, selected bool) string {
+	if width <= 0 {
+		return ""
+	}
+	cut := partsWidth(parts) > width
+	budget := width
+	if cut {
+		budget = width - 1
+	}
+	var out strings.Builder
+	for _, p := range parts {
+		text := p.text
+		if w := lipgloss.Width(text); w > budget {
+			text = strings.TrimRight(truncateRunesHelper(text, budget, ""), " ")
+		}
+		if text == "" {
+			break
+		}
+		out.WriteString(b.fg(selected, p.color).Bold(p.bold).Render(text))
+		budget -= lipgloss.Width(text)
+		if text != p.text {
+			break
+		}
+	}
+	if cut {
+		out.WriteString(b.fg(selected, b.theme.Secondary).Render("…"))
+	}
+	return out.String()
+}
+
+// compactActivity is the time since t in at most four cells.
+func compactActivity(t time.Time) string {
+	return compactAge(model.Issue{UpdatedAt: t})
 }
 
 // railInner is the content width of an epic cell: a side and a space each side.
@@ -481,52 +623,61 @@ func frameLines(content []string, width int, side string, edge lipgloss.Style, b
 	return append(out, edge.Render("╰"+strings.Repeat("─", max(width-2, 0))+"╯"))
 }
 
-// laneBox draws the full-width epic header of the rows design as a box:
+// laneBox draws the full-width epic header of the rows design as a box. Its
+// first line carries the epic's facts, its second the description's first
+// sentence when there is one; a folded row is the first line alone:
 //
-//	╭──────────────────────────────────────────────────────────────────────╮
-//	┃ ▾ ◆ eg0 Stream capture pipeline  3 issues          ━━━━──────── 1/4 │
-//	╰──────────────────────────────────────────────────────────────────────╯
+//	╭──────────────────────────────────────────────────────────────────────────╮
+//	┃ ▾ ◆ eg0 Stream capture  wip 1 · waiting 2 · ready 1 · #tui · 4d  ━━── 1/4 │
+//	┃ Capture bd events as a stream.                                           │
+//	╰──────────────────────────────────────────────────────────────────────────╯
 func (b *BoardModel) laneBox(epic string, width int, folded, selected bool) []string {
 	side, edge, bg := b.epicFrame(epic, selected)
-	return frameLines([]string{b.laneRow(epic, max(width-4, 1), folded, selected)}, width, side, edge, bg)
+	inner := max(width-4, 1)
+	content := []string{b.laneRow(epic, inner, folded, selected)}
+	if info := b.epics[epic]; !folded && epic != "" && info.Description != "" {
+		content = append(content, b.fitParts([]textPart{{text: info.Description, color: b.theme.Secondary}}, inner, selected))
+	}
+	return frameLines(content, width, side, edge, bg)
 }
 
-// laneRow is the content line of an epic header box, width cells wide.
+// laneRow is the facts line of an epic header box, width cells wide: the
+// ID, title, counts, labels, owner, due date and activity on the left, cut
+// from the right, and the bar with done/total on the right. Under 60 cells
+// the bar goes, so the title keeps its room.
 func (b *BoardModel) laneRow(epic string, width int, folded, selected bool) string {
 	t := b.theme
 	muted := b.fg(selected, t.Secondary)
-	count := "  " + issueCount(b.laneIssueCount(epic))
 	if epic == "" {
-		return muted.Bold(true).Render("◇ No epic") + muted.Render(count)
+		return b.fitParts([]textPart{
+			{text: "◇ No epic", color: t.Secondary, bold: true},
+			{text: "  " + issueCount(b.laneIssueCount(epic)), color: t.Secondary},
+		}, width, selected)
 	}
 	info := b.epics[epic]
 	marker := "▾ "
 	if folded {
 		marker = "▸ "
 	}
-	head := marker + "◆ " + b.displayID(epic)
-	done := fmt.Sprintf(" %d/%d", info.Done, info.Total)
-	barW := 12
-	right := b.fg(selected, info.color).Render(progressBar(info.Done, info.Total, barW)) + muted.Render(done)
-	rightW := barW + lipgloss.Width(done) + 1
-	titleW := width - lipgloss.Width(head) - 1 - lipgloss.Width(count) - rightW - 2
-	if titleW < 8 {
-		right, rightW = "", 0
-		titleW = width - lipgloss.Width(head) - 1 - lipgloss.Width(count)
+	left := []textPart{
+		{text: marker + "◆ " + b.displayID(epic), color: info.color, bold: true},
+		{text: " " + info.Title, color: t.Base.GetForeground(), bold: true},
+		{text: "  ", color: t.Secondary},
 	}
-	title := ""
-	if titleW >= 4 {
-		title = " " + truncateRunesHelper(info.Title, titleW, "…")
+	facts := []textPart{{text: fmt.Sprintf("wip %d · waiting %d · ready %d", info.InProgress, info.Waiting, info.Ready), color: t.Secondary}}
+	facts = append(facts, b.epicMetaParts(info)...)
+	facts = append(facts, textPart{text: compactActivity(info.LastActivity), color: getAgeColor(info.LastActivity)})
+	left = append(left, b.joinParts(facts)...)
+
+	if width < 60 {
+		return b.fitParts(left, width, selected)
 	}
-	left := b.fg(selected, info.color).Bold(true).Render(head) +
-		b.fg(selected, t.Base.GetForeground()).Bold(true).Render(title) + muted.Render(count)
-	line := left
-	if right != "" {
-		if gap := width - lipgloss.Width(left) - rightW; gap > 0 {
-			line = left + strings.Repeat(" ", gap) + right
-		}
-	}
-	return line
+	done := " " + epicDoneText(info)
+	const barW = 12
+	rightW := barW + lipgloss.Width(done)
+	line := b.fitParts(left, width-rightW-2, selected)
+	return line + strings.Repeat(" ", width-lipgloss.Width(line)-rightW) +
+		b.fg(selected, info.color).Render(progressBar(info.Done, info.Total, barW)) + muted.Render(done)
 }
 
 // clampLines keeps at most n lines and marks a cut with an ellipsis on the
@@ -580,7 +731,11 @@ func (b *BoardModel) cardTags(card boardCardView, inner int) []cardTag {
 
 // cardHeight is the number of lines cardLines draws for issue, found without
 // styling anything, so the lanes can be laid out before any card is drawn.
-func (b *BoardModel) cardHeight(issue model.Issue, width int) int {
+// An unselected card is one line; the selected card is its box.
+func (b *BoardModel) cardHeight(issue model.Issue, width int, selected bool) int {
+	if !selected {
+		return 1
+	}
 	card := b.cardView(issue)
 	inner := max(width-4, 1)
 	h := 3 + min(len(wrapTitleLines(card.Title, inner)), cardTitleMaxLines) // edges and footer
@@ -590,18 +745,96 @@ func (b *BoardModel) cardHeight(issue model.Issue, width int) int {
 	return h
 }
 
-// cardLines draws one issue as a rounded box:
+// cardLines draws one issue. Unselected, it is one line (docs/adr/0030):
+//
+//	✔ eg0.4.2 Wire the flow subscription transport   blocked eg0.4.1 · P1
+//
+// The selected card is cardBox.
+func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col, row int) []string {
+	if !selected {
+		return []string{b.cardLine(issue, width, col, row)}
+	}
+	return b.cardBox(issue, width, col, row)
+}
+
+// cardLineTitleMin is the title width a one-line card keeps before it drops
+// a tag.
+const cardLineTitleMin = 8
+
+// cardLineMargin is the blank right edge of a one-line card. Columns sit one
+// cell apart, so without it a card's last tag touches the next column's icon.
+const cardLineMargin = 2
+
+// lineTags lists a one-line card's tags in priority order: the blocker, the
+// dispatcher lane, the downstream count, and P0 or P1. Age and P2 to P4 are
+// left to the selected card.
+func (b *BoardModel) lineTags(issue model.Issue, card boardCardView) []textPart {
+	t := b.theme
+	var tags []textPart
+	if card.BlockedBy != "" {
+		tags = append(tags, textPart{text: "blocked " + card.BlockedBy, color: t.Blocked})
+	}
+	if card.LaneStage != "" {
+		tags = append(tags, textPart{text: "lane: " + card.LaneStage, color: t.InProgress})
+	}
+	if card.BlocksCount > 0 {
+		tags = append(tags, textPart{text: fmt.Sprintf("blocks %d", card.BlocksCount), color: t.Feature})
+	}
+	if issue.Priority <= 1 {
+		tags = append(tags, textPart{text: card.Priority, color: overdueColor, bold: true})
+	}
+	return tags
+}
+
+// cardLine draws the one-line card: icon, ID, the title cut to what the tags
+// leave, and the tags right-aligned. Tags drop from the right until the
+// title keeps cardLineTitleMin cells; the ID goes before no tag does.
+func (b *BoardModel) cardLine(issue model.Issue, width, col, row int) string {
+	full := width
+	if width >= cardLineTitleMin*3 {
+		width -= cardLineMargin
+	}
+	t := b.theme
+	card := b.cardView(issue)
+	idColor := lipgloss.TerminalColor(t.Primary)
+	if b.IsSearchMatch(col, row) {
+		idColor = lipgloss.AdaptiveColor{Light: "#1565c0", Dark: "#64b5f6"}
+	}
+	icon, iconColor := t.GetTypeIcon(string(issue.IssueType))
+	left := []textPart{
+		{text: icon + " ", color: iconColor},
+		{text: card.ShortID, color: idColor, bold: true},
+		{text: " " + card.Title, color: t.Base.GetForeground()},
+	}
+	headW := lipgloss.Width(icon) + 1 + lipgloss.Width(card.ShortID) + 1
+
+	tags := b.lineTags(issue, card)
+	for len(tags) > 0 && width-headW-partsWidth(b.joinParts(tags))-2 < cardLineTitleMin {
+		tags = tags[:len(tags)-1]
+	}
+	if len(tags) == 0 {
+		return surface(b.fitParts(left, width, false), full, b.rowSurface(false, col, row))
+	}
+	right := b.joinParts(tags)
+	rightW := partsWidth(right)
+	line := b.fitParts(left, width-rightW-2, false)
+	line += strings.Repeat(" ", width-lipgloss.Width(line)-rightW) + b.fitParts(right, rightW, false)
+	return surface(line, full, b.rowSurface(false, col, row))
+}
+
+// cardBox draws the selected issue as a rounded box:
 //
 //	╭──────────────────────────────╮
 //	│ Wire the flow subscription   │
 //	│ transport                    │
 //	│ blocked by eg0.4.1           │
-//	│ ● eg0.4.2          P1 · 2d   │
+//	│ ✔ eg0.4.2          P1 · 2d   │
 //	╰──────────────────────────────╯
 //
 // The title takes at most two lines. The tag line appears only when the card
 // waits on a dependency, sits in a dispatcher lane or blocks other work.
-func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col, row int) []string {
+func (b *BoardModel) cardBox(issue model.Issue, width, col, row int) []string {
+	const selected = true
 	t := b.theme
 	card := b.cardView(issue)
 	inner := max(width-4, 1)
