@@ -81,6 +81,8 @@ cd b9s
 make install   # installs b9s to $GOPATH/bin
 ```
 
+`make install` refuses to run in a git worktree, so a branch build never replaces the `b9s` on your `PATH`. Use `make build` there and run `./b9s`, or pass `FORCE=1` to install anyway.
+
 b9s makes every write through the [Beads](https://github.com/steveyegge/beads) `bd` command, and reads embedded Dolt projects through it too, so `bd` must be on your `PATH`. **b9s is tested with bd 1.2.2 through 1.3.0.** A newer bd usually works. [docs/testing.md](docs/testing.md#bd-releases) says how to check one.
 
 **Tried it?** Tell me what worked and what did not in the [feedback thread](https://github.com/vanderheijden86/b9s/discussions/12).

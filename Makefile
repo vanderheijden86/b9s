@@ -10,7 +10,15 @@ export CGO_CFLAGS := -DSQLITE_ENABLE_FTS5
 build:
 	go build -o b9s ./cmd/b9s
 
+# go install replaces the b9s on PATH. A linked worktree holds branch code, so
+# installing from one would swap the everyday binary for an unreleased build.
+# Its git dir differs from the common dir; the main checkout's does not.
 install:
+	@if [ "$(FORCE)" != "1" ] && [ "$$(git rev-parse --absolute-git-dir)" != "$$(cd "$$(git rev-parse --git-common-dir)" && pwd -P)" ]; then \
+		echo "make install: refusing to install from a git worktree, it would replace $$(go env GOPATH)/bin/b9s."; \
+		echo "Use 'make build' for a local ./b9s, or 'make install FORCE=1' to install anyway."; \
+		exit 1; \
+	fi
 	go install ./cmd/b9s
 
 clean:
