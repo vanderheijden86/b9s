@@ -341,7 +341,22 @@ On a terminal, the first command opens a read-only Memory browser. The left pane
 
 The versions list holds only what bd retains, not full history. A retained version is labelled "not current". Its outgoing Links are those of that version, and its incoming Links come from the current graph.
 
-`--id` and `--print` print Memories instead, as does any run whose output is not a terminal. The browser does not parse a status from ADR titles, and it does not edit Memories. The preview CLI currently limits an inventory to 1,000 Beads, and b9s refuses an incomplete one. The ordinary b9s TUI and browser still use the released Issue model.
+### Graph views
+
+Two keys switch the browser to a view of the whole graph. The first press reads every Issue, Memory and Link once, which takes about 11 seconds on a small workspace. `1` returns to the list.
+
+| Key | View |
+|-----|------|
+| `2` | **Constellation.** A force layout of Issues and Memories in braille, with a health list beside it. `h` `j` `k` `l` move to the nearest node in that direction, `n` / `N` walk the Issues that need a look, `c`, `e` and `t` toggle citations, hierarchy and titles, `Enter` opens a Memory, `Esc` clears the selection |
+| `3` | **Two shores.** The epic tree on the left, Memories grouped by status on the right, and wires between them. `j` / `k` move, `Tab` changes side, `Enter` opens a Memory. The strip below traces the selected row |
+
+A Memory's status comes from the YAML frontmatter at the top of its body (`status: active`, `superseded_by: "0027"`), the block every ADR file starts with. A Memory without frontmatter has no status. Each Issue gets one health mark, worst first: `✗` follows a superseded decision, `◆` is an epic, `·` records no decision, `?` follows a proposed decision, `▪` is fine.
+
+### Decisions in the main TUI
+
+Opening a graph workspace with plain `b9s` loads its Issues from the same graph read, because a graph workspace refuses `bd export`. The tree then has a **DECISIONS** column: `0010` is a decision the Issue follows, `(0004)` one it only cites, a trailing `✗` marks a superseded decision and `?` a proposed one, and `·  none` marks work with no recorded decision. Epics stay blank, because their decisions live on their children. The column shows on terminals wider than 120 columns, and `|` shows or hides it like any other column. The detail pane adds a **DECISIONS** section with each `follows` and `cites` Link, its note, and which other work uses the same decision. The preview does not record which version of a Memory was read, and the section says so.
+
+`--id` and `--print` print Memories instead, as does any run whose output is not a terminal. b9s does not edit Memories. The preview CLI currently limits an inventory to 1,000 Beads, and b9s refuses an incomplete one. See [ADR 0032](adr/0032-show-the-decision-graph-from-one-graph-read.md).
 
 ## Command prompt
 

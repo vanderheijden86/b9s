@@ -27,6 +27,9 @@ type GraphBead struct {
 	Properties GraphProperties `json:"properties"`
 	Owned      []GraphLink     `json:"owned"`
 	Kind       string          `json:"-"`
+	// rawProperties keeps every property, including Issue fields that
+	// GraphProperties does not name.
+	rawProperties json.RawMessage
 }
 
 type GraphProperties struct {
@@ -102,6 +105,9 @@ type GraphPreviewClient struct {
 	projectDir string
 	beadsDir   string
 	bd         string
+	// traversalWorkers bounds concurrent traversals in Graph; zero means
+	// defaultTraversalWorkers.
+	traversalWorkers int
 }
 
 // MemorySummary is one compact result of bd memories. Search is a literal

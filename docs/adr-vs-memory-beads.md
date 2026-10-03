@@ -73,7 +73,7 @@ sequenceDiagram
     Note over Agent,Graph: DONE as a manual CLI call<br/>NYI - lanes do not write it automatically<br/>NYI - edge cannot record the version read,<br/>properties admit only a note
     Agent->>Reviewer: open PR
     Reviewer->>Graph: bd links xx9w.2
-    Note over Reviewer: DONE in the CLI<br/>NYI - b9s shows only the Memory side,<br/>the Issue side exists as mockups
+    Note over Reviewer: DONE in the CLI<br/>DONE in b9s - DECISIONS column,<br/>detail section and two graph views
     Maint->>Graph: retire adr-0026, write adr-0032
     Maint->>Graph: bd links adr-0026 --direction in
     Graph-->>Maint: xx9w.1 to xx9w.4 still follow it
@@ -90,10 +90,10 @@ sequenceDiagram
 | Browse Memories, Links and versions in b9s | DONE | `b9s memories`, ADR 0031 |
 | `bd prime` injects the Memories linked from the claimed Issue | NYI | Today it matches keywords, like grep |
 | Agents write the `follows` Link when they apply a decision | NYI | 20 Links took about 15 minutes by hand |
-| Structured status field on a Memory | NYI | Upstream finding for `bd-db5q.8` |
+| Structured status field on a Memory | NYI | b9s reads `status` from the body frontmatter (ADR 0032). Upstream finding for `bd-db5q.8` |
 | Edge records the Memory version the agent read | NYI | Edge properties admit only `note` |
-| Issue side of the graph in b9s (DECISIONS column, graph view) | NYI | Five mockups in `mockups/memory-graph/` |
-| Bulk read of all Links for a tree column | NYI | One `bd links` per Issue costs about 0.4 s |
+| Issue side of the graph in b9s (DECISIONS column, graph view) | DONE | Constellation and two shores in `b9s memories`, DECISIONS column and section in the main TUI (ADR 0032) |
+| Bulk read of all Links for a tree column | NYI | b9s works around it with one `bd graph` traversal per component, about 11 s for the POC |
 | Links that block or reschedule work when a decision is retired | OUT | Informational Links have no scheduling effect by design |
 | Semantic or synonym search over Memories | OUT | The preview search is literal over title and body |
 | Full edit history of a Memory | OUT | bd retains selected versions, git keeps the ADR history |

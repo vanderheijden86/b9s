@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/identity"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
@@ -273,6 +274,7 @@ const (
 	TreeColumnCreated
 	TreeColumnDeferred
 	TreeColumnDue
+	TreeColumnDecisions
 	treeColumnCount
 )
 
@@ -294,6 +296,8 @@ func (c TreeColumn) String() string {
 		return "Deferred"
 	case TreeColumnDue:
 		return "Due"
+	case TreeColumnDecisions:
+		return "Decisions"
 	default:
 		return "Unknown"
 	}
@@ -307,6 +311,7 @@ type treeColumnLayout struct {
 	updated    bool
 	deferred   bool
 	due        bool
+	decisions  bool
 	id         bool
 	maxIDWidth int
 }
@@ -322,11 +327,17 @@ type IssueTreeNode struct {
 
 // TreeModel manages the hierarchical tree view state
 type TreeModel struct {
-	roots          []*IssueTreeNode          // Root nodes (issues with no parent)
-	flatList       []*IssueTreeNode          // Flattened visible nodes for navigation
-	cursor         int                       // Current selection index in flatList
-	viewport       viewport.Model            // For scrolling
-	theme          Theme                     // Visual styling
+	roots    []*IssueTreeNode // Root nodes (issues with no parent)
+	flatList []*IssueTreeNode // Flattened visible nodes for navigation
+	cursor   int              // Current selection index in flatList
+	viewport viewport.Model   // For scrolling
+	theme    Theme            // Visual styling
+	// decisionLookup returns the Memory graph read with the issues, when the
+	// project is a Memory graph workspace. Build asks it again on every
+	// reload, so the DECISIONS column follows the rows it annotates.
+	decisionLookup func() (datasource.MemoryGraph, bool)
+	decisions      datasource.MemoryGraph
+	hasDecisions   bool
 	mode           TreeViewMode              // Hierarchy vs blocking
 	issueMap       map[string]*IssueTreeNode // Quick lookup by issue ID
 	width          int                       // Available width
@@ -519,6 +530,7 @@ func (t *TreeModel) SetSize(width, height int) {
 // Build constructs the tree from issues using parent-child dependencies.
 // Implementation for bv-j3ck.
 func (t *TreeModel) Build(issues []model.Issue) {
+	t.refreshDecisions()
 	// Live reloads rebuild the tree every few seconds, so the position is
 	// captured here and restored below; otherwise every refresh would throw
 	// the cursor back to the first row.
@@ -616,6 +628,7 @@ func (t *TreeModel) BuildFromSnapshot(snapshot *DataSnapshot) {
 	if snapshot == nil {
 		return
 	}
+	t.refreshDecisions()
 	t.globalIssueMap = snapshot.IssueMap
 
 	// Skip work if we're already built for this snapshot.
@@ -1223,6 +1236,10 @@ func (t *TreeModel) RenderColumnPopup() string {
 				if layout.due {
 					resolved = "shown"
 				}
+			case TreeColumnDecisions:
+				if layout.decisions {
+					resolved = "shown"
+				}
 			}
 			preferenceLabel = fmt.Sprintf("Auto (%s)", resolved)
 		}
@@ -1753,6 +1770,9 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 	for _, column := range layout.timeColumns() {
 		rightParts = append(rightParts, fmt.Sprintf("%*s", treeTimeColumnWidth, strings.ToUpper(column.String())))
 	}
+	if layout.decisions {
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", treeDecisionsColumnWidth, "DECISIONS"))
+	}
 	if layout.id {
 		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.maxIDWidth, "ID"))
 	}
@@ -1909,6 +1929,9 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 		cell := formatTimeCell(issueTime(issue, column), t.absoluteTimeLayout(), time.Now())
 		rightParts = append(rightParts, timeStyle.Render(cell))
 	}
+	if layout.decisions {
+		rightParts = append(rightParts, t.renderDecisionCell(rawIssue.ID, isSelected))
+	}
 
 	// Short ID suffix at the far right, left-aligned to maxIDWidth for column alignment (bd-03l, bd-uyzc)
 	if layout.id {
@@ -2064,6 +2087,9 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 		updated:  resolveColumnPreference(t.ColumnPreference(TreeColumnUpdated), false),
 		deferred: resolveColumnPreference(t.ColumnPreference(TreeColumnDeferred), false),
 		due:      resolveColumnPreference(t.ColumnPreference(TreeColumnDue), false),
+		// Only a Memory graph workspace has decisions to show; elsewhere the
+		// column would be blank on every row.
+		decisions: t.hasDecisions && resolveColumnPreference(t.ColumnPreference(TreeColumnDecisions), effectiveWidth > 120),
 	}
 	if layout.id {
 		layout.maxIDWidth = t.displayedMaxIDWidth()
@@ -2080,6 +2106,86 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 
 func (t *TreeModel) invalidateColumnLayout() {
 	t.columnLayoutValid = false
+}
+
+// SetDecisionLookup sets where the tree finds the Memory graph for its
+// DECISIONS column and detail section. A nil lookup means the project has no
+// graph.
+func (t *TreeModel) SetDecisionLookup(lookup func() (datasource.MemoryGraph, bool)) {
+	t.decisionLookup = lookup
+	t.refreshDecisions()
+}
+
+func (t *TreeModel) refreshDecisions() {
+	had := t.hasDecisions
+	t.decisions, t.hasDecisions = datasource.MemoryGraph{}, false
+	if t.decisionLookup != nil {
+		t.decisions, t.hasDecisions = t.decisionLookup()
+	}
+	if had != t.hasDecisions {
+		t.invalidateColumnLayout()
+	}
+}
+
+// MemoryGraph returns the graph behind the DECISIONS column, if any.
+func (t *TreeModel) MemoryGraph() (datasource.MemoryGraph, bool) {
+	return t.decisions, t.hasDecisions
+}
+
+// treeDecisionsColumnWidth fits two four-digit decisions with their markers.
+const treeDecisionsColumnWidth = 16
+
+// decisionCell lists the decisions an Issue follows, and in parentheses the
+// ones it only cites, by ADR number. A trailing ✗ marks a superseded decision
+// and ? a proposed one. An epic gets a blank cell, because its decisions live
+// on its children, while any other Issue without one reads "none" so a gap in
+// the bookkeeping is visible.
+func decisionCell(g datasource.MemoryGraph, id string) (string, datasource.Health) {
+	h := g.Health(id)
+	edges := g.DecisionEdges(id)
+	if len(edges) == 0 {
+		if h == datasource.HealthNone {
+			return "·  none", h
+		}
+		return "", h
+	}
+	sort.SliceStable(edges, func(i, j int) bool {
+		return edges[i].Kind == datasource.EdgeFollows && edges[j].Kind != datasource.EdgeFollows
+	})
+	parts := make([]string, 0, len(edges))
+	for _, e := range edges {
+		n, _ := g.Node(e.Target)
+		label := n.Number
+		if label == "" {
+			label = shortIDSuffix(e.Target)
+		}
+		switch n.Status {
+		case "superseded":
+			label += "✗"
+		case "proposed":
+			label += "?"
+		}
+		if e.Kind == datasource.EdgeCites {
+			label = "(" + label + ")"
+		}
+		parts = append(parts, label)
+	}
+	return strings.Join(parts, " "), h
+}
+
+func (t *TreeModel) renderDecisionCell(id string, isSelected bool) string {
+	text, h := decisionCell(t.decisions, id)
+	cell := fmt.Sprintf("%-*s", treeDecisionsColumnWidth, truncateRunesHelper(text, treeDecisionsColumnWidth, "…"))
+	if isSelected {
+		return t.theme.Renderer.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#000000", Dark: "#1A1A1A"}).Render(cell)
+	}
+	s := newGraphStyles(t.theme)
+	switch h {
+	case datasource.HealthDead, datasource.HealthProposed:
+		return s.health(h).Render(cell)
+	default:
+		return t.theme.MutedText.Render(cell)
+	}
 }
 
 // treePersonColumnWidth fits "@" plus an eleven-rune name; longer names end in "…".
@@ -2252,6 +2358,9 @@ func (t *TreeModel) titleWidthForLayout(node *IssueTreeNode, layout treeColumnLa
 	}
 	for range layout.timeColumns() {
 		rightWidths = append(rightWidths, treeTimeColumnWidth)
+	}
+	if layout.decisions {
+		rightWidths = append(rightWidths, treeDecisionsColumnWidth)
 	}
 	if layout.id {
 		rightWidths = append(rightWidths, layout.maxIDWidth)

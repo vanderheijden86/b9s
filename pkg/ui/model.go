@@ -1256,6 +1256,7 @@ func (m Model) WithSourceInfo(info string) Model {
 // triggered by the Shift+D database health popup.
 func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	m.doltSource = s
+	m.tree.SetDecisionLookup(decisionLookupFor(s))
 	if s.User != "" {
 		m.startupDoltUser = s.User
 	}
@@ -5896,7 +5897,23 @@ func (m *Model) updateViewportContent() {
 	if m.updateAvailable {
 		update = &detailUpdateNotice{Tag: m.updateTag}
 	}
-	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.theme, m.viewport.Width, m.renderer, update))
+	var decisions []string
+	if g, ok := m.tree.MemoryGraph(); ok {
+		decisions = decisionSection(m.theme, g, item.ID, max(20, m.viewport.Width))
+	}
+	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.theme, m.viewport.Width, m.renderer, update, decisions))
+}
+
+// decisionLookupFor returns where the tree finds the Memory graph of source.
+// Only an embedded store can be a Memory graph workspace, and whether it is
+// one is known only after its first load, so the lookup asks the cache each
+// time rather than deciding now.
+func decisionLookupFor(source datasource.DataSource) func() (datasource.MemoryGraph, bool) {
+	if source.Type != datasource.SourceTypeDoltEmbedded {
+		return nil
+	}
+	beadsDir := datasource.EmbeddedBeadsDir(source)
+	return func() (datasource.MemoryGraph, bool) { return datasource.MemoryGraphFor(beadsDir) }
 }
 
 // personMarkdown renders a creator or assignee cell; an empty name stays
@@ -6905,6 +6922,7 @@ func (m *Model) enterAllProjectsMode() tea.Cmd {
 
 	m.multiDoltReader = reader
 	m.allProjectsMode = true
+	m.tree.SetDecisionLookup(nil)
 	m.isLoading = true
 	m.sourceInfo = fmt.Sprintf("all-projects (%d databases)", len(reader.DBNames()))
 	m.projectPicker.SetAllProjectsMode(true)
@@ -6944,6 +6962,7 @@ func (m *Model) exitAllProjectsMode() {
 	m.board.SetActiveProjectName(m.activeProjectName) // Restore project badge (bd-dy6r)
 	m.updateListDelegate()
 	m.sourceInfo = ""
+	m.tree.SetDecisionLookup(nil)
 	m.isLoading = true
 	m.issues = nil
 	m.issueMap = nil
@@ -6983,6 +7002,7 @@ func (m *Model) exitAllProjectsMode() {
 				break
 			}
 			if s.Type == datasource.SourceTypeDoltEmbedded {
+				m.tree.SetDecisionLookup(decisionLookupFor(s))
 				if dw, dwErr := datasource.NewDoltWatcher(s, m.doltPollInterval); dwErr == nil && dw.Start() == nil {
 					m.doltWatcher = dw
 					m.doltSource = s

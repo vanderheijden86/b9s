@@ -118,6 +118,8 @@ Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd e
 
 On a terminal the command opens `pkg/ui/memory_view.go`, a separate Bubble Tea program. It lists summaries at startup and reads a Memory's body and Links only when selected, caching them per Memory and version. `bd links` is still needed per selected Memory, because Issue-owned informational Links do not appear in the Memory's own record. With `--print`, `--id` or a non-terminal, the command prints instead, reading Links only for the Memories it prints. See [ADR 0031](adr/0031-browse-memory-preview-in-a-lazy-tui.md).
 
+The decision views read the whole graph instead. `GraphPreviewClient.Graph` in `internal/datasource/memory_graph.go` takes the inventory, then runs one `bd graph --view generic --direction both` per connected component, because Links written by `bd link` belong to no Bead and only a traversal returns them. It parses each Memory's status, number and `superseded_by` from the body frontmatter, turns supersession into a typed edge, and computes one closed health value per Issue. `b9s memories` reads it on the first press of `2` or `3` (`pkg/ui/memory_graph_view.go`). The main TUI reads it too: for an embedded store whose metadata says `graph_mode: link`, `loadEmbeddedIssues` returns the graph's Issues instead of running `bd export`, which the preview refuses, and caches the graph by `.beads` directory. The tree's DECISIONS column and the detail pane's DECISIONS section read that cache through `TreeModel.SetDecisionLookup`, so they always describe the same read as the rows. See [ADR 0032](adr/0032-show-the-decision-graph-from-one-graph-read.md).
+
 ## Live reload
 
 The active source decides how changes are detected:

@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/vanderheijden86/b9s/internal/bdrun"
@@ -32,14 +33,49 @@ func EmbeddedBeadsDir(source DataSource) string {
 	return filepath.Dir(filepath.Dir(source.Path))
 }
 
-// loadEmbeddedIssues reads an embedded Dolt project through `bd export`.
-// Only stdout is parsed: bd writes hints and warnings to stderr.
+// graphLoadTimeout bounds the whole graph read of a Memory preview workspace,
+// which runs one traversal per connected component.
+const graphLoadTimeout = 2 * time.Minute
+
+// memoryGraphs keeps the last graph read for each graph workspace, keyed by
+// its .beads directory. The Issues and the decision columns come from the
+// same read, so the views never show Links from a different moment than the
+// rows they annotate, and the slow traversal runs once per reload.
+var memoryGraphs = struct {
+	sync.RWMutex
+	byDir map[string]MemoryGraph
+}{byDir: map[string]MemoryGraph{}}
+
+// MemoryGraphFor returns the graph read by the last load of the graph
+// workspace at beadsDir. It reports false for any other kind of project.
+func MemoryGraphFor(beadsDir string) (MemoryGraph, bool) {
+	memoryGraphs.RLock()
+	defer memoryGraphs.RUnlock()
+	g, ok := memoryGraphs.byDir[beadsDir]
+	return g, ok
+}
+
+// loadEmbeddedIssues reads an embedded Dolt project through `bd export`, or
+// through the graph when the project is a Memory preview workspace, which
+// refuses export. Only stdout is parsed: bd writes hints and warnings to stderr.
 func loadEmbeddedIssues(source DataSource) ([]model.Issue, error) {
 	bd, ok := bdrun.Resolve()
 	if !ok {
 		return nil, ErrBDNotFound
 	}
 	beadsDir := EmbeddedBeadsDir(source)
+	if client, err := newGraphPreviewClient(filepath.Dir(beadsDir), bd); err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), graphLoadTimeout)
+		defer cancel()
+		graph, err := client.Graph(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("read graph workspace %s: %w", beadsDir, err)
+		}
+		memoryGraphs.Lock()
+		memoryGraphs.byDir[beadsDir] = graph
+		memoryGraphs.Unlock()
+		return graph.Issues(), nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), embeddedExportTimeout)
 	defer cancel()
 	out, stderr, err := bdrun.Output(ctx, bd, filepath.Dir(beadsDir), []string{"BEADS_DIR=" + beadsDir}, "export")

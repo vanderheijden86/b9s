@@ -25,7 +25,14 @@ type fakeMemorySource struct {
 	versions  map[string][]datasource.GraphVersion
 	inventory datasource.GraphPreview
 	memoryErr error
+	graph     datasource.MemoryGraph
+	graphErr  error
 	calls     []string
+}
+
+func (f *fakeMemorySource) Graph(context.Context) (datasource.MemoryGraph, error) {
+	f.calls = append(f.calls, "graph")
+	return f.graph, f.graphErr
 }
 
 func (f *fakeMemorySource) Inventory(context.Context) (datasource.GraphPreview, error) {

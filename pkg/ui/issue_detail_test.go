@@ -36,7 +36,7 @@ func renderDetailFixture(t *testing.T, update *detailUpdateNotice) string {
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
 	issue, issueMap := detailFixture()
 	md := NewMarkdownRendererWithTheme(70, theme)
-	return stripANSI(renderIssueDetail(issue, issueMap, theme, 70, md, update))
+	return stripANSI(renderIssueDetail(issue, issueMap, theme, 70, md, update, nil))
 }
 
 func TestRenderIssueDetail_HeaderShowsMetaWithoutTable(t *testing.T) {
@@ -85,7 +85,7 @@ func TestRenderIssueDetail_LinesFitWidth(t *testing.T) {
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
 	issue, issueMap := detailFixture()
 	issue.Title = strings.Repeat("very long title ", 12)
-	out := renderIssueDetail(issue, issueMap, theme, 40, NewMarkdownRendererWithTheme(40, theme), nil)
+	out := renderIssueDetail(issue, issueMap, theme, 40, NewMarkdownRendererWithTheme(40, theme), nil, nil)
 	for _, line := range strings.Split(out, "\n") {
 		if w := lipgloss.Width(line); w > 40 {
 			t.Fatalf("line wider than pane (%d > 40): %q", w, stripANSI(line))
@@ -138,7 +138,7 @@ func TestRenderIssueDetail_ShowsAttachmentsBlockWithMachineLinesStripped(t *test
 	issue.Comments = append(issue.Comments, &model.Comment{
 		ID: "cmt-1", Author: "carol", Text: text, CreatedAt: time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC),
 	})
-	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil, nil))
 	for _, want := range []string{"ATTACHMENTS · 1", "diagram.png", "image/png", "2.0 KB", "added by carol"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("attachments block missing %q:\n%s", want, out)
@@ -161,7 +161,7 @@ func TestRenderIssueDetail_ChildrenShowProgress(t *testing.T) {
 	issue, issueMap := detailFixture()
 	issueMap["bd-c2"] = &model.Issue{ID: "bd-c2", Title: "Second step", Status: model.StatusOpen, IssueType: model.TypeTask,
 		Dependencies: []*model.Dependency{{IssueID: "bd-c2", DependsOnID: "bd-e5u3.9", Type: model.DepParentChild}}}
-	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil, nil))
 	for _, want := range []string{"CHILDREN · 1/2", "━", "Child step", "Second step"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("children section missing %q:\n%s", want, out)

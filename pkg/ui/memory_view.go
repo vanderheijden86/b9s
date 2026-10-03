@@ -22,6 +22,7 @@ type MemorySource interface {
 	Memory(ctx context.Context, id, version string) (datasource.GraphBead, error)
 	Links(ctx context.Context, id string) ([]datasource.GraphLink, error)
 	Versions(ctx context.Context, id string) ([]datasource.GraphVersion, error)
+	Graph(ctx context.Context) (datasource.MemoryGraph, error)
 }
 
 const memoryReadTimeout = 30 * time.Second
@@ -109,6 +110,13 @@ type MemoryBrowser struct {
 	versions      map[string][]datasource.GraphVersion
 	versionErr    map[string]error
 	versionCursor int
+
+	mode      memoryMode
+	graph     datasource.MemoryGraph
+	graphLoad graphLoad
+	graphErr  error
+	star      constellationState
+	shore     shoresState
 
 	status   string
 	theme    Theme
@@ -244,6 +252,8 @@ func (b MemoryBrowser) Update(msg tea.Msg) (MemoryBrowser, tea.Cmd) {
 		delete(b.pending, msg.key)
 		b.details[msg.key] = msg.detail
 		return b, nil
+	case memoryGraphMsg:
+		return b.applyGraph(msg), nil
 	case memoryVersionsMsg:
 		b.versions[msg.id] = msg.versions
 		b.versionErr[msg.id] = msg.err
@@ -266,6 +276,17 @@ func (b MemoryBrowser) handleKey(msg tea.KeyMsg) (MemoryBrowser, tea.Cmd) {
 	switch key {
 	case "q":
 		return b, tea.Quit
+	case "1":
+		return b.enterMode(memoryModeList)
+	case "2":
+		return b.enterMode(memoryModeConstellation)
+	case "3":
+		return b.enterMode(memoryModeShores)
+	}
+	if b.mode != memoryModeList {
+		return b.handleGraphKey(key)
+	}
+	switch key {
 	case "/":
 		b.prior = b.pane
 		b.pane = memoryPaneSearch
@@ -420,6 +441,13 @@ func (b MemoryBrowser) linkRows() []memoryLinkRow {
 func (b MemoryBrowser) View() string {
 	t := b.theme
 	header := t.Header.Render(" b9s memories ") + " " + b.headerText()
+	if b.mode != memoryModeList {
+		paneHeight := max(1, b.height-4)
+		inner := max(20, b.width-2)
+		body := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Highlight).Width(inner).Height(paneHeight).
+			Render(clipBlock(b.graphView(inner, paneHeight), inner, paneHeight))
+		return clipBlock(lipgloss.JoinVertical(lipgloss.Left, t.Header.Render(" b9s memories ")+" "+b.graphHeaderText(), body, b.footer()), b.width, b.height)
+	}
 	listWidth := b.listWidth()
 	detailWidth := b.detailWidth()
 	// The header, the footer and the two border rows leave this for content.
@@ -647,15 +675,19 @@ func (b MemoryBrowser) versionsView(width int) string {
 func (b MemoryBrowser) footer() string {
 	t := b.theme
 	var help string
-	switch b.pane {
-	case memoryPaneSearch:
+	switch {
+	case b.mode == memoryModeConstellation:
+		help = "hjkl move · n/N next problem · enter open · esc clear · c cites · e hierarchy · t titles · 1 list · 3 shores · q quit"
+	case b.mode == memoryModeShores:
+		help = "j/k move · tab side · enter open Memory · 1 list · 2 constellation · q quit"
+	case b.pane == memoryPaneSearch:
 		return "/" + b.input + "█  " + t.MutedText.Render("enter search · esc cancel · empty lists all")
-	case memoryPaneDetail:
+	case b.pane == memoryPaneDetail:
 		help = "j/k link · enter follow · ctrl+d/u scroll · v versions · esc back · / search · q quit"
-	case memoryPaneVersions:
+	case b.pane == memoryPaneVersions:
 		help = "j/k version · enter read · esc back · q quit"
 	default:
-		help = "j/k move · enter open · v versions · / search · q quit"
+		help = "j/k move · enter open · v versions · / search · 2 constellation · 3 shores · q quit"
 	}
 	if b.status != "" {
 		return t.InfoText.Render(b.status) + "  " + t.MutedText.Render(help)

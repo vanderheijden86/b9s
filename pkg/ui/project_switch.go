@@ -293,6 +293,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	// Re-discover datasource for the new project
 	m.sourceType = datasource.SourceTypeJSONLLocal
 	m.doltSource = datasource.DataSource{}
+	m.tree.SetDecisionLookup(nil)
 	m.doltFailure = nil
 	// The previous project's comments error must not bleed into the new
 	// project's view; the first load of the new project sets its own value.
@@ -320,6 +321,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 				}
 				break
 			} else if s.Type == datasource.SourceTypeDoltEmbedded {
+				m.tree.SetDecisionLookup(decisionLookupFor(s))
 				// An embedded watcher holds nothing open, so only a bug fails it.
 				if dw, dwErr := datasource.NewDoltWatcher(s, m.doltPollInterval); dwErr == nil && dw.Start() == nil {
 					m.doltWatcher = dw
