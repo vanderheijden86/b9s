@@ -8,7 +8,7 @@ import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type
 import { ALL, boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, treeList, wide } from "./render";
 import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveChips, stOf, type Sheet, type SortKey } from "./state";
 import { syncSoon } from "./nav";
-import { $, $opt, chooseTheme, copyText, esc, fmtDate, haptic, store, themeMode, type ThemeMode } from "./util";
+import { $, $opt, chooseTheme, copyText, esc, fmtDate, haptic, skinName, store, themeMode, type ThemeMode } from "./util";
 
 /* ================= toast ================= */
 
@@ -380,8 +380,8 @@ function sheetBody(sh: Sheet): [string, string, string] {
       const current = themeMode();
       return ["Appearance", "Choose this browser's color theme", [
         opt("settheme", "◐", "Automatic", "Follow this device", { val: "auto", cls: current === "auto" ? "cur" : "" }),
-        opt("settheme", "☼", "Sepia", "Warm paper and dark ink", { val: "light", cls: current === "light" ? "cur" : "" }),
-        opt("settheme", "☾", "Dracula", "Dark background", { val: "dark", cls: current === "dark" ? "cur" : "" }),
+        opt("settheme", "☼", esc(skinName("light")), "Light background", { val: "light", cls: current === "light" ? "cur" : "" }),
+        opt("settheme", "☾", esc(skinName("dark")), "Dark background", { val: "dark", cls: current === "dark" ? "cur" : "" }),
       ].join("")];
     }
     case "status": {

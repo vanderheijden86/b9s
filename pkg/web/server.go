@@ -58,6 +58,7 @@ type Options struct {
 type Server struct {
 	opts    Options
 	assets  fs.FS
+	skinCSS []byte
 	etags   map[string]string
 	mux     *http.ServeMux
 	etagMu  sync.Mutex
@@ -100,6 +101,8 @@ func NewServer(opts Options) (*Server, error) {
 		}
 	}
 	s := &Server{opts: opts, assets: assets, etags: map[string]string{}, idem: newIdempotency(512, 10*time.Minute)}
+	light, dark := ui.Skins()
+	s.skinCSS = []byte(SkinCSS(light, dark))
 	if opts.Public {
 		s.writes = newRateLimiter(publicWritesPerMinute, time.Minute)
 	}
@@ -136,6 +139,7 @@ func (s *Server) routes() {
 	}
 	s.mux.HandleFunc("GET /api/", noAPI)
 	s.mux.HandleFunc("POST /api/", noAPI)
+	s.mux.HandleFunc("GET /skin.css", s.handleSkin)
 	s.mux.HandleFunc("GET /", s.handleAsset)
 }
 
@@ -336,6 +340,12 @@ func (s *Server) handleOpenProject(w http.ResponseWriter, r *http.Request) {
 
 // handleAsset serves the embedded SPA. index.html is revalidated on every
 // load so a new binary's bundle takes effect at once.
+// handleSkin serves the colours outside the bundle: they come from ui.skin,
+// which the user changes without rebuilding b9s.
+func (s *Server) handleSkin(w http.ResponseWriter, r *http.Request) {
+	s.serveBytes(w, r, "skin.css", s.skinCSS)
+}
+
 func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
 	if name == "" {
@@ -346,6 +356,10 @@ func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	s.serveBytes(w, r, name, data)
+}
+
+func (s *Server) serveBytes(w http.ResponseWriter, r *http.Request, name string, data []byte) {
 	etag := s.etag(name, data)
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "no-cache")

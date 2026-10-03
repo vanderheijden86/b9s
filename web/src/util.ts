@@ -92,7 +92,17 @@ export function themeMode(): ThemeMode {
 export function applyTheme(mode: ThemeMode = themeMode()): void {
   const light = mode === "light" || mode === "auto" && window.matchMedia("(prefers-color-scheme: light)").matches;
   document.documentElement.dataset.theme = light ? "light" : "dark";
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", light ? "#E9DFCB" : "#1c1e26");
+  const bar = cssVar("--bg2");
+  if (bar) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bar);
+}
+
+const cssVar = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/** skinName reads the name skin.css gives a theme slot, for the appearance sheet. */
+export function skinName(slot: "light" | "dark"): string {
+  const name = cssVar(`--skin-${slot}`).replace(/^"|"$/g, "");
+  if (!name) return slot === "light" ? "Light" : "Dark";
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 export function chooseTheme(mode: ThemeMode): void {

@@ -74,8 +74,12 @@ async function waitFor(url: string, deadlineMs: number, log: () => string): Prom
   throw new Error(`b9s web did not start within ${deadlineMs} ms:\n${log()}`);
 }
 
-export async function startProject(list: FixtureIssue[], env: Record<string, string> = {}, paired = false): Promise<Project> {
+export async function startProject(list: FixtureIssue[], env: Record<string, string> = {}, paired = false, configYAML = ""): Promise<Project> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "b9s-web-e2e-"));
+  if (configYAML) {
+    fs.mkdirSync(path.join(dir, "config", "b9s"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "config", "b9s", "config.yaml"), configYAML);
+  }
   const beads = path.join(dir, ".beads");
   fs.mkdirSync(beads);
   fs.writeFileSync(path.join(beads, "issues.jsonl"), toJSONL(list));
@@ -113,12 +117,13 @@ export function stopProject(p: Project): void {
 }
 
 // The fixture list is wrapped in an object: Playwright reads a bare array option as a [value, options] tuple.
-export const test = base.extend<{ project: Project; fixture: { issues: FixtureIssue[] }; bdEnv: Record<string, string>; paired: boolean }>({
+export const test = base.extend<{ project: Project; fixture: { issues: FixtureIssue[] }; bdEnv: Record<string, string>; paired: boolean; configYAML: string }>({
   fixture: [{ issues: SAMPLE }, { option: true }],
   bdEnv: [{}, { option: true }],
   paired: [false, { option: true }],
-  project: async ({ fixture, bdEnv, paired }, use, info) => {
-    const p = await startProject(fixture.issues, bdEnv, paired);
+  configYAML: ["", { option: true }],
+  project: async ({ fixture, bdEnv, paired, configYAML }, use, info) => {
+    const p = await startProject(fixture.issues, bdEnv, paired, configYAML);
     await use(p);
     if (info.status !== info.expectedStatus) {
       await info.attach("bd-calls", { body: p.calls().map(c => c.join(" ")).join("\n") || "(none)", contentType: "text/plain" });

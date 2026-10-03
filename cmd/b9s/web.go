@@ -111,6 +111,9 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	if cfgErr != nil {
 		appCfg = config.DefaultConfig()
 	}
+	if err := applyConfiguredSkin(appCfg.UI.Skin); err != nil {
+		fmt.Fprintf(stderr, "b9s web: skin not loaded, using built-in colours: %v\n", err)
+	}
 	startupBeadsDir, _ := loader.GetBeadsDir("")
 	startupDir := filepath.Dir(startupBeadsDir)
 	// Never fall back to another project: a server started in the wrong
