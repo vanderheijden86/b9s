@@ -1317,6 +1317,16 @@ func (m Model) WithDoltSource(s datasource.DataSource) Model {
 // failed. The issue list is already complete (OpenProject only returns this
 // alongside a full load), so this only adds a status note; it does not
 // change what issues the model shows.
+// WithSkinError reports a ui.skin that failed to load. b9s keeps its built-in
+// skins rather than refusing to start over a colour file.
+func (m Model) WithSkinError(err error) Model {
+	if err != nil {
+		m.statusMsg = "skin not loaded, using built-in colours: " + err.Error()
+		m.statusIsError = true
+	}
+	return m
+}
+
 func (m Model) WithCommentsLoadErr(err error) Model {
 	m.commentsLoadErr = err
 	if err != nil {
@@ -4687,7 +4697,7 @@ func (m Model) renderListWithHeader() string {
 
 	// Render column header
 	headerStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"}).
+		Foreground(ColorText).
 		Bold(true).
 		Width(m.width - 2)
 
@@ -4775,7 +4785,7 @@ func (m Model) renderSplitView() string {
 
 	// Create header row for list
 	headerStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"}).
+		Foreground(ColorText).
 		Bold(true).
 		Width(listInnerWidth)
 
@@ -4864,14 +4874,7 @@ func (m *Model) renderHelpOverlay() string {
 	}
 
 	// Each panel keeps a distinct accent on either terminal background.
-	colors := []lipgloss.AdaptiveColor{
-		{Light: sepiaAccents[0], Dark: "#BD93F9"},
-		{Light: sepiaAccents[1], Dark: "#FF79C6"},
-		{Light: sepiaAccents[2], Dark: "#8BE9FD"},
-		{Light: sepiaAccents[3], Dark: "#50FA7B"},
-		{Light: sepiaAccents[4], Dark: "#FFB86C"},
-		{Light: sepiaAccents[5], Dark: "#F1FA8C"},
-	}
+	colors := accentPairs()
 
 	// Helper to render a section panel
 	renderPanel := func(title string, icon string, colorIdx int, shortcuts []struct{ key, desc string }) string {
@@ -5342,7 +5345,7 @@ func (m *Model) renderFooter() string {
 		hints = append(hints, hint{"P", pickerLabel})
 	}
 
-	hints = append([]hint{{"^T", "theme:" + string(m.appConfig.UI.Theme)}}, hints...)
+	hints = append([]hint{{"^T", themeHint(m.appConfig.UI.Theme)}}, hints...)
 	var hintParts []string
 	for _, h := range hints {
 		hintParts = append(hintParts, keyStyle.Render(h.key)+":"+labelStyle.Render(h.label))
@@ -7379,7 +7382,7 @@ func (m Model) renderLabelBar() string {
 
 const unifiedQueryBarHeight = 3
 
-var unifiedQueryBorder = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#1F5E3B"}
+var unifiedQueryBorder lipgloss.AdaptiveColor
 
 // queryBarVisible reports whether the title bar is shown: while typing a query
 // or a ':' command, and while an accepted query still filters the view, so an

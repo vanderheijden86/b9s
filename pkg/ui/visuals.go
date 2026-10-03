@@ -130,19 +130,6 @@ func GetHeatGradientColorBg(intensity float64) (bg lipgloss.TerminalColor, fg li
 	}
 }
 
-// RepoColors maps repo prefixes to distinctive colors for visual differentiation
-// These colors are designed to be visible on both light and dark backgrounds
-var RepoColors = []lipgloss.AdaptiveColor{
-	{Light: sepiaAccents[0], Dark: "#FF6B6B"},
-	{Light: sepiaAccents[1], Dark: "#4ECDC4"},
-	{Light: sepiaAccents[2], Dark: "#45B7D1"},
-	{Light: sepiaAccents[3], Dark: "#96CEB4"},
-	{Light: sepiaAccents[4], Dark: "#DDA0DD"},
-	{Light: sepiaAccents[5], Dark: "#F7DC6F"},
-	{Light: sepiaAccents[6], Dark: "#BB8FCE"},
-	{Light: sepiaAccents[7], Dark: "#85C1E9"},
-}
-
 // GetRepoColor returns a consistent color for a repo prefix based on hash
 func GetRepoColor(prefix string) lipgloss.AdaptiveColor {
 	if prefix == "" {

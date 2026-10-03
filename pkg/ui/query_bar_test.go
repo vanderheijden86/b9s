@@ -87,8 +87,12 @@ func TestIdleLayoutDoesNotReserveSearchFieldRows(t *testing.T) {
 }
 
 func TestQueryBarUsesSubduedDarkGreenBorder(t *testing.T) {
-	if got := unifiedQueryBorder.Dark; got != "#1F5E3B" {
-		t.Fatalf("dark query border = %q, want subdued dark green", got)
+	border, success := unifiedQueryBorder.Dark, string(darkSkin.Success)
+	if relativeLuminance(border) >= relativeLuminance(success) {
+		t.Fatalf("dark query border %s must be dimmer than success %s", border, success)
+	}
+	if unifiedQueryBorder.Light != string(lightSkin.Success) {
+		t.Fatalf("light query border = %s, want success %s", unifiedQueryBorder.Light, lightSkin.Success)
 	}
 }
 

@@ -30,6 +30,7 @@ type Project struct {
 // UIConfig holds UI preference settings.
 type UIConfig struct {
 	Theme       ThemeMode  `yaml:"theme,omitempty"`        // auto, light or dark
+	Skin        string     `yaml:"skin,omitempty"`         // k9s skin: a built-in name or a file path
 	DefaultView string     `yaml:"default_view,omitempty"` // list, tree, board, split
 	BoardEpics  string     `yaml:"board_epics,omitempty"`  // rail or rows; v switches at runtime
 	SplitRatio  float64    `yaml:"split_ratio,omitempty"`  // Default split pane ratio (0.2-0.8)

@@ -4,18 +4,21 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/vanderheijden86/b9s/pkg/skin"
 )
 
+// Selected cards print the skin's selection text on its selection surfaces,
+// so every built-in skin must keep that text readable.
 func TestSelectedCardTextColor_HighContrast(t *testing.T) {
-	if selectedCardTextColor.Dark != "#101010" {
-		t.Fatalf("selectedCardTextColor.Dark = %q, want %q", selectedCardTextColor.Dark, "#101010")
+	if ColorSelectionText.Light != string(lightSkin.SelectionText) || ColorSelectionText.Dark != string(darkSkin.SelectionText) {
+		t.Fatalf("ColorSelectionText = %+v, want the slots' selection text", ColorSelectionText)
 	}
-	if selectedCardTextColor.Light != sepiaInkStrong {
-		t.Fatalf("selectedCardTextColor.Light = %q, want %q", selectedCardTextColor.Light, sepiaInkStrong)
-	}
-	for _, background := range []string{sepiaSelection, sepiaBoardSelection} {
-		if ratio := contrastRatio(selectedCardTextColor.Light, background); ratio < 4.5 {
-			t.Fatalf("selected card text contrast on %s = %.2f:1, want at least 4.5:1", background, ratio)
+	for _, p := range []skin.Palette{lightSkin, darkSkin} {
+		for _, background := range []skin.Color{p.Selection, p.BoardSelection} {
+			if ratio := contrastRatio(string(p.SelectionText), string(background)); ratio < 4.5 {
+				t.Fatalf("%s: selected card text contrast on %s = %.2f:1, want at least 4.5:1", p.Name, background, ratio)
+			}
 		}
 	}
 }

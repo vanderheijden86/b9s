@@ -1,7 +1,5 @@
 package ui
 
-import "github.com/charmbracelet/lipgloss"
-
 // StructuredTutorialPage represents a tutorial page with typed elements
 type StructuredTutorialPage struct {
 	ID       string
@@ -15,16 +13,6 @@ type StructuredTutorialPage struct {
 func RenderStructuredPage(page StructuredTutorialPage, theme Theme, width int) string {
 	return renderElements(page.Elements, theme, width)
 }
-
-// Theme colors for status flow diagrams
-var (
-	colorOpen       = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"}
-	colorInProgress = lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#8BE9FD"}
-	colorBlocked    = lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"}
-	colorClosed     = lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#6272A4"}
-	colorPrimary    = lipgloss.AdaptiveColor{Light: sepiaNavy, Dark: "#BD93F9"}
-	colorFeature    = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#FFB86C"}
-)
 
 // structuredTutorialPages returns tutorial content using the component system
 func structuredTutorialPages() []StructuredTutorialPage {
@@ -167,8 +155,8 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "The Relationship"},
 				StatusFlow{Steps: []FlowStep{
-					{Label: "Auth Fix", Color: colorOpen},
-					{Label: "Deploy", Color: colorBlocked},
+					{Label: "Auth Fix", Color: ColorStatusOpen},
+					{Label: "Deploy", Color: ColorStatusBlocked},
 				}},
 				Spacer{Lines: 1},
 				Paragraph{Text: "Auth Fix BLOCKS Deploy. You can't deploy until auth is fixed."},
@@ -231,9 +219,9 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "Status Flow"},
 				StatusFlow{Steps: []FlowStep{
-					{Label: "open", Color: colorOpen},
-					{Label: "in_progress", Color: colorInProgress},
-					{Label: "closed", Color: colorClosed},
+					{Label: "open", Color: ColorStatusOpen},
+					{Label: "in_progress", Color: ColorStatusInProgress},
+					{Label: "closed", Color: ColorStatusClosed},
 				}},
 				Spacer{Lines: 1},
 				Section{Title: "Changing Priority/Status"},

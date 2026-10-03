@@ -7,26 +7,30 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/skin"
 )
 
+// formTheme colours huh forms from the skin slot on screen.
 func formTheme(theme Theme) *huh.Theme {
+	p := lightSkin
 	if theme.Renderer.HasDarkBackground() {
-		return huh.ThemeDracula()
+		p = darkSkin
 	}
+	c := func(v skin.Color) lipgloss.Color { return lipgloss.Color(string(v)) }
 	t := huh.ThemeBase()
-	t.Focused.Base = t.Focused.Base.BorderForeground(lipgloss.Color(sepiaNavy))
+	t.Focused.Base = t.Focused.Base.BorderForeground(c(p.Primary))
 	t.Focused.Card = t.Focused.Base
-	t.Focused.Title = t.Focused.Title.Foreground(lipgloss.Color(sepiaPlum)).Bold(true)
+	t.Focused.Title = t.Focused.Title.Foreground(c(p.Epic)).Bold(true)
 	t.Focused.NoteTitle = t.Focused.Title
-	t.Focused.Description = t.Focused.Description.Foreground(lipgloss.Color(sepiaInkSoft))
-	t.Focused.Option = t.Focused.Option.Foreground(lipgloss.Color(sepiaInk))
-	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(lipgloss.Color(sepiaMoss))
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(lipgloss.Color(sepiaNavy))
-	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(lipgloss.Color(sepiaNavy))
-	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(lipgloss.Color(sepiaNavy))
-	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(lipgloss.Color(sepiaInkSoft))
-	t.Focused.FocusedButton = t.Focused.FocusedButton.Foreground(lipgloss.Color(sepiaPaper)).Background(lipgloss.Color(sepiaNavy))
-	t.Focused.BlurredButton = t.Focused.BlurredButton.Foreground(lipgloss.Color(sepiaInk)).Background(lipgloss.Color(sepiaPaperDeep))
+	t.Focused.Description = t.Focused.Description.Foreground(c(p.Subtext))
+	t.Focused.Option = t.Focused.Option.Foreground(c(p.Text))
+	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(c(p.Success))
+	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(c(p.Primary))
+	t.Focused.TextInput.Cursor = t.Focused.TextInput.Cursor.Foreground(c(p.Primary))
+	t.Focused.TextInput.Prompt = t.Focused.TextInput.Prompt.Foreground(c(p.Primary))
+	t.Focused.TextInput.Placeholder = t.Focused.TextInput.Placeholder.Foreground(c(p.Subtext))
+	t.Focused.FocusedButton = t.Focused.FocusedButton.Foreground(c(p.HeaderText)).Background(c(p.Primary))
+	t.Focused.BlurredButton = t.Focused.BlurredButton.Foreground(c(p.Text)).Background(c(p.BgDeep))
 	t.Blurred = t.Focused
 	t.Blurred.Base = t.Blurred.Base.BorderStyle(lipgloss.HiddenBorder())
 	t.Blurred.Card = t.Blurred.Base
@@ -44,17 +48,38 @@ func nextThemeMode(mode config.ThemeMode) config.ThemeMode {
 	}
 }
 
-func terminalSequenceForThemeMode(mode config.ThemeMode, originalDark bool) string {
+// themeHint names the skin a forced theme shows. Automatic depends on the
+// terminal, so it keeps its own name.
+func themeHint(mode config.ThemeMode) string {
 	switch mode {
 	case config.ThemeLight:
-		return "\x1b]11;" + sepiaPaper + "\x07"
+		return "theme:" + lightSkin.Name
 	case config.ThemeDark:
-		return "\x1b]11;#282A36\x07"
+		return "theme:" + darkSkin.Name
+	default:
+		return "theme:auto"
+	}
+}
+
+// terminalSequenceForThemeMode paints the terminal background with the chosen
+// slot's skin. A skin with no background keeps the terminal's own.
+func terminalSequenceForThemeMode(mode config.ThemeMode, originalDark bool) string {
+	paint := func(p skin.Palette) string {
+		if p.Bg == "" {
+			return "\x1b]111\x07"
+		}
+		return "\x1b]11;" + string(p.Bg) + "\x07"
+	}
+	switch mode {
+	case config.ThemeLight:
+		return paint(lightSkin)
+	case config.ThemeDark:
+		return paint(darkSkin)
 	default:
 		if originalDark {
 			return "\x1b]111\x07"
 		}
-		return "\x1b]11;" + sepiaPaper + "\x07"
+		return paint(lightSkin)
 	}
 }
 
@@ -136,36 +161,36 @@ type Theme struct {
 	TriageUnblocksAlt lipgloss.Style // Secondary unblocks ↪
 }
 
-// DefaultTheme returns the sepia light and Dracula dark themes.
+// DefaultTheme returns the theme of the light and dark skin slots.
 func DefaultTheme(r *lipgloss.Renderer) Theme {
 	t := Theme{
 		Renderer: r,
 
-		Primary:   lipgloss.AdaptiveColor{Light: sepiaNavy, Dark: "#BD93F9"},
-		Secondary: lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#6272A4"},
-		Subtext:   lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#BFBFBF"},
+		Primary:   ColorPrimary,
+		Secondary: ColorSecondary,
+		Subtext:   ColorSubtext,
 
-		Open:       lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"},
-		InProgress: lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#8BE9FD"},
-		Blocked:    lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"},
-		Deferred:   lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#FFB86C"},
-		Pinned:     lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#6699FF"},
-		Hooked:     lipgloss.AdaptiveColor{Light: sepiaTeal, Dark: "#00CED1"},
-		Closed:     lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#6272A4"},
-		Tombstone:  lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#44475A"},
+		Open:       ColorStatusOpen,
+		InProgress: ColorStatusInProgress,
+		Blocked:    ColorStatusBlocked,
+		Deferred:   ColorStatusDeferred,
+		Pinned:     ColorStatusPinned,
+		Hooked:     ColorStatusHooked,
+		Closed:     ColorStatusClosed,
+		Tombstone:  ColorStatusTombstone,
 
-		Bug:     lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"},
-		Feature: lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#57D9A3"},
-		Epic:    lipgloss.AdaptiveColor{Light: sepiaPlum, Dark: "#BD93F9"},
-		Task:    lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#4C9AFF"},
-		Chore:   lipgloss.AdaptiveColor{Light: sepiaTeal, Dark: "#8BE9FD"},
+		Bug:     ColorTypeBug,
+		Feature: ColorTypeFeature,
+		Epic:    ColorTypeEpic,
+		Task:    ColorTypeTask,
+		Chore:   ColorTypeChore,
 
-		Border:    lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#44475A"},
-		Highlight: lipgloss.AdaptiveColor{Light: sepiaSelection, Dark: "#4FC1E9"},
-		Muted:     lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#6272A4"},
+		Border:    ColorBorder,
+		Highlight: ColorBgHighlight,
+		Muted:     ColorMuted,
 	}
 
-	t.Base = r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"})
+	t.Base = r.NewStyle().Foreground(ColorText)
 
 	t.Selected = r.NewStyle().
 		Background(t.Highlight).
@@ -173,7 +198,7 @@ func DefaultTheme(r *lipgloss.Renderer) Theme {
 
 	t.Header = r.NewStyle().
 		Background(t.Primary).
-		Foreground(lipgloss.AdaptiveColor{Light: sepiaPaper, Dark: "#282A36"}).
+		Foreground(ColorHeaderText).
 		Bold(true).
 		Padding(0, 1)
 

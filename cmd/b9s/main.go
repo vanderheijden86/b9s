@@ -20,6 +20,7 @@ import (
 	"github.com/vanderheijden86/b9s/pkg/debug"
 	"github.com/vanderheijden86/b9s/pkg/loader"
 	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/skin"
 	"github.com/vanderheijden86/b9s/pkg/ui"
 	"github.com/vanderheijden86/b9s/pkg/updater"
 	"github.com/vanderheijden86/b9s/pkg/version"
@@ -167,6 +168,8 @@ func main() {
 	if cfgErr != nil {
 		appCfg = config.DefaultConfig()
 	}
+	// The skin must be in place before the project picker renders.
+	skinErr := applyConfiguredSkin(appCfg.UI.Skin)
 
 	// The startup folder respects BEADS_DIR and git worktrees.
 	startupBeadsDir, _ := loader.GetBeadsDir("")
@@ -331,6 +334,7 @@ func main() {
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath).
 		WithConfigLoadError(cfgErr).
+		WithSkinError(skinErr).
 		WithMonthFirst(appCfg.UI.DateOrder.MonthFirst(config.SystemLocale)).
 		WithInitialQuery(*initialFilter).
 		WithStartupFailure(choice.StartupFailure).
@@ -492,4 +496,18 @@ func loadBackgroundModeFromUserConfig() (bool, bool) {
 		return false, false
 	}
 	return *cfg.Experimental.BackgroundMode, true
+}
+
+// applyConfiguredSkin loads ui.skin into the TUI's light or dark slot. An empty
+// value keeps the built-in sepia and dracula skins.
+func applyConfiguredSkin(ref string) error {
+	if ref == "" {
+		return nil
+	}
+	p, err := skin.Resolve(ref)
+	if err != nil {
+		return err
+	}
+	ui.UseSkin(p)
+	return nil
 }

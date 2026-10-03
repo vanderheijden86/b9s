@@ -21,68 +21,34 @@ const (
 )
 
 // ══════════════════════════════════════════════════════════════════════════════
-// COLOR PALETTE - Adaptive colors for light and dark terminals
-// Light mode colors tuned for WCAG AA compliance (contrast ratio >= 4.5:1)
+// COLOR PALETTE - each colour pairs the light and dark skin slots. applySkins
+// in palette.go assigns them; see the skin package for the token meanings.
 // ══════════════════════════════════════════════════════════════════════════════
 
 var (
-	// Base colors - Light mode uses darker colors for contrast on white backgrounds
-	ColorBg          = lipgloss.AdaptiveColor{Light: sepiaPaper, Dark: "#282A36"}
-	ColorBgDark      = lipgloss.AdaptiveColor{Light: sepiaPaperDeep, Dark: "#1E1F29"}
-	ColorBgSubtle    = lipgloss.AdaptiveColor{Light: sepiaPaperDeep, Dark: "#363949"}
-	ColorBgHighlight = lipgloss.AdaptiveColor{Light: sepiaSelection, Dark: "#4FC1E9"}
-	ColorText        = lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#F8F8F2"}
-	ColorSubtext     = lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#BFBFBF"}
-	ColorMuted       = lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#6272A4"}
+	ColorBg, ColorBgDark, ColorBgSubtle, ColorBgHighlight lipgloss.AdaptiveColor
+	ColorBoardSelection, ColorSelectionText, ColorMatchBg lipgloss.AdaptiveColor
+	ColorHeaderText, ColorBorder                          lipgloss.AdaptiveColor
+	ColorText, ColorSubtext, ColorMuted                   lipgloss.AdaptiveColor
 
-	// Primary accent colors
-	ColorPrimary   = lipgloss.AdaptiveColor{Light: sepiaNavy, Dark: "#BD93F9"}
-	ColorSecondary = lipgloss.AdaptiveColor{Light: sepiaInkSoft, Dark: "#6272A4"}
-	ColorInfo      = lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#8BE9FD"}
-	ColorSuccess   = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"}
-	ColorWarning   = lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#FFB86C"}
-	ColorDanger    = lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"}
+	ColorPrimary, ColorSecondary, ColorInfo lipgloss.AdaptiveColor
+	ColorSuccess, ColorWarning, ColorDanger lipgloss.AdaptiveColor
 
-	// Status colors
-	ColorStatusOpen       = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"}
-	ColorStatusInProgress = lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#8BE9FD"}
-	ColorStatusBlocked    = lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"}
-	ColorStatusDeferred   = lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#FFB86C"}
-	ColorStatusPinned     = lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#6699FF"}
-	ColorStatusHooked     = lipgloss.AdaptiveColor{Light: sepiaTeal, Dark: "#00CED1"}
-	ColorStatusReview     = lipgloss.AdaptiveColor{Light: sepiaPlum, Dark: "#BD93F9"}
-	ColorStatusClosed     = lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#6272A4"}
-	ColorStatusTombstone  = lipgloss.AdaptiveColor{Light: sepiaClosed, Dark: "#44475A"}
+	ColorStatusOpen, ColorStatusInProgress, ColorStatusBlocked lipgloss.AdaptiveColor
+	ColorStatusDeferred, ColorStatusPinned, ColorStatusHooked  lipgloss.AdaptiveColor
+	ColorStatusReview, ColorStatusClosed, ColorStatusTombstone lipgloss.AdaptiveColor
 
-	// Status background colors (for badges) - subtle backgrounds
-	ColorStatusOpenBg       = lipgloss.AdaptiveColor{Light: sepiaMossTint, Dark: "#1A3D2A"}
-	ColorStatusInProgressBg = lipgloss.AdaptiveColor{Light: sepiaBlueTint, Dark: "#1A3344"}
-	ColorStatusBlockedBg    = lipgloss.AdaptiveColor{Light: sepiaRedTint, Dark: "#3D1A1A"}
-	ColorStatusDeferredBg   = lipgloss.AdaptiveColor{Light: sepiaOchreTint, Dark: "#3D2A1A"}
-	ColorStatusPinnedBg     = lipgloss.AdaptiveColor{Light: sepiaBlueTint, Dark: "#1A2A44"}
-	ColorStatusHookedBg     = lipgloss.AdaptiveColor{Light: sepiaTealTint, Dark: "#1A3D3D"}
-	ColorStatusReviewBg     = lipgloss.AdaptiveColor{Light: sepiaPlumTint, Dark: "#2A1A44"}
-	ColorStatusClosedBg     = lipgloss.AdaptiveColor{Light: sepiaClosedTint, Dark: "#2A2A3D"}
-	ColorStatusTombstoneBg  = lipgloss.AdaptiveColor{Light: sepiaClosedTint, Dark: "#1E1F29"}
+	ColorStatusOpenBg, ColorStatusInProgressBg, ColorStatusBlockedBg lipgloss.AdaptiveColor
+	ColorStatusDeferredBg, ColorStatusPinnedBg, ColorStatusHookedBg  lipgloss.AdaptiveColor
+	ColorStatusReviewBg, ColorStatusClosedBg, ColorStatusTombstoneBg lipgloss.AdaptiveColor
 
-	// Priority colors
-	ColorPrioCritical = lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"}
-	ColorPrioHigh     = lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#FFB86C"}
-	ColorPrioMedium   = lipgloss.AdaptiveColor{Light: sepiaOlive, Dark: "#F1FA8C"}
-	ColorPrioLow      = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#50FA7B"}
+	ColorPrioCritical, ColorPrioHigh, ColorPrioMedium, ColorPrioLow         lipgloss.AdaptiveColor
+	ColorPrioCriticalBg, ColorPrioHighBg, ColorPrioMediumBg, ColorPrioLowBg lipgloss.AdaptiveColor
 
-	// Priority background colors
-	ColorPrioCriticalBg = lipgloss.AdaptiveColor{Light: sepiaRedTint, Dark: "#3D1A1A"}
-	ColorPrioHighBg     = lipgloss.AdaptiveColor{Light: sepiaOchreTint, Dark: "#3D2A1A"}
-	ColorPrioMediumBg   = lipgloss.AdaptiveColor{Light: sepiaOchreTint, Dark: "#3D3D1A"}
-	ColorPrioLowBg      = lipgloss.AdaptiveColor{Light: sepiaMossTint, Dark: "#1A3D2A"}
+	ColorTypeBug, ColorTypeFeature, ColorTypeTask, ColorTypeEpic, ColorTypeChore lipgloss.AdaptiveColor
 
-	// Type colors
-	ColorTypeBug     = lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#FF5555"}
-	ColorTypeFeature = lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#FFB86C"}
-	ColorTypeTask    = lipgloss.AdaptiveColor{Light: sepiaOlive, Dark: "#F1FA8C"}
-	ColorTypeEpic    = lipgloss.AdaptiveColor{Light: sepiaPlum, Dark: "#BD93F9"}
-	ColorTypeChore   = lipgloss.AdaptiveColor{Light: sepiaTeal, Dark: "#8BE9FD"}
+	// RepoColors gives each repo prefix a stable accent.
+	RepoColors []lipgloss.AdaptiveColor
 )
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -92,14 +58,10 @@ var (
 var (
 	// PanelStyle is the default style for unfocused panels. Its border is
 	// muted so the focused panel is the only bright one on screen.
-	PanelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(ColorMuted)
+	PanelStyle lipgloss.Style
 
 	// FocusedPanelStyle is the style for focused panels
-	FocusedPanelStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary)
+	FocusedPanelStyle lipgloss.Style
 )
 
 // ══════════════════════════════════════════════════════════════════════════════

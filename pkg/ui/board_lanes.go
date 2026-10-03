@@ -466,7 +466,7 @@ func (b *BoardModel) quietRail(lane boardLane, width, height int) []string {
 		sideColor = t.Primary
 	}
 	side := t.Renderer.NewStyle().Foreground(sideColor).Render("┃")
-	bg := bgSeqFromColor(ThemeBg(sepiaPaperDeep), t.Renderer)
+	bg := bgSeqFromColor(ThemeBg(string(lightSkin.BgDeep)), t.Renderer)
 	if lane.selected {
 		bg = b.selectionSurface()
 	}
@@ -533,7 +533,7 @@ func (b *BoardModel) quietLaneRow(epic string, width int, folded, selected bool)
 		sideColor = t.Primary
 	}
 	side := t.Renderer.NewStyle().Foreground(sideColor).Render("┃")
-	bg := bgSeqFromColor(ThemeBg(sepiaPaperDeep), t.Renderer)
+	bg := bgSeqFromColor(ThemeBg(string(lightSkin.BgDeep)), t.Renderer)
 	if selected {
 		bg = b.selectionSurface()
 	}
@@ -660,7 +660,7 @@ func (b *BoardModel) cardLines(issue model.Issue, width int, selected bool, col,
 	edgeColor := lipgloss.TerminalColor(t.Border)
 	idColor := lipgloss.TerminalColor(t.Primary)
 	if b.IsSearchMatch(col, row) {
-		edgeColor = lipgloss.AdaptiveColor{Light: sepiaInkBlue, Dark: "#64b5f6"}
+		edgeColor = ColorInfo
 		idColor = edgeColor
 	}
 	if selected {

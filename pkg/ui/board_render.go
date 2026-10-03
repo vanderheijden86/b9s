@@ -160,17 +160,11 @@ func (b *BoardModel) columnColor(col int) lipgloss.TerminalColor {
 	switch b.swimLaneMode {
 	case SwimByPriority:
 		return []lipgloss.AdaptiveColor{
-			{Light: sepiaOxblood, Dark: "#ef5350"},
-			{Light: sepiaOchre, Dark: "#ffb74d"},
-			{Light: sepiaInkBlue, Dark: "#64b5f6"},
-			{Light: sepiaClosed, Dark: "#9e9e9e"},
+			ColorPrioCritical, ColorPrioHigh, ColorInfo, ColorStatusClosed,
 		}[col]
 	case SwimByType:
 		return []lipgloss.AdaptiveColor{
-			{Light: sepiaOxblood, Dark: "#ef5350"},
-			{Light: sepiaMoss, Dark: "#81c784"},
-			{Light: sepiaInkBlue, Dark: "#64b5f6"},
-			{Light: sepiaPlum, Dark: "#ce93d8"},
+			ColorTypeBug, ColorTypeFeature, ColorTypeTask, ColorTypeEpic,
 		}[col]
 	}
 	return []lipgloss.AdaptiveColor{b.theme.Open, b.theme.InProgress, b.theme.Blocked, b.theme.Closed}[col]
@@ -321,29 +315,25 @@ func (b *BoardModel) rowSurface(selected bool, col, row int) string {
 	case selected:
 		return b.selectionSurface()
 	case b.IsMatchHighlighted(col, row):
-		return bgSeqFromColor(lipgloss.AdaptiveColor{Light: sepiaPlumTint, Dark: "#4a148c"}, t.Renderer)
+		return bgSeqFromColor(ColorMatchBg, t.Renderer)
 	}
 	return ""
 }
 
 func (b *BoardModel) selectionSurface() string {
-	color := lipgloss.TerminalColor(b.theme.Highlight)
-	if !b.theme.Renderer.HasDarkBackground() {
-		color = lipgloss.Color(sepiaBoardSelection)
-	}
-	return bgSeqFromColor(color, b.theme.Renderer)
+	return bgSeqFromColor(ColorBoardSelection, b.theme.Renderer)
 }
 
 func (b *BoardModel) fg(selected bool, c lipgloss.TerminalColor) lipgloss.Style {
 	if selected {
-		c = selectedCardTextColor
+		c = ColorSelectionText
 	}
 	return b.theme.Renderer.NewStyle().Foreground(c)
 }
 
 func (b *BoardModel) priorityStyle(issue model.Issue, selected bool) lipgloss.Style {
 	if issue.Priority <= 1 {
-		return b.fg(selected, lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#ef5350"}).Bold(true)
+		return b.fg(selected, ColorDanger).Bold(true)
 	}
 	return b.fg(selected, b.theme.Secondary)
 }

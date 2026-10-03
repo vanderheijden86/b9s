@@ -241,3 +241,22 @@ func TestThemeFg_NoTTY(t *testing.T) {
 		t.Errorf("ThemeFg should return ANSIColor in NoTTY mode, got %T", got)
 	}
 }
+
+// The footer names the skin a forced theme shows, so a user can tell which
+// skin ui.skin loaded.
+func TestThemeHintNamesTheSkin(t *testing.T) {
+	light, dark := Skins()
+	t.Cleanup(func() { applySkins(light, dark) })
+	nord := dark
+	nord.Name = "nord"
+	UseSkin(nord)
+	for mode, want := range map[config.ThemeMode]string{
+		config.ThemeAuto:  "theme:auto",
+		config.ThemeLight: "theme:sepia",
+		config.ThemeDark:  "theme:nord",
+	} {
+		if got := themeHint(mode); got != want {
+			t.Errorf("themeHint(%s) = %q, want %q", mode, got, want)
+		}
+	}
+}

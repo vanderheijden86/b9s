@@ -274,8 +274,8 @@ func TestBuildStyleFromTheme(t *testing.T) {
 	if darkConfig.Document.Color == nil {
 		t.Error("expected Document.Color to be set")
 	}
-	if *darkConfig.Document.Color != "#f8f8f2" {
-		t.Errorf("expected dark mode doc color #f8f8f2, got %s", *darkConfig.Document.Color)
+	if *darkConfig.Document.Color != string(darkSkin.Text) {
+		t.Errorf("expected dark mode doc color %s, got %s", darkSkin.Text, *darkConfig.Document.Color)
 	}
 	// Dark mode background should be nil (transparent) to avoid Solarized/16-color
 	// terminal issues where hex colors get downconverted to wrong ANSI slots (#101)
@@ -285,8 +285,8 @@ func TestBuildStyleFromTheme(t *testing.T) {
 
 	// Test light mode
 	lightConfig := buildStyleFromTheme(theme, false)
-	if *lightConfig.Document.Color != sepiaInk {
-		t.Errorf("expected light mode doc color %s, got %s", sepiaInk, *lightConfig.Document.Color)
+	if *lightConfig.Document.Color != string(lightSkin.Text) {
+		t.Errorf("expected light mode doc color %s, got %s", lightSkin.Text, *lightConfig.Document.Color)
 	}
 	// Light mode should have nil background (use terminal default)
 	if lightConfig.Document.BackgroundColor != nil {

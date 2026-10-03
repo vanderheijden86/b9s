@@ -443,7 +443,7 @@ func TestThemeShortcutSwitchesAndPersists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("restarting TUI: %v", err)
 	}
-	if !bytes.Contains(restarted, []byte("theme:dark")) || !bytes.Contains(restarted, []byte("\x1b]11;#282A36\x07")) {
+	if !bytes.Contains(restarted, []byte("theme:dracula")) || !bytes.Contains(restarted, []byte("\x1b]11;#282A36\x07")) {
 		t.Fatalf("restart did not load the saved theme: %q", restarted)
 	}
 }
@@ -1347,4 +1347,28 @@ func TestTreeViewArrowKeysWithManyNodes(t *testing.T) {
 	// After scrolling down 15 times, later tasks should be visible
 	// The viewport should have scrolled to show tasks beyond the initial view
 	containsAll(t, out, []string{"Task 14", "Task 15"})
+}
+
+func TestK9sSkinFromConfigPaintsTheTerminal(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
+	configHome := t.TempDir()
+	skinPath, err := filepath.Abs(filepath.Join("..", "..", "pkg", "skin", "testdata", "gruvbox-light.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(configHome, "b9s"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := "ui:\n  theme: light\n  skin: " + skinPath + "\n"
+	if err := os.WriteFile(filepath.Join(configHome, "b9s", "config.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runTreeTUIWithEnv(t, tempDir, 1200, nil, "COLORFGBG=7;0", "XDG_CONFIG_HOME="+configHome)
+	if err != nil {
+		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
+	}
+	if !bytes.Contains(out, []byte("\x1b]11;#FBF1C7\x07")) || !bytes.Contains(out, []byte("theme:gruvbox-light")) {
+		t.Fatalf("gruvbox skin did not reach the terminal: %q", out)
+	}
 }

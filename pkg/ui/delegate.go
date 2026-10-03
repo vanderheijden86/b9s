@@ -209,7 +209,7 @@ func (d IssueDelegate) Render(w io.Writer, m list.Model, index int, listItem lis
 	if isSelected {
 		titleStyle = titleStyle.Foreground(t.Primary).Bold(true)
 	} else {
-		titleStyle = titleStyle.Foreground(lipgloss.AdaptiveColor{Light: sepiaInk, Dark: "#E8E8E8"})
+		titleStyle = titleStyle.Foreground(ColorText)
 	}
 	leftSide.WriteString(titleStyle.Render(title))
 

@@ -185,12 +185,7 @@ func buildStyleFromTheme(theme Theme, isDark bool) ansi.StyleConfig {
 	// to the 16-color palette. Using nil lets the terminal's own background
 	// show through, which is correct for every theme. (fixes #101)
 	var docBgPtr *string // nil = terminal default background
-	var docFg string
-	if isDark {
-		docFg = "#f8f8f2"
-	} else {
-		docFg = sepiaInk
-	}
+	docFg := extractHex(ColorText, isDark)
 
 	return ansi.StyleConfig{
 		Document: ansi.StyleBlock{

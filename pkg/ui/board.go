@@ -11,8 +11,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var selectedCardTextColor = lipgloss.AdaptiveColor{Light: sepiaInkStrong, Dark: "#101010"}
-
 // BoardModel represents the Kanban board view with adaptive columns
 type BoardModel struct {
 	columns      [4][]model.Issue
@@ -1081,11 +1079,11 @@ func getAgeColor(t time.Time) lipgloss.TerminalColor {
 	days := int(time.Since(t).Hours() / 24)
 	switch {
 	case days < 7:
-		return lipgloss.AdaptiveColor{Light: sepiaMoss, Dark: "#81c784"} // green
+		return ColorSuccess
 	case days < 30:
-		return lipgloss.AdaptiveColor{Light: sepiaOchre, Dark: "#ffb74d"} // yellow/orange
+		return ColorWarning
 	default:
-		return lipgloss.AdaptiveColor{Light: sepiaOxblood, Dark: "#e57373"} // red
+		return ColorDanger
 	}
 }
 

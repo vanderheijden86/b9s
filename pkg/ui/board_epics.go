@@ -70,18 +70,8 @@ type boardEpic struct {
 // imported data can carry one, and the board must not hang on it.
 const maxEpicDepth = 32
 
-// epicPalette gives each epic a stable color. The hues avoid the status and
-// priority reds so an epic bar never reads as a warning.
-var epicPalette = []lipgloss.AdaptiveColor{
-	{Light: sepiaAccents[0], Dark: "#4dd0e1"},
-	{Light: sepiaAccents[1], Dark: "#ce93d8"},
-	{Light: sepiaAccents[2], Dark: "#81c784"},
-	{Light: sepiaAccents[3], Dark: "#ffb74d"},
-	{Light: sepiaAccents[4], Dark: "#9fa8da"},
-	{Light: sepiaAccents[5], Dark: "#f48fb1"},
-	{Light: sepiaAccents[6], Dark: "#c5e1a5"},
-	{Light: sepiaAccents[7], Dark: "#bcaaa4"},
-}
+// epicPalette gives each epic a stable color from the skin accents.
+var epicPalette []lipgloss.AdaptiveColor
 
 func epicColor(id string) lipgloss.AdaptiveColor {
 	h := fnv.New32a()
