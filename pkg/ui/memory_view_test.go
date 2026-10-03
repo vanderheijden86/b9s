@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,21 +28,28 @@ type fakeMemorySource struct {
 	memoryErr error
 	graph     datasource.MemoryGraph
 	graphErr  error
+	mu        sync.Mutex
 	calls     []string
 }
 
+func (f *fakeMemorySource) record(call string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls = append(f.calls, call)
+}
+
 func (f *fakeMemorySource) Graph(context.Context) (datasource.MemoryGraph, error) {
-	f.calls = append(f.calls, "graph")
+	f.record("graph")
 	return f.graph, f.graphErr
 }
 
 func (f *fakeMemorySource) Inventory(context.Context) (datasource.GraphPreview, error) {
-	f.calls = append(f.calls, "inventory")
+	f.record("inventory")
 	return f.inventory, nil
 }
 
 func (f *fakeMemorySource) SearchMemories(_ context.Context, query string) ([]datasource.MemorySummary, error) {
-	f.calls = append(f.calls, "search:"+query)
+	f.record("search:" + query)
 	if query == "" {
 		return f.summaries, nil
 	}
@@ -56,7 +64,7 @@ func (f *fakeMemorySource) SearchMemories(_ context.Context, query string) ([]da
 }
 
 func (f *fakeMemorySource) Memory(_ context.Context, id, version string) (datasource.GraphBead, error) {
-	f.calls = append(f.calls, "memory:"+graphPath(id)+"@"+version)
+	f.record("memory:" + graphPath(id) + "@" + version)
 	if f.memoryErr != nil {
 		return datasource.GraphBead{}, f.memoryErr
 	}
@@ -68,16 +76,18 @@ func (f *fakeMemorySource) Memory(_ context.Context, id, version string) (dataso
 }
 
 func (f *fakeMemorySource) Links(_ context.Context, id string) ([]datasource.GraphLink, error) {
-	f.calls = append(f.calls, "links:"+graphPath(id))
+	f.record("links:" + graphPath(id))
 	return f.links[id], nil
 }
 
 func (f *fakeMemorySource) Versions(_ context.Context, id string) ([]datasource.GraphVersion, error) {
-	f.calls = append(f.calls, "versions:"+graphPath(id))
+	f.record("versions:" + graphPath(id))
 	return f.versions[id], nil
 }
 
 func (f *fakeMemorySource) callCount(prefix string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	n := 0
 	for _, c := range f.calls {
 		if strings.HasPrefix(c, prefix) {

@@ -353,12 +353,26 @@ The versions list holds only what bd retains, not full history. A retained versi
 
 ### Graph views
 
-Two keys switch the browser to a view of the whole graph. The first press reads every Issue, Memory and Link once, which takes about 11 seconds on a small workspace. `1` returns to the list.
+Keys `2` through `5` switch the browser to a view of the whole graph. The first press reads every Issue, Memory and Link once, which takes about 11 seconds on a small workspace. The views share that snapshot. `1` returns to the list.
 
 | Key | View |
 |-----|------|
-| `2` | **Constellation.** A force layout of Issues and Memories in braille, with a health list beside it. `h` `j` `k` `l` move to the nearest node in that direction, `n` / `N` walk the Issues that need a look, `c`, `e` and `t` toggle citations, hierarchy and titles, `Enter` opens a Memory, `Esc` clears the selection |
-| `3` | **Two shores.** The epic tree on the left, Memories grouped by status on the right, and wires between them. `j` / `k` move, `Tab` changes side, `Enter` opens a Memory. The strip below traces the selected row |
+| `2` | **Focus wires.** The epic tree on the left and Memories grouped by status on the right. Only the selected row's Links have wires. Other rows show Link counts. `j` / `k` move, `Tab` changes side, and `Enter` opens a selected Memory. The strip below explains the selection |
+| `3` | **Matrix.** Issues form rows and linked decisions form columns. `●` means follows, `○` means cites, and `·` means no Link. `h` / `l` select a column, `j` / `k` select an Issue, and `Enter` opens the column's Memory. `s` toggles status order and usage order, preserving the selected decision |
+| `4` | **Chips.** Each Issue shows its decisions as badges. Filled badges mean follows, parentheses mean cites. `j` / `k` select an Issue, `h` / `l` select its decision, and `Enter` opens it. The detail panel starts with the selected decision. Narrow terminals stack the panel below the list |
+| `5` | **Constellation.** A force layout of Issues and Memories in braille, with a health list beside it. `h` `j` `k` `l` move to the nearest node in that direction, `n` / `N` walk the Issues that need a look, `c`, `e` and `t` toggle citations, hierarchy and titles, `Enter` opens a Memory, `Esc` clears the selection |
+
+In focus wires, matrix and chips, `p` toggles the problems filter. It includes work with no decision, work following a proposed decision, and work following a superseded decision. The selected Issue stays selected when it remains in the filter. `Home` / `End` or `g` / `G` select the first or last Issue. The header reports the active filter and matrix order.
+
+The matrix scrolls vertically and horizontally to keep the selected cell visible. Its detail strip names the Issue, Link kind, decision title and status, followed by follower and citation counts for that column. Colours and status bars distinguish active, proposed, superseded and unclassified Memories. Graph views require at least 30 terminal columns.
+
+[Watch the terminal evidence](videos/memory-views--feat-bd-87qs-memory-beads.mp4). The same real-preview suite failed on the unfinished matrix and passed all 13 checks after implementation. See [the test procedure](testing.md#memory-preview-terminal-checks).
+
+### Startup troubleshooting
+
+If the regular b9s project reports `Access denied for user 'bd_b9s'`, load that project's credential environment. A shell inherited from another workspace can hold a different `BEADS_DOLT_PASSWORD`. From the b9s checkout, `direnv exec . b9s` runs with the project's approved environment.
+
+If the Memory POC reports a schema mismatch, run `scripts/memory-preview b9s` from this feature checkout. It selects the pinned preview `bd` and rebuilds this checkout's viewer. Plain `b9s` uses the binaries on your shell's `PATH`, which may belong to the released schema. Do not bypass the schema check or migrate the preview store to fix a launch command.
 
 A Memory's status comes from the YAML frontmatter at the top of its body (`status: active`, `superseded_by: "0027"`), the block every ADR file starts with. A Memory without frontmatter has no status. Each Issue gets one health mark, worst first: `✗` follows a superseded decision, `◆` is an epic, `·` records no decision, `?` follows a proposed decision, `▪` is fine.
 

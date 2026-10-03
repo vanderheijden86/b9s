@@ -16,15 +16,17 @@ import (
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
-// memoryMode is the view the Memory browser shows. The two graph views read
-// the whole graph, which costs one traversal per component, so they load it
-// on first entry and share it (ADR 0032).
+// memoryMode is the view the Memory browser shows. The graph views read the
+// whole graph, which costs one traversal per component, so they load it on
+// first entry and share it (ADR 0032).
 type memoryMode uint8
 
 const (
 	memoryModeList memoryMode = iota
+	memoryModeFocus
+	memoryModeMatrix
+	memoryModeChips
 	memoryModeConstellation
-	memoryModeShores
 )
 
 // memoryGraphTimeout covers every traversal of a large workspace, each of
@@ -52,10 +54,16 @@ type constellationState struct {
 	titles    bool
 }
 
-type shoresState struct {
-	side   int
-	cursor [2]int
-	offset int
+// decisionViewState is shared by the focus, matrix and chips views, so the
+// selected Issue stays put while the reader switches between them.
+type decisionViewState struct {
+	side      int // focus view: 0 the Issue list, 1 the Memory list
+	cursor    [2]int
+	offset    int
+	col       int // matrix view: the decision column
+	chip      int // chips view: the selected Issue's Link
+	problems  bool
+	sortByUse bool
 }
 
 func (b MemoryBrowser) graphCmd() tea.Cmd {
@@ -86,8 +94,7 @@ func (b MemoryBrowser) applyGraph(msg memoryGraphMsg) MemoryBrowser {
 	}
 	b.graph = msg.graph
 	b.star.pos = layoutConstellation(msg.graph)
-	left, right := shoresRows(msg.graph)
-	b.shore.cursor = [2]int{firstShoreRow(left), firstShoreRow(right)}
+	b.decide.cursor = [2]int{firstGraphRow(workRows(msg.graph)), firstGraphRow(decisionRows(msg.graph))}
 	return b
 }
 
@@ -98,7 +105,7 @@ func (b MemoryBrowser) handleGraphKey(key string) (MemoryBrowser, tea.Cmd) {
 	if b.mode == memoryModeConstellation {
 		return b.handleConstellationKey(key)
 	}
-	return b.handleShoresKey(key)
+	return b.handleDecisionKey(key)
 }
 
 // openMemory shows a graph node's Memory in the list, where its body,
@@ -140,8 +147,12 @@ func (b MemoryBrowser) graphView(width, height int) string {
 		return b.errorStyle().Render("Graph unavailable: " + memoryText(b.graphErr.Error()))
 	case b.mode == memoryModeConstellation:
 		return b.constellationView(width, height)
+	case b.mode == memoryModeMatrix:
+		return b.matrixView(width, height)
+	case b.mode == memoryModeChips:
+		return b.chipsView(width, height)
 	}
-	return b.shoresView(width, height)
+	return b.focusView(width, height)
 }
 
 func (b MemoryBrowser) graphHeaderText() string {
@@ -156,9 +167,21 @@ func (b MemoryBrowser) graphHeaderText() string {
 			issues++
 		}
 	}
-	name := "constellation"
-	if b.mode == memoryModeShores {
-		name = "two shores"
+	name := map[memoryMode]string{
+		memoryModeFocus:         "decision wires",
+		memoryModeMatrix:        "decision matrix",
+		memoryModeChips:         "decision chips",
+		memoryModeConstellation: "constellation",
+	}[b.mode]
+	if b.mode == memoryModeMatrix {
+		if b.decide.sortByUse {
+			name += " · by use"
+		} else {
+			name += " · by status"
+		}
+	}
+	if b.mode != memoryModeConstellation && b.decide.problems {
+		name += " · problems only"
 	}
 	return fmt.Sprintf("%s · %s · %d Issues, %d Memories, %d Links", b.project, name, issues, memories, len(b.graph.Edges))
 }
@@ -923,16 +946,16 @@ func (b MemoryBrowser) constellationPanel(width, height int) []string {
 }
 
 // ---------------------------------------------------------------------------
-// Two shores
+// Decision views: focus wires, matrix and chips
 
-// shoreRow is a line of one shore: a group header or a node.
-type shoreRow struct {
+// graphRow is a line of the work or decision list: a group header or a node.
+type graphRow struct {
 	id     string
 	header string
 	depth  int
 }
 
-func firstShoreRow(rows []shoreRow) int {
+func firstGraphRow(rows []graphRow) int {
 	for i, r := range rows {
 		if r.id != "" {
 			return i
@@ -941,9 +964,8 @@ func firstShoreRow(rows []shoreRow) int {
 	return 0
 }
 
-// shoresRows lays out work on the left as the epic tree, then loose work,
-// then empty epics; and decisions on the right by status, most used first.
-func shoresRows(g datasource.MemoryGraph) (left, right []shoreRow) {
+// workRows lays out the epic tree, then loose work, then empty epics.
+func workRows(g datasource.MemoryGraph) []graphRow {
 	kids := map[string][]string{}
 	parent := map[string]string{}
 	for _, e := range g.Edges {
@@ -952,9 +974,10 @@ func shoresRows(g datasource.MemoryGraph) (left, right []shoreRow) {
 			parent[e.Source] = e.Target
 		}
 	}
+	var rows []graphRow
 	var walk func(id string, depth int)
 	walk = func(id string, depth int) {
-		left = append(left, shoreRow{id: id, depth: depth})
+		rows = append(rows, graphRow{id: id, depth: depth})
 		for _, k := range kids[id] {
 			walk(k, depth+1)
 		}
@@ -974,17 +997,23 @@ func shoresRows(g datasource.MemoryGraph) (left, right []shoreRow) {
 		}
 	}
 	if len(loose) > 0 {
-		left = append(left, shoreRow{header: "No epic"})
+		rows = append(rows, graphRow{header: "No epic"})
 		for _, id := range loose {
 			walk(id, 0)
 		}
 	}
 	if len(empty) > 0 {
-		left = append(left, shoreRow{header: "Epics with no Links"})
+		rows = append(rows, graphRow{header: "Epics with no Links"})
 		for _, id := range empty {
-			left = append(left, shoreRow{id: id})
+			rows = append(rows, graphRow{id: id})
 		}
 	}
+	return rows
+}
+
+// decisionRows groups Memories by status, most used first in each group.
+func decisionRows(g datasource.MemoryGraph) []graphRow {
+	var rows []graphRow
 	use := func(id string) int { return len(g.Followers(id)) + len(g.Citers(id)) }
 	for _, status := range []string{"active", "proposed", "superseded", ""} {
 		var ids []string
@@ -1001,71 +1030,136 @@ func shoresRows(g datasource.MemoryGraph) (left, right []shoreRow) {
 		if header == "" {
 			header = "no status"
 		}
-		right = append(right, shoreRow{header: header})
+		rows = append(rows, graphRow{header: header})
 		for _, id := range ids {
-			right = append(right, shoreRow{id: id})
+			rows = append(rows, graphRow{id: id})
 		}
 	}
-	return left, right
+	return rows
 }
 
 func knownMemoryStatus(status string) bool {
 	return status == "active" || status == "proposed" || status == "superseded"
 }
 
-// shoresTraced is the selected row, everything under it in the epic tree,
-// and the far end of every Link those rows own.
-func shoresTraced(g datasource.MemoryGraph, id string) map[string]bool {
-	on := map[string]bool{}
-	if id == "" {
-		return on
-	}
-	var descend func(string)
-	descend = func(x string) {
-		on[x] = true
-		for _, e := range g.In(x) {
-			if e.Kind == datasource.EdgeChildOf && !on[e.Source] {
-				descend(e.Source)
-			}
+// matrixColumns are the decisions some Issue follows or cites, in the order
+// of decisionRows. A Memory nothing links to would be an empty column.
+func matrixColumns(g datasource.MemoryGraph) []string {
+	var cols []string
+	for _, r := range decisionRows(g) {
+		if r.id != "" && len(g.Followers(r.id))+len(g.Citers(r.id)) > 0 {
+			cols = append(cols, r.id)
 		}
 	}
-	descend(id)
-	owners := make([]string, 0, len(on))
-	for x := range on {
-		owners = append(owners, x)
-	}
-	for _, x := range owners {
-		for _, nb := range g.Neighbours(x) {
-			if nb.Edge.Kind != datasource.EdgeChildOf {
-				on[nb.Other] = true
-			}
-		}
-	}
-	return on
+	return cols
 }
 
-func (b MemoryBrowser) shoresSelected() string {
-	left, right := shoresRows(b.graph)
-	rows := [2][]shoreRow{left, right}[b.shore.side]
-	if c := b.shore.cursor[b.shore.side]; c < len(rows) {
+func (b MemoryBrowser) decisionWorkRows() []graphRow {
+	rows := workRows(b.graph)
+	if !b.decide.problems {
+		return rows
+	}
+	var filtered []graphRow
+	for _, row := range rows {
+		if row.id != "" && b.graph.Health(row.id).Problem() {
+			filtered = append(filtered, row)
+		}
+	}
+	return filtered
+}
+
+func (b MemoryBrowser) decisionColumns() []string {
+	cols := matrixColumns(b.graph)
+	if b.decide.sortByUse {
+		use := func(id string) int { return len(b.graph.Followers(id)) + len(b.graph.Citers(id)) }
+		sort.SliceStable(cols, func(i, j int) bool { return use(cols[i]) > use(cols[j]) })
+	}
+	return cols
+}
+
+// decisionOffset keeps the selected row visible after navigation or resize.
+func decisionOffset(offset, cursor, total, capacity int) int {
+	offset = max(0, min(offset, max(0, total-capacity)))
+	if cursor < offset {
+		return max(0, cursor)
+	}
+	if cursor >= offset+capacity {
+		return max(0, cursor-capacity+1)
+	}
+	return offset
+}
+
+// decisionTag is the short name a chip or column carries: the ADR number,
+// or the Memory's id when it has none.
+func decisionTag(n datasource.GraphNode) string {
+	if n.Number != "" {
+		return n.Number
+	}
+	return graphPath(n.ID)
+}
+
+// matrixLabel fits a decision into a two-cell column header: the last two
+// digits of an ADR number, or the initials of a named Memory.
+func matrixLabel(n datasource.GraphNode) string {
+	tag := decisionTag(n)
+	if n.Number != "" && len(tag) >= 2 {
+		return tag[len(tag)-2:]
+	}
+	initials := ""
+	for _, part := range strings.FieldsFunc(tag, func(r rune) bool { return r == '-' || r == '_' || r == ' ' }) {
+		initials += string([]rune(part)[:1])
+	}
+	return truncate(initials, 2)
+}
+
+func (b MemoryBrowser) decisionSide() int {
+	if b.mode == memoryModeFocus {
+		return b.decide.side
+	}
+	return 0
+}
+
+func (b MemoryBrowser) decisionSelected() string {
+	rows := b.decisionWorkRows()
+	if b.decisionSide() == 1 {
+		rows = decisionRows(b.graph)
+	}
+	if c := b.decide.cursor[b.decisionSide()]; c < len(rows) {
 		return rows[c].id
 	}
 	return ""
 }
 
-// shoresLayout splits the pane height into the two shores and the strip that
-// shows the selected row's neighbourhood.
-func (b MemoryBrowser) shoresLayout() (listHeight, stripHeight int) {
+// selectedLinks are the follows and cites Links of the selected Issue.
+func (b MemoryBrowser) selectedLinks() []datasource.GraphEdge {
+	rows := b.decisionWorkRows()
+	if c := b.decide.cursor[0]; c < len(rows) && rows[c].id != "" {
+		return b.graph.DecisionEdges(rows[c].id)
+	}
+	return nil
+}
+
+// decisionLayout splits the pane height into the list and the strip below
+// it that explains the selection.
+func (b MemoryBrowser) decisionLayout() (listHeight, stripHeight int) {
 	height := max(1, b.height-4)
+	if b.mode == memoryModeMatrix {
+		return max(1, height-6), 4
+	}
+	if b.mode == memoryModeChips {
+		return max(1, height-1), 0
+	}
 	stripHeight = min(12, max(4, height/3))
 	return max(1, height-stripHeight-2), stripHeight
 }
 
-func (b MemoryBrowser) handleShoresKey(key string) (MemoryBrowser, tea.Cmd) {
-	left, right := shoresRows(b.graph)
-	sides := [2][]shoreRow{left, right}
-	sh := &b.shore
-	rows := sides[sh.side]
+func (b MemoryBrowser) handleDecisionKey(key string) (MemoryBrowser, tea.Cmd) {
+	d := &b.decide
+	side := b.decisionSide()
+	rows := b.decisionWorkRows()
+	if side == 1 {
+		rows = decisionRows(b.graph)
+	}
 	step := func(from, dir int) int {
 		for i := from + dir; i >= 0 && i < len(rows); i += dir {
 			if rows[i].id != "" {
@@ -1074,321 +1168,515 @@ func (b MemoryBrowser) handleShoresKey(key string) (MemoryBrowser, tea.Cmd) {
 		}
 		return from
 	}
+	before := d.cursor[side]
+	cols := b.decisionColumns()
 	switch key {
+	case "p":
+		selected := ""
+		work := b.decisionWorkRows()
+		if d.cursor[0] < len(work) {
+			selected = work[d.cursor[0]].id
+		}
+		d.problems = !d.problems
+		work = b.decisionWorkRows()
+		d.cursor[0] = firstGraphRow(work)
+		for i, row := range work {
+			if row.id == selected {
+				d.cursor[0] = i
+			}
+		}
+		d.offset, d.chip = 0, 0
+	case "s":
+		if b.mode == memoryModeMatrix {
+			selected := ""
+			if d.col < len(cols) {
+				selected = cols[d.col]
+			}
+			d.sortByUse = !d.sortByUse
+			for i, id := range b.decisionColumns() {
+				if id == selected {
+					d.col = i
+				}
+			}
+		}
 	case "j", "down":
-		sh.cursor[sh.side] = step(sh.cursor[sh.side], 1)
+		d.cursor[side] = step(d.cursor[side], 1)
 	case "k", "up":
-		sh.cursor[sh.side] = step(sh.cursor[sh.side], -1)
+		d.cursor[side] = step(d.cursor[side], -1)
 	case "g", "home":
-		sh.cursor[sh.side] = firstShoreRow(rows)
+		d.cursor[side] = firstGraphRow(rows)
 	case "G", "end":
-		sh.cursor[sh.side] = step(len(rows), -1)
-	case "tab":
-		sh.side = 1 - sh.side
-	case "h", "left":
-		sh.side = 0
-	case "l", "right":
-		sh.side = 1
+		d.cursor[side] = step(len(rows), -1)
+	case "tab", "h", "left", "l", "right":
+		next := 1
+		if key == "h" || key == "left" {
+			next = -1
+		}
+		switch b.mode {
+		case memoryModeFocus:
+			if key == "tab" {
+				d.side = 1 - d.side
+			} else {
+				d.side = max(0, next)
+			}
+		case memoryModeMatrix:
+			d.col = max(0, min(len(cols)-1, d.col+next))
+		case memoryModeChips:
+			d.chip = max(0, min(len(b.selectedLinks())-1, d.chip+next))
+		}
 	case "enter":
-		return b.openMemory(b.shoresSelected())
+		switch b.mode {
+		case memoryModeMatrix:
+			if d.col < len(cols) {
+				return b.openMemory(cols[d.col])
+			}
+			return b, nil
+		case memoryModeChips:
+			if links := b.selectedLinks(); d.chip < len(links) {
+				return b.openMemory(links[d.chip].Target)
+			}
+			return b, nil
+		}
+		return b.openMemory(b.decisionSelected())
 	}
-	listHeight, _ := b.shoresLayout()
-	c := sh.cursor[sh.side]
-	if c < sh.offset {
-		sh.offset = c
-	} else if c >= sh.offset+listHeight {
-		sh.offset = c - listHeight + 1
+	if d.cursor[0] != before && side == 0 {
+		d.chip = 0
 	}
+	listHeight, _ := b.decisionLayout()
+	rows = b.decisionWorkRows()
+	if b.decisionSide() == 1 {
+		rows = decisionRows(b.graph)
+	}
+	d.offset = decisionOffset(d.offset, d.cursor[b.decisionSide()], len(rows), listHeight)
 	return b, nil
 }
 
-// lanesNeeded is the most wires that overlap on any row, which is the lane
-// count routeWires needs to draw them all.
-func lanesNeeded(wires []shoreWire) int {
-	ends := make([]int, 0, len(wires))
-	sorted := append([]shoreWire(nil), wires...)
-	sort.SliceStable(sorted, func(i, j int) bool { return min(sorted[i].from, sorted[i].to) < min(sorted[j].from, sorted[j].to) })
-	for _, w := range sorted {
-		lo, hi := min(w.from, w.to), max(w.from, w.to)
-		placed := false
-		for i, end := range ends {
-			if end < lo {
-				ends[i], placed = hi, true
-				break
-			}
-		}
-		if !placed {
-			ends = append(ends, hi)
-		}
+// workRowText is an Issue row: indent, health glyph, id and title, cut to
+// width cells less the room the caller keeps for what follows it.
+func workRowText(s graphStyles, g datasource.MemoryGraph, r graphRow, width int, selected, dim bool) string {
+	if r.id == "" {
+		return padRight(s.muted.Render(truncate(r.header, width)), width)
 	}
-	return len(ends)
-}
-
-type wireCell struct {
-	bits   uint8 // 1 up, 2 down, 4 left, 8 right
-	marker rune
-	style  int
-	prio   int
-}
-
-type shoreWire struct {
-	from, to int
-	style    int
-	prio     int
-	traced   bool
-}
-
-var boxRunes = map[uint8]rune{
-	1: '│', 2: '│', 3: '│', 4: '─', 8: '─', 12: '─',
-	10: '┌', 6: '┐', 9: '└', 5: '┘', 11: '├', 7: '┤', 14: '┬', 13: '┴', 15: '┼',
-}
-
-// routeWires gives each wire its own vertical lane, reusing a lane once the
-// wire before it has ended, and returns how many wires found no lane. A wire
-// enters at column 0 on its first row and leaves at column exit on its last.
-func routeWires(grid [][]wireCell, wires []shoreWire, lanes []int, exit int, marker rune) int {
-	sort.SliceStable(wires, func(i, j int) bool { return min(wires[i].from, wires[i].to) < min(wires[j].from, wires[j].to) })
-	free := make([]int, len(lanes))
-	for i := range free {
-		free[i] = -1
+	n, _ := g.Node(r.id)
+	h := g.Health(r.id)
+	glyph := healthGlyph(h)
+	plain := padRight(truncate(strings.Repeat("  ", r.depth)+glyph+" "+r.id+" "+graphTitle(n), width), width)
+	switch {
+	case selected:
+		return s.selected.Render(plain)
+	case dim:
+		return s.muted.Render(plain)
 	}
-	dropped := 0
-	set := func(x, y int, bits uint8, w shoreWire) {
-		if y < 0 || y >= len(grid) || x < 0 || x >= len(grid[y]) {
+	at := strings.Index(plain, glyph)
+	if at < 0 {
+		return plain
+	}
+	return plain[:at] + s.health(h).Render(glyph) + plain[at+len(glyph):]
+}
+
+// decisionRowText is a Memory row: status dot, number and title.
+func decisionRowText(s graphStyles, g datasource.MemoryGraph, r graphRow, width int, selected, dim bool) string {
+	if r.id == "" {
+		return padRight(s.memoryStatus(r.header).Render(truncate(r.header, width)), width)
+	}
+	n, _ := g.Node(r.id)
+	plain := padRight(truncate("● "+decisionTag(n)+" "+graphTitle(n), width), width)
+	switch {
+	case selected:
+		return s.selected.Render(plain)
+	case dim:
+		return s.muted.Render(plain)
+	}
+	return s.memoryStatus(n.Status).Render("●") + plain[len("●"):]
+}
+
+func countChip(s graphStyles, text string, width int) string {
+	return s.muted.Render(padRight(text, width))
+}
+
+// junction is the box glyph where a trunk meets its branches, with rounded
+// corners where the trunk turns.
+func junction(up, down, left, right bool) rune {
+	switch {
+	case up && down && left && right:
+		return '┼'
+	case up && down && left:
+		return '┤'
+	case up && down && right:
+		return '├'
+	case up && down:
+		return '│'
+	case down && left && right:
+		return '┬'
+	case up && left && right:
+		return '┴'
+	case down && left:
+		return '╮'
+	case down && right:
+		return '╭'
+	case up && left:
+		return '╯'
+	case up && right:
+		return '╰'
+	}
+	return '─'
+}
+
+// focusWire is one Link the selected node owns, as rows of the two lists.
+type focusWire struct {
+	work, decision int
+	kind           string
+	status         string
+}
+
+// focusLanes draws the selected node's wires in a lane width cells wide: a
+// stub from each Issue row into one trunk, and from the trunk to each
+// Memory row, ending in an arrowhead. The selected node's own stub carries
+// the accent, each other end the colour of its decision's status, dotted
+// for cites.
+func focusLanes(s graphStyles, wires []focusWire, side, rows, width int) []string {
+	type cell struct {
+		r     rune
+		style lipgloss.Style
+	}
+	grid := make([][]cell, rows)
+	for y := range grid {
+		grid[y] = make([]cell, width)
+	}
+	if len(wires) == 0 || width < 5 {
+		wires = nil
+	}
+	const trunk = 2
+	lo, hi := rows, -1
+	stubs := [2]map[int]focusWire{{}, {}}
+	for _, w := range wires {
+		stubs[0][w.work], stubs[1][w.decision] = w, w
+		lo, hi = min(lo, w.work, w.decision), max(hi, w.work, w.decision)
+	}
+	line := func(y, from, to int, w focusWire, own bool) {
+		if y < 0 || y >= rows {
 			return
 		}
-		c := &grid[y][x]
-		c.bits |= bits
-		if w.prio >= c.prio {
-			c.style, c.prio = w.style, w.prio
+		r, style := '─', s.memoryStatus(w.status)
+		if own {
+			style = s.issue
+		} else if w.kind == datasource.EdgeCites {
+			r = '┄'
+		}
+		for x := from; x < to; x++ {
+			grid[y][x] = cell{r, style}
 		}
 	}
-	for _, w := range wires {
-		lo, hi := min(w.from, w.to), max(w.from, w.to)
-		lane := -1
-		for i, end := range free {
-			if end < lo {
-				lane = i
-				break
-			}
+	for y := max(0, lo); y <= min(hi, rows-1); y++ {
+		left, hasLeft := stubs[0][y]
+		right, hasRight := stubs[1][y]
+		grid[y][trunk] = cell{junction(y > lo, y < hi, hasLeft, hasRight), s.issue}
+		if hasLeft {
+			line(y, 0, trunk, left, side == 0)
 		}
-		if lane < 0 {
-			dropped++
-			continue
-		}
-		free[lane] = hi
-		x := lanes[lane]
-		for c := 0; c <= x; c++ {
-			bits := uint8(4)
-			if c < x {
-				bits |= 8
+		if hasRight {
+			line(y, trunk+1, width-2, right, side == 1)
+			style := s.memoryStatus(right.status)
+			if side == 1 {
+				style = s.issue
 			}
-			set(c, w.from, bits, w)
-		}
-		for y := lo; y <= hi; y++ {
-			var bits uint8
-			if y > lo {
-				bits |= 1
-			}
-			if y < hi {
-				bits |= 2
-			}
-			set(x, y, bits, w)
-		}
-		from, to := x, exit
-		if to < from {
-			from, to = to, from
-		}
-		for c := from; c <= to; c++ {
-			var bits uint8
-			if c > from {
-				bits |= 4
-			}
-			if c < to {
-				bits |= 8
-			}
-			set(c, w.to, bits, w)
-		}
-		if w.to >= 0 && w.to < len(grid) && exit < len(grid[w.to]) {
-			grid[w.to][exit].marker = marker
+			grid[y][width-2] = cell{'▶', style}
 		}
 	}
-	return dropped
-}
-
-func (b MemoryBrowser) shoresView(width, height int) string {
-	t := b.theme
-	g := b.graph
-	s := newGraphStyles(t)
-	styles := []lipgloss.Style{s.text, s.muted, s.dead}
-	const (
-		stText = iota
-		stMuted
-		stDead
-	)
-	left, right := shoresRows(g)
-	listHeight, stripHeight := b.shoresLayout()
-	selected := b.shoresSelected()
-	traced := shoresTraced(g, selected)
-
-	total := max(len(left), len(right))
-	leftAt, rightAt := map[string]int{}, map[string]int{}
-	for i, r := range left {
-		if r.id != "" {
-			leftAt[r.id] = i
-		}
-	}
-	for i, r := range right {
-		if r.id != "" {
-			rightAt[r.id] = i
-		}
-	}
-	var middle, side []shoreWire
-	for _, e := range g.Edges {
-		target, _ := g.Node(e.Target)
-		w := shoreWire{style: stMuted, prio: 1, traced: traced[e.Source] && traced[e.Target]}
-		switch {
-		case e.Kind == datasource.EdgeSupersedes || (e.Kind == datasource.EdgeFollows && target.Status == "superseded"):
-			w.style, w.prio = stDead, 3
-		case e.Kind == datasource.EdgeFollows:
-			w.style, w.prio = stText, 2
-		}
-		if selected != "" && !w.traced {
-			w.style, w.prio = stMuted, 0
-		}
-		ya, inLeft := leftAt[e.Source]
-		yb, inRight := rightAt[e.Target]
-		if inLeft && inRight && (e.Kind == datasource.EdgeFollows || e.Kind == datasource.EdgeCites) {
-			w.from, w.to = ya, yb
-			middle = append(middle, w)
-			continue
-		}
-		ra, srcRight := rightAt[e.Source]
-		if srcRight && inRight {
-			w.from, w.to = ra, yb
-			side = append(side, w)
-		}
-	}
-	gutter := max(6, min(width/4, lanesNeeded(middle)+2))
-	rightGutter := max(3, min(10, lanesNeeded(side)+2))
-	leftWidth := (width - gutter - rightGutter) / 2
-	rightWidth := width - gutter - rightGutter - leftWidth
-	draw := func(wires []shoreWire, cols, exit int, marker rune) ([][]wireCell, int) {
-		var lanes []int
-		for x := 1; x < cols-1; x++ {
-			lanes = append(lanes, x)
-		}
-		grid := make([][]wireCell, total)
-		for y := range grid {
-			grid[y] = make([]wireCell, cols)
-		}
-		probe := make([][]wireCell, total)
-		for y := range probe {
-			probe[y] = make([]wireCell, cols)
-		}
-		if routeWires(probe, append([]shoreWire(nil), wires...), lanes, exit, marker) == 0 {
-			routeWires(grid, wires, lanes, exit, marker)
-			return grid, 0
-		}
-		var keep []shoreWire
-		for _, w := range wires {
-			if w.traced && selected != "" {
-				keep = append(keep, w)
-			}
-		}
-		routeWires(grid, keep, lanes, exit, marker)
-		return grid, len(wires) - len(keep)
-	}
-	midGrid, hidden := draw(middle, gutter, gutter-1, '▸')
-	sideGrid, hiddenSide := draw(side, rightGutter, 0, '◂')
-	hidden += hiddenSide
-
-	renderWires := func(row []wireCell) string {
+	out := make([]string, rows)
+	for y, row := range grid {
 		var sb strings.Builder
 		for _, c := range row {
-			r := c.marker
-			if r == 0 {
-				r = boxRunes[c.bits]
-			}
-			if r == 0 {
+			if c.r == 0 {
 				sb.WriteByte(' ')
 				continue
 			}
-			sb.WriteString(styles[c.style].Render(string(r)))
+			sb.WriteString(c.style.Render(string(c.r)))
 		}
-		return sb.String()
+		out[y] = sb.String()
 	}
-	rowText := func(rows []shoreRow, i, w int, isLeft bool) string {
-		if i >= len(rows) {
-			return strings.Repeat(" ", w)
+	return out
+}
+
+// focusView draws only the selected node's Links, so a busy graph stays
+// readable; every other Issue shows how many decisions it owns.
+func (b MemoryBrowser) focusView(width, height int) string {
+	t := b.theme
+	g := b.graph
+	s := newGraphStyles(t)
+	work, decisions := b.decisionWorkRows(), decisionRows(g)
+	listHeight, stripHeight := b.decisionLayout()
+	side := b.decide.side
+	selected := b.decisionSelected()
+
+	workAt, decisionAt := map[string]int{}, map[string]int{}
+	for i, r := range work {
+		workAt[r.id] = i
+	}
+	for i, r := range decisions {
+		decisionAt[r.id] = i
+	}
+	var wires []focusWire
+	linked := map[string]bool{selected: true}
+	for _, e := range g.Edges {
+		if e.Kind != datasource.EdgeFollows && e.Kind != datasource.EdgeCites || (e.Source != selected && e.Target != selected) {
+			continue
 		}
-		r := rows[i]
-		if r.id == "" {
-			style := s.muted
-			if !isLeft {
-				style = s.memoryStatus(r.header)
-			}
-			return padRight(style.Render(truncate(r.header, w)), w)
+		wy, okWork := workAt[e.Source]
+		dy, okDecision := decisionAt[e.Target]
+		if !okWork || !okDecision {
+			continue
 		}
-		n, _ := g.Node(r.id)
-		var plain, glyph string
-		var glyphStyle lipgloss.Style
-		if isLeft {
-			h := g.Health(r.id)
-			glyph, glyphStyle = healthGlyph(h), s.health(h)
-			plain = strings.Repeat("  ", r.depth) + glyph + " " + r.id + " " + graphTitle(n)
-		} else {
-			f, c := len(g.Followers(r.id)), len(g.Citers(r.id))
-			badge := ""
-			if f > 0 || c > 0 {
-				badge = fmt.Sprintf(" %df %dc", f, c)
-			}
-			glyph, glyphStyle = "●", s.memoryStatus(n.Status)
-			number := n.Number
-			if number == "" {
-				number = r.id
-			}
-			body := truncate("● "+number+" "+graphTitle(n), max(1, w-len(badge)))
-			plain = padRight(body, w-len(badge)) + badge
-		}
-		plain = padRight(truncate(plain, w), w)
-		side := 0
-		if !isLeft {
-			side = 1
-		}
-		switch {
-		case b.shore.side == side && b.shore.cursor[side] == i:
-			return s.selected.Render(plain)
-		case selected != "" && !traced[r.id]:
-			return s.muted.Render(plain)
-		}
-		at := strings.Index(plain, glyph)
-		if at < 0 {
-			return plain
-		}
-		return plain[:at] + glyphStyle.Render(glyph) + plain[at+len(glyph):]
+		target, _ := g.Node(e.Target)
+		wires = append(wires, focusWire{work: wy, decision: dy, kind: e.Kind, status: target.Status})
+		linked[e.Source], linked[e.Target] = true, true
 	}
 
-	head := padRight(s.strong.Render("Work · Issues"), leftWidth+gutter) + s.strong.Render("Knowledge · Memories")
-	if hidden > 0 {
-		head += t.MutedText.Render(fmt.Sprintf("  %d wires hidden, select a row to trace", hidden))
-	}
+	total := max(len(work), len(decisions))
+	laneWidth := max(6, min(14, width/8))
+	const chipWidth = 4
+	leftWidth := (width - laneWidth) / 2
+	rightWidth := width - laneWidth - leftWidth
+	lanes := focusLanes(s, wires, side, total, laneWidth)
+	dim := selected != "" && len(wires) > 0
+
+	head := padRight(s.strong.Render("Work · Issues"), leftWidth+laneWidth) + s.strong.Render("Knowledge · Memories")
 	lines := []string{head}
-	for i := b.shore.offset; i < b.shore.offset+listHeight; i++ {
-		mid := strings.Repeat(" ", gutter)
-		rg := strings.Repeat(" ", rightGutter)
-		if i < total {
-			mid, rg = renderWires(midGrid[i]), renderWires(sideGrid[i])
+	selectedRows := len(work)
+	if side == 1 {
+		selectedRows = len(decisions)
+	}
+	offset := decisionOffset(b.decide.offset, b.decide.cursor[side], selectedRows, listHeight)
+	for i := offset; i < offset+listHeight; i++ {
+		left := strings.Repeat(" ", leftWidth)
+		right := strings.Repeat(" ", rightWidth)
+		lane := strings.Repeat(" ", laneWidth)
+		if i < len(work) {
+			r := work[i]
+			chip := ""
+			if n := len(g.DecisionEdges(r.id)); n > 0 && r.id != "" && r.id != selected {
+				chip = fmt.Sprintf("%d→", n)
+			}
+			left = workRowText(s, g, r, leftWidth-chipWidth, side == 0 && i == b.decide.cursor[0], dim && !linked[r.id]) + countChip(s, " "+chip, chipWidth)
 		}
-		lines = append(lines, rowText(left, i, leftWidth, true)+mid+rowText(right, i, rightWidth, false)+rg)
+		if i < total {
+			lane = lanes[i]
+		}
+		if i < len(decisions) {
+			r := decisions[i]
+			chip := ""
+			if n := len(g.Followers(r.id)) + len(g.Citers(r.id)); n > 0 && r.id != "" && r.id != selected {
+				chip = fmt.Sprintf("←%d", n)
+			}
+			right = decisionRowText(s, g, r, rightWidth-chipWidth, side == 1 && i == b.decide.cursor[1], dim && !linked[r.id]) + countChip(s, " "+chip, chipWidth)
+		}
+		lines = append(lines, left+lane+right)
 	}
 	lines = append(lines, t.MutedText.Render(strings.Repeat("─", width)))
 	if selected != "" {
 		strip := renderNeighbourhood(t, g, selected, width)
-		if len(strip) > stripHeight {
-			strip = strip[:stripHeight]
+		lines = append(lines, strip[:min(len(strip), stripHeight)]...)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// matrixView puts Issues on rows and decisions on columns, so a column
+// reads as everyone who works to one decision.
+func (b MemoryBrowser) matrixView(width, height int) string {
+	t := b.theme
+	g := b.graph
+	s := newGraphStyles(t)
+	work := b.decisionWorkRows()
+	cols := b.decisionColumns()
+	if len(cols) == 0 {
+		return s.muted.Render("No decision Links. Issues must follow or cite a Memory to appear in the matrix.")
+	}
+	listHeight, _ := b.decisionLayout()
+	const cell = 3
+	leftWidth := max(20, min(60, width-cell*len(cols)))
+	visible := max(1, (width-leftWidth)/cell)
+	first := 0
+	if b.decide.col >= visible {
+		first = b.decide.col - visible + 1
+	}
+	shown := cols[first:min(len(cols), first+visible)]
+	row := b.decide.cursor[0]
+
+	var labels, bars strings.Builder
+	labels.WriteString(padRight(s.strong.Render("Work · Issues"), leftWidth))
+	bars.WriteString(strings.Repeat(" ", leftWidth))
+	for i, id := range shown {
+		n, _ := g.Node(id)
+		style := s.memoryStatus(n.Status)
+		if first+i == b.decide.col {
+			style = style.Bold(true).Underline(true)
 		}
-		lines = append(lines, strip...)
+		labels.WriteString(" " + style.Render(padRight(matrixLabel(n), cell-1)))
+		bars.WriteString(s.memoryStatus(n.Status).Render(" ━ "))
+	}
+	lines := []string{labels.String(), bars.String()}
+	offset := decisionOffset(b.decide.offset, row, len(work), listHeight)
+	for i := offset; i < offset+listHeight && i < len(work); i++ {
+		r := work[i]
+		line := workRowText(s, g, r, leftWidth, i == row, false)
+		if r.id != "" {
+			kinds := map[string]string{}
+			for _, e := range g.DecisionEdges(r.id) {
+				kinds[e.Target] = e.Kind
+			}
+			for j, id := range shown {
+				n, _ := g.Node(id)
+				mark := s.muted.Render(" · ")
+				switch kinds[id] {
+				case datasource.EdgeFollows:
+					mark = s.memoryStatus(n.Status).Render(" ● ")
+				case datasource.EdgeCites:
+					mark = s.memoryStatus(n.Status).Render(" ○ ")
+				}
+				if i == row && first+j == b.decide.col {
+					mark = s.selected.Render(ansi.Strip(mark))
+				}
+				line += mark
+			}
+		}
+		lines = append(lines, line)
+	}
+	if len(work) == 0 {
+		lines = append(lines, s.muted.Render("No Issues match the problems filter. Press p to show all Issues."))
+	}
+	lines = append(lines, t.MutedText.Render(strings.Repeat("─", width)))
+	if b.decide.col < len(cols) {
+		id := cols[b.decide.col]
+		n, _ := g.Node(id)
+		issue := ""
+		if row < len(work) {
+			issue = work[row].id
+		}
+		kind := " has no Link to "
+		for _, e := range g.DecisionEdges(issue) {
+			if e.Target == id {
+				kind = " " + e.Kind + " "
+			}
+		}
+		status := n.Status
+		if status == "" {
+			status = "no status"
+		}
+		lines = append(lines,
+			s.strong.Render("cell  ")+issue+s.muted.Render(kind)+s.memoryStatus(n.Status).Render(g.Label(id)+" "+graphTitle(n))+s.muted.Render("  ("+status+")"),
+			s.muted.Render(fmt.Sprintf("column: followed by %d, cited by %d", len(g.Followers(id)), len(g.Citers(id)))),
+		)
+	}
+	lines = append(lines, s.muted.Render("legend  ● follows  ○ cites  ")+s.active.Render("━ active")+" "+s.proposed.Render("━ proposed")+" "+s.dead.Render("━ superseded")+" "+s.muted.Render("━ no status"))
+	return strings.Join(lines, "\n")
+}
+
+// decisionChip is a decision as a badge: filled for follows, bracketed for
+// cites, with ✗ for a superseded decision and ? for a proposed one so the
+// verdict reads without colour.
+func decisionChip(s graphStyles, n datasource.GraphNode, kind string, current bool) string {
+	text := decisionTag(n)
+	switch n.Status {
+	case "superseded":
+		text += "✗"
+	case "proposed":
+		text += "?"
+	}
+	style := s.memoryStatus(n.Status).Underline(current)
+	if kind == datasource.EdgeFollows {
+		return style.Reverse(true).Render(" " + text + " ")
+	}
+	return style.Render("(" + text + ")")
+}
+
+// chipsView lists the work with its decisions inline, as the DECISIONS
+// column does in the main TUI, and explains the selected Issue in a box.
+func (b MemoryBrowser) chipsView(width, height int) string {
+	t := b.theme
+	g := b.graph
+	s := newGraphStyles(t)
+	work := b.decisionWorkRows()
+	listHeight, _ := b.decisionLayout()
+	boxWidth := max(24, min(48, width/3))
+	leftWidth := width - boxWidth - 1
+	stacked := width < 60
+	if stacked {
+		boxWidth, leftWidth = width, width
+		listHeight = max(1, (height-3)/2)
+	}
+	row := b.decide.cursor[0]
+
+	left := []string{padRight(s.strong.Render("Work · Issues")+s.muted.Render("  decisions: filled = follows, (n) = cites"), leftWidth)}
+	offset := decisionOffset(b.decide.offset, row, len(work), listHeight)
+	for i := offset; i < offset+listHeight && i < len(work); i++ {
+		r := work[i]
+		var chips []string
+		for j, e := range g.DecisionEdges(r.id) {
+			n, _ := g.Node(e.Target)
+			chips = append(chips, decisionChip(s, n, e.Kind, i == row && j == b.decide.chip))
+		}
+		first := 0
+		if i == row {
+			for first < b.decide.chip && lipgloss.Width(strings.Join(chips[first:b.decide.chip+1], " ")) > leftWidth/2 {
+				first++
+			}
+		}
+		extra := strings.Join(chips[first:], " ")
+		if r.id != "" && len(chips) == 0 && g.Health(r.id) == datasource.HealthNone {
+			extra = s.muted.Render("no decision")
+		}
+		extra = ansi.Truncate(extra, leftWidth/2, "…")
+		textWidth := leftWidth - lipgloss.Width(extra) - 1
+		left = append(left, workRowText(s, g, r, textWidth, i == row, false)+" "+extra)
+	}
+
+	var detail []string
+	if row < len(work) && work[row].id != "" {
+		id := work[row].id
+		n, _ := g.Node(id)
+		detail = append(detail, s.strong.Render(id), graphTitle(n))
+		if text := healthText(g.Health(id)); text != "" {
+			detail = append(detail, s.health(g.Health(id)).Render(text))
+		}
+		links := g.DecisionEdges(id)
+		for j := min(b.decide.chip, len(links)); j < len(links); j++ {
+			e := links[j]
+			mem, _ := g.Node(e.Target)
+			status := mem.Status
+			if status == "" {
+				status = "no status"
+			}
+			detail = append(detail, "", decisionChip(s, mem, e.Kind, j == b.decide.chip)+" "+s.muted.Render(e.Kind+" · "+status), graphTitle(mem))
+			if e.Note != "" {
+				detail = append(detail, s.muted.Render("“"+e.Note+"”"))
+			}
+			var others []string
+			for _, other := range append(g.Followers(e.Target), g.Citers(e.Target)...) {
+				if other != id {
+					others = append(others, other)
+				}
+			}
+			if len(others) > 0 {
+				detail = append(detail, s.muted.Render("shared with "+strings.Join(others, ", ")))
+			}
+		}
+	}
+	box := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.MutedText.GetForeground()).
+		Padding(0, 1).Width(boxWidth - 2).Render(strings.Join(detail, "\n"))
+	right := strings.Split(box, "\n")
+	if stacked {
+		return strings.Join(append(left, right...), "\n")
+	}
+	lines := make([]string, max(len(left), min(len(right), listHeight)))
+	for i := range lines {
+		l := strings.Repeat(" ", leftWidth)
+		if i < len(left) {
+			l = padRight(left[i], leftWidth)
+		}
+		if i < len(right) && i < listHeight {
+			l += " " + right[i]
+		}
+		lines[i] = l
 	}
 	return strings.Join(lines, "\n")
 }

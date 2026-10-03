@@ -8,6 +8,7 @@ b9s has three test layers. Unit tests cover packages, integration tests cover th
 - [Layers](#layers)
 - [Dolt rules](#dolt-rules)
 - [End-to-end tests](#end-to-end-tests)
+- [Memory preview terminal checks](#memory-preview-terminal-checks)
 - [Browser tests](#browser-tests)
 - [bd releases](#bd-releases)
 - [Writing tests](#writing-tests)
@@ -84,6 +85,22 @@ The tests in `tests/e2e` build the binary once, then run it under the Unix `scri
 The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.jsonl` are the common ones. A test that needs a Dolt server uses the same rules as the integration tests.
 
 The mobile and preview shell scripts in `tests/` are not Go tests. They check a deployed preview through the URL a reviewer uses and take the base URL, task ID and commit SHA as arguments, so a run against the wrong build fails instead of passing on a sibling.
+
+## Memory preview terminal checks
+
+`tests/e2e/memory_preview.py` reads an existing embedded Memory preview through its pinned `bd`, in a real `script` terminal. It checks the list, matrix navigation, sorting, filtering, focus wires, chips, constellation, opening a decision and quitting. It never creates or changes Beads. The workspace must contain `.memory-preview/bin/bd` and ready graph metadata.
+
+```bash
+python3 -m venv /tmp/b9s-memory-checks
+/tmp/b9s-memory-checks/bin/pip install pyte
+go build -o /tmp/b9s-memory-checks/b9s ./cmd/b9s
+/tmp/b9s-memory-checks/bin/python tests/e2e/memory_preview.py \
+  --binary /tmp/b9s-memory-checks/b9s \
+  --workspace "$HOME/Documents/b9s-memory-poc" \
+  --evidence /tmp/b9s-memory-checks/evidence
+```
+
+Each screen has a deadline, and the TUI has a three-minute exit timer. The test terminates only its own process group on failure. Evidence includes terminal bytes, screen text, and SVG captures. The final line is `=== MEMORY_PREVIEW DONE pass=N fail=M ===`. To compare a prior build, run the same command with its binary and a separate evidence directory.
 
 ## Browser tests
 

@@ -116,7 +116,7 @@ type MemoryBrowser struct {
 	graphLoad graphLoad
 	graphErr  error
 	star      constellationState
-	shore     shoresState
+	decide    decisionViewState
 
 	status   string
 	theme    Theme
@@ -279,9 +279,13 @@ func (b MemoryBrowser) handleKey(msg tea.KeyMsg) (MemoryBrowser, tea.Cmd) {
 	case "1":
 		return b.enterMode(memoryModeList)
 	case "2":
-		return b.enterMode(memoryModeConstellation)
+		return b.enterMode(memoryModeFocus)
 	case "3":
-		return b.enterMode(memoryModeShores)
+		return b.enterMode(memoryModeMatrix)
+	case "4":
+		return b.enterMode(memoryModeChips)
+	case "5":
+		return b.enterMode(memoryModeConstellation)
 	}
 	if b.mode != memoryModeList {
 		return b.handleGraphKey(key)
@@ -442,6 +446,9 @@ func (b MemoryBrowser) View() string {
 	t := b.theme
 	header := t.Header.Render(" b9s memories ") + " " + b.headerText()
 	if b.mode != memoryModeList {
+		if b.width < 30 {
+			return clipBlock(t.MutedText.Render("Widen terminal\nto 30 columns."), b.width, b.height)
+		}
 		paneHeight := max(1, b.height-4)
 		inner := max(20, b.width-2)
 		body := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Highlight).Width(inner).Height(paneHeight).
@@ -677,9 +684,13 @@ func (b MemoryBrowser) footer() string {
 	var help string
 	switch {
 	case b.mode == memoryModeConstellation:
-		help = "hjkl move · n/N next problem · enter open · esc clear · c cites · e hierarchy · t titles · 1 list · 3 shores · q quit"
-	case b.mode == memoryModeShores:
-		help = "j/k move · tab side · enter open Memory · 1 list · 2 constellation · q quit"
+		help = "hjkl move · n/N next problem · enter open · esc clear · c cites · e hierarchy · t titles · 1 list · 2 wires · q quit"
+	case b.mode == memoryModeFocus:
+		help = "j/k move · tab side · enter open Memory · p problems · 1 list · 3 matrix · 4 chips · 5 constellation · q quit"
+	case b.mode == memoryModeMatrix:
+		help = "hjkl move cell · enter open · s sort by use · p problems · 1 list · 2 wires · 4 chips · 5 constellation · q quit"
+	case b.mode == memoryModeChips:
+		help = "j/k Issue · h/l decision · enter open decision · p problems · 1 list · 2 wires · 3 matrix · q quit"
 	case b.pane == memoryPaneSearch:
 		return "/" + b.input + "█  " + t.MutedText.Render("enter search · esc cancel · empty lists all")
 	case b.pane == memoryPaneDetail:
@@ -687,7 +698,7 @@ func (b MemoryBrowser) footer() string {
 	case b.pane == memoryPaneVersions:
 		help = "j/k version · enter read · esc back · q quit"
 	default:
-		help = "j/k move · enter open · v versions · / search · 2 constellation · 3 shores · q quit"
+		help = "j/k move · enter open · v versions · / search · 2 wires · 3 matrix · 4 chips · 5 constellation · q quit"
 	}
 	if b.status != "" {
 		return t.InfoText.Render(b.status) + "  " + t.MutedText.Render(help)
