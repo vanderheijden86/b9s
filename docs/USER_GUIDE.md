@@ -46,7 +46,8 @@ b9s --repo api
 
 ## The screen
 
-Press `Ctrl-T` to cycle Automatic, Sepia, and Dracula. The footer shows the
+Press `Ctrl-T` to cycle Automatic, Sepia, and Dracula. A k9s skin in `ui.skin`
+replaces Sepia or Dracula (see [Skins](#skins)). The footer shows the
 current choice. b9s saves it as `ui.theme` in `~/.config/b9s/config.yaml`.
 Automatic follows the terminal's original background. b9s restores the
 terminal's default background when the TUI exits. Terminal support for OSC 11
@@ -413,6 +414,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
+  skin: ~/.config/k9s/skins/nord.yaml  # a k9s skin file, or sepia or dracula
   board_epics: rail       # rail or rows; v switches
   date_order: auto        # auto, dmy or mdy: day or month first in dates (T)
   sort:
@@ -429,6 +431,53 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 ```
 
 `s` picks another sort for the current session only. The override survives reloads and is not saved, so the next start returns to the configured sort. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it. See [ADR 0010](adr/0010-take-tree-sort-from-user-config.md).
+
+### Skins
+
+b9s reads [k9s skin files](https://github.com/derailed/k9s/tree/master/skins),
+so b9s and k9s can use the same colours. Set `ui.skin` to the path of a skin
+file. b9s puts the skin in the light theme slot or the dark theme slot, from the
+luminance of the skin's background. The other slot keeps its built-in skin:
+Sepia for light and Dracula for dark. `Ctrl-T` and the browser's `◐` sheet then
+show the skin's name in place of the built-in name. `b9s web` also uses the skin.
+
+b9s takes its colours from the k9s slots:
+
+| b9s colour | k9s slot |
+|------------|----------|
+| Text, background, primary | `body.fgColor`, `body.bgColor`, `body.logoColor` |
+| Open, low priority, features | `frame.status.addColor` |
+| In progress, tasks | `frame.status.newColor` |
+| Blocked, critical, bugs | `frame.status.errorColor` |
+| High priority, warnings | `frame.status.highlightColor` |
+| Closed, muted text | `frame.status.completedColor` |
+| Review | `frame.status.modifyColor` |
+| Deferred | `frame.status.pendingColor` |
+| Borders | `frame.border.fgColor` |
+| Table selection | `views.table.cursorBgColor`, `cursorFgColor` |
+
+A skin that leaves out a slot gets the value from the stock k9s skin, as in
+k9s. b9s blends the background tints from those colours. To set any b9s colour
+directly, add a top-level `b9s:` block to the same file. k9s ignores this block:
+
+```yaml
+k9s:
+  body:
+    fgColor: "#d8dee9"
+    bgColor: "#2e3440"
+b9s:
+  dark: true               # skip the luminance check
+  boardSelection: "#4c566a"
+  blocked: indianred       # hex or a W3C colour name
+  accents: ["#88c0d0", "#81a1c1", "#a3be8c", "#ebcb8b", "#b48ead", "#bf616a", "#8fbcbb", "#d08770"]
+```
+
+The `b9s:` keys are the colour names in `pkg/skin/skin.go`, for example
+`selection`, `match`, `inProgress`, `prioHigh`, `epic`, and `openTint`. The
+`accents` list needs eight colours for epics and projects. The built-in skins
+are in `pkg/skin/builtin/`; copy one to start a new skin. If a skin file does
+not load, b9s starts with the built-in skins and shows the error in the status
+bar. See [ADR 0033](adr/0033-load-k9s-skins-into-theme-slots.md).
 
 ### Environment variables
 
@@ -453,8 +502,8 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 `b9s web` serves the project in the current folder to a browser, sized for a phone. It opens the project the same way `b9s` does and never falls back to another one: a server started in the wrong folder exits rather than show other data.
 
-Tap the `◐` button in the header to choose Automatic, Sepia, or Dracula.
-Automatic follows the device color scheme. The browser saves its own choice,
+Tap the `◐` button in the header to choose Automatic, Sepia, or Dracula, or
+the skin set in `ui.skin`. Automatic follows the device color scheme. The browser saves its own choice,
 so changing the terminal theme does not change the browser theme.
 The Sepia board uses Quiet Paper on phones and wide screens. Fine rules
 separate its issue rows, and the selected row has a muted paper fill.
