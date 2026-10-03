@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -157,5 +158,14 @@ func TestGraphPreviewClientRefusesOrdinaryWorkspace(t *testing.T) {
 	os.WriteFile(filepath.Join(project, ".beads", "metadata.json"), []byte(`{"backend":"dolt"}`), 0o644)
 	if _, err := newGraphPreviewClient(project, "/bin/false"); err == nil || !strings.Contains(err.Error(), "not a ready Memory Beads graph workspace") {
 		t.Fatalf("expected workspace error, got %v", err)
+	}
+}
+
+func TestGraphPreviewClientNamesAStableBdThatLacksGraphCommands(t *testing.T) {
+	bd, _ := fakeGraphBd(t, `echo 'Error: unknown flag: --all' >&2; exit 1`)
+	client, _ := newGraphPreviewClient(graphWorkspace(t), bd)
+	_, err := client.SearchMemories(context.Background(), "")
+	if !errors.Is(err, ErrBDNotGraphPreview) || !strings.Contains(err.Error(), bd) {
+		t.Fatalf("expected ErrBDNotGraphPreview naming %s, got %v", bd, err)
 	}
 }

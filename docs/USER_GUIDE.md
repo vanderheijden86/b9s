@@ -326,6 +326,16 @@ b9s memories --project /path/to/new/graph-workspace --id policy
 b9s memories --project /path/to/new/graph-workspace --print
 ```
 
+A released `bd` lacks the graph commands, and b9s says so instead of showing its usage error. To run the preview without changing `PATH`, use `scripts/memory-preview`. It reads the workspace from `B9S_PREVIEW_WORKSPACE` (default `~/Documents/b9s-memory-poc`) and the preview `bd` from `<workspace>/.memory-preview/bin/bd`:
+
+```bash
+scripts/memory-preview bd memories --format records-json   # the preview bd
+scripts/memory-preview b9s                                 # Memory browser
+scripts/memory-preview b9s tui                             # main TUI
+```
+
+It rebuilds b9s from its own checkout on every run, so it never runs a stale copy. It clears the environment to a short allowlist, and it refuses any workspace that is not an embedded, ready graph store, so the preview cannot reach a shared Beads database.
+
 On a terminal, the first command opens a read-only Memory browser. The left pane lists every Memory, and the right pane shows the selected Memory's body, its version token and its informational Links. `→` is an outgoing Link and `←` is an incoming Link, including citations from Issues. Links have no effect on scheduling. b9s reads a Memory only when you select it.
 
 | Key | Effect |

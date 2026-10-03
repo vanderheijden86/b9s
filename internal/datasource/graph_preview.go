@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,11 @@ import (
 
 	"github.com/vanderheijden86/b9s/internal/bdrun"
 )
+
+// ErrBDNotGraphPreview means the bd on PATH is a released build. Only the
+// Memory Beads preview build has the graph commands, and a released bd fails
+// them with a cobra usage error that does not say so.
+var ErrBDNotGraphPreview = errors.New("this bd has no Memory Beads graph commands; put the preview bd first on PATH, or run scripts/memory-preview")
 
 // GraphPreview is the current, bounded Bead inventory returned by the preview CLI.
 type GraphPreview struct {
@@ -180,6 +186,9 @@ func (c *GraphPreviewClient) run(ctx context.Context, args ...string) ([]byte, e
 	}
 	if json.Unmarshal(out, &refusal) == nil && refusal.Code != "" {
 		return nil, fmt.Errorf("bd %s: %s: %s", args[0], refusal.Code, refusal.Message)
+	}
+	if strings.Contains(stderr, "unknown flag") || strings.Contains(stderr, "unknown command") {
+		return nil, fmt.Errorf("%s: %w", c.bd, ErrBDNotGraphPreview)
 	}
 	return nil, fmt.Errorf("bd %s: %w: %s", args[0], err, stderr)
 }

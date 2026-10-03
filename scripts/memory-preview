@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs the Memory Beads preview bd, or this checkout's b9s, against a preview
+# graph workspace, isolated from every other Beads project.
+#
+#   scripts/memory-preview bd  <bd args>
+#   scripts/memory-preview b9s [<memories args>]   Memory browser
+#   scripts/memory-preview b9s tui [<b9s args>]    main TUI
+#
+# B9S_PREVIEW_WORKSPACE names the workspace (default ~/Documents/b9s-memory-poc).
+# The preview bd lives in <workspace>/.memory-preview/bin/bd.
+#
+# b9s is rebuilt from this checkout on every run, so a launch never shows an
+# older build than the code beside this script. The environment is cleared to
+# an allowlist: a stray BEADS_DIR, Dolt host or password from the calling shell
+# could otherwise point the preview at a shared database.
+set -euo pipefail
+
+repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+workspace=${B9S_PREVIEW_WORKSPACE:-$HOME/Documents/b9s-memory-poc}
+bin=$workspace/.memory-preview/bin
+bd=$bin/bd
+metadata=$workspace/.beads/metadata.json
+
+die() { echo "memory-preview: $*" >&2; exit 1; }
+
+[[ $# -ge 1 ]] || die "usage: memory-preview bd <args> | b9s [tui] <args>"
+[[ -x $bd ]] || die "no preview bd at $bd"
+[[ -f $metadata ]] || die "no graph workspace at $workspace (missing .beads/metadata.json)"
+# An embedded, ready, link-mode graph store is the only shape the preview
+# creates; anything else is an ordinary Beads project and must not be touched.
+jq -e '.graph_mode == "link" and .graph_ready == true and .dolt_mode == "embedded"' "$metadata" >/dev/null ||
+	die "$workspace is not a ready embedded Memory Beads graph workspace"
+
+env_args=(
+	HOME="$HOME"
+	PATH="$bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+	TMPDIR=/tmp
+	BEADS_DIR="$workspace/.beads"
+	BEADS_DOLT_AUTO_START=0
+)
+# The TUI picks its colour profile and glyph width from these.
+for name in TERM COLORTERM LANG LC_ALL; do
+	[[ -n ${!name:-} ]] && env_args+=("$name=${!name}")
+done
+
+tool=$1
+shift
+case $tool in
+bd)
+	cd "$workspace"
+	exec env -i "${env_args[@]}" "$bd" "$@"
+	;;
+b9s)
+	make -s -C "$repo" build
+	cmd=(memories --project "$workspace")
+	if [[ ${1:-} == tui ]]; then
+		shift
+		cmd=()
+	fi
+	cd "$workspace"
+	exec env -i "${env_args[@]}" "$repo/b9s" ${cmd[@]+"${cmd[@]}"} "$@"
+	;;
+*)
+	die "unknown tool '$tool'; use bd or b9s"
+	;;
+esac
