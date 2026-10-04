@@ -129,7 +129,7 @@ In the tree:
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
 | `f`, `x` | Show only the cursor's top-level branch, or its subtree. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
-| `s`, `\|`, `Ctrl-W` | Sort, pick columns (Created, Updated, Deferred, Due and more), toggle wide columns |
+| `s`, `\|`, `Ctrl-W` | Sort, pick columns (Created, Updated, Deferred, Due and more), toggle wide columns. Under Created and Updated a parent ranks by its newest descendant, so an epic moves up when a subtask is added or changed |
 | `T` | Show the time columns as an age (`2h ago`) or a date and minute (`30-09 14:05`, or `09-30 14:05` in a month-first locale) |
 | `Space`, `V`, `u`, `Ctrl-\` | Mark the issue, mark a range, unmark the issue, clear the marks |
 | `e`, `S`, `K`, `Delete` | Edit, set the status, close, delete |

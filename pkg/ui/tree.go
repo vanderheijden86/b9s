@@ -885,6 +885,7 @@ func (t *TreeModel) sortNodesByFieldDirection(nodes []*IssueTreeNode) {
 		return
 	}
 	asc := t.sortDirection == SortAscending
+	newest := t.newestInSubtrees(nodes)
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i] == nil || nodes[j] == nil {
 			return nodes[i] != nil
@@ -892,6 +893,9 @@ func (t *TreeModel) sortNodesByFieldDirection(nodes []*IssueTreeNode) {
 		a, b := nodes[i].Issue, nodes[j].Issue
 		if a == nil || b == nil {
 			return a != nil
+		}
+		if x, y := newest[nodes[i]], newest[nodes[j]]; !x.Equal(y) {
+			return x.Before(y) == asc
 		}
 		less := t.compareByField(a, b)
 		if asc {
@@ -901,6 +905,46 @@ func (t *TreeModel) sortNodesByFieldDirection(nodes []*IssueTreeNode) {
 		greater := t.compareByField(b, a)
 		return greater
 	})
+}
+
+// newestInSubtrees returns, for the Created and Updated sorts, the newest such
+// date anywhere in each node's subtree, and nil for every other sort. A parent
+// ranks by its descendants so that work on a subtask moves its epic up rather
+// than leaving it at the epic's own, older date (bd-bb29). Flat-list nodes have
+// no children, so they rank by their own date.
+func (t *TreeModel) newestInSubtrees(nodes []*IssueTreeNode) map[*IssueTreeNode]time.Time {
+	var date func(*model.Issue) time.Time
+	switch t.sortField {
+	case SortFieldCreated:
+		date = func(i *model.Issue) time.Time { return i.CreatedAt }
+	case SortFieldUpdated:
+		date = func(i *model.Issue) time.Time { return i.UpdatedAt }
+	default:
+		return nil
+	}
+	var walk func(*IssueTreeNode) time.Time
+	walk = func(n *IssueTreeNode) time.Time {
+		var newest time.Time
+		if n.Issue != nil {
+			newest = date(n.Issue)
+		}
+		for _, c := range n.Children {
+			if c == nil {
+				continue
+			}
+			if d := walk(c); d.After(newest) {
+				newest = d
+			}
+		}
+		return newest
+	}
+	out := make(map[*IssueTreeNode]time.Time, len(nodes))
+	for _, n := range nodes {
+		if n != nil {
+			out[n] = walk(n)
+		}
+	}
+	return out
 }
 
 // compareByField returns true if a should sort before b for the current sortField

@@ -4095,7 +4095,8 @@ func TestTreeDefaultSortCreatedDesc(t *testing.T) {
 
 // TestTreeDefaultSortCreatedDescWithHierarchy verifies that the default sort
 // (Created/Descending) works correctly with parent-child hierarchies (bd-2ty).
-// Roots use creation dates; epic children use ascending titles.
+// Roots rank by the newest creation date in their subtree (bd-bb29); epic
+// children use ascending titles.
 func TestTreeDefaultSortCreatedDescWithHierarchy(t *testing.T) {
 	now := time.Now()
 
@@ -4142,10 +4143,8 @@ func TestTreeDefaultSortCreatedDescWithHierarchy(t *testing.T) {
 	tree.Build(issues)
 
 	// Collect display order. With created desc:
-	// Root order: epic-new (newer) before epic-old (older)
+	// Root order: epic-old first, because child-new is the newest issue
 	// Under epic-old: child-new (New Child) before child-old (Old Child)
-	// Total flat list with default expand (epics expanded):
-	//   epic-new, epic-old, child-new, child-old
 	var displayOrder []string
 	for i := 0; i < tree.NodeCount(); i++ {
 		tree.cursor = i
@@ -4156,15 +4155,15 @@ func TestTreeDefaultSortCreatedDescWithHierarchy(t *testing.T) {
 		displayOrder = append(displayOrder, issue.ID)
 	}
 
-	// Verify root ordering: newest epic first
+	// Verify root ordering: the epic with the newest subtree first
 	rootOrder := []string{}
 	for _, id := range displayOrder {
 		if id == "epic-old" || id == "epic-new" {
 			rootOrder = append(rootOrder, id)
 		}
 	}
-	if len(rootOrder) < 2 || rootOrder[0] != "epic-new" {
-		t.Errorf("expected epic-new before epic-old in root order, got %v (full: %v)", rootOrder, displayOrder)
+	if len(rootOrder) < 2 || rootOrder[0] != "epic-old" {
+		t.Errorf("expected epic-old before epic-new in root order, got %v (full: %v)", rootOrder, displayOrder)
 	}
 
 	// Verify alphabetical child ordering under epic-old.
