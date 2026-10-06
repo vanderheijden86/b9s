@@ -125,7 +125,7 @@ In the tree:
 | `Home`, `End` | Go to the top, the bottom |
 | `Enter`, `d` | Move focus to the detail pane and back, show or hide the side pane |
 | `\`, `<` `>` | Stack the detail pane below the tree or put it beside it, resize the panes |
-| `/`, `n` `N`, `O` | [Search](#search), go to the next or previous match, show only the matches. A `type:` term, or `:task` and the other entity commands, shows the flat list |
+| `/`, `n` `N`, `Ctrl-O` | [Search](#search), go to the next or previous match, show only the matches. A `type:` term, or `:task` and the other entity commands, shows the flat list |
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
 | `f`, `x` | Show only the cursor's top-level branch, or its subtree. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
@@ -414,7 +414,8 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `h` `l`, `Tab`, `Shift-Tab`, `X` `Z` `Ctrl-A` | Collapse or expand, fold the issue, fold the whole tree, expand all, collapse all, switch |
 | `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
-| `/`, `n` `N`, `O` | Search, next or previous match, only the matches without their ancestors |
+| `/`, `n` `N`, `Ctrl-O` | Search, next or previous match, only the matches without their ancestors |
+| `O` | Open the selected issue as a read-only Markdown file in a GUI editor, in every view |
 | `f`, `x` | Show only the cursor's branch or subtree; again undoes it |
 | `s`, `\|`, `v`, `F` | Sort, columns, wrap titles, follow live changes |
 | `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |

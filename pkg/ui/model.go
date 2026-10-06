@@ -3377,6 +3377,8 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 	// Normal key handling (bv-yg39 enhanced)
 	// ═══════════════════════════════════════════════════════════════════════════
 	switch key {
+	case "O":
+		m.openInEditor()
 	// Basic navigation (existing)
 	case "h", "left":
 		m.board.MoveLeft()
@@ -3826,6 +3828,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Toggle follow mode (bd-c0c)
 		m.tree.ToggleFollowMode()
 	case "O":
+		m.openInEditor()
+	case "ctrl+o":
 		// Toggle occur mode (bd-sjs.2) - uses current search pattern
 		if m.tree.IsOccurMode() {
 			m.tree.ExitOccurMode()
@@ -3834,7 +3838,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 			m.tree.EnterOccurMode(m.tree.SearchQuery())
 			m.syncTreeToDetail()
 		} else {
-			m.statusMsg = "Search with / first, then O for occur mode"
+			m.statusMsg = "Search with / first, then ctrl+o for occur mode"
 			m.statusIsError = false
 		}
 	case "d":
@@ -3868,6 +3872,8 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 
 func (m Model) handleGraphKeys(msg tea.KeyMsg) Model {
 	switch msg.String() {
+	case "O":
+		m.openInEditor()
 	case "j", "down":
 		m.graph.MoveDown()
 	case "k", "up":
@@ -5004,7 +5010,8 @@ func (m *Model) renderHelpOverlay() string {
 		{"/", "Search tree"},
 		{"f", "Toggle highlighted branch"},
 		{"n/N", "Next/prev match"},
-		{"O", "Occur (search filter)"},
+		{"O", "Open issue in editor"},
+		{"ctrl+o", "Occur (search filter)"},
 		{"x", "XRay drill-down"},
 		{"b/B", "Bookmark / cycle"},
 		{"Space/m", "Mark / unmark"},
@@ -6789,14 +6796,20 @@ func startAllowlistedGUIEditor(kind allowlistedGUIEditorKind, targetFile string)
 // snapshot rather than the project's issues.jsonl, because a project read from
 // a Dolt server, or without a local checkout, has no such file.
 func (m *Model) openInEditor() {
-	selectedItem := m.list.SelectedItem()
-	issueItem, ok := selectedItem.(IssueItem)
-	if selectedItem == nil || !ok {
+	selected := m.getSelectedIssue()
+	if m.focused == focusDetail {
+		// The detail can show a child opened with 1-9, which the tree cursor
+		// has not moved to; the list selection follows the detail.
+		if item, ok := m.list.SelectedItem().(IssueItem); ok {
+			selected = &item.Issue
+		}
+	}
+	if selected == nil {
 		m.statusMsg = "❌ No issue selected"
 		m.statusIsError = true
 		return
 	}
-	issue := issueItem.Issue
+	issue := *selected
 	issueFile, err := writeIssueSnapshot(issue, m.issueMap)
 	if err != nil {
 		m.statusMsg = fmt.Sprintf("❌ Could not write %s for the editor: %v", issue.ID, err)
