@@ -24,23 +24,30 @@ func writeKeybindingConfig(t *testing.T, body string) string {
 	return configHome
 }
 
-// Y opens the type quick filter and a digit writes a type term into the query
-// bar, in the tree and on the board.
-func TestTypeQuickFilterE2E(t *testing.T) {
+// F4 shows only bugs and F1 only epics, in the tree and on the board. The
+// same key again shows every type. F1 never opens the help overlay.
+func TestTypeFunctionKeysE2E(t *testing.T) {
+	const f1, f4 = "\x1bOP", "\x1bOS"
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
 	configHome := writeKeybindingConfig(t, "ui:\n  default_view: list\n")
 
-	out, err := runTreeTUIWithEnv(t, tempDir, 3500, []keyStep{
-		kd("Y", 600*time.Millisecond),
-		kd("4", 600*time.Millisecond),
+	out, err := runTreeTUIWithEnv(t, tempDir, 4000, []keyStep{
+		kd(f4, 600*time.Millisecond),
 		kd("b", 600*time.Millisecond),
-		kd("1", 600*time.Millisecond),
+		kd(f1, 600*time.Millisecond),
+		kd(f1, 600*time.Millisecond),
 	}, "XDG_CONFIG_HOME="+configHome)
 	if err != nil {
 		t.Fatalf("run TUI: %v", err)
 	}
-	containsAll(t, out, []string{"type:epic", "type:epic type:bug"})
+	containsAll(t, out, []string{"Filter: type:bug", "Filter: type:epic", "Filter cleared", "F1-4"})
+	if strings.Contains(string(out), "type:bug type:epic") {
+		t.Error("F1 must replace the bug type, not add to it")
+	}
+	if strings.Contains(string(out), "This help") {
+		t.Error("F1 opened the help overlay")
+	}
 }
 
 // A user binding from config.yaml fills the query bar and shows in the footer.

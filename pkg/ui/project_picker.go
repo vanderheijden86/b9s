@@ -706,15 +706,19 @@ func (m *ProjectPickerModel) RenderTypeLegendColumn() []string {
 	labelStyle := t.Renderer.NewStyle().
 		Foreground(t.MutedText.GetForeground())
 
+	keyStyle := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
+
+	// The function keys match typeFunctionKeys; chore has none.
 	types := []struct {
+		key   string
 		typ   string
 		label string
 	}{
-		{"bug", "Bug"},
-		{"feature", "Feature"},
-		{"task", "Task"},
-		{"epic", "Epic"},
-		{"chore", "Chore"},
+		{"F1", "epic", "Epic"},
+		{"F2", "feature", "Feature"},
+		{"F3", "task", "Task"},
+		{"F4", "bug", "Bug"},
+		{"  ", "chore", "Chore"},
 	}
 
 	lines := make([]string, panelRows)
@@ -722,7 +726,7 @@ func (m *ProjectPickerModel) RenderTypeLegendColumn() []string {
 	for i, tp := range types {
 		icon, color := t.GetTypeIcon(tp.typ)
 		iconStyled := t.Renderer.NewStyle().Foreground(color).Render(icon)
-		lines[i+1] = iconStyled + " " + labelStyle.Render(tp.label)
+		lines[i+1] = keyStyle.Render(tp.key) + " " + iconStyled + " " + labelStyle.Render(tp.label)
 	}
 	return lines
 }

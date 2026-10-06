@@ -1,59 +1,58 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
-// quickFilterTypes are the issue types the Y quick filter offers, numbered 1-5
-// in the order of the header's type legend.
-var quickFilterTypes = []struct {
+// typeFunctionKeys bind one issue type each to a function key, the way k9s
+// binds resources to function keys. The header's type legend shows them.
+var typeFunctionKeys = []struct {
+	key  string
 	name string
 	typ  model.IssueType
 }{
-	{"bug", model.TypeBug},
-	{"feature", model.TypeFeature},
-	{"task", model.TypeTask},
-	{"epic", model.TypeEpic},
-	{"chore", model.TypeChore},
+	{"f1", "epic", model.TypeEpic},
+	{"f2", "feature", model.TypeFeature},
+	{"f3", "task", model.TypeTask},
+	{"f4", "bug", model.TypeBug},
 }
 
-// activeTypeFilters returns the type names the shared query currently selects.
-func (m Model) activeTypeFilters() map[string]bool {
-	active := map[string]bool{}
+// typeForFunctionKey returns the type name a function key selects.
+func typeForFunctionKey(key string) (string, bool) {
+	for _, tk := range typeFunctionKeys {
+		if tk.key == key {
+			return tk.name, true
+		}
+	}
+	return "", false
+}
+
+// showOnlyType replaces every type term in the shared query with type:<name>
+// and keeps the other terms. When the query already shows only that type, it
+// removes the type term, so the same key shows every type again.
+func (m *Model) showOnlyType(name string) {
 	prefix := string(QueryFieldType) + ":"
+	var types []string
 	for _, token := range strings.Fields(strings.ToLower(m.queryState.Text())) {
-		if strings.HasPrefix(token, prefix) {
-			active[strings.TrimPrefix(token, prefix)] = true
+		if strings.HasPrefix(strings.TrimPrefix(token, "!"), prefix) {
+			types = append(types, token)
 		}
 	}
-	return active
-}
-
-// toggleTypeFilter adds or removes type:<name> in the shared query, so the
-// chip composes with every other term and shows in the query bar of every view.
-func (m *Model) toggleTypeFilter(name string) {
-	text, _ := toggleQueryTerm(m.queryState.Text(), QueryFieldType, name)
+	typ := model.IssueType(name)
+	if len(types) == 1 && types[0] == prefix+name {
+		typ = ""
+	}
+	text := withTypeFilter(m.queryState.Text(), typ)
 	m.setQueryText(text)
-	m.queryState.Accept()
-	m.afterQuickFilter()
-}
-
-// clearTypeFilter removes every type term and leaves the other terms.
-func (m *Model) clearTypeFilter() {
-	prefix := string(QueryFieldType) + ":"
-	var kept []string
-	for _, token := range strings.Fields(m.queryState.Text()) {
-		if !strings.HasPrefix(strings.ToLower(strings.TrimPrefix(token, "!")), prefix) {
-			kept = append(kept, token)
-		}
+	if text == "" {
+		m.queryState.Clear()
+	} else {
+		m.queryState.Accept()
 	}
-	m.setQueryText(strings.Join(kept, " "))
 	m.afterQuickFilter()
 }
 
@@ -67,69 +66,6 @@ func (m *Model) afterQuickFilter() {
 		m.refreshBoardAndGraphForCurrentFilter()
 		m.syncBoardToDetail()
 	}
-}
-
-// renderTypeBar renders the Y quick filter panel: the five types with counts
-// and their number keys, beside the shortcut column.
-func (m Model) renderTypeBar() string {
-	t := m.theme
-	w := m.width
-	if w <= 0 {
-		w = 80
-	}
-	numStyle := t.Renderer.NewStyle().Foreground(lipgloss.Color("#F3F3F3")).Bold(true)
-	activeStyle := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
-	normalStyle := t.Renderer.NewStyle().Foreground(t.Base.GetForeground())
-	countStyle := t.Renderer.NewStyle().Foreground(t.Secondary)
-
-	counts := map[model.IssueType]int{}
-	for _, issue := range m.issues {
-		counts[issue.IssueType]++
-	}
-	active := m.activeTypeFilters()
-
-	lines := make([]string, panelRows)
-	lines[0] = countStyle.Render("      Type                Count")
-	for i, qt := range quickFilterTypes {
-		icon, color := t.GetTypeIcon(string(qt.typ))
-		iconStyled := t.Renderer.NewStyle().Foreground(color).Render(icon)
-		if active[qt.name] {
-			lines[i+1] = activeStyle.Render(fmt.Sprintf(" <%d> ", i+1)) + iconStyled + activeStyle.Render(fmt.Sprintf(" %-14s  %4d", qt.name, counts[qt.typ]))
-			continue
-		}
-		lines[i+1] = numStyle.Render(fmt.Sprintf(" <%d> ", i+1)) + iconStyled + normalStyle.Render(fmt.Sprintf(" %-14s", qt.name)) + countStyle.Render(fmt.Sprintf("  %4d", counts[qt.typ]))
-	}
-	if len(active) == 0 {
-		lines[0] += "  " + activeStyle.Render("<0> all")
-	} else {
-		lines[0] += "  " + numStyle.Render("<0> all")
-	}
-
-	m.projectPicker.SetSize(w, m.height)
-	shortcutLines := m.projectPicker.RenderShortcutsColumn()
-	shortcutsWidth := lipgloss.Width(shortcutLines[0])
-	if shortcutsWidth < 16 {
-		shortcutsWidth = 16
-	}
-	const gap = 2
-	showShortcuts := gap+shortcutsWidth <= w/2
-	tableWidth := w
-	if showShortcuts {
-		tableWidth -= shortcutsWidth + gap
-	}
-	clipStyle := t.Renderer.NewStyle().MaxWidth(w)
-	rows := make([]string, 0, panelRows+1)
-	for i := 0; i < panelRows; i++ {
-		row := padRight(safeIndex(lines[:], i), tableWidth)
-		if showShortcuts {
-			row += strings.Repeat(" ", gap) + padRight(safeIndex(shortcutLines[:], i), shortcutsWidth)
-		}
-		rows = append(rows, clipStyle.Render(row))
-	}
-	if titleBar := m.renderUnifiedTitleBar(w); titleBar != "" {
-		rows = append(rows, titleBar)
-	}
-	return strings.Join(rows, "\n")
 }
 
 // QueryText returns the accepted or in-progress text of the shared query.

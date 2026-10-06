@@ -2,7 +2,8 @@
 type: ADR
 id: "0033"
 title: "Add a type quick filter and user-defined keybindings in config.yaml"
-status: active
+status: superseded
+superseded_by: "0034"
 date: 2026-10-06
 ---
 

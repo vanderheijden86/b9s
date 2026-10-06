@@ -50,7 +50,7 @@ var footerKeyPress = map[string]tea.KeyMsg{
 	"L":        {Type: tea.KeyRunes, Runes: []rune("L")},
 	"P":        {Type: tea.KeyRunes, Runes: []rune("P")},
 	"H":        {Type: tea.KeyRunes, Runes: []rune("H")},
-	"Y":        {Type: tea.KeyRunes, Runes: []rune("Y")},
+	"F1-4":     {Type: tea.KeyF1},
 }
 
 // effectOf is everything a key press may change that the user can see.

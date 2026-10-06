@@ -4,55 +4,71 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
-func TestTypeQuickFilterTogglesTypeTermsInSharedQuery(t *testing.T) {
+func pressFKey(m Model, n int) Model {
+	keys := map[int]tea.KeyType{1: tea.KeyF1, 2: tea.KeyF2, 3: tea.KeyF3, 4: tea.KeyF4}
+	updated, _ := m.Update(tea.KeyMsg{Type: keys[n]})
+	return updated.(Model)
+}
+
+// F1-F4 switch the shown type the way k9s function keys switch resources:
+// F1 epic, F2 feature, F3 task, F4 bug. A key shows only its type; the same
+// key again shows every type.
+func TestFunctionKeysSelectOneType(t *testing.T) {
 	m := keybindingTestModel(t, nil)
-	m = pressNamedKey(m, "Y")
-	if m.pickerMode != pickerModeTypes {
-		t.Fatal("Y should open the type picker")
+	for _, tc := range []struct {
+		key  int
+		want string
+	}{{1, "type:epic"}, {2, "type:feature"}, {3, "type:task"}, {4, "type:bug"}} {
+		m = pressFKey(m, tc.key)
+		if got := m.QueryText(); got != tc.want {
+			t.Fatalf("F%d: query = %q, want %q", tc.key, got, tc.want)
+		}
 	}
-	m = pressNamedKey(m, "4") // epic
-	if got := m.QueryText(); got != "type:epic" {
-		t.Fatalf("query = %q, want type:epic", got)
+	if n := len(m.FilteredIssues()); n != 1 {
+		t.Errorf("F4 shows %d issues, want only the bug", n)
 	}
-	m = pressNamedKey(m, "1") // bug, alternative to epic
-	if got := m.QueryText(); got != "type:epic type:bug" {
-		t.Fatalf("query = %q, want both types", got)
-	}
-	if n := len(m.FilteredIssues()); n != 2 {
-		t.Errorf("list shows %d issues, want the epic and the bug", n)
-	}
-	m = pressNamedKey(m, "4")
-	if got := m.QueryText(); got != "type:bug" {
-		t.Fatalf("toggling epic again must remove it, got %q", got)
-	}
-	m = pressNamedKey(m, "0")
+	m = pressFKey(m, 4)
 	if got := m.QueryText(); got != "" {
-		t.Fatalf("0 must clear the type filter, got %q", got)
+		t.Fatalf("F4 again must show every type, query = %q", got)
 	}
 }
 
-func TestTypeQuickFilterComposesWithOtherTerms(t *testing.T) {
+func TestFunctionKeysKeepOtherQueryTerms(t *testing.T) {
 	m := keybindingTestModel(t, nil)
 	m.setQueryText("status:open")
 	m.queryState.Accept()
-	m = pressNamedKey(m, "Y")
-	m = pressNamedKey(m, "3") // task
+	m = pressFKey(m, 3)
 	if got := m.QueryText(); got != "status:open type:task" {
 		t.Fatalf("query = %q", got)
 	}
-	m = pressNamedKey(m, "0")
+	m = pressFKey(m, 1)
+	if got := m.QueryText(); got != "status:open type:epic" {
+		t.Fatalf("F1 must replace the type and keep the rest, query = %q", got)
+	}
+	m = pressFKey(m, 1)
 	if got := m.QueryText(); got != "status:open" {
-		t.Fatalf("0 must keep the other terms, got %q", got)
+		t.Fatalf("F1 again must keep the other terms, query = %q", got)
 	}
 }
 
-func TestTypeQuickFilterWorksInTreeAndBoard(t *testing.T) {
+func TestFunctionKeyClearsItsTypeWhereverTheTermStands(t *testing.T) {
 	m := keybindingTestModel(t, nil)
-	m = pressNamedKey(m, "Y")
-	m = pressNamedKey(m, "4")
+	m.setQueryText("type:epic status:open")
+	m.queryState.Accept()
+	m = pressFKey(m, 1)
+	if got := m.QueryText(); got != "status:open" {
+		t.Fatalf("F1 on a leading type:epic: query = %q, want status:open", got)
+	}
+}
+
+func TestFunctionKeysWorkInTreeAndBoard(t *testing.T) {
+	m := keybindingTestModel(t, nil)
+	m = pressFKey(m, 1)
 	if got := m.TreeNodeCount(); got != 1 {
 		t.Errorf("tree shows %d nodes, want only the epic", got)
 	}
@@ -63,28 +79,36 @@ func TestTypeQuickFilterWorksInTreeAndBoard(t *testing.T) {
 	if got := m.QueryText(); got != "type:epic" {
 		t.Errorf("board lost the shared query: %q", got)
 	}
-	m = pressNamedKey(m, "Y")
-	m = pressNamedKey(m, "1")
-	if got := m.QueryText(); got != "type:epic type:bug" {
-		t.Errorf("board type chip query = %q", got)
+	m = pressFKey(m, 4)
+	if got := m.QueryText(); got != "type:bug" {
+		t.Errorf("F4 on the board: query = %q", got)
 	}
 }
 
-func TestTypeBarShowsCountsAndActiveType(t *testing.T) {
+// Help is only ?: F1 belongs to the epic type.
+func TestF1DoesNotOpenHelp(t *testing.T) {
 	m := keybindingTestModel(t, nil)
-	m = pressNamedKey(m, "Y")
-	m = pressNamedKey(m, "4")
-	view := m.View()
-	for _, want := range []string{"<1>", "<4>", "epic", "bug", "type:epic"} {
+	m = pressFKey(m, 1)
+	if m.showHelp {
+		t.Fatal("F1 opened the help overlay")
+	}
+}
+
+// The header's type legend names the function key of each type.
+func TestTypeLegendShowsFunctionKeys(t *testing.T) {
+	m := keybindingTestModel(t, nil)
+	m = pressFKey(m, 1)
+	view := stripANSI(m.View())
+	for _, want := range []string{"F1", "F2", "F3", "F4", "type:epic"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("view misses %q", want)
 		}
 	}
 }
 
-func TestTypeKeyIsNotShadowedByCustomBindingsWithoutOverride(t *testing.T) {
-	_, errs := ResolveKeybindings(config.Keybindings{{Key: "Y", Query: "type:epic"}})
+func TestFunctionKeysAreBuiltIn(t *testing.T) {
+	_, errs := ResolveKeybindings(config.Keybindings{{Key: "f2", Query: "type:chore"}})
 	if len(errs) != 1 {
-		t.Fatalf("Y is built in, errs = %v", errs)
+		t.Fatalf("f2 is built in, errs = %v", errs)
 	}
 }

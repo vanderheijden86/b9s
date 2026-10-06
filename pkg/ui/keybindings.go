@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -38,7 +39,10 @@ var keyActions = []KeyAction{
 	{"project_picker", "P", "Show or hide the project picker"},
 	{"label_picker", "L", "Label quick filter"},
 	{"assignee_picker", "A", "Assignee quick filter"},
-	{"type_picker", "Y", "Type quick filter"},
+	{"type_epic", "f1", "Show only epics"},
+	{"type_feature", "f2", "Show only features"},
+	{"type_task", "f3", "Show only tasks"},
+	{"type_bug", "f4", "Show only bugs"},
 	{"columns", "|", "Choose columns"},
 	{"copy", "c", "Copy the ID and title"},
 	{"branch", "f", "Show only the cursor's branch"},
@@ -70,7 +74,7 @@ var builtinKeys = []string{
 	"t", "T", "u", "U", "v", "V", "w", "W", "x", "X", "y", "Y", "z", "Z",
 	"[", "]", "{", "}", "\\", "<", ">", "|", "$", "delete",
 	"ctrl+a", "ctrl+b", "ctrl+d", "ctrl+e", "ctrl+f", "ctrl+n", "ctrl+p", "ctrl+r",
-	"ctrl+o", "ctrl+s", "ctrl+u", "ctrl+w", "ctrl+\\", "ctrl+@", "f1", "f5",
+	"ctrl+o", "ctrl+s", "ctrl+u", "ctrl+w", "ctrl+\\", "ctrl+@", "f1", "f2", "f3", "f4", "f5",
 }
 
 func isKnownKey(key string) bool {
@@ -93,6 +97,11 @@ func ValidKeyName(name string) bool {
 
 // keyMsgFor builds the key message that stringifies to key. It covers the
 // forms the action table uses: one character, or ctrl+<letter>.
+var functionKeyTypes = []tea.KeyType{
+	tea.KeyF1, tea.KeyF2, tea.KeyF3, tea.KeyF4, tea.KeyF5, tea.KeyF6,
+	tea.KeyF7, tea.KeyF8, tea.KeyF9, tea.KeyF10, tea.KeyF11, tea.KeyF12,
+}
+
 func keyMsgFor(key string) (tea.KeyMsg, bool) {
 	if strings.HasPrefix(key, "ctrl+") && len(key) == len("ctrl+")+1 {
 		letter := key[len("ctrl+")]
@@ -100,6 +109,9 @@ func keyMsgFor(key string) (tea.KeyMsg, bool) {
 			return tea.KeyMsg{Type: tea.KeyType(1 + letter - 'a')}, true
 		}
 		return tea.KeyMsg{}, false
+	}
+	if n, err := strconv.Atoi(strings.TrimPrefix(key, "f")); err == nil && strings.HasPrefix(key, "f") && n >= 1 && n <= len(functionKeyTypes) {
+		return tea.KeyMsg{Type: functionKeyTypes[n-1]}, true
 	}
 	if runes := []rune(key); len(runes) == 1 {
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: runes}, true

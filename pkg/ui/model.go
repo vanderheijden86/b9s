@@ -84,7 +84,6 @@ const (
 	pickerModeProjects = iota
 	pickerModeLabels
 	pickerModeAssignees // bd-gs45.1
-	pickerModeTypes     // digits toggle a type:<name> term in the shared query
 )
 
 // LabelEntry holds display data for one label in the top bar label mode.
@@ -654,6 +653,8 @@ type Model struct {
 
 	// openedIssueFile is the Markdown file O last wrote for the editor.
 	openedIssueFile string
+	// pendingCmd is a command a key handler queued for Update to return.
+	pendingCmd tea.Cmd
 
 	// Workspace mode state
 	workspaceMode    bool            // True when viewing multiple repos
@@ -1339,12 +1340,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		next = m.handleShowKnownBranch(msg.IDs)
 	case showBranchDeadlineMsg:
 		next = m.expireShowBranch(msg.ID)
+	case editorFinishedMsg:
+		next = m.handleEditorFinished(msg)
 	default:
 		next, cmd = m.update(msg)
 	}
 	if updated, ok := next.(Model); ok {
 		updated.retryPendingBranch()
 		updated.syncTreeSize()
+		// Key handlers return only a Model, so a command one of them needs to
+		// run (the editor O starts) waits on the model until here.
+		if updated.pendingCmd != nil {
+			cmd = tea.Batch(cmd, updated.pendingCmd)
+			updated.pendingCmd = nil
+		}
 		next = updated
 	}
 	return next, cmd
@@ -2515,8 +2524,8 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			return m, tea.Batch(cmds...)
 		}
 
-		// Handle help overlay toggle (? or F1)
-		if (msg.String() == "?" || msg.String() == "f1") && m.list.FilterState() != list.Filtering {
+		// Handle help overlay toggle
+		if msg.String() == "?" && m.list.FilterState() != list.Filtering {
 			m.showHelp = !m.showHelp
 			if m.showHelp {
 				m.focusBeforeHelp = m.focused // Store current focus before switching to help
@@ -2526,6 +2535,14 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.focused = m.restoreFocusFromHelp()
 			}
 			return m, nil
+		}
+
+		// F1-F4 show one issue type in every view.
+		if name, ok := typeForFunctionKey(msg.String()); ok && !m.showHelp && !m.showTutorial &&
+			m.list.FilterState() != list.Filtering && m.focused != focusLabelPicker &&
+			!m.tree.IsSortPopupOpen() && !m.tree.IsColumnPopupOpen() {
+			m.showOnlyType(name)
+			return m, tea.Batch(cmds...)
 		}
 
 		// Handle tutorial toggle (backtick `) - bv-8y31
@@ -2756,12 +2773,6 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			if m.pickerMode == pickerModeTypes {
-				if n <= len(quickFilterTypes) {
-					m.toggleTypeFilter(quickFilterTypes[n-1].name)
-				}
-				return m, nil
-			}
 			// Project mode (default): switch projects via page-relative numbering (bd-g68w)
 			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
@@ -2790,10 +2801,6 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.syncTreeToDetail()
 				m.statusMsg = "Assignee filter cleared"
 				m.statusIsError = false
-				return m, nil
-			}
-			if m.pickerMode == pickerModeTypes {
-				m.clearTypeFilter()
 				return m, nil
 			}
 			if m.allProjectsMode {
@@ -2916,13 +2923,6 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.pickerMode = pickerModeAssignees
 				m.assigneeScrollOffset = 0
 				m.rebuildPickerEntries()
-				return m, nil
-
-			case "Y":
-				if m.focused == focusLabelPicker || m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen() {
-					break
-				}
-				m.pickerMode = pickerModeTypes
 				return m, nil
 
 			case "U":
@@ -4131,7 +4131,7 @@ func (m Model) handleHelpKeys(msg tea.KeyMsg) Model {
 		m.showHelp = false
 		m.helpScroll = 0
 		m.focused = m.restoreFocusFromHelp()
-	case "?", "f1":
+	case "?":
 		// Close help overlay and restore previous focus
 		m.showHelp = false
 		m.helpScroll = 0
@@ -4330,8 +4330,6 @@ func (m Model) View() string {
 			pickerHeader = m.renderLabelBar()
 		case pickerModeAssignees:
 			pickerHeader = m.renderAssigneeBar()
-		case pickerModeTypes:
-			pickerHeader = m.renderTypeBar()
 		default:
 			if len(m.allProjects) > 0 {
 				m.projectPicker.SetSize(m.width, m.height)
@@ -4951,7 +4949,8 @@ func (m *Model) renderHelpOverlay() string {
 		{"c", "Closed issues"},
 		{"r", "Ready (unblocked)"},
 		{"l", "Filter by label"},
-		{"L/A/Y", "Label, assignee, type quick filter"},
+		{"L/A", "Label, assignee quick filter"},
+		{"F1-F4", "Show only epics, features, tasks, bugs"},
 		{"s", "Cycle sort"},
 		{"S", "Triage sort"},
 	}
@@ -5319,16 +5318,6 @@ func (m *Model) renderFooter() string {
 		}
 	}
 
-	// Replace "1-9 project" with "1-5 type" when in type mode
-	if m.pickerMode == pickerModeTypes {
-		for i := range hints {
-			if hints[i].key == "1-9" && hints[i].label == "project" {
-				hints[i].key, hints[i].label = "1-5", "type"
-				break
-			}
-		}
-	}
-
 	// Replace "1-9 project" with "1-9 label" when in label mode (bd-gj41)
 	if m.pickerMode == pickerModeLabels {
 		for i := range hints {
@@ -5341,7 +5330,7 @@ func (m *Model) renderFooter() string {
 	} else {
 		hints = append(hints, hint{"L", "labels"})
 	}
-	hints = append(hints, hint{"Y", "types"})
+	hints = append(hints, hint{"F1-4", "type"})
 
 	// Add picker toggle hint if multiple projects exist (bd-e4un)
 	if len(m.allProjects) > 1 {
@@ -6603,7 +6592,6 @@ type editorCommandKind int
 const (
 	editorCommandOK editorCommandKind = iota
 	editorCommandEmpty
-	editorCommandTerminal
 	editorCommandForbidden
 )
 
@@ -6621,17 +6609,6 @@ const (
 	allowlistedGUIEditorXed
 	allowlistedGUIEditorNotepad
 )
-
-var terminalEditorExecutables = map[string]bool{
-	"vim":   true,
-	"vi":    true,
-	"nvim":  true,
-	"nano":  true,
-	"emacs": true,
-	"pico":  true,
-	"joe":   true,
-	"ne":    true,
-}
 
 var forbiddenEditorExecutables = map[string]bool{
 	// Shells and command interpreters.
@@ -6664,9 +6641,6 @@ func classifyEditorCommand(editorArgs []string) (string, editorCommandKind) {
 	base := normalizeExecutableBase(editorArgs[0])
 	if base == "" {
 		return "", editorCommandEmpty
-	}
-	if terminalEditorExecutables[base] {
-		return base, editorCommandTerminal
 	}
 	if forbiddenEditorExecutables[base] {
 		return base, editorCommandForbidden
@@ -6818,54 +6792,41 @@ func (m *Model) openInEditor() {
 	}
 	m.openedIssueFile = issueFile
 
+	editorArgs, haveEditor, err := environmentEditor()
+	if err != nil {
+		m.statusMsg = "❌ " + err.Error()
+		m.statusIsError = true
+		return
+	}
+	editorName := "the default editor"
+	if haveEditor {
+		editorName = normalizeExecutableBase(editorArgs[0])
+	}
+
 	// Tests and E2E runs must never start a real editor.
 	if os.Getenv("B9S_TEST_MODE") != "" {
-		m.statusMsg = fmt.Sprintf("📝 Would open %s in an editor (B9S_TEST_MODE)", issue.ID)
+		m.statusMsg = fmt.Sprintf("📝 Would open %s in %s (B9S_TEST_MODE)", issue.ID, editorName)
 		m.statusIsError = false
 		return
 	}
 
-	// Determine editor - prefer GUI editors that work in background
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = os.Getenv("VISUAL")
+	if haveEditor {
+		// ExecProcess suspends the TUI while the editor runs, so a terminal
+		// editor gets the terminal and a waiting one (code --wait, emacsclient)
+		// holds b9s until it returns, as git commit does.
+		cmd := exec.Command(editorArgs[0], append(editorArgs[1:], issueFile)...)
+		id := issue.ID
+		m.pendingCmd = tea.ExecProcess(cmd, func(err error) tea.Msg {
+			return editorFinishedMsg{id: id, editor: editorName, err: err}
+		})
+		m.statusMsg = fmt.Sprintf("📝 Opening %s in %s", id, editorName)
+		m.statusIsError = false
+		return
 	}
 
-	ignoredEditorBase := ""
 	var requestedEditorKind allowlistedGUIEditorKind
-	if editor != "" {
-		editorArgs, err := parseCommandLine(editor)
-		if err != nil {
-			m.statusMsg = fmt.Sprintf("❌ Invalid $EDITOR/$VISUAL: %v", err)
-			m.statusIsError = true
-			return
-		}
-
-		editorBase, kind := classifyEditorCommand(editorArgs)
-		switch kind {
-		case editorCommandTerminal:
-			m.statusMsg = fmt.Sprintf("⚠️ %s is a terminal editor - set $EDITOR to a GUI editor or quit first", editorBase)
-			m.statusIsError = true
-			return
-		case editorCommandForbidden:
-			m.statusMsg = fmt.Sprintf("❌ Refusing to run %s as editor (shell/interpreter). Set $EDITOR to a GUI editor", editorBase)
-			m.statusIsError = true
-			return
-		case editorCommandEmpty:
-			m.statusMsg = "❌ Invalid $EDITOR/$VISUAL: empty command"
-			m.statusIsError = true
-			return
-		default:
-			requestedEditorKind = allowlistedGUIEditorKindForBase(editorBase)
-			if requestedEditorKind == allowlistedGUIEditorUnknown {
-				ignoredEditorBase = editorBase
-				editor = ""
-			}
-		}
-	}
-
-	// If no editor set, try platform-specific GUI options
-	if editor == "" && requestedEditorKind == allowlistedGUIEditorUnknown {
+	// With neither variable set, open the platform's GUI default.
+	{
 		switch runtime.GOOS {
 		case "darwin":
 			requestedEditorKind = allowlistedGUIEditorOpenText
@@ -6883,7 +6844,7 @@ func (m *Model) openInEditor() {
 	}
 
 	if requestedEditorKind == allowlistedGUIEditorUnknown {
-		m.statusMsg = "❌ No GUI editor found. Set $EDITOR to a GUI editor"
+		m.statusMsg = "❌ No editor found. Set $VISUAL or $EDITOR"
 		m.statusIsError = true
 		return
 	}
@@ -6894,14 +6855,50 @@ func (m *Model) openInEditor() {
 		m.statusIsError = true
 		return
 	}
-	requestedEditorKind = actualKind
-
-	if ignoredEditorBase != "" {
-		m.statusMsg = fmt.Sprintf("📝 Opened %s in %s (ignored $EDITOR=%s)", issue.ID, allowlistedGUIEditorDisplayName(requestedEditorKind), ignoredEditorBase)
-	} else {
-		m.statusMsg = fmt.Sprintf("📝 Opened %s in %s", issue.ID, allowlistedGUIEditorDisplayName(requestedEditorKind))
-	}
+	m.statusMsg = fmt.Sprintf("📝 Opened %s in %s", issue.ID, allowlistedGUIEditorDisplayName(actualKind))
 	m.statusIsError = false
+}
+
+// editorFinishedMsg reports that the editor O started has exited.
+type editorFinishedMsg struct {
+	id, editor string
+	err        error
+}
+
+func (m Model) handleEditorFinished(msg editorFinishedMsg) Model {
+	if msg.err != nil {
+		m.statusMsg = fmt.Sprintf("❌ %s failed for %s: %v", msg.editor, msg.id, msg.err)
+		m.statusIsError = true
+		return m
+	}
+	m.statusMsg = fmt.Sprintf("📝 Closed %s in %s", msg.id, msg.editor)
+	m.statusIsError = false
+	return m
+}
+
+// environmentEditor returns the user's editor command line from $VISUAL and
+// then $EDITOR, the order git reads them in. ok is false when neither is set.
+// A shell is refused: the file name would become a script for it to run.
+func environmentEditor() (args []string, ok bool, err error) {
+	for _, name := range []string{"VISUAL", "EDITOR"} {
+		value := strings.TrimSpace(os.Getenv(name))
+		if value == "" {
+			continue
+		}
+		args, err := parseCommandLine(value)
+		if err != nil {
+			return nil, false, fmt.Errorf("invalid $%s: %v", name, err)
+		}
+		base, kind := classifyEditorCommand(args)
+		switch kind {
+		case editorCommandEmpty:
+			return nil, false, fmt.Errorf("invalid $%s: empty command", name)
+		case editorCommandForbidden:
+			return nil, false, fmt.Errorf("refusing to run %s from $%s as an editor (shell)", base, name)
+		}
+		return args, true, nil
+	}
+	return nil, false, nil
 }
 
 // writeIssueSnapshot writes the issue as Markdown to a new file in the system
