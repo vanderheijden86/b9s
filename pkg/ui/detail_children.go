@@ -58,3 +58,10 @@ func (m *Model) showInDetail(id string) bool {
 	}
 	return false
 }
+
+// detailSiblingNavAvailable reports whether n and p step through sibling
+// issues on the detail screen. Only the tree has siblings; the board and the
+// graph keep their own cursor.
+func (m Model) detailSiblingNavAvailable() bool {
+	return m.treeViewActive && !m.isBoardView && !m.isGraphView
+}

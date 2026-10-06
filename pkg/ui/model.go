@@ -3145,6 +3145,8 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			case focusDetail:
 				if msg.String() == "c" || msg.String() == "C" {
 					m.copyIssueToClipboard()
+				} else if msg.String() == "O" {
+					m.openInEditor()
 				} else if msg.String() == "backspace" {
 					m.detailBackKey()
 				} else if msg.String() == "enter" {
@@ -3157,7 +3159,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 					} else {
 						m.focused = focusTree
 					}
-				} else if m.treeViewActive && (msg.String() == "n" || msg.String() == "p") {
+				} else if m.detailSiblingNavAvailable() && (msg.String() == "n" || msg.String() == "p") {
 					// Step through sibling issues without leaving the detail view;
 					// the tree cursor is the selection the detail renders from.
 					if msg.String() == "n" {
@@ -5241,15 +5243,21 @@ func (m *Model) renderFooter() string {
 			{"j/k", "scroll"},
 			{"home/end", "top/bottom"},
 			{"1-9", "child"},
-			{"bksp", "back"},
-			{"^R", "refresh"},
-			{"n/p", "next/prev sibling"},
-			{"e", "edit"},
-			{"c", "copy"},
-			{"O", "open"},
-			{"?", "help"},
-			{"esc", "back"},
 		}
+		if len(m.detailBack) > 0 {
+			hints = append(hints, hint{"bksp", "back"})
+		}
+		hints = append(hints, hint{"^R", "refresh"})
+		if m.detailSiblingNavAvailable() {
+			hints = append(hints, hint{"n/p", "next/prev sibling"})
+		}
+		hints = append(hints,
+			hint{"e", "edit"},
+			hint{"c", "copy"},
+			hint{"O", "open"},
+			hint{"?", "help"},
+			hint{"esc", "back"},
+		)
 	default: // list view
 		hints = []hint{
 			{"0-9", "project"},
@@ -5275,18 +5283,18 @@ func (m *Model) renderFooter() string {
 				break
 			}
 		}
-		hints = append(hints, hint{"L", "projects"})
+		hints = append(hints, hint{"P", "projects"})
 	} else {
 		hints = append(hints, hint{"L", "labels"})
 	}
 
 	// Add picker toggle hint if multiple projects exist (bd-e4un)
 	if len(m.allProjects) > 1 {
-		pickerLabel := "hide projects"
+		pickerLabel := "hide header"
 		if !m.pickerVisible {
-			pickerLabel = "show projects"
+			pickerLabel = "show header"
 		}
-		hints = append(hints, hint{"P", pickerLabel})
+		hints = append(hints, hint{"H", pickerLabel})
 	}
 
 	var hintParts []string
@@ -6742,6 +6750,13 @@ func (m *Model) openInEditor() {
 	if _, err := os.Stat(beadsFile); os.IsNotExist(err) {
 		m.statusMsg = fmt.Sprintf("❌ Beads file not found: %s", beadsFile)
 		m.statusIsError = true
+		return
+	}
+
+	// Tests and E2E runs must never start a real editor.
+	if os.Getenv("B9S_TEST_MODE") != "" {
+		m.statusMsg = fmt.Sprintf("📝 Would open %s in an editor (B9S_TEST_MODE)", filepath.Base(beadsFile))
+		m.statusIsError = false
 		return
 	}
 
