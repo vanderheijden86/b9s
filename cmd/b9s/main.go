@@ -164,8 +164,21 @@ func main() {
 	// recent list, and the configured refresh interval applies from the first
 	// poll.
 	appCfg, cfgErr := config.Load()
+	if errors.Is(cfgErr, config.ErrKeybindings) {
+		fmt.Fprintf(os.Stderr, "b9s: %s: %v\n", config.ConfigPath(), cfgErr)
+		os.Exit(2)
+	}
 	if cfgErr != nil {
 		appCfg = config.DefaultConfig()
+	}
+	// A shortcut the config asks for and b9s cannot honour stops startup, so a
+	// typo never leaves a key doing something other than the user wrote.
+	if _, errs := ui.ResolveKeybindings(appCfg.Keybindings); len(errs) > 0 {
+		fmt.Fprintf(os.Stderr, "b9s: invalid keybindings in %s:\n", config.ConfigPath())
+		for _, err := range errs {
+			fmt.Fprintf(os.Stderr, "  %v\n", err)
+		}
+		os.Exit(2)
 	}
 
 	// The startup folder respects BEADS_DIR and git worktrees.

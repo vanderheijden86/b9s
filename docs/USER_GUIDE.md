@@ -99,6 +99,7 @@ The tree is always present. Every issue sits under its parent, and an issue with
 |------|--------|
 | `o`, `C`, `r`, `a` | Show open, closed, ready or all issues |
 | `L`, `A` | Put the labels or the assignees on `1`-`9`; press a digit to filter, `a` to clear |
+| `Y` | Put the five types on `1`-`5` (bug, feature, task, epic, chore); a digit toggles `type:<name>` in the search query, so types combine as alternatives and with every other term. `0` clears the types, `Esc` clears the whole query. Works in the list, tree and board |
 | `f` | Show only the top-level branch of the issue under the cursor. Press again to undo |
 | `x` | Show only the subtree of the issue under the cursor. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
@@ -422,6 +423,33 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 `s` picks another sort for the current session only. The override survives reloads and is not saved, so the next start returns to the configured sort. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it. See [ADR 0010](adr/0010-take-tree-sort-from-user-config.md).
 
+### Keybindings
+
+A `keybindings:` list in the same `config.yaml` binds a key to a query, or to a built-in action. Each entry takes a `key` and one of `query` or `action`. The commented example shows every field:
+
+```yaml
+keybindings:
+  - key: ctrl+t              # one character, ctrl+<letter>, alt+<character> or f1 to f12
+    query: "type:epic"       # any search query; press again to clear it
+    description: Epics       # footer and help text; optional
+  - key: ctrl+g
+    action: view_board       # does what b does in the current view
+  - key: x
+    query: "status:open label:urgent"
+    override: true           # needed because x is a built-in key
+```
+
+Custom keys lead the footer and fill the Custom panel of the `?` overlay. They work in the list, tree and board, and stay quiet while a search bar, the `:` prompt, a popup or the help overlay owns the keys.
+
+b9s checks every binding at startup and refuses to start when one breaks a rule, printing each problem with its list position and exiting with code 2. A `keybindings` value of the wrong shape stops startup the same way, although any other unparsable config is still ignored. The rules:
+
+- `query` or `action`, not both and not neither. A query may use only the fields `id`, `title`, `status`, `priority`, `type`, `label`, `assignee` and `project`.
+- Each key once. A built-in key, such as `x`, needs `override: true`, and then the binding replaces the built-in on that key.
+- Never rebindable: `Ctrl-C`, `Esc`, `Enter`, `Tab`, `Backspace`, `Space`, the arrow and paging keys, `j` `k` `h` `l` `G`, `/` `:` `?` and the backtick, and the digits.
+- Actions: `help`, `search`, `command_prompt`, `view_tree`, `view_board`, `view_graph`, `filter_open`, `filter_closed`, `filter_ready`, `filter_all`, `sort`, `status`, `edit`, `close_issue`, `refresh`, `project_picker`, `label_picker`, `assignee_picker`, `type_picker`, `columns`, `copy`, `branch` and `quit`.
+
+An action binding adds a key and leaves the built-in key working. See [ADR 0033](adr/0033-add-a-type-quick-filter-and-user-keybindings-in-config.md).
+
 ### Environment variables
 
 | Variable | Effect |
@@ -567,7 +595,7 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `Enter` `d`, `e`, `S`, `K`, `Delete` or `Cmd-Backspace`, `c` | Open the detail, edit, status, close, delete, copy the ID and title. A Mac keyboard has no `Delete` key, and `Backspace` alone goes back |
 | `Ctrl-N` | Create an issue |
 | `b`, `g`, `Esc` | Board, dependency graph of the cursor, back |
-| `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
+| `1`-`9`, `0`, `L` `A` `Y` `P` | Toggle a label, assignee or type filter, or open a project, all projects; `L` `A` `Y` `P` choose what the digits stand for |
 | `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
 | Detail: `n` `p`, `c`, `d` | Next or previous sibling, copy as Markdown, close |
 | Detail: `1`-`9`, `Backspace` | Open the child with that number, instead of a project; go back to the issue before |

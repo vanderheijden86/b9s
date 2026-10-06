@@ -318,7 +318,14 @@ func (m Model) WithInitialQuery(query string) Model {
 // when it is already there, and reports whether it added the term. Other terms stay in place, and status terms
 // combine as alternatives, so two keys show both statuses.
 func toggleStatusTerm(text, status string) (string, bool) {
-	term := string(QueryFieldStatus) + ":" + status
+	return toggleQueryTerm(text, QueryFieldStatus, status)
+}
+
+// toggleQueryTerm adds field:value to the query text, or takes it out when it
+// is already there, and reports whether it added the term. Terms of one field
+// combine as alternatives.
+func toggleQueryTerm(text string, field QueryField, value string) (string, bool) {
+	term := string(field) + ":" + value
 	tokens := strings.Fields(text)
 	kept := make([]string, 0, len(tokens)+1)
 	removed := false

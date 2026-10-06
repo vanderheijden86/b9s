@@ -84,6 +84,7 @@ const (
 	pickerModeProjects = iota
 	pickerModeLabels
 	pickerModeAssignees // bd-gs45.1
+	pickerModeTypes     // digits toggle a type:<name> term in the shared query
 )
 
 // LabelEntry holds display data for one label in the top bar label mode.
@@ -556,11 +557,13 @@ type Model struct {
 	assigneeScrollOffset int             // scroll offset for assignee bar when >9 assignees (bd-gs45.1)
 
 	// Filter and sort state
-	currentFilter  string // status filter: "all", "open", "closed", "ready"
-	labelFilter    string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
-	assigneeFilter string // assignee filter: "" = none (bd-gs45.1)
-	queryState     QueryState
-	sortMode       SortMode // bv-3ita: current sort mode
+	currentFilter    string // status filter: "all", "open", "closed", "ready"
+	labelFilter      string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
+	assigneeFilter   string // assignee filter: "" = none (bd-gs45.1)
+	queryState       QueryState
+	keymap           Keymap   // user-defined shortcuts from config.yaml (ADR 0033)
+	keybindingErrors []error  // bindings the config asked for and ResolveKeybindings rejected
+	sortMode         SortMode // bv-3ita: current sort mode
 
 	// Stats (cached)
 	countOpen    int
@@ -1211,6 +1214,7 @@ func (m Model) WithMonthFirst(monthFirst bool) Model {
 // Call this after NewModel to enable project switching and favorites.
 func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Model {
 	m.appConfig = cfg
+	m.keymap, m.keybindingErrors = ResolveKeybindings(cfg.Keybindings)
 	m.doltPollInterval = cfg.RefreshPollInterval()
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
@@ -2489,6 +2493,16 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			m.commandPrompt.Start()
 			return m, tea.Batch(cmds...)
 		}
+		if binding, ok := m.customBindingFor(msg); ok {
+			if binding.Query != "" {
+				m.runQueryBinding(binding)
+				return m, tea.Batch(cmds...)
+			}
+			// An action binding presses the built-in key it stands for.
+			if mapped, ok := keyMsgFor(binding.DefaultKey); ok {
+				msg = mapped
+			}
+		}
 		// An open tree popup sits above the filtered tree, so its Escape
 		// closes the popup (handled below) and leaves the filter in place.
 		treePopupOpen := m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen()
@@ -2739,6 +2753,12 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				}
 				return m, nil
 			}
+			if m.pickerMode == pickerModeTypes {
+				if n <= len(quickFilterTypes) {
+					m.toggleTypeFilter(quickFilterTypes[n-1].name)
+				}
+				return m, nil
+			}
 			// Project mode (default): switch projects via page-relative numbering (bd-g68w)
 			if proj := m.projectPicker.ProjectByFavoriteNum(n); proj != nil {
 				return m, func() tea.Msg { return SwitchProjectMsg{Project: *proj} }
@@ -2767,6 +2787,10 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.syncTreeToDetail()
 				m.statusMsg = "Assignee filter cleared"
 				m.statusIsError = false
+				return m, nil
+			}
+			if m.pickerMode == pickerModeTypes {
+				m.clearTypeFilter()
 				return m, nil
 			}
 			if m.allProjectsMode {
@@ -2889,6 +2913,13 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.pickerMode = pickerModeAssignees
 				m.assigneeScrollOffset = 0
 				m.rebuildPickerEntries()
+				return m, nil
+
+			case "Y":
+				if m.focused == focusLabelPicker || m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen() {
+					break
+				}
+				m.pickerMode = pickerModeTypes
 				return m, nil
 
 			case "U":
@@ -4291,6 +4322,8 @@ func (m Model) View() string {
 			pickerHeader = m.renderLabelBar()
 		case pickerModeAssignees:
 			pickerHeader = m.renderAssigneeBar()
+		case pickerModeTypes:
+			pickerHeader = m.renderTypeBar()
 		default:
 			if len(m.allProjects) > 0 {
 				m.projectPicker.SetSize(m.width, m.height)
@@ -4910,6 +4943,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"c", "Closed issues"},
 		{"r", "Ready (unblocked)"},
 		{"l", "Filter by label"},
+		{"L/A/Y", "Label, assignee, type quick filter"},
 		{"s", "Cycle sort"},
 		{"S", "Triage sort"},
 	}
@@ -5007,6 +5041,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Views", "👁", 1, viewsSection},
 		{"Global", "🌐", 2, globalSection},
 		{"History", "📜", 3, historySection},
+		{"Custom", "⚙️", 3, m.customHelpRows()},
 		{"Tree View", "🌳", 4, treeSection},
 		{"Insights", "💡", 0, insightsSection},
 		{"Status", "🩺", 2, statusSection},
@@ -5275,6 +5310,16 @@ func (m *Model) renderFooter() string {
 		}
 	}
 
+	// Replace "1-9 project" with "1-5 type" when in type mode
+	if m.pickerMode == pickerModeTypes {
+		for i := range hints {
+			if hints[i].key == "1-9" && hints[i].label == "project" {
+				hints[i].key, hints[i].label = "1-5", "type"
+				break
+			}
+		}
+	}
+
 	// Replace "1-9 project" with "1-9 label" when in label mode (bd-gj41)
 	if m.pickerMode == pickerModeLabels {
 		for i := range hints {
@@ -5287,6 +5332,7 @@ func (m *Model) renderFooter() string {
 	} else {
 		hints = append(hints, hint{"L", "labels"})
 	}
+	hints = append(hints, hint{"Y", "types"})
 
 	// Add picker toggle hint if multiple projects exist (bd-e4un)
 	if len(m.allProjects) > 1 {
@@ -5296,6 +5342,13 @@ func (m *Model) renderFooter() string {
 		}
 		hints = append(hints, hint{"H", pickerLabel})
 	}
+
+	// The footer clips on the right, so the user's own shortcuts lead.
+	custom := make([]hint, 0, len(m.keymap.bindings))
+	for _, b := range m.keymap.bindings {
+		custom = append(custom, hint{footerKeyLabel(b.Key), b.Label()})
+	}
+	hints = append(custom, hints...)
 
 	var hintParts []string
 	for _, h := range hints {
