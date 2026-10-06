@@ -57,15 +57,28 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	left := r.NewStyle().Foreground(iconColor).Render(icon+" "+typeName) +
 		muted.Render(" · ") +
 		r.NewStyle().Bold(true).Foreground(t.Secondary).Render(item.ID)
-	right := ""
+	right, exact := "", ""
 	if !item.UpdatedAt.IsZero() {
 		right = r.NewStyle().Foreground(getAgeColor(item.UpdatedAt)).Render("updated " + FormatTimeRel(item.UpdatedAt))
+		exact = muted.Render(item.UpdatedAt.Local().Format("2006-01-02 15:04"))
 	}
-	head := left
-	if gap := inner - lipgloss.Width(left) - lipgloss.Width(right); right != "" && gap >= 2 {
-		head = left + strings.Repeat(" ", gap) + right
+	alignRight := func(l, rt string) (string, bool) {
+		gap := inner - lipgloss.Width(l) - lipgloss.Width(rt)
+		if rt == "" || gap < 2 {
+			return l, false
+		}
+		return l + strings.Repeat(" ", gap) + rt, true
 	}
+	head, _ := alignRight(left, right)
 	title := r.NewStyle().Bold(true).Foreground(t.Base.GetForeground()).Render(item.Title)
+	// The exact time sits under the relative age. A title too long to share
+	// its line wraps, and the time moves to the spacer line below it.
+	spacer := ""
+	if withTime, ok := alignRight(title, exact); ok {
+		title = withTime
+	} else if exact != "" {
+		spacer, _ = alignRight("", exact)
+	}
 
 	chip := r.NewStyle().Bold(true).Padding(0, 1).
 		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
@@ -84,7 +97,7 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 		BorderForeground(statusColor).
 		Padding(0, 1).
 		Width(width - 2)
-	blocks = append(blocks, card.Render(strings.Join([]string{head, title, "", meta}, "\n")))
+	blocks = append(blocks, card.Render(strings.Join([]string{head, title, spacer, meta}, "\n")))
 
 	facts := []string{}
 	if !item.CreatedAt.IsZero() {

@@ -205,3 +205,44 @@ func TestRenderIssueDetail_ChildrenShowProgress(t *testing.T) {
 		t.Errorf("children should not repeat under RELATIONS:\n%s", out)
 	}
 }
+
+func TestRenderIssueDetail_ExactUpdatedTimeBelowRelativeAge(t *testing.T) {
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	issue, issueMap := detailFixture()
+	issue.UpdatedAt = time.Now().Add(-5 * time.Hour)
+	exact := issue.UpdatedAt.Local().Format("2006-01-02 15:04")
+	lines := strings.Split(stripANSI(renderIssueDetail(issue, issueMap, theme, 70, nil, nil)), "\n")
+	rel := -1
+	for i, l := range lines {
+		if strings.Contains(l, "updated 5h ago") {
+			rel = i
+			break
+		}
+	}
+	if rel < 0 || rel+1 >= len(lines) {
+		t.Fatalf("relative age not found:\n%s", strings.Join(lines, "\n"))
+	}
+	below := lines[rel+1]
+	if !strings.Contains(below, exact) {
+		t.Fatalf("line below the relative age should hold %q, got %q", exact, below)
+	}
+	relEnd := strings.Index(lines[rel], "ago") + len("ago")
+	exactEnd := strings.Index(below, exact) + len(exact)
+	if lipgloss.Width(lines[rel][:relEnd]) != lipgloss.Width(below[:exactEnd]) {
+		t.Errorf("exact time should be right-aligned under the relative age:\n%s\n%s", lines[rel], below)
+	}
+}
+
+func TestRenderIssueDetail_ExactUpdatedTimeSurvivesLongTitle(t *testing.T) {
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	issue, issueMap := detailFixture()
+	issue.UpdatedAt = time.Now().Add(-5 * time.Hour)
+	issue.Title = strings.Repeat("very long title ", 12)
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, nil, nil))
+	if exact := issue.UpdatedAt.Local().Format("2006-01-02 15:04"); !strings.Contains(out, exact) {
+		t.Errorf("exact time %q missing with a long title:\n%s", exact, out)
+	}
+	if !strings.Contains(strings.ReplaceAll(out, "\n", " "), "very long title") {
+		t.Errorf("title missing:\n%s", out)
+	}
+}
