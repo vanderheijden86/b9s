@@ -32,6 +32,10 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A final tag shares its commit with the release candidate it
+          # promotes. Without this, GoReleaser picks one of the tags on HEAD
+          # itself, and may build the final release under the rc version.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
           # Token with write access to homebrew-tap and scoop-bucket repos
           # Set this as a repository secret with repo scope
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
