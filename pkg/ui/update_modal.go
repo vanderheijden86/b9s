@@ -95,7 +95,7 @@ func PerformUpdateCmd() tea.Cmd {
 			if result != nil {
 				if result.RequireRoot {
 					requireRoot = true
-					msg = "Update requires elevated permissions. Run: sudo bv --update"
+					msg = "Update requires elevated permissions. Run: sudo b9s --update"
 				}
 			}
 			return UpdateCompleteMsg{
@@ -256,10 +256,7 @@ func (m UpdateModal) View() string {
 			updateBtn = buttonStyle.Render(" Update ")
 			cancelBtn = selectedButtonStyle.Render(" Cancel ")
 		}
-		b.WriteString("    ")
-		b.WriteString(updateBtn)
-		b.WriteString("  ")
-		b.WriteString(cancelBtn)
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, updateBtn, "  ", cancelBtn))
 		b.WriteString("\n\n")
 
 		b.WriteString(subtextStyle.Render("[Y] Update   [N] Cancel   [Enter] Select"))
@@ -296,10 +293,10 @@ func (m UpdateModal) View() string {
 		if m.backupPath != "" {
 			b.WriteString(subtextStyle.Render(fmt.Sprintf("Backup: %s", m.backupPath)))
 			b.WriteString("\n")
-			b.WriteString(subtextStyle.Render("Run 'bv --rollback' to restore if needed"))
+			b.WriteString(subtextStyle.Render("Run 'b9s --rollback' to restore if needed"))
 			b.WriteString("\n\n")
 		}
-		b.WriteString(successStyle.Render("Restart bv to use the new version."))
+		b.WriteString(successStyle.Render("Restart b9s to use the new version."))
 		b.WriteString("\n\n")
 		b.WriteString(subtextStyle.Render("[Enter] Close"))
 

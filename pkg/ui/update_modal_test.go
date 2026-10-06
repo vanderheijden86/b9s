@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // ============================================================================
@@ -600,5 +601,52 @@ func (s UpdateState) String() string {
 		return "Error"
 	default:
 		return "Unknown"
+	}
+}
+
+// Each button is a multi-line bordered block, so the two must be joined
+// side by side; a plain string concatenation staggers them into a staircase.
+func TestUpdateModal_View_ButtonsShareRows(t *testing.T) {
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	for _, focus := range []int{0, 1} {
+		m := NewUpdateModal("v2.0.0", "", theme)
+		m.SetSize(120, 40)
+		m.confirmFocus = focus
+
+		var labelRow, topRow, bottomRow bool
+		for _, line := range strings.Split(ansi.Strip(m.View()), "\n") {
+			if strings.Contains(line, "[Y]") {
+				continue
+			}
+			if strings.Contains(line, "Update") && strings.Contains(line, "Cancel") {
+				labelRow = true
+			}
+			if strings.Count(line, "╭") == 2 {
+				topRow = true
+			}
+			if strings.Count(line, "╰") == 2 {
+				bottomRow = true
+			}
+		}
+		if !labelRow || !topRow || !bottomRow {
+			t.Errorf("focus %d: buttons not rendered side by side (labels=%v top=%v bottom=%v):\n%s",
+				focus, labelRow, topRow, bottomRow, ansi.Strip(m.View()))
+		}
+	}
+}
+
+func TestUpdateModal_View_NamesTheB9sBinary(t *testing.T) {
+	theme := DefaultTheme(lipgloss.NewRenderer(nil))
+	m := NewUpdateModal("v2.0.0", "", theme)
+	m.state = UpdateStateSuccess
+	m.backupPath = "/tmp/backup"
+	m.SetSize(120, 40)
+
+	view := ansi.Strip(m.View())
+	if !strings.Contains(view, "b9s --rollback") || !strings.Contains(view, "Restart b9s") {
+		t.Errorf("success view should name the b9s binary:\n%s", view)
+	}
+	if strings.Contains(view, "bv ") {
+		t.Errorf("success view names the old bv binary:\n%s", view)
 	}
 }
