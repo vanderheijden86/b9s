@@ -107,7 +107,7 @@ func TestTypeLegendShowsFunctionKeys(t *testing.T) {
 }
 
 func TestFunctionKeysAreBuiltIn(t *testing.T) {
-	_, errs := ResolveKeybindings(config.Keybindings{{Key: "f2", Query: "type:chore"}})
+	_, errs := ResolveHotkeys(config.Hotkeys{{Name: "c", ShortCut: "F2", Command: "chore"}})
 	if len(errs) != 1 {
 		t.Fatalf("f2 is built in, errs = %v", errs)
 	}

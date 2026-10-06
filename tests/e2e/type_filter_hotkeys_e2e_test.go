@@ -13,12 +13,22 @@ import (
 
 func writeKeybindingConfig(t *testing.T, body string) string {
 	t.Helper()
+	return writeConfigFile(t, "config.yaml", body)
+}
+
+func writeHotkeysFile(t *testing.T, body string) string {
+	t.Helper()
+	return writeConfigFile(t, "hotkeys.yaml", body)
+}
+
+func writeConfigFile(t *testing.T, name, body string) string {
+	t.Helper()
 	configHome := t.TempDir()
 	dir := filepath.Join(configHome, "b9s")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return configHome
@@ -50,14 +60,16 @@ func TestTypeFunctionKeysE2E(t *testing.T) {
 	}
 }
 
-// A user binding from config.yaml fills the query bar and shows in the footer.
-func TestCustomKeybindingE2E(t *testing.T) {
+// A hotkey from hotkeys.yaml, written as k9s writes one, runs its command,
+// fills the query bar and shows in the footer.
+func TestHotkeyE2E(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
-	configHome := writeKeybindingConfig(t, `keybindings:
-  - key: ctrl+t
-    query: "type:task"
-    description: Tasks
+	configHome := writeHotkeysFile(t, `hotKeys:
+  open-tasks:
+    shortCut: Ctrl-T
+    description: Open tasks
+    command: task status:open
 `)
 
 	out, err := runTreeTUIWithEnv(t, tempDir, 3000, []keyStep{
@@ -66,18 +78,20 @@ func TestCustomKeybindingE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run TUI: %v", err)
 	}
-	containsAll(t, out, []string{"^t", "Tasks", "type:task"})
+	containsAll(t, out, []string{"^t", "Open tasks", "status:open type:task"})
 }
 
-// A binding b9s cannot honour stops startup with a message that names it.
-func TestInvalidKeybindingStopsStartupE2E(t *testing.T) {
+// A hotkey b9s cannot honour stops startup with a message that names it.
+func TestInvalidHotkeyStopsStartupE2E(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))
-	configHome := writeKeybindingConfig(t, `keybindings:
-  - key: x
-    query: "type:epic"
-  - key: ctrl+t
-    action: explode
+	configHome := writeHotkeysFile(t, `hotKeys:
+  epics:
+    shortCut: x
+    command: epic
+  boom:
+    shortCut: Ctrl-T
+    command: explode
 `)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -90,7 +104,7 @@ func TestInvalidKeybindingStopsStartupE2E(t *testing.T) {
 	if !errors.As(err, &exit) || exit.ExitCode() != 2 {
 		t.Fatalf("want exit code 2, got err=%v\n%s", err, out)
 	}
-	for _, want := range []string{`"x" is a built-in key`, `unknown action "explode"`} {
+	for _, want := range []string{"hotkeys.yaml", "hotKeys.epics", "x is a built-in key", "hotKeys.boom", "unknown command: explode"} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("output misses %q:\n%s", want, out)
 		}

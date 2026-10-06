@@ -556,13 +556,12 @@ type Model struct {
 	assigneeScrollOffset int             // scroll offset for assignee bar when >9 assignees (bd-gs45.1)
 
 	// Filter and sort state
-	currentFilter    string // status filter: "all", "open", "closed", "ready"
-	labelFilter      string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
-	assigneeFilter   string // assignee filter: "" = none (bd-gs45.1)
-	queryState       QueryState
-	keymap           Keymap   // user-defined shortcuts from config.yaml (ADR 0033)
-	keybindingErrors []error  // bindings the config asked for and ResolveKeybindings rejected
-	sortMode         SortMode // bv-3ita: current sort mode
+	currentFilter  string // status filter: "all", "open", "closed", "ready"
+	labelFilter    string // label filter: "" = none, "bug" = filter to label "bug" (bd-dlqi)
+	assigneeFilter string // assignee filter: "" = none (bd-gs45.1)
+	queryState     QueryState
+	hotkeys        Hotkeys  // user hotkeys from hotkeys.yaml (ADR 0035)
+	sortMode       SortMode // bv-3ita: current sort mode
 
 	// Stats (cached)
 	countOpen    int
@@ -1214,11 +1213,16 @@ func (m Model) WithMonthFirst(monthFirst bool) Model {
 	return m
 }
 
+// WithHotkeys installs the user's validated hotkeys.
+func (m Model) WithHotkeys(hotkeys Hotkeys) Model {
+	m.hotkeys = hotkeys
+	return m
+}
+
 // WithConfig sets the application config and project info on the model.
 // Call this after NewModel to enable project switching and favorites.
 func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Model {
 	m.appConfig = cfg
-	m.keymap, m.keybindingErrors = ResolveKeybindings(cfg.Keybindings)
 	m.doltPollInterval = cfg.RefreshPollInterval()
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
@@ -2505,15 +2509,9 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			m.commandPrompt.Start()
 			return m, tea.Batch(cmds...)
 		}
-		if binding, ok := m.customBindingFor(msg); ok {
-			if binding.Query != "" {
-				m.runQueryBinding(binding)
-				return m, tea.Batch(cmds...)
-			}
-			// An action binding presses the built-in key it stands for.
-			if mapped, ok := keyMsgFor(binding.DefaultKey); ok {
-				msg = mapped
-			}
+		if hotkey, ok := m.hotkeyFor(msg); ok {
+			next, cmd := m.executeCommand(hotkey.command)
+			return next, tea.Batch(append(cmds, cmd)...)
 		}
 		// An open tree popup sits above the filtered tree, so its Escape
 		// closes the popup (handled below) and leaves the filter in place.
@@ -5049,7 +5047,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Views", "👁", 1, viewsSection},
 		{"Global", "🌐", 2, globalSection},
 		{"History", "📜", 3, historySection},
-		{"Custom", "⚙️", 3, m.customHelpRows()},
+		{"Hotkeys", "⚙️", 3, m.hotkeyHelpRows()},
 		{"Tree View", "🌳", 4, treeSection},
 		{"Insights", "💡", 0, insightsSection},
 		{"Status", "🩺", 2, statusSection},
@@ -5342,9 +5340,9 @@ func (m *Model) renderFooter() string {
 	}
 
 	// The footer clips on the right, so the user's own shortcuts lead.
-	custom := make([]hint, 0, len(m.keymap.bindings))
-	for _, b := range m.keymap.bindings {
-		custom = append(custom, hint{footerKeyLabel(b.Key), b.Label()})
+	custom := make([]hint, 0, len(m.hotkeys.keys))
+	for _, h := range m.hotkeys.keys {
+		custom = append(custom, hint{footerKeyLabel(h.Key), h.Label()})
 	}
 	hints = append(custom, hints...)
 

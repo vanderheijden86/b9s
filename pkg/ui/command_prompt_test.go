@@ -43,6 +43,35 @@ func TestResolveCommand(t *testing.T) {
 	}
 }
 
+// Type and issues commands take query terms, as k9s takes a filter after a
+// resource name (:pods app=kindnet). The terms replace the shared query.
+func TestCommandsTakeQueryTerms(t *testing.T) {
+	got, err := ResolveCommand("epic status:open  label:ui")
+	if err != nil || got != (Command{Kind: CommandTypeFilter, IssueType: model.TypeEpic, Query: "status:open label:ui"}) {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	got, err = ResolveCommand("issues status:open")
+	if err != nil || got != (Command{Kind: CommandClearType, Query: "status:open"}) {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	if _, err := ResolveCommand("layout x"); err == nil || !strings.Contains(err.Error(), "takes no arguments") {
+		t.Fatalf("layout x: err = %v", err)
+	}
+	if _, err := ResolveCommand("bug typ:x"); err == nil || !strings.Contains(err.Error(), `unknown query field "typ"`) {
+		t.Fatalf("bug typ:x: err = %v", err)
+	}
+}
+
+func TestCommandWithQueryTermsReplacesTheQuery(t *testing.T) {
+	m := keybindingTestModel(t, nil)
+	m.setQueryText("label:ui")
+	m.queryState.Accept()
+	m, _ = m.executeCommand(Command{Kind: CommandClearType, Query: "status:open"})
+	if got := m.QueryText(); got != "status:open" {
+		t.Fatalf("query = %q, want status:open", got)
+	}
+}
+
 func TestResolveCommand_RejectsUnknownCommand(t *testing.T) {
 	_, err := ResolveCommand("foo")
 	if err == nil || !strings.Contains(err.Error(), "unknown command: foo") {

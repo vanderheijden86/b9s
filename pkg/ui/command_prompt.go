@@ -106,10 +106,12 @@ func typedRunes(msg tea.KeyMsg) []rune {
 
 func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 	switch command.Kind {
-	case CommandTypeFilter:
-		m.setQueryText(withTypeFilter(m.queryState.Text(), command.IssueType))
-	case CommandClearType:
-		m.setQueryText(withTypeFilter(m.queryState.Text(), ""))
+	case CommandTypeFilter, CommandClearType:
+		base := m.queryState.Text()
+		if command.Query != "" {
+			base = command.Query
+		}
+		m.setQueryText(withTypeFilter(base, command.IssueType))
 	case CommandProjects:
 		return m, func() tea.Msg { return OpenProjectTableMsg{} }
 	case CommandMouse:

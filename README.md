@@ -42,7 +42,7 @@ b9s takes its interaction model from k9s, the Kubernetes terminal UI. Where k9s 
 
 - **Header.** A header with the logo, the project shortcuts and a title bar that names the project and its data source. `Ctrl-E` or `H` hides and shows it.
 - **Project shortcuts.** Recent projects sit on `1`-`9`, like favourite namespaces, and follow the same rules: a new project goes to the front, a known one keeps its number, and `lock_recent` freezes the list. `0` shows every project at once, as `0` shows every namespace.
-- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project`, `:layout`, `:wrap` and `:branch <id>`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
+- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project`, `:layout`, `:wrap` and `:branch <id>`. A type command or `:issues` takes query terms, as in `:epic status:open`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
 - **Filter.** `/` opens the query. `Enter` hides the field and keeps the filter, and `Esc` clears it.
 - **Marking.** `Space` marks an issue, `V` or `Ctrl-Space` marks a range and `Ctrl-\` clears the marks. Close, delete and status changes apply to every marked issue, or to the cursor row when nothing is marked.
 - **Table navigation.** `Ctrl-F` and `Ctrl-B` page, and `Ctrl-W` toggles wide columns. When the issue under the cursor is closed or deleted, the next issue takes its row.
@@ -262,32 +262,39 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 `s` picks another sort for the current session only. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it.
 
-### Keybindings
+### Hotkeys
 
-A `keybindings:` list in the same `config.yaml` binds a key to a query, or to a built-in action. Each entry takes a `key` and one of `query` or `action`. The commented example shows every field:
+`~/.config/b9s/hotkeys.yaml` (or `$XDG_CONFIG_HOME/b9s/hotkeys.yaml`) binds keys to `:` commands, in the shape of the k9s `hotkeys.yaml`. A k9s user can copy an entry and change only the command:
 
 ```yaml
-keybindings:
-  - key: ctrl+t              # one character, ctrl+<letter>, alt+<character> or f1 to f12
-    query: "type:epic"       # any search query; press again to clear it
-    description: Epics       # footer and help text; optional
-  - key: ctrl+g
-    action: view_board       # does what b does in the current view
-  - key: x
-    query: "status:open label:urgent"
-    override: true           # needed because x is a built-in key
+hotKeys:
+  open-epics:                    # any name; errors name it as hotKeys.open-epics
+    shortCut: Ctrl-T             # F1-F12, Ctrl-<letter>, Alt-<char>, Shift-<letter or digit>, or one character
+    description: Open epics      # footer and help text; optional, the command shows without it
+    command: epic status:open    # a : command, as typed after :
+  urgent:
+    shortCut: Shift-U            # the key U
+    command: issues label:urgent
+    override: true               # needed because U is a built-in key
+  chores:
+    shortCut: F1
+    command: chore
+    override: true               # F1 is the epic key until you replace it
 ```
 
-Custom keys lead the footer and fill the Custom panel of the `?` overlay. They work in the list, tree and board, and stay quiet while a search bar, the `:` prompt, a popup or the help overlay owns the keys.
+`command` is anything the `:` prompt accepts. A type command (`epic`, `feature`, `task`, `bug`, `chore`) or `issues` may carry query terms, and then the command replaces the whole query: `epic status:open` shows open epics, `issues label:ui` shows every type with that label. Without terms, a type command keeps the other terms of the query and swaps the type. The same terms work at the prompt, so `:task status:open` does what that hotkey does.
 
-b9s checks every binding at startup and refuses to start when one breaks a rule, printing each problem with its list position and exiting with code 2. A `keybindings` value of the wrong shape stops startup the same way, although any other unparsable config is still ignored. The rules:
+`Shift-<digit>` names the character a US keyboard sends for it (`Shift-0` is `)`), because a terminal reports the character and not the shift. `keepHistory` is accepted for k9s compatibility and has no effect, since the `:` prompt keeps no history.
 
-- `query` or `action`, not both and not neither. A query may use only the fields `id`, `title`, `status`, `priority`, `type`, `label`, `assignee` and `project`.
-- Each key once. A built-in key, such as `x`, needs `override: true`, and then the binding replaces the built-in on that key.
+Hotkeys lead the footer and fill the Hotkeys panel of the `?` overlay. They work in the list, tree and board, and stay quiet while a search bar, the `:` prompt, a popup or the help overlay owns the keys.
+
+b9s checks the file at startup and refuses to start when an entry breaks a rule, printing each problem with the entry's name and exiting with code 2. A misspelt field (`shortcut` for `shortCut`) or a file of the wrong shape stops startup the same way. The rules:
+
+- Every entry needs a `shortCut` and a `command`. A query term may use only the fields `id`, `title`, `status`, `priority`, `type`, `label`, `assignee` and `project`.
+- Each key once. A built-in key, such as `x` or `F1`, needs `override: true`, and then the hotkey replaces the built-in on that key.
 - Never rebindable: `Ctrl-C`, `Esc`, `Enter`, `Tab`, `Backspace`, `Space`, the arrow and paging keys, `j` `k` `h` `l` `G`, `/` `:` `?` and the backtick, and the digits.
-- Actions: `help`, `search`, `command_prompt`, `view_tree`, `view_board`, `view_graph`, `filter_open`, `filter_closed`, `filter_ready`, `filter_all`, `sort`, `status`, `edit`, `close_issue`, `refresh`, `project_picker`, `label_picker`, `assignee_picker`, `type_epic`, `type_feature`, `type_task`, `type_bug`, `columns`, `copy`, `branch` and `quit`.
 
-An action binding adds a key and leaves the built-in key working. See [ADR 0033](docs/adr/0033-add-a-type-quick-filter-and-user-keybindings-in-config.md).
+b9s reads the file once at startup. See [ADR 0035](docs/adr/0035-take-hotkeys-from-a-k9s-style-hotkeys-file.md).
 
 ### Attachments
 

@@ -73,45 +73,27 @@ func (m Model) QueryText() string {
 	return m.queryState.Text()
 }
 
-// KeybindingErrors lists the configured bindings that failed validation.
-func (m Model) KeybindingErrors() []error {
-	return m.keybindingErrors
-}
-
-// customBindingFor returns the user binding for a key press, but only where a
+// hotkeyFor returns the user hotkey for a key press, but only where a
 // keystroke is a command: never while text entry, a popup or an overlay owns it.
-func (m Model) customBindingFor(msg tea.KeyMsg) (CustomBinding, bool) {
-	if len(m.keymap.bindings) == 0 || m.showHelp || m.showTutorial ||
+func (m Model) hotkeyFor(msg tea.KeyMsg) (Hotkey, bool) {
+	if len(m.hotkeys.keys) == 0 || m.showHelp || m.showTutorial ||
 		m.focused == focusLabelPicker || m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen() ||
 		m.list.FilterState() == list.Filtering {
-		return CustomBinding{}, false
+		return Hotkey{}, false
 	}
-	return m.keymap.Lookup(msg.String())
+	return m.hotkeys.Lookup(msg.String())
 }
 
-// runQueryBinding applies a query binding to the shared query. Pressing it
-// again while its query is showing clears the query, like the o, i and C keys.
-func (m *Model) runQueryBinding(b CustomBinding) {
-	if strings.EqualFold(m.queryState.Text(), b.Query) {
-		m.queryState.Clear()
-		m.setQueryText("")
-	} else {
-		m.setQueryText(b.Query)
-		m.queryState.Accept()
-	}
-	m.afterQuickFilter()
-}
-
-// customHelpRows lists the user bindings for the help overlay's Custom panel.
-// It is empty when the config defines none, and the overlay skips an empty panel.
-func (m Model) customHelpRows() []struct{ key, desc string } {
-	rows := make([]struct{ key, desc string }, 0, len(m.keymap.bindings))
-	for _, b := range m.keymap.bindings {
-		desc := b.Label()
-		if b.Query != "" && b.Description != "" {
-			desc += " (" + b.Query + ")"
+// hotkeyHelpRows lists the user hotkeys for the help overlay's Hotkeys panel.
+// It is empty without a hotkeys.yaml, and the overlay skips an empty panel.
+func (m Model) hotkeyHelpRows() []struct{ key, desc string } {
+	rows := make([]struct{ key, desc string }, 0, len(m.hotkeys.keys))
+	for _, h := range m.hotkeys.keys {
+		desc := ":" + h.CommandText
+		if h.Description != "" {
+			desc = h.Description + " (" + desc + ")"
 		}
-		rows = append(rows, struct{ key, desc string }{b.Key, desc})
+		rows = append(rows, struct{ key, desc string }{h.ShortCut, desc})
 	}
 	return rows
 }

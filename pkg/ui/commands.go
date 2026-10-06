@@ -26,6 +26,9 @@ type Command struct {
 	IssueType model.IssueType
 	// Arg is the issue id a branch command names.
 	Arg string
+	// Query holds the query terms after a type or issues command. When set,
+	// they replace the shared query instead of editing its type term.
+	Query string
 }
 
 func typeFilterCommand(t model.IssueType) Command {
@@ -52,9 +55,12 @@ var commandAliases = map[string]Command{
 	"project": {Kind: CommandProjects}, "projects": {Kind: CommandProjects}, "proj": {Kind: CommandProjects},
 }
 
-// ResolveCommand maps prompt text to a command.
+// ResolveCommand maps prompt text to a command. A type or issues command may
+// carry query terms after its name, as k9s takes a filter after a resource
+// (:pods app=kindnet); the other commands take no arguments, except branch.
 func ResolveCommand(text string) (Command, error) {
-	if fields := strings.Fields(text); len(fields) > 0 && strings.EqualFold(fields[0], "branch") {
+	fields := strings.Fields(text)
+	if len(fields) > 0 && strings.EqualFold(fields[0], "branch") {
 		if len(fields) > 2 {
 			return Command{}, fmt.Errorf("branch takes one issue id")
 		}
@@ -64,11 +70,24 @@ func ResolveCommand(text string) (Command, error) {
 		}
 		return command, nil
 	}
-	name := strings.ToLower(strings.TrimSpace(text))
-	if command, ok := commandAliases[name]; ok {
-		return command, nil
+	if len(fields) == 0 {
+		return Command{}, fmt.Errorf("unknown command: ")
 	}
-	return Command{}, fmt.Errorf("unknown command: %s", name)
+	name := strings.ToLower(fields[0])
+	command, ok := commandAliases[name]
+	if !ok {
+		return Command{}, fmt.Errorf("unknown command: %s", name)
+	}
+	if len(fields) > 1 {
+		if command.Kind != CommandTypeFilter && command.Kind != CommandClearType {
+			return Command{}, fmt.Errorf("%s takes no arguments", name)
+		}
+		command.Query = strings.Join(fields[1:], " ")
+		if field, bad := unknownQueryField(command.Query); bad {
+			return Command{}, fmt.Errorf("unknown query field %q, want one of %s", field, strings.Join(queryFieldNames(), ", "))
+		}
+	}
+	return command, nil
 }
 
 // commandSuggestion returns the first canonical command name that extends
