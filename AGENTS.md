@@ -117,6 +117,10 @@ for item := range ch {
 
 Other agents work on this repository at the same time, and their uncommitted changes appear in your working tree. Never stash, revert, overwrite or otherwise disturb them. Treat them as changes you made yourself and carry on.
 
+## GitHub replies
+
+**Never post a comment, reply or review on a GitHub issue or pull request.** The owner writes every reply to users and contributors. Read issues and PRs freely, draft text when asked, and hand the draft over in the chat.
+
 ## Built-in TODO functionality
 
 If I explicitly ask you to use your built-in TODO functionality, comply without objecting that you need to use beads.
