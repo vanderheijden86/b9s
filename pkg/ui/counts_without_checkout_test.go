@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // chdirIntoProjectWithOpenIssue makes the working directory a checkout whose
@@ -54,17 +55,22 @@ func TestHeaderEntrySeedsNoCountsForProjectWithoutCheckout(t *testing.T) {
 	}
 }
 
-func TestOpenInEditorWithoutCheckoutRefusesWorkingDirectoryFile(t *testing.T) {
+// A project read from a Dolt server has no checkout. O must open the selected
+// issue from that project, never the working directory's issues file.
+func TestOpenInEditorWithoutCheckoutOpensSelectedIssue(t *testing.T) {
 	chdirIntoProjectWithOpenIssue(t)
-	// A terminal editor makes openInEditor return before launching anything,
-	// so this test can never open a real editor window.
-	t.Setenv("EDITOR", "vim")
-	t.Setenv("VISUAL", "")
-	m := NewModel(nil, "").WithConfig(config.Config{}, "remote", "")
+	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("TMPDIR", t.TempDir())
+	remote := []model.Issue{{ID: "remote-1", Title: "Remote issue", Status: model.StatusOpen, IssueType: model.TypeTask}}
+	m := NewModel(remote, "").WithConfig(config.Config{}, "remote", "")
 
 	m.openInEditor()
 
-	if !strings.Contains(m.statusMsg, "no local checkout") {
-		t.Errorf("status = %q; opening the editor for a project without a checkout must refuse, not open the working directory's issues file", m.statusMsg)
+	body, err := os.ReadFile(m.OpenedIssueFile())
+	if err != nil {
+		t.Fatalf("status = %q; O wrote no file: %v", m.statusMsg, err)
+	}
+	if !strings.Contains(string(body), "Remote issue") || strings.Contains(string(body), "Working directory issue") {
+		t.Errorf("O opened the wrong content:\n%s", body)
 	}
 }

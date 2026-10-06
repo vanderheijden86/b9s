@@ -425,7 +425,7 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
 | Detail: `n` `p`, `c`, `d` | Next or previous sibling, copy as Markdown, close |
 | Detail: `1`-`9`, `Backspace` | Open the child with that number, instead of a project; go back to the issue before |
-| Detail: `e`, `O` | Edit the issue the detail shows; open the beads file in a GUI editor (the footer lists `n` `p` only in the tree and `Backspace` only after opening a child) |
+| Detail: `e`, `O` | Edit the issue the detail shows; open it as a read-only Markdown file in a GUI editor, with any backend (the footer lists `n` `p` only in the tree and `Backspace` only after opening a child) |
 | Board: `o` `i` `C`, `r`, `c` | Toggle open, in progress, closed; ready; the closed column |
 | Board: `s`, `v`, `e` | Group by status, priority or type; epic rows or rail; hide empty columns |
 | Board: `y`, `f`, `{` `}`, `Tab`, `Shift-Tab` | Copy the ID, show the branch, previous or next epic, fold the lane, fold every lane |

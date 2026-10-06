@@ -652,6 +652,9 @@ type Model struct {
 	statusHyperlinkFor string
 	clipboardWrite     func(string) error
 
+	// openedIssueFile is the Markdown file O last wrote for the editor.
+	openedIssueFile string
+
 	// Workspace mode state
 	workspaceMode    bool            // True when viewing multiple repos
 	availableRepos   []string        // List of repo prefixes available
@@ -4018,7 +4021,6 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
 		m.copyIssueToClipboard()
 		return m, true
 	case "O":
-		// Open beads.jsonl in editor
 		m.openInEditor()
 		return m, true
 	case "s":
@@ -4974,7 +4976,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"F5", "Force refresh"},
 		{"x", "Export markdown"},
 		{"C", "Copy to clipboard"},
-		{"O", "Open in editor"},
+		{"O", "Open issue in editor"},
 	}
 
 	treeSection := []struct{ key, desc string }{
@@ -6231,6 +6233,11 @@ func (m Model) IsBoardView() bool {
 	return m.isBoardView
 }
 
+// OpenedIssueFile returns the Markdown file O last wrote for the editor, or "".
+func (m Model) OpenedIssueFile() string {
+	return m.openedIssueFile
+}
+
 // TreeSelectedID returns the ID of the currently selected tree node, or "".
 func (m Model) TreeSelectedID() string {
 	return m.tree.GetSelectedID()
@@ -6777,38 +6784,30 @@ func startAllowlistedGUIEditor(kind allowlistedGUIEditorKind, targetFile string)
 	}
 }
 
-// openInEditor opens the beads file in the user's preferred editor
-// Uses m.beadsPath which respects issues.jsonl (canonical per beads upstream)
+// openInEditor writes the selected issue to a temp Markdown file and opens it
+// in a GUI editor. The file is a read-only snapshot: edits go through e. A
+// snapshot rather than the project's issues.jsonl, because a project read from
+// a Dolt server, or without a local checkout, has no such file.
 func (m *Model) openInEditor() {
-	// Use the configured beadsPath instead of hardcoded path
-	beadsFile := m.beadsPath
-	if beadsFile == "" {
-		// Only the active project's own checkout may be opened for editing; a
-		// project read from its database has no file of its own.
-		beadsDir, ok := projectBeadsDir(m.activeProjectPath)
-		if !ok {
-			m.statusMsg = "read-only: no local checkout for this project"
-			m.statusIsError = true
-			return
-		}
-		if found, err := loader.FindJSONLPath(beadsDir); err == nil {
-			beadsFile = found
-		}
-	}
-	if beadsFile == "" {
-		m.statusMsg = "❌ No .beads directory or beads.jsonl found"
+	selectedItem := m.list.SelectedItem()
+	issueItem, ok := selectedItem.(IssueItem)
+	if selectedItem == nil || !ok {
+		m.statusMsg = "❌ No issue selected"
 		m.statusIsError = true
 		return
 	}
-	if _, err := os.Stat(beadsFile); os.IsNotExist(err) {
-		m.statusMsg = fmt.Sprintf("❌ Beads file not found: %s", beadsFile)
+	issue := issueItem.Issue
+	issueFile, err := writeIssueSnapshot(issue, m.issueMap)
+	if err != nil {
+		m.statusMsg = fmt.Sprintf("❌ Could not write %s for the editor: %v", issue.ID, err)
 		m.statusIsError = true
 		return
 	}
+	m.openedIssueFile = issueFile
 
 	// Tests and E2E runs must never start a real editor.
 	if os.Getenv("B9S_TEST_MODE") != "" {
-		m.statusMsg = fmt.Sprintf("📝 Would open %s in an editor (B9S_TEST_MODE)", filepath.Base(beadsFile))
+		m.statusMsg = fmt.Sprintf("📝 Would open %s in an editor (B9S_TEST_MODE)", issue.ID)
 		m.statusIsError = false
 		return
 	}
@@ -6876,7 +6875,7 @@ func (m *Model) openInEditor() {
 		return
 	}
 
-	actualKind, err := startAllowlistedGUIEditor(requestedEditorKind, beadsFile)
+	actualKind, err := startAllowlistedGUIEditor(requestedEditorKind, issueFile)
 	if err != nil {
 		m.statusMsg = fmt.Sprintf("❌ Failed to open editor: %v", err)
 		m.statusIsError = true
@@ -6885,11 +6884,43 @@ func (m *Model) openInEditor() {
 	requestedEditorKind = actualKind
 
 	if ignoredEditorBase != "" {
-		m.statusMsg = fmt.Sprintf("📝 Opened in %s (ignored $EDITOR=%s)", allowlistedGUIEditorDisplayName(requestedEditorKind), ignoredEditorBase)
+		m.statusMsg = fmt.Sprintf("📝 Opened %s in %s (ignored $EDITOR=%s)", issue.ID, allowlistedGUIEditorDisplayName(requestedEditorKind), ignoredEditorBase)
 	} else {
-		m.statusMsg = fmt.Sprintf("📝 Opened in %s", allowlistedGUIEditorDisplayName(requestedEditorKind))
+		m.statusMsg = fmt.Sprintf("📝 Opened %s in %s", issue.ID, allowlistedGUIEditorDisplayName(requestedEditorKind))
 	}
 	m.statusIsError = false
+}
+
+// writeIssueSnapshot writes the issue as Markdown to a new file in the system
+// temp directory. The file outlives b9s on purpose: a GUI editor reads it
+// after the start command returns, and may still show it after b9s quits.
+func writeIssueSnapshot(issue model.Issue, issueMap map[string]*model.Issue) (string, error) {
+	f, err := os.CreateTemp("", "b9s-"+safeFileComponent(issue.ID)+"-*.md")
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.WriteString(formatIssueMarkdown(issue, issueMap)); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+// safeFileComponent keeps an issue ID usable in a file name pattern:
+// CreateTemp rejects a path separator, and "*" would move the random part.
+func safeFileComponent(id string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '.', r == '_':
+			return r
+		}
+		return '_'
+	}, id)
 }
 
 // Stop cleans up resources (file watcher, instance lock, background worker, etc.)
