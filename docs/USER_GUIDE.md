@@ -446,7 +446,8 @@ To switch skin while b9s runs, type `:skins`. The list holds the built-in skins,
 then every `.yaml` or `.yml` file in `~/.config/b9s/skins/`. A check mark shows
 the skin on screen. `Enter` applies the highlighted skin at once and switches to
 its slot, so a light skin shows even on a dark terminal. b9s saves the choice as
-`ui.skin` and `ui.theme`, and uses it at the next start. b9s does not read the
+`ui.skin` and `ui.theme`, and uses it at the next start. A running `b9s web`
+reads `ui.skin` for each page load, so a reload shows the new skin. b9s does not read the
 k9s config, so copy k9s skins into the skins folder, or link it:
 
 ```bash
@@ -489,7 +490,7 @@ The `b9s:` keys are the colour names in `pkg/skin/skin.go`, for example
 `accents` list needs eight colours for epics and projects. The built-in skins
 are in `pkg/skin/builtin/`; copy one to start a new skin. If a skin file does
 not load, b9s starts with the built-in skins and shows the error in the status
-bar. See [ADR 0033](adr/0033-load-k9s-skins-into-theme-slots.md).
+bar. See [ADR 0034](adr/0034-switch-skins-at-runtime.md).
 
 ### Environment variables
 

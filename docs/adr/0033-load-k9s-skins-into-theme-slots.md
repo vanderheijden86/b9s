@@ -2,8 +2,9 @@
 type: ADR
 id: "0033"
 title: "Load k9s skins into the light and dark theme slots"
-status: active
+status: superseded
 date: 2026-10-03
+superseded_by: "0034"
 ---
 
 ## Context
