@@ -468,6 +468,7 @@ type Model struct {
 	issueMap         map[string]*model.Issue
 	pendingBranchID  string                  // ShowBranchMsg waiting for its issue to load
 	detailBack       []string                // issues left through a child's number key, for Backspace
+	detailPin        detailPin               // tree or board issue the filtered list does not hold
 	beadsPath        string                  // Path to beads.jsonl for reloading
 	watcher          *watcher.Watcher        // File watcher for live reload
 	doltWatcher      *datasource.DoltWatcher // Dolt polling watcher for live reload
@@ -3568,12 +3569,7 @@ func (m *Model) syncTreeToDetail() {
 	if selected == nil {
 		return
 	}
-	for i, item := range m.list.Items() {
-		if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selected.ID {
-			m.list.Select(i)
-			break
-		}
-	}
+	m.selectDetailIssue(selected.ID)
 	m.updateViewportContent()
 }
 
@@ -3602,12 +3598,7 @@ func (m *Model) syncBoardToDetail() {
 	if selected == nil {
 		return
 	}
-	for i, item := range m.list.Items() {
-		if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selected.ID {
-			m.list.Select(i)
-			break
-		}
-	}
+	m.selectDetailIssue(selected.ID)
 	m.updateViewportContent()
 }
 
@@ -5935,19 +5926,12 @@ func (m *Model) detailPaneWidth() int {
 }
 
 func (m *Model) updateViewportContent() {
-	selectedItem := m.list.SelectedItem()
-	if selectedItem == nil {
+	selected := m.detailIssue()
+	if selected == nil {
 		m.viewport.SetContent("No issues selected")
 		return
 	}
-
-	// Safe type assertion
-	issueItem, ok := selectedItem.(IssueItem)
-	if !ok {
-		m.viewport.SetContent("Error: invalid item type")
-		return
-	}
-	item := issueItem.Issue
+	item := *selected
 
 	var update *detailUpdateNotice
 	if m.updateAvailable {
@@ -6422,20 +6406,13 @@ func (m Model) renderTimeTravelPrompt() string {
 
 // copyIssueToClipboard copies the selected issue to the clipboard as Markdown.
 func (m *Model) copyIssueToClipboard() {
-	selectedItem := m.list.SelectedItem()
-	if selectedItem == nil {
+	selected := m.detailIssue()
+	if selected == nil {
 		m.statusMsg = "❌ No issue selected"
 		m.statusIsError = true
 		return
 	}
-
-	issueItem, ok := selectedItem.(IssueItem)
-	if !ok {
-		m.statusMsg = "❌ Invalid item type"
-		m.statusIsError = true
-		return
-	}
-	issue := issueItem.Issue
+	issue := *selected
 	writeClipboard := m.clipboardWrite
 	if writeClipboard == nil {
 		writeClipboard = clipboard.WriteAll
@@ -6771,9 +6748,9 @@ func (m *Model) openInEditor() {
 	selected := m.getSelectedIssue()
 	if m.focused == focusDetail {
 		// The detail can show a child opened with 1-9, which the tree cursor
-		// has not moved to; the list selection follows the detail.
-		if item, ok := m.list.SelectedItem().(IssueItem); ok {
-			selected = &item.Issue
+		// has not moved to.
+		if issue := m.detailIssue(); issue != nil {
+			selected = issue
 		}
 	}
 	if selected == nil {
