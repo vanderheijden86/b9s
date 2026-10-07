@@ -1,7 +1,11 @@
 # Sample project
 
-A made-up web shop in 21 Beads issues: four epics, work in progress, blocked
-and deferred issues, dependency chains, labels, comments and closed work. Every
+A made-up web shop in 52 Beads issues. Five epics (Checkout, Product search,
+Spring launch, Mobile shop, Seller onboarding) each hold features, and the
+features hold tasks and bugs. Two milestones ship the epics as releases. It has
+work in progress, blocked and deferred issues, dependency chains, labels,
+comments, a Mermaid diagram and closed work. It is the seed of the public demo
+at [demo.b9s.osen.co](https://demo.b9s.osen.co). Every
 name and email in it is invented. Use it to try b9s, or `b9s web`, when you
 have no project of your own at hand.
 
@@ -38,7 +42,8 @@ such as `CLAUDE.md` and `AGENTS.md` into the folder.
 temporary embedded project, under a made-up git identity, and writes
 `.beads/issues.jsonl`. The IDs and dates change on every run.
 `TestSampleProjectOpensAsJSONL` in `internal/datasource` checks that the result
-still opens and still contains each kind of issue the screens show.
+still opens, still contains each kind of issue the screens show, and still
+nests tasks under features under epics.
 
 ```bash
 sh examples/sample-project/generate.sh

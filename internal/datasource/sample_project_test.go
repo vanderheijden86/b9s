@@ -21,8 +21,32 @@ func TestSampleProjectOpensAsJSONL(t *testing.T) {
 		t.Fatalf("source = %s, want %s", opened.Source.Type, SourceTypeJSONLLocal)
 	}
 
+	byID := map[string]model.Issue{}
+	for _, is := range opened.Issues {
+		byID[is.ID] = is
+	}
+	parentOf := func(is model.Issue) (model.Issue, bool) {
+		for _, d := range is.Dependencies {
+			if d.Type == model.DepParentChild {
+				p, ok := byID[d.DependsOnID]
+				return p, ok
+			}
+		}
+		return model.Issue{}, false
+	}
+
 	count := map[string]int{}
 	for _, is := range opened.Issues {
+		if is.IssueType == "milestone" {
+			count["milestone"]++
+		}
+		// The tree view is the first screen a visitor sees; it must show an
+		// epic holding features that hold tasks, three levels deep.
+		if f, ok := parentOf(is); ok && f.IssueType == model.TypeFeature {
+			if e, ok := parentOf(f); ok && e.IssueType == model.TypeEpic {
+				count["epic>feature>task"]++
+			}
+		}
 		count[string(is.Status)]++
 		if is.IssueType == model.TypeEpic {
 			count["epic"]++
@@ -41,7 +65,7 @@ func TestSampleProjectOpensAsJSONL(t *testing.T) {
 			}
 		}
 	}
-	for _, kind := range []string{"epic", "open", "in_progress", "blocked", "deferred", "closed", "blocks", "commented"} {
+	for _, kind := range []string{"epic", "open", "in_progress", "blocked", "deferred", "closed", "blocks", "commented", "milestone", "epic>feature>task"} {
 		if count[kind] == 0 {
 			t.Errorf("the sample has no %s issue; regenerate it with examples/sample-project/generate.sh", kind)
 		}

@@ -15,20 +15,22 @@ image, and is reseeded on every half hour (:00 and :30).
 Build from the repository root:
 
 ```bash
-docker build --platform linux/amd64 -f scripts/demo/Dockerfile -t b9s-demo:latest .
+docker build --platform linux/amd64 --build-arg VERSION=v1.3.2 \
+  -f scripts/demo/Dockerfile -t b9s-demo:latest .
 docker run --rm -p 7979:7979 b9s-demo:latest   # http://localhost:7979
 ```
 
-`--build-arg SEED=examples/sample-project/.beads/issues.jsonl` bakes another
-sample in; set `B9S_DEMO_PREFIX` and `B9S_DEMO_NAME` to match it.
+The seed is the web shop in `examples/sample-project`. `VERSION` is the release
+tag the header shows. `--build-arg SEED=examples/space-programme/.beads/issues.jsonl`
+bakes another sample in; set `B9S_DEMO_PREFIX` and `B9S_DEMO_NAME` to match it.
 
 ## Contract
 
 | Setting | Default | Meaning |
 |---|---|---|
 | `B9S_DEMO_SEED` | `/app/seed/issues.jsonl` | The JSONL every reset starts from |
-| `B9S_DEMO_PREFIX` | `mars` | Issue prefix of the seed |
-| `B9S_DEMO_NAME` | `space-programme` | Project name shown in the header |
+| `B9S_DEMO_PREFIX` | `shop` | Issue prefix of the seed |
+| `B9S_DEMO_NAME` | `webshop` | Project name shown in the header |
 | `B9S_DEMO_RESET_SECONDS` | `1800` | Reset period; resets land on multiples of it |
 | `B9S_DEMO_BANNER` | `Live demo · edits reset every 30 min` | The line above the board |
 | `B9S_DEMO_BANNER_LINK` | `https://github.com/vanderheijden86/b9s` | Where the banner links |

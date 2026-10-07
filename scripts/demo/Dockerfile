@@ -6,8 +6,11 @@ FROM golang:1.25-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec702
 RUN apk add --no-cache build-base
 WORKDIR /src
 COPY . .
+# The release tag the demo runs, as in the GoReleaser builds. Without it b9s
+# reports a development version and offers an update.
+ARG VERSION=dev
 RUN CGO_ENABLED=1 go build -mod=vendor \
-    -ldflags "-s -w" \
+    -ldflags "-s -w -X github.com/vanderheijden86/b9s/pkg/version.Version=${VERSION}" \
     -o /out/b9s ./cmd/b9s
 
 # Built here, as in scripts/web, because the published bd is linked against glibc.
@@ -20,7 +23,7 @@ RUN git clone --depth 1 --branch "$BD_VERSION" https://github.com/gastownhall/be
        -ldflags "-s -w -X main.Build=$BD_VERSION" -o /out-bd ./cmd/bd
 
 FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8 AS runtime
-ARG SEED=examples/space-programme/.beads/issues.jsonl
+ARG SEED=examples/sample-project/.beads/issues.jsonl
 RUN apk add --no-cache git \
     && mkdir -p /app/seed /data \
     && chown 65532:65532 /data

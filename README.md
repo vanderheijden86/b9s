@@ -5,7 +5,7 @@
 
 **See your [Beads](https://github.com/steveyegge/beads) issues as a tree, a board and a dependency graph, and change them from the terminal, a browser or your phone.** Every change goes through the `bd` CLI, so b9s, `bd` and your agents always agree on what is stored.
 
-**Try it in your browser, no install:** [demo.b9s.osen.co](https://demo.b9s.osen.co) opens a made-up space programme that anyone can edit. It resets every 30 minutes.
+**Try it in your browser, no install:** [demo.b9s.osen.co](https://demo.b9s.osen.co) opens a made-up web shop, with epics split into features and tasks, that anyone can edit. It resets every 30 minutes.
 
 **Or watch the 90-second demo:** the tree and the board in a terminal, then the same project on a phone over Tailscale.
 

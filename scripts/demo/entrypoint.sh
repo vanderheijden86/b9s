@@ -5,8 +5,8 @@
 set -eu
 
 : "${B9S_DEMO_SEED:=/app/seed/issues.jsonl}"
-: "${B9S_DEMO_PREFIX:=mars}"
-: "${B9S_DEMO_NAME:=space-programme}"
+: "${B9S_DEMO_PREFIX:=shop}"
+: "${B9S_DEMO_NAME:=webshop}"
 : "${B9S_DEMO_RESET_SECONDS:=1800}"
 : "${B9S_DEMO_LISTEN:=:7979}"
 : "${B9S_DEMO_BANNER:=Live demo · edits reset every 30 min}"
