@@ -182,3 +182,32 @@ func TestUnknownColourNameIsAnError(t *testing.T) {
 		t.Fatalf("err = %v, want one naming the bad colour", err)
 	}
 }
+
+func TestAvailableListsBuiltinsThenSkinFiles(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"zed.yaml", "gruvbox.yml", "notes.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("k9s: {}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(dir, "sub.yaml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := Available(dir)
+	var names, refs []string
+	for _, e := range got {
+		names = append(names, e.Name)
+		refs = append(refs, e.Ref)
+	}
+	builtins := Builtins()
+	want := append(append([]string{}, builtins...), "gruvbox", "zed")
+	if strings.Join(names, ",") != strings.Join(want, ",") {
+		t.Fatalf("names = %v, want %v", names, want)
+	}
+	if refs[0] != builtins[0] || refs[len(refs)-1] != filepath.Join(dir, "zed.yaml") {
+		t.Errorf("refs = %v, want built-in names then file paths", refs)
+	}
+	if len(Available(filepath.Join(dir, "missing"))) != len(builtins) {
+		t.Error("a missing skins directory must still list the built-in skins")
+	}
+}

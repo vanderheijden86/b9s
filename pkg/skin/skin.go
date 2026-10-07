@@ -236,6 +236,32 @@ func Builtins() []string {
 	return names
 }
 
+// Entry is a skin the user can choose. Ref is what ui.skin stores for it:
+// the name of a built-in skin, or the path of a skin file.
+type Entry struct {
+	Name string
+	Ref  string
+}
+
+// Available lists the built-in skins, then the skin files in dir sorted by
+// name. dir is optional: a missing or unreadable directory lists only the
+// built-in skins.
+func Available(dir string) []Entry {
+	var out []Entry
+	for _, name := range Builtins() {
+		out = append(out, Entry{Name: name, Ref: name})
+	}
+	files, _ := os.ReadDir(dir)
+	for _, f := range files {
+		ext := filepath.Ext(f.Name())
+		if f.IsDir() || (ext != ".yaml" && ext != ".yml") {
+			continue
+		}
+		out = append(out, Entry{Name: strings.TrimSuffix(f.Name(), ext), Ref: filepath.Join(dir, f.Name())})
+	}
+	return out
+}
+
 // stockName is k9s's own default skin. k9s lays every skin over it, so b9s
 // does too; it is a base, not a choice.
 const stockName = "k9s-stock"

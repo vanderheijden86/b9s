@@ -28,6 +28,8 @@ func TestResolveCommand(t *testing.T) {
 		{input: "chores", want: Command{Kind: CommandTypeFilter, IssueType: model.TypeChore}},
 		{input: "all", want: Command{Kind: CommandClearType}},
 		{input: "proj", want: Command{Kind: CommandProjects}},
+		{input: "skins", want: Command{Kind: CommandSkins}},
+		{input: "skin", want: Command{Kind: CommandSkins}},
 		{input: "  EPIC ", want: Command{Kind: CommandTypeFilter, IssueType: model.TypeEpic}},
 	}
 	for _, tt := range tests {

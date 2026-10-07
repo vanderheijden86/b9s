@@ -120,6 +120,8 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		return m.toggleTitleWrap(), nil
 	case CommandBranch:
 		return m.handleShowBranch(command.Arg)
+	case CommandSkins:
+		return m.openSkinPicker(), nil
 	}
 	return m, nil
 }

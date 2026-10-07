@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/skin"
@@ -215,5 +216,80 @@ func walkThemes(v reflect.Value, path string, seen map[uintptr]bool, depth int, 
 		for i := 0; i < v.NumField(); i++ {
 			walkThemes(v.Field(i), path+"."+v.Type().Field(i).Name, seen, depth+1, visit)
 		}
+	}
+}
+
+// :skins lists the built-in skins and the files in the b9s skins directory.
+// Choosing one shows it at once and keeps it for the next start.
+func TestSkinsCommandAppliesAndSavesTheChosenSkin(t *testing.T) {
+	light, dark := Skins()
+	t.Cleanup(func() { applySkins(light, dark) })
+	lipgloss.SetHasDarkBackground(lipgloss.HasDarkBackground())
+	cfgHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfgHome)
+	skinsDir := filepath.Join(cfgHome, "b9s", "skins")
+	if err := os.MkdirAll(skinsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join("..", "skin", "testdata", "gruvbox-light.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gruvboxPath := filepath.Join(skinsDir, "gruvbox-light.yaml")
+	if err := os.WriteFile(gruvboxPath, src, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m := NewModel(nil, "").WithConfig(config.DefaultConfig(), "", "")
+	m = typeKeys(m, ":", "s", "k", "i", "n", "s")
+	m = pressKey(m, tea.KeyEnter)
+	if !m.showSkinPicker {
+		t.Fatal(":skins did not open the skin picker")
+	}
+	for m.skinPicker.Selected().Ref != gruvboxPath {
+		before := m.skinPicker.Selected()
+		m = pressKey(m, tea.KeyDown)
+		if m.skinPicker.Selected() == before {
+			t.Fatalf("picker has no entry for %s", gruvboxPath)
+		}
+	}
+	m = pressKey(m, tea.KeyEnter)
+
+	if m.showSkinPicker {
+		t.Error("Enter left the skin picker open")
+	}
+	if l, _ := SkinNames(); l != "gruvbox-light" {
+		t.Errorf("light slot = %s, want gruvbox-light", l)
+	}
+	if m.appConfig.UI.Theme != config.ThemeLight {
+		t.Errorf("theme = %s, want light so the chosen light skin shows", m.appConfig.UI.Theme)
+	}
+	if !strings.Contains(m.View(), "\x1b]11;#FBF1C7") {
+		t.Error("view does not paint the terminal with the gruvbox background")
+	}
+	saved, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.UI.Skin != gruvboxPath || saved.UI.Theme != config.ThemeLight {
+		t.Errorf("saved skin/theme = %q/%q, want %q/light", saved.UI.Skin, saved.UI.Theme, gruvboxPath)
+	}
+}
+
+func TestSkinPickerEscapeKeepsTheSkin(t *testing.T) {
+	light, dark := Skins()
+	t.Cleanup(func() { applySkins(light, dark) })
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	m := NewModel(nil, "").WithConfig(config.DefaultConfig(), "", "")
+	m = typeKeys(m, ":", "s", "k", "i", "n", "s")
+	m = pressKey(m, tea.KeyEnter)
+	m = pressKey(m, tea.KeyDown)
+	m = pressKey(m, tea.KeyEsc)
+	if m.showSkinPicker {
+		t.Error("Esc left the skin picker open")
+	}
+	if l, d := SkinNames(); l != light.Name || d != dark.Name {
+		t.Errorf("slots = %s/%s, want %s/%s unchanged", l, d, light.Name, dark.Name)
 	}
 }

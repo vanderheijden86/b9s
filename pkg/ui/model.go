@@ -578,6 +578,9 @@ type Model struct {
 	// Status picker for quick status changes (bd-a83)
 	showStatusPicker bool
 	statusPicker     StatusPickerModel
+
+	showSkinPicker bool
+	skinPicker     SkinPickerModel
 	// statusTargets holds the issues the open status picker applies to.
 	statusTargets []string
 	// statusPickerGeneration is the projectGeneration in effect when the
@@ -1290,6 +1293,18 @@ func (m *Model) switchSkin(p skin.Palette, ref string) {
 		mode = config.ThemeDark
 	}
 	m.applyThemeMode(mode)
+}
+
+// saveUIChoice keeps a theme or skin choice for the next start. An unreadable
+// config is never overwritten, so the choice lasts only for this session.
+func (m *Model) saveUIChoice(what string) {
+	if m.configLoadFailed {
+		m.statusMsg = strings.ToUpper(what[:1]) + what[1:] + " is temporary: config could not be read"
+		m.statusIsError = true
+	} else if err := config.Save(m.appConfig); err != nil {
+		m.statusMsg = "Saving " + what + ": " + err.Error()
+		m.statusIsError = true
+	}
 }
 
 // TerminalPaperSequence sets the background before the alternate screen appears.
@@ -2348,13 +2363,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		if msg.String() == "ctrl+t" && m.list.FilterState() != list.Filtering && m.queryState.Mode() != QueryEditing && m.commandPrompt.Mode() != PromptEditing {
 			mode := nextThemeMode(m.appConfig.UI.Theme)
 			m.applyThemeMode(mode)
-			if m.configLoadFailed {
-				m.statusMsg = "Theme is temporary: config could not be read"
-				m.statusIsError = true
-			} else if err := config.Save(m.appConfig); err != nil {
-				m.statusMsg = "Saving theme: " + err.Error()
-				m.statusIsError = true
-			}
+			m.saveUIChoice("theme")
 			return m, nil
 		}
 
@@ -2365,6 +2374,10 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			return m.handleHelpSearchKey(msg)
+		}
+
+		if m.showSkinPicker {
+			return m.handleSkinPickerKey(msg)
 		}
 
 		// Handle status picker modal (bd-a83)
@@ -4294,6 +4307,9 @@ func (m Model) View() (result string) {
 		// Self-update modal (bv-182)
 		body = m.updateModal.CenterModal(m.width, m.height-1)
 		isOverlay = true
+	} else if m.showSkinPicker {
+		body = m.skinPicker.View()
+		isOverlay = true
 	} else if m.showStatusPicker {
 		// Status picker modal (bd-a83)
 		body = m.statusPicker.View()
@@ -4974,6 +4990,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Ctrl+S", "Search this help"},
 		{":", "Command prompt"},
 		{":mouse", "Mouse: select text / scroll"},
+		{":skins", "Switch skin"},
 		{"Ctrl+e", "Toggle header"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},

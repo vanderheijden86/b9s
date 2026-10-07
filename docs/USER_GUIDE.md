@@ -335,6 +335,7 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `:chore` | `:chores` | Show only chores |
 | `:issues` | `:all` | Show every type again |
 | `:project` | `:projects`, `:proj` | List the databases on the Dolt server |
+| `:skins` | `:skin` | Pick a skin: the built-in ones, then the files in `~/.config/b9s/skins/`. See [Skins](#skins) |
 | `:mouse` | | Hand the mouse to the terminal, or take it back |
 | `:layout` | | Stack the detail pane below the tree, or put it back to the right |
 | `:branch <id>` | | Select the issue and show only its top-level branch, as `f` does. The short id shown on screen works too |
@@ -440,6 +441,17 @@ file. b9s puts the skin in the light theme slot or the dark theme slot, from the
 luminance of the skin's background. The other slot keeps its built-in skin:
 Sepia for light and Dracula for dark. `Ctrl-T` and the browser's `◐` sheet then
 show the skin's name in place of the built-in name. `b9s web` also uses the skin.
+
+To switch skin while b9s runs, type `:skins`. The list holds the built-in skins,
+then every `.yaml` or `.yml` file in `~/.config/b9s/skins/`. A check mark shows
+the skin on screen. `Enter` applies the highlighted skin at once and switches to
+its slot, so a light skin shows even on a dark terminal. b9s saves the choice as
+`ui.skin` and `ui.theme`, and uses it at the next start. b9s does not read the
+k9s config, so copy k9s skins into the skins folder, or link it:
+
+```bash
+ln -s ~/.config/k9s/skins ~/.config/b9s/skins   # Linux; on macOS: ~/Library/Application\ Support/k9s/skins
+```
 
 b9s takes its colours from the k9s slots:
 

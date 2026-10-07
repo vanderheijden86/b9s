@@ -42,7 +42,7 @@ b9s takes its interaction model from k9s, the Kubernetes terminal UI. Where k9s 
 
 - **Header.** A header with the logo, the project shortcuts and a title bar that names the project and its data source. `Ctrl-E` or `H` hides and shows it.
 - **Project shortcuts.** Recent projects sit on `1`-`9`, like favourite namespaces, and follow the same rules: a new project goes to the front, a known one keeps its number, and `lock_recent` freezes the list. `0` shows every project at once, as `0` shows every namespace.
-- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project`, `:layout`, `:wrap` and `:branch <id>`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
+- **Command prompt.** `:` opens a prompt with aliases such as `:epic`, `:bug`, `:issues`, `:project`, `:skins`, `:layout`, `:wrap` and `:branch <id>`. `Tab` accepts the suggestion, and `Backspace` on an empty prompt closes it.
 - **Filter.** `/` opens the query. `Enter` hides the field and keeps the filter, and `Esc` clears it.
 - **Marking.** `Space` marks an issue, `V` or `Ctrl-Space` marks a range and `Ctrl-\` clears the marks. Close, delete and status changes apply to every marked issue, or to the cursor row when nothing is marked.
 - **Table navigation.** `Ctrl-F` and `Ctrl-B` page, and `Ctrl-W` toggles wide columns. When the issue under the cursor is closed or deleted, the next issue takes its row.
