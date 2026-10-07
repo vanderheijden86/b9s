@@ -9,21 +9,25 @@ package web
 // its size, and the detail view reads them from GET api/issue. Blocked, Ready and ClosedLike
 // are derived on the server with the TUI's rules, so both UIs count alike.
 type Issue struct {
-	ID             string   `json:"id"`
-	Title          string   `json:"title"`
-	Description    string   `json:"description"`
-	Design         string   `json:"design"`
-	Acceptance     string   `json:"acceptance"`
-	Notes          string   `json:"notes"`
-	Status         string   `json:"status"`
-	Priority       int      `json:"priority"`
-	Type           string   `json:"type"`
-	Assignee       string   `json:"assignee"`
-	CreatedBy      string   `json:"created_by"`
-	CreatedAt      string   `json:"created_at"`
-	UpdatedAt      string   `json:"updated_at"`
-	ClosedAt       string   `json:"closed_at"`
-	DeferUntil     string   `json:"defer_until"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Design      string `json:"design"`
+	Acceptance  string `json:"acceptance"`
+	Notes       string `json:"notes"`
+	Status      string `json:"status"`
+	Priority    int    `json:"priority"`
+	Type        string `json:"type"`
+	Assignee    string `json:"assignee"`
+	CreatedBy   string `json:"created_by"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	ClosedAt    string `json:"closed_at"`
+	DeferUntil  string `json:"defer_until"`
+	Due         string `json:"due"`
+	// Summary is the first sentence of an epic's description, for the board's
+	// epic cell. A snapshot keeps it while it drops Description.
+	Summary        string   `json:"summary"`
 	Labels         []string `json:"labels"`
 	Parent         string   `json:"parent"`
 	BlockedBy      []string `json:"blocked_by"`

@@ -158,7 +158,9 @@ test("the epic rail is the default: epics form the first column, level with thei
   const e = epic(page, "t-epic");
   await expect(e).toContainText("Mobile web");
   await expect(e).toContainText("0/3");
-  await expect(e).toContainText("3 issues");
+  // The terminal's epic cell facts (docs/adr/0030): what moves, what waits, what is urgent.
+  await expect(e.locator(".ec")).toHaveText("wip 1·waiting 1·ready 1");
+  await expect(e.locator(".en")).toContainText("P1 1");
   const eb = (await e.boundingBox())!, ob = (await page.locator('#wboard .whead[data-tab="open"]').boundingBox())!;
   expect(eb.x + eb.width).toBeLessThanOrEqual(ob.x);
   // The epic's cards start on the epic's row; the loose chore sits in the No epic row below it.
@@ -260,5 +262,41 @@ test.describe("a lane taller than its epic cell", () => {
     // The next lane's epic starts below it, so the cell fills its own row only.
     const none = (await epic(page, "none").boundingBox())!;
     expect(none.y).toBeGreaterThanOrEqual(eb.y + eb.height - 1);
+  });
+});
+
+test("a card is one line with its tags on the right, and opens under the cursor", async ({ page, project }) => {
+  await board(page, project);
+  await expect(card(page, "t-3").locator(".tags")).toHaveText("blocked 1");
+  await expect(card(page, "t-1").locator(".tags")).toHaveText("blocks 1P1");
+  await expect(card(page, "t-2").locator(".tags")).toHaveCount(0);
+  await expect(card(page, "t-2").locator(".l2")).toHaveCount(0);
+  const h = (await card(page, "t-2").boundingBox())!.height;
+  expect(h).toBeLessThan(32);
+  await card(page, "t-2").click();
+  await expect(card(page, "t-2").locator(".l2")).toHaveCount(1);
+});
+
+test.describe("hierarchy in a cell", () => {
+  test.use({
+    fixture: {
+      issues: [
+        { id: "h-epic", title: "[epic] Epic: Checkout", type: "epic", priority: 2, description: "# Goal\nShip a faster checkout. Then more." },
+        { id: "h-task", title: "[t] Card form", parent: "h-feat", priority: 1 },
+        { id: "h-feat", title: "[f] Payments", type: "feature", parent: "h-epic", priority: 2 },
+        { id: "h-other", title: "[o] Receipts", parent: "h-epic", priority: 3 },
+      ],
+    },
+  });
+
+  test("a child sits straight below its parent, indented, and the epic cell carries its first sentence", async ({ page, project }) => {
+    await board(page, project);
+    const ids = await col(page, "open").first().locator("[data-card]").evaluateAll(els => els.map(e => (e as HTMLElement).dataset.card));
+    expect(ids).toEqual(["h-feat", "h-task", "h-other"]);
+    const fx = (await card(page, "h-feat").locator(".id").boundingBox())!.x;
+    const tx = (await card(page, "h-task").locator(".id").boundingBox())!.x;
+    expect(tx).toBeGreaterThan(fx + 8);
+    await expect(card(page, "h-task").locator(".l3")).toHaveCount(0);
+    await expect(epic(page, "h-epic").locator(".es")).toHaveText("Ship a faster checkout.");
   });
 });

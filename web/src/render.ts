@@ -221,13 +221,86 @@ const lanesShown = () => S.board.lanes !== "off" && S.board.group !== "type";
 function parentLineHTML(i: Item): string {
   const p = i.parent ? get(i.parent) : undefined;
   if (!p || !lanesShown() || p.id === laneOf(i)) return "";
+  if (S.cursor !== i.id && i.parent && cellIds.has(i.parent)) return "";
   return `<div class="l3">↳ <span class="e">${esc(shortId(p.id))}</span> ${esc(p.t)}</div>`;
 }
 
-function cardHTML(i: Item): string {
+/**
+ * cardTagsHTML are a card's right-aligned tags in the terminal's order
+ * (docs/adr/0030): the open blocker, the dispatcher lane, the downstream
+ * count, and P0 or P1. Lower priorities and the age wait for the open card.
+ */
+function cardTagsHTML(i: Item): string {
+  const tags: string[] = [];
+  const ob = i.closed_like ? [] : openBlockers(i);
+  if (ob.length) tags.push(`<span class="tb">blocked ${esc(shortId(ob[0]))}</span>`);
+  const stage = i.labels.find(l => l.startsWith("lane-stage="));
+  if (stage) tags.push(`<span class="tl">lane: ${esc(stage.slice(11).trim())}</span>`);
+  const bl = blocksOf(i).filter(x => !x.closed_like).length;
+  if (bl) tags.push(`<span class="tk">blocks ${bl}</span>`);
+  if (i.priority <= 1) tags.push(`<span class="tp">P${i.priority}</span>`);
+  return tags.length ? `<span class="tags">${tags.join("")}</span>` : "";
+}
+
+/**
+ * cardHTML draws a card as one line: type icon, ID, title and tags. The card
+ * under the cursor opens into a box with the wrapped title, the meta line and
+ * the parent. depth indents a card below its parent in the same cell.
+ */
+function cardHTML(i: Item, depth = 0): string {
   const st = stOf(eff(i));
-  const [, tc] = tyOf(i.type);
-  return `<div class="card ${S.cursor === i.id ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc}"><div class="l1"><span class="st" style="color:${st.c}">${st.g}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span></div>${l2HTML(i, { proj: true, status: S.board.group !== "status" })}${parentLineHTML(i)}</div>`;
+  const [tg, tc] = tyOf(i.type);
+  const sel = S.cursor === i.id;
+  const open = sel ? `${l2HTML(i, { proj: true, status: S.board.group !== "status" })}` : "";
+  return `<div class="card ${sel ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="listitem" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--c:${tc};--d:${depth}"><div class="l1"><span class="ty" style="color:${tc}">${tg}</span><span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span>${cardTagsHTML(i)}</div>${open}${parentLineHTML(i)}</div>`;
+}
+
+/**
+ * cellParent is the card a card hangs under inside one cell: its parent, when
+ * that parent sits in the same cell and is not the lane's epic, which the
+ * lane header names already.
+ */
+function cellParent(i: Item, inCell: Set<string>): string | null {
+  const p = i.parent;
+  if (!p || !inCell.has(p) || p === laneOf(i)) return null;
+  const pi = get(p);
+  return pi && laneOf(pi) === laneOf(i) ? p : null;
+}
+
+/**
+ * treeOrder keeps a cell's sort but puts each child straight below its
+ * parent, the terminal's board_hierarchy.go. A parent cycle cannot hide a
+ * card: every card not reached from a root is appended at depth 0.
+ */
+export function treeOrder(arr: Item[]): [Item, number][] {
+  const inCell = new Set(arr.map(i => i.id));
+  const under = new Map<string, Item[]>();
+  const roots: Item[] = [];
+  for (const i of arr) {
+    const p = cellParent(i, inCell);
+    if (!p) { roots.push(i); continue; }
+    const k = under.get(p);
+    if (k) k.push(i); else under.set(p, [i]);
+  }
+  const out: [Item, number][] = [], seen = new Set<string>();
+  const walk = (i: Item, d: number) => {
+    if (seen.has(i.id)) return;
+    seen.add(i.id); out.push([i, d]);
+    for (const c of under.get(i.id) || []) walk(c, d + 1);
+  };
+  roots.forEach(i => walk(i, 0));
+  arr.forEach(i => walk(i, 0));
+  return out;
+}
+
+/** cellIds are the cards of the cell being drawn, so a card indented under its parent skips the parent line. */
+let cellIds = new Set<string>();
+
+function cellCards(arr: Item[]): string {
+  cellIds = new Set(arr.map(i => i.id));
+  const html = treeOrder(arr).map(([i, d]) => cardHTML(i, d)).join("");
+  cellIds = new Set();
+  return html;
 }
 
 /** laneKeys orders epic lanes the way both boards do: biggest first, loose cards last. */
@@ -241,11 +314,15 @@ function laneKeys(items: Item[]): [string, Item[]][] {
  * laneHTML is an epic's lane header: its chevron and ID open the epic, and the
  * rest of the header, title included, folds the lane so the fold target is wide.
  */
-function laneHTML(l: string, n: number): string {
+function laneHTML(l: string, n: number, facts = false): string {
   const f = S.board.laneFold.has(l), e = get(l), pr = e ? progress(l) : null;
-  const bar = pr ? `<span class="bar" title="${pr.done}/${pr.all} done"><i style="width:${Math.round((100 * pr.done) / pr.all)}%"></i></span>` : "";
+  const ef = facts && e ? epicFacts(l) : null;
+  const done = ef ? { done: ef.done, all: ef.all } : pr;
+  const bar = done && done.all ? `<span class="bar" title="${done.done}/${done.all} done"><i style="width:${Math.round((100 * done.done) / done.all)}%"></i></span>` : "";
   const lo = l === "none" ? "" : " data-lopen";
-  return `<button class="lane" data-lane="${esc(l)}" aria-expanded="${!f}" style="--ec:${epicHue(l)}"><span class="ch"${lo}>${f ? "▸" : "▾"}</span><span class="ei"${lo}>${l === "none" ? "·" : "♦ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span>${bar}<span class="n">${n}</span></button>`;
+  const more = ef && e ? `<span class="lf">${epicCountsHTML(ef)}${ef.urgent ? `<span class="tp">P1 ${ef.urgent}</span>` : ""}${epicMetaHTML(e, ef)}</span>` : "";
+  const sum = ef && e && e.summary ? `<span class="ls">${esc(e.summary)}</span>` : "";
+  return `<button class="lane${ef ? " lfacts" : ""}" data-lane="${esc(l)}" aria-expanded="${!f}" style="--ec:${epicHue(l)}"><span class="ch"${lo}>${f ? "▸" : "▾"}</span><span class="ei"${lo}>${l === "none" ? "·" : "◆ " + esc(shortId(l))}</span><span class="t">${l === "none" ? "No epic" : esc(e ? e.t : l)}</span>${more}${bar}<span class="n">${ef ? `${ef.done}/${ef.all}` : n}</span>${sum}</button>`;
 }
 
 /**
@@ -291,16 +368,69 @@ export function scrollToLane(l: string): void {
 const EPIC_HUES = ["var(--red)", "var(--orange)", "var(--yellow)", "var(--green)", "var(--cyan)", "var(--accent)", "var(--blue)", "var(--feat)"];
 const epicHue = (l: string) => (l === "none" ? "var(--line)" : EPIC_HUES[[...l].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % EPIC_HUES.length]);
 
-/** epicCellHTML is one epic in the rail's first column, the TUI's epic card. */
+interface EpicFacts { done: number; all: number; urgent: number; wip: number; waiting: number; ready: number; last: number }
+
+/**
+ * epicFacts counts an epic's issues below it, whatever the filter, with the
+ * terminal's rules (pkg/ui/board_epics.go): an open issue is in progress,
+ * else waiting on an open blocker, else ready unless deferred.
+ */
+export function epicFacts(id: string): EpicFacts {
+  const e = get(id);
+  const f: EpicFacts = { done: 0, all: 0, urgent: 0, wip: 0, waiting: 0, ready: 0, last: e ? e.upd : 0 };
+  for (const d of descendants(id)) {
+    const i = get(d);
+    if (!i) continue;
+    f.all++;
+    f.last = Math.max(f.last, i.upd);
+    if (i.closed_like) { f.done++; continue; }
+    if (i.priority <= 1) f.urgent++;
+    if (i.status === "in_progress") f.wip++;
+    else if (openBlockers(i).length) f.waiting++;
+    else if (i.status !== "deferred") f.ready++;
+  }
+  return f;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** epicMetaHTML is the epic's labels, owner, due date and last activity. */
+function epicMetaHTML(e: Item, f: EpicFacts): string {
+  const bits: string[] = [];
+  if (e.labels.length) bits.push(`<span class="lb">#${esc(e.labels.join(" #"))}</span>`);
+  if (e.assignee) bits.push(`<span>@${esc(e.assignee)}</span>`);
+  const due = e.due ? new Date(e.due) : null;
+  if (due && !isNaN(+due)) bits.push(`<span class="${!e.closed_like && +due < Date.now() ? "od" : ""}">due ${due.getUTCDate()} ${MONTHS[due.getUTCMonth()]}</span>`);
+  if (f.last) bits.push(`<span>${age(f.last)}</span>`);
+  return bits.join("<span>·</span>");
+}
+
+function epicCountsHTML(f: EpicFacts): string {
+  return [f.wip ? `<span class="cw">wip ${f.wip}</span>` : "", f.waiting ? `<span class="cb">waiting ${f.waiting}</span>` : "", f.ready ? `<span class="cr">ready ${f.ready}</span>` : ""].filter(Boolean).join("<span>·</span>");
+}
+
+/**
+ * epicCellHTML is one epic in the rail's first column, the terminal's epic
+ * cell: title, first sentence, progress over every issue below the epic,
+ * what is moving, and who owns it by when.
+ */
 function epicCellHTML(l: string, n: number): string {
-  const f = S.board.laneFold.has(l), e = get(l), pr = e ? progress(l) : null;
-  const pct = pr ? Math.round((100 * pr.done) / pr.all) : 0;
+  const f0 = S.board.laneFold.has(l), e = get(l);
   const label = l === "none" ? "No epic" : `${shortId(l)} ${e ? e.t : l}`;
+  let body = "";
+  if (e) {
+    const f = epicFacts(l);
+    const pct = f.all ? Math.round((100 * f.done) / f.all) : 0;
+    if (e.summary) body += `<div class="es">${esc(e.summary)}</div>`;
+    if (f.all) body += `<div class="ep"><i style="width:${pct}%"></i></div><div class="en">${f.done}/${f.all}${f.urgent ? ` · <span class="tp">P1 ${f.urgent}</span>` : ""}</div>`;
+    const counts = epicCountsHTML(f);
+    if (counts) body += `<div class="ec">${counts}</div>`;
+    const meta = epicMetaHTML(e, f);
+    if (meta) body += `<div class="em">${meta}</div>`;
+  } else body = `<div class="ec">${n} issue${n === 1 ? "" : "s"}</div>`;
   return `<div class="wepic lt ${S.cursor === l ? "sel" : ""}" data-epic="${esc(l)}" style="--ec:${epicHue(l)}" tabindex="0" aria-label="${esc(label)}, ${n} issues">`
-    + `<div class="eh"><button data-lane="${esc(l)}" aria-expanded="${!f}" aria-label="${f ? "Unfold" : "Fold"} lane">${f ? "▸" : "▾"}</button>${l === "none" ? "<span>·</span>" : `<span class="ei">♦ ${esc(shortId(l))}</span>`}</div>`
-    + `<div class="t">${esc(l === "none" ? "No epic" : e ? e.t : l)}</div>`
-    + (pr ? `<div class="ep"><i style="width:${pct}%"></i></div><div class="en">${pr.done}/${pr.all}</div>` : "")
-    + `<div class="ec">${n} issue${n === 1 ? "" : "s"}</div></div>`;
+    + `<div class="eh"><button data-lane="${esc(l)}" aria-expanded="${!f0}" aria-label="${f0 ? "Unfold" : "Fold"} lane">${f0 ? "▸" : "▾"}</button>${l === "none" ? "<span>·</span>" : `<span class="ei">◆ ${esc(shortId(l))}</span>`}<span class="t">${esc(l === "none" ? "No epic" : e ? e.t : l)}</span></div>`
+    + body + `</div>`;
 }
 
 function optsTab(): string {
@@ -325,7 +455,7 @@ function renderWideBoard(v: HTMLElement): void {
   }).join("");
   const cell = (k: string, arr: Item[]) => folded(k)
     ? `<div class="wcell rail" data-dcol="${esc(k)}"></div>`
-    : `<div class="wcell" data-dcol="${esc(k)}" role="list">${arr.map(cardHTML).join("")}</div>`;
+    : `<div class="wcell" data-dcol="${esc(k)}" role="list">${cellCards(arr)}</div>`;
   const rail = S.board.lanes === "rail" && lanes;
   let rows = "";
   if (rail) {
@@ -336,7 +466,7 @@ function renderWideBoard(v: HTMLElement): void {
     }
   } else if (S.board.lanes === "rows" && lanes) {
     for (const [l, arr] of laneKeys(cols.filter(([k]) => !folded(k)).flatMap(([k]) => per.get(k)!))) {
-      rows += laneHTML(l, arr.length);
+      rows += laneHTML(l, arr.length, true);
       if (!S.board.laneFold.has(l)) rows += cols.map(([k]) => cell(k, per.get(k)!.filter(i => (laneOf(i) || "none") === l))).join("");
     }
   } else rows = cols.map(([k]) => cell(k, per.get(k)!)).join("");
@@ -374,8 +504,8 @@ export function renderBoard(): void {
     let inner = "";
     const lanes = lanesShown() ? laneKeys(items) : [];
     if (!items.length) inner = `<div class="empty">No cards in ${esc(cur[1])}.</div>`;
-    else if (lanes.length) inner = lanes.map(([l, arr]) => `<div class="lgrp" data-lgrp="${esc(l)}">${laneHTML(l, arr.length)}${S.board.laneFold.has(l) ? "" : arr.map(cardHTML).join("")}</div>`).join("");
-    else inner = items.map(cardHTML).join("");
+    else if (lanes.length) inner = lanes.map(([l, arr]) => `<div class="lgrp" data-lgrp="${esc(l)}">${laneHTML(l, arr.length)}${S.board.laneFold.has(l) ? "" : cellCards(arr)}</div>`).join("");
+    else inner = cellCards(items);
     const rail = S.board.lanes === "rail" && lanes.length ? railHTML(lanes) : "";
     body = `${rail}<div class="bcol${rail ? " indexed" : ""}" id="bcol" role="list">${inner}</div><div class="edgehint l">‹</div><div class="edgehint r">›</div>`;
   }

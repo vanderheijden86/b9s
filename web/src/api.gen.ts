@@ -19,6 +19,8 @@ export interface Issue {
   updated_at: string;
   closed_at: string;
   defer_until: string;
+  due: string;
+  summary: string;
   labels: string[];
   parent: string;
   blocked_by: string[];

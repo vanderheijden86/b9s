@@ -56,6 +56,7 @@ func convertIssue(src *model.Issue, status map[string]model.Status) Issue {
 		UpdatedAt:      formatTime(src.UpdatedAt),
 		ClosedAt:       formatTimePtr(src.ClosedAt),
 		DeferUntil:     formatTimePtr(src.DeferUntil),
+		Due:            formatTimePtr(src.DueDate),
 		Labels:         nonNil(src.Labels),
 		BlockedBy:      []string{},
 		Related:        []string{},
@@ -63,6 +64,9 @@ func convertIssue(src *model.Issue, status map[string]model.Status) Issue {
 		Comments:       make([]Comment, 0, len(src.Comments)),
 		Project:        src.SourceRepo,
 		ClosedLike:     ui.IsClosedLike(src.Status),
+	}
+	if src.IssueType == model.TypeEpic {
+		dst.Summary = ui.FirstSentence(src.Description)
 	}
 	if dst.Project == "" || dst.Project == "." {
 		dst.Project = ui.ExtractRepoPrefix(src.ID)

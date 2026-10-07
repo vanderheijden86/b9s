@@ -176,7 +176,7 @@ func (b *BoardModel) rebuildEpicIndex() {
 		if info == nil {
 			e := byID[epic]
 			info = &boardEpic{ID: epic, Title: withoutOwnIDPrefix(sanitizeTerminalLine(e.Title), epic), rank: 99, color: epicColor(epic),
-				Description: sanitizeTerminalLine(firstSentence(e.Description)), Labels: e.Labels, Owner: e.Assignee, Due: e.DueDate,
+				Description: sanitizeTerminalLine(FirstSentence(e.Description)), Labels: e.Labels, Owner: e.Assignee, Due: e.DueDate,
 				LastActivity: e.UpdatedAt}
 			if info.Owner == "" {
 				info.Owner = e.Owner

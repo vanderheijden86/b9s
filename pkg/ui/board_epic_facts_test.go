@@ -26,8 +26,8 @@ func TestFirstSentence(t *testing.T) {
 		"  \n  ":                                                     "",
 	}
 	for in, want := range cases {
-		if got := firstSentence(in); got != want {
-			t.Errorf("firstSentence(%q) = %q, want %q", in, got, want)
+		if got := FirstSentence(in); got != want {
+			t.Errorf("FirstSentence(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

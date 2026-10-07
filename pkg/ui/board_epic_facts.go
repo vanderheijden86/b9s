@@ -2,12 +2,12 @@ package ui
 
 import "strings"
 
-// firstSentence returns the first sentence of a description: the text up to
+// FirstSentence returns the first sentence of a description: the text up to
 // the first ". ", "! " or "? " (or that mark at the end), or up to the first
 // blank line, whichever comes first. Leading Markdown heading lines are
 // skipped, so "# Goal" never reads as the sentence, and a leading list marker
 // is dropped. A period inside a word, as in "2.1", does not end the sentence.
-func firstSentence(s string) string {
+func FirstSentence(s string) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
 	for len(lines) > 0 {
 		l := strings.TrimSpace(lines[0])

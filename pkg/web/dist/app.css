@@ -153,9 +153,19 @@
   .brail button b { display: block; color: var(--dim); font-weight: 400; }
   .bcol { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 12px 16px; touch-action: pan-y; }
   .bcol.snap { transition: transform .22s cubic-bezier(.2,.8,.2,1); }
-  .card { position: relative; background: var(--bg2); border: 1px solid var(--line); border-left: 3px solid var(--c, var(--line)); border-radius: 6px; padding: 5px 8px 5px 9px; margin-bottom: 6px; }
-  .card .l2 { padding-left: 0; }
-  .card.sel { border-color: var(--hi); border-left-color: var(--hi); }
+  .card { position: relative; border: 1px solid transparent; border-radius: 4px; padding: 3px 6px 3px calc(6px + min(var(--d, 0), 4) * 14px); margin-bottom: 1px; }
+  .card .l1 .ty { flex: none; width: 1.1em; text-align: center; }
+  .card .l1 .id { flex: none; }
+  .card .tags { flex: none; display: flex; gap: 8px; margin-left: 6px; font-size: 0.885rem; }
+  .card .tags .tb { color: var(--red); }
+  .card .tags .tl { color: var(--yellow); }
+  .card .tags .tk { color: var(--feat); }
+  .card .tp, .wepic .tp, .lane .tp { color: var(--red); font-weight: 700; }
+  .card .l2 { padding: 2px 0 0 calc(1.1em + 6px); }
+  .card.sel { background: var(--bg2); border-color: var(--hi); padding-top: 6px; padding-bottom: 6px; margin: 3px 0 4px; }
+  .card.sel .l1 { white-space: normal; align-items: flex-start; }
+  .card.sel .l1 .t { white-space: normal; overflow-wrap: anywhere; }
+  .card.sel .tags { flex-wrap: wrap; }
   .card.ghost { position: absolute; z-index: 90; pointer-events: none; opacity: .92; box-shadow: 0 12px 30px rgba(0,0,0,.6); transform: rotate(-2deg); width: 300px; }
   .card.lifted { opacity: .3; }
   .lane { width: 100%; text-align: left; display: flex; gap: 6px; align-items: baseline; color: var(--accent); font-size: 0.923rem; padding: 8px 2px 5px; white-space: nowrap; }
@@ -165,7 +175,7 @@
   .lane .ei { color: var(--ec, var(--accent)); }
   .lane .bar { flex: none; align-self: center; width: 44px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
   .lane .bar i { display: block; height: 100%; background: var(--ec, var(--accent)); }
-  .card .l3 { font-size: 0.885rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .l3 { padding-left: calc(1.1em + 6px); font-size: 0.885rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card .l3 .e { color: var(--accent); }
   /* On the phone each lane is a group, so its header sticks until the next lane pushes it off. */
   .bcol { position: relative; }
@@ -177,7 +187,11 @@
   .whead b { font-weight: 400; color: var(--muted); }
   .whead:hover span { color: var(--hi); }
   .whead.rail { writing-mode: vertical-rl; align-items: center; padding: 10px 0; font-weight: 400; color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; height: 120px; }
-  .wboard .lane { grid-column: 1 / -1; padding: 12px 6px 6px; border-bottom: 1px solid var(--line); }
+  .wboard .lane { grid-column: 1 / -1; padding: 12px 6px 6px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .lane .lf { display: flex; gap: 0 6px; color: var(--muted); font-size: 0.885rem; }
+  .lane .t { flex: 1; }
+  .lane.lfacts .t { color: var(--text); }
+  .lane .ls { flex-basis: 100%; padding-left: 18px; color: var(--muted); font-size: 0.885rem; overflow: hidden; text-overflow: ellipsis; }
   .wcell { min-height: 44px; padding: 8px 0 4px; border-radius: 6px; }
   .wcell.drop, .whead.drop { background: rgba(241,250,140,.07); outline: 1px dashed var(--yellow); outline-offset: -1px; }
   .wboard .card { cursor: pointer; }
@@ -190,7 +204,16 @@
   .wepic { align-self: stretch; align-content: start; margin: 16px 0 4px; padding: 8px 10px 10px; border: 1px solid var(--line); border-left: 3px solid var(--ec); border-radius: 6px; background: var(--bg); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font-size: 0.923rem; }
   .wepic:hover:not(.sel) { border-color: var(--muted); border-left-color: var(--ec); }
   .wepic.sel { background: rgba(139,233,253,.14); border-color: var(--cyan); border-left-color: var(--ec); }
-  .wepic .eh { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; color: var(--ec); }
+  .wepic .eh { grid-column: 1 / -1; display: flex; gap: 6px; align-items: baseline; color: var(--ec); min-width: 0; }
+  .wepic .eh .t { flex: 1; min-width: 0; font-weight: 600; -webkit-line-clamp: 2; }
+  .wepic .es { grid-column: 1 / -1; color: var(--dim); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .wepic .em { grid-column: 1 / -1; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0 6px; }
+  .wepic .ec { display: flex; flex-wrap: wrap; gap: 0 6px; }
+  .wepic .cw, .lane .cw { color: var(--yellow); }
+  .wepic .cb, .lane .cb { color: var(--red); }
+  .wepic .cr, .lane .cr { color: var(--green); }
+  .wepic .lb, .lane .lb { color: var(--cyan); }
+  .wepic .od, .lane .od { color: var(--red); }
   .wepic .eh button { color: var(--muted); padding: 0 2px; }
   .wepic .ei { font-weight: 700; }
   .wepic .t { grid-column: 1 / -1; color: var(--text); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
