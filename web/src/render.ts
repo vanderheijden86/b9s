@@ -5,30 +5,32 @@
 import * as api from "./api";
 import type { Issue } from "./api.gen";
 import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, openBlockers, pool, progress, projectOf, shortId, type Item } from "./data";
-import { PC, S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow } from "./state";
+import { S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
 import { renderMermaidBlocks } from "./mermaid";
 import { $, WIDE, age, esc, fmtDate, md, store, wide } from "./util";
 
 export function l2HTML(i: Item, opts: { proj?: boolean; status?: boolean } = {}): string {
+  // The terminal colours a row's glyphs and its open blockers and leaves the
+  // rest of the meta in its secondary gray; the line follows that.
   const bits: string[] = [];
   const [tg, tc] = tyOf(i.type);
-  if (S.cols.has("status") && opts.status !== false) { const st = stOf(eff(i)); bits.push(`<span class="stw" style="color:${st.c}">${esc(st.w)}</span>`); }
-  if (S.cols.has("prio")) bits.push(`<span style="color:${PC[i.priority] || "var(--muted)"}">P${i.priority}</span>`);
-  if (S.cols.has("type")) bits.push(`<span style="color:${tc}">${tg} ${esc(i.type)}</span>`);
-  if (S.cols.has("who") && i.assignee) bits.push(`<span style="color:var(--dim)">@${esc(i.assignee)}</span>`);
+  if (S.cols.has("status") && opts.status !== false) bits.push(`<span class="stw">${esc(stOf(eff(i)).w)}</span>`);
+  if (S.cols.has("prio")) bits.push(i.priority <= 1 ? `<span class="tp">P${i.priority}</span>` : `<span>P${i.priority}</span>`);
+  if (S.cols.has("type")) bits.push(`<span><span style="color:${tc}">${tg}</span> ${esc(i.type)}</span>`);
+  if (S.cols.has("who") && i.assignee) bits.push(`<span>@${esc(i.assignee)}</span>`);
   if (S.cols.has("age")) bits.push(`<span>${age(i.upd)}</span>`);
   const pr = progress(i.id);
-  if (S.cols.has("kids") && pr) bits.push(`<span style="color:var(--green)">${pr.done}/${pr.all}</span>`);
+  if (S.cols.has("kids") && pr) bits.push(`<span>${pr.done}/${pr.all}</span>`);
   if (S.cols.has("deps")) {
     const ob = openBlockers(i).length;
-    if (ob) bits.push(`<span style="color:var(--red)">⊘${ob}</span>`);
+    if (ob) bits.push(`<span class="ob">⊘${ob}</span>`);
     const bl = blocksOf(i).filter(x => !x.closed_like).length;
-    if (bl) bits.push(`<span style="color:var(--orange)">→${bl}</span>`);
+    if (bl) bits.push(`<span>→${bl}</span>`);
   }
   if (S.cols.has("notes") && i.comment_count) bits.push(`<span>✎${i.comment_count}</span>`);
-  if (S.cols.has("labels") && i.labels.length) bits.push(`<span style="color:var(--cyan)">#${esc(i.labels.join(" #"))}</span>`);
-  if (opts.proj && D.project.all) bits.push(`<span style="color:var(--accent)">${esc(projectOf(i))}</span>`);
+  if (S.cols.has("labels") && i.labels.length) bits.push(`<span>#${esc(i.labels.join(" #"))}</span>`);
+  if (opts.proj && D.project.all) bits.push(`<span>${esc(projectOf(i))}</span>`);
   return `<div class="l2">${bits.join("<span>·</span>")}</div>`;
 }
 
@@ -87,21 +89,21 @@ function renderChips(): void {
   const P = pool();
   const cnt = (s: string) => P.filter(i => eff(i) === s).length;
   const fmt = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n));
-  const chip = (k: string, key: string, label: string, color: string, on: boolean, n: number | null) =>
-    `<button class="chip ${on ? "on" : ""}" data-chip="${key}" style="color:${color}" aria-pressed="${on}"><span class="k">${k}</span>${label}${n != null ? ` <span class="n">${fmt(n)}</span>` : ""}</button>`;
-  let h = chip("o", "open", "Open", "var(--green)", S.st.has("open"), cnt("open"))
-    + chip("i", "in_progress", "In prog", "var(--cyan)", S.st.has("in_progress"), cnt("in_progress"))
-    + chip("b", "blocked", "Blocked", "var(--red)", S.st.has("blocked"), cnt("blocked"))
-    + chip("d", "deferred", "Deferred", "var(--orange)", S.st.has("deferred"), cnt("deferred"))
-    + chip("C", "closed", "Closed", "var(--muted)", S.st.has("closed"), cnt("closed"))
-    + chip("r", "ready", "Ready", "var(--yellow)", S.ready, P.filter(isReady).length)
-    + chip("a", "all", "All", "var(--dim)", S.st.size === 0 && !S.ready, null);
+  const chip = (k: string, key: string, label: string, on: boolean, n: number | null) =>
+    `<button class="chip ${on ? "on" : ""}" data-chip="${key}" aria-pressed="${on}"><span class="k">${k}</span>${label}${n != null ? ` <span class="n">${fmt(n)}</span>` : ""}</button>`;
+  let h = chip("o", "open", "Open", S.st.has("open"), cnt("open"))
+    + chip("i", "in_progress", "In prog", S.st.has("in_progress"), cnt("in_progress"))
+    + chip("b", "blocked", "Blocked", S.st.has("blocked"), cnt("blocked"))
+    + chip("d", "deferred", "Deferred", S.st.has("deferred"), cnt("deferred"))
+    + chip("C", "closed", "Closed", S.st.has("closed"), cnt("closed"))
+    + chip("r", "ready", "Ready", S.ready, P.filter(isReady).length)
+    + chip("a", "all", "All", S.st.size === 0 && !S.ready, null);
   h += `<span class="sep"></span>`;
   if (S.text.trim()) {
     const err = S.qres && S.qres.text === S.text && S.qres.error;
     h += `<button class="chip q ${err ? "err" : ""}" data-act="search"><span>⌕ ${esc(S.text.trim())}</span></button><button class="chip" data-act="clearq" aria-label="Clear query">✕</button>`;
-  } else h += `<button class="chip" data-act="search" style="color:var(--muted)">⌕ query</button>`;
-  h += `<button class="chip" data-act="sort" style="color:var(--dim)">⇅ ${S.sort}</button>`;
+  } else h += `<button class="chip" data-act="search">⌕ query</button>`;
+  h += `<button class="chip" data-act="sort">⇅ ${S.sort}</button>`;
   el.innerHTML = h;
 }
 
@@ -451,7 +453,7 @@ function renderWideBoard(v: HTMLElement): void {
     const n = per.get(k)!.length;
     return folded(k)
       ? `<button class="whead rail" data-tab="${esc(k)}" data-dcol="${esc(k)}" aria-label="Unfold ${esc(l)}" title="Unfold ${esc(l)}"><span>${esc(l)}</span><b>${n}</b></button>`
-      : `<button class="whead" data-tab="${esc(k)}" data-dcol="${esc(k)}" style="--hc:${S.board.group === "status" ? stOf(k).c : "var(--line)"}" aria-label="${esc(l)}, ${n} cards. Fold" title="Fold ${esc(l)} (z)"><span>${esc(l)}</span><b>${n}</b></button>`;
+      : `<button class="whead" data-tab="${esc(k)}" data-dcol="${esc(k)}" aria-label="${esc(l)}, ${n} cards. Fold" title="Fold ${esc(l)} (z)"><span>${esc(l)}</span><b>${n}</b></button>`;
   }).join("");
   const cell = (k: string, arr: Item[]) => folded(k)
     ? `<div class="wcell rail" data-dcol="${esc(k)}"></div>`
@@ -742,7 +744,7 @@ export function renderDetail(): void {
     <div class="dhead" id="dhead"><div class="grab"></div>
       <div class="dtop">${S.detail.stack.length > 1 ? `<button class="back" data-act="dback">‹ ${esc(shortId(S.detail.stack[S.detail.stack.length - 2]))}</button>` : ""}<span class="id">${esc(i.id)}</span><span class="sp"></span><span class="pager">${pos + 1}/${sib.length} ‹ swipe ›</span><button data-act="dsize" aria-label="${size[1]}" title="${size[1]} (\\)">${size[0]}</button><button data-act="dclose" aria-label="Close">✕</button></div>
       <div class="dtitle">${esc(i.t)}</div>
-      <div class="pills"><span class="pill" style="color:${st.c}">${st.g} ${esc(i.status === eff(i) ? st.w : i.status + " · " + st.w)}</span><span class="pill" style="color:${PC[i.priority] || "var(--muted)"}">P${i.priority}</span><span class="pill" style="color:${tc}">${tg} ${esc(i.type)}</span>${i.labels.map(l => `<span class="pill" style="color:var(--cyan)">#${esc(l)}</span>`).join("")}</div>
+      <div class="pills"><span class="pill" style="color:${st.c}">${st.g} ${esc(i.status === eff(i) ? st.w : i.status + " · " + st.w)}</span><span class="pill${i.priority <= 1 ? " tp" : ""}">P${i.priority}</span><span class="pill" style="color:${tc}">${tg} ${esc(i.type)}</span>${i.labels.map(l => `<span class="pill">#${esc(l)}</span>`).join("")}</div>
     </div>
     <div class="dbody" id="dbody">
       <dl class="meta"><dt>assignee</dt><dd>${i.assignee ? "@" + esc(i.assignee) : "—"}</dd><dt>creator</dt><dd>${esc(i.created_by || "—")}</dd><dt>created</dt><dd>${fmtDate(i.crt)}${i.crt ? " · " + age(i.crt) : ""}</dd><dt>updated</dt><dd>${fmtDate(i.upd)}${i.upd ? " · " + age(i.upd) : ""}</dd>${i.cls ? `<dt>closed</dt><dd>${fmtDate(i.cls)}</dd>` : ""}${i.defer_until ? `<dt>deferred</dt><dd>until ${esc(i.defer_until.slice(0, 10))}</dd>` : ""}${D.project.all ? `<dt>project</dt><dd>${esc(projectOf(i))}</dd>` : ""}</dl>

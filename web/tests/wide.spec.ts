@@ -300,3 +300,18 @@ test.describe("hierarchy in a cell", () => {
     await expect(epic(page, "h-epic").locator(".es")).toHaveText("Ship a faster checkout.");
   });
 });
+
+// The board follows the terminal's restraint (bd-foit.39): colour marks the
+// glyphs, IDs, blockers and urgent priorities, never the chrome around them.
+test("chips, column heads and epic cells stay gray like the terminal", async ({ page, project }) => {
+  await board(page, project);
+  const css = (sel: string, prop: string) => page.locator(sel).first().evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop);
+  const gray = await page.evaluate(() => { const d = document.createElement("i"); d.style.color = "var(--muted)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
+  const line = await page.evaluate(() => { const d = document.createElement("i"); d.style.color = "var(--line)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; });
+  expect(await css('#chips .chip[data-chip="deferred"]', "color")).toBe(gray);
+  expect(await css('#chips .chip[data-chip="blocked"]', "border-top-width")).toBe("0px");
+  expect(await css('#wboard .whead[data-tab="blocked"]', "border-bottom-color")).toBe(line);
+  expect(await css("#wboard .wepic", "border-left-color")).toBe(line);
+  expect(await css("#wboard .wepic", "border-left-width")).toBe("1px");
+  expect(await css("#wboard .wepic", "border-top-left-radius")).toBe("0px");
+});
