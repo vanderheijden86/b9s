@@ -5,12 +5,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/skin"
 )
 
@@ -154,5 +156,64 @@ func TestSkinErrorShowsInStatusBar(t *testing.T) {
 	}
 	if m := NewModel(nil, "").WithSkinError(nil); m.statusIsError {
 		t.Fatalf("nil skin error set status %q", m.statusMsg)
+	}
+}
+
+// Sub-models copy Theme by value, so a skin switch that rebuilds only
+// m.theme leaves views painted in the old skin. Walking the model finds every
+// copy, including ones added after this test.
+func TestSwitchSkinReachesEveryThemeCopy(t *testing.T) {
+	light, dark := Skins()
+	t.Cleanup(func() { applySkins(light, dark) })
+
+	nord, err := skin.Load(filepath.Join("..", "skin", "testdata", "nord.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := NewModel(nil, "").WithConfig(config.DefaultConfig(), "", "")
+	m.switchSkin(nord, "nord")
+
+	want := string(nord.Primary)
+	copies := 0
+	walkThemes(reflect.ValueOf(m), "Model", map[uintptr]bool{}, 0, func(path string, theme reflect.Value) {
+		// A closed modal holds a zero Theme and builds from m.theme on open.
+		if theme.FieldByName("Renderer").IsNil() {
+			return
+		}
+		copies++
+		if got := theme.FieldByName("Primary").FieldByName("Dark").String(); got != want {
+			t.Errorf("%s.Primary.Dark = %q, want nord %q", path, got, want)
+		}
+	})
+	if copies < 4 {
+		t.Fatalf("found %d Theme copies, the walk is not reaching the sub-models", copies)
+	}
+}
+
+var themeType = reflect.TypeOf(Theme{})
+
+func walkThemes(v reflect.Value, path string, seen map[uintptr]bool, depth int, visit func(string, reflect.Value)) {
+	if depth > 8 || !v.IsValid() {
+		return
+	}
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.IsNil() || seen[v.Pointer()] {
+			return
+		}
+		seen[v.Pointer()] = true
+		walkThemes(v.Elem(), path, seen, depth+1, visit)
+	case reflect.Interface:
+		if !v.IsNil() {
+			walkThemes(v.Elem(), path, seen, depth+1, visit)
+		}
+	case reflect.Struct:
+		if v.Type() == themeType {
+			visit(path, v)
+			return
+		}
+		for i := 0; i < v.NumField(); i++ {
+			walkThemes(v.Field(i), path+"."+v.Type().Field(i).Name, seen, depth+1, visit)
+		}
 	}
 }

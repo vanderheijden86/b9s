@@ -20,6 +20,7 @@ import (
 	"github.com/vanderheijden86/b9s/pkg/identity"
 	"github.com/vanderheijden86/b9s/pkg/loader"
 	"github.com/vanderheijden86/b9s/pkg/model"
+	"github.com/vanderheijden86/b9s/pkg/skin"
 	"github.com/vanderheijden86/b9s/pkg/updater"
 	"github.com/vanderheijden86/b9s/pkg/watcher"
 
@@ -1263,6 +1264,32 @@ func (m *Model) applyThemeMode(mode config.ThemeMode) {
 		m.renderer = NewMarkdownRendererWithTheme(m.renderer.width, m.theme)
 		m.updateViewportContent()
 	}
+}
+
+// switchSkin puts p into its slot, shows that slot, and records ref as
+// ui.skin. Sub-models hold Theme by value, so each copy is replaced here.
+// Modals that are closed carry no theme yet and take m.theme when they open.
+func (m *Model) switchSkin(p skin.Palette, ref string) {
+	UseSkin(p)
+	m.appConfig.UI.Skin = ref
+	m.theme = DefaultTheme(m.theme.Renderer)
+	m.tree.theme = m.theme
+	m.board.theme = m.theme
+	m.graph.theme = m.theme
+	m.labelPicker.theme = m.theme
+	m.projectPicker.theme = m.theme
+	m.tutorialModel.theme = m.theme
+	if m.tutorialModel.markdownRenderer != nil {
+		m.tutorialModel.markdownRenderer = NewMarkdownRendererWithTheme(m.tutorialModel.markdownRenderer.width, m.theme)
+	}
+	m.list.Styles.FilterPrompt = lipgloss.NewStyle().Foreground(m.theme.Primary)
+	m.list.Styles.FilterCursor = lipgloss.NewStyle().Foreground(m.theme.Primary)
+	m.updateListDelegate()
+	mode := config.ThemeLight
+	if p.Dark {
+		mode = config.ThemeDark
+	}
+	m.applyThemeMode(mode)
 }
 
 // TerminalPaperSequence sets the background before the alternate screen appears.
