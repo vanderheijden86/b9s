@@ -13,7 +13,7 @@ https://github.com/user-attachments/assets/ccc8ebc9-4daf-4867-8c41-3f91df364f42
 
 | Terminal | Browser | Phone |
 |:---:|:---:|:---:|
-| ![b9s in a terminal, the issue tree of a sample project](docs/screenshot.png) | ![b9s web on a desktop browser, the board with one swimlane per epic](docs/screenshot-web-board.png) | <img src="docs/screenshot-phone.png" alt="b9s web on a phone, the issue tree" width="200"> |
+| ![b9s in a terminal, the issue tree of the sample web shop: epics, features and tasks](docs/screenshot.png) | ![b9s web on a desktop browser, the board of the sample web shop with one swimlane per epic](docs/screenshot-web-board.png) | <img src="docs/screenshot-phone.png" alt="b9s web on a phone, the issue tree of the sample web shop" width="200"> |
 
 b9s is a keyboard-driven terminal UI modelled on [k9s](https://k9scli.io/): if you know k9s, you already know most of b9s. It opens any Beads project, including a fresh `bd init` with no server, and shows changes from `bd` or another agent as they happen. `b9s web` serves the same project, with every write, to a browser or a phone.
 
@@ -98,7 +98,7 @@ The tree shows every issue under its parent. Move with `j` and `k`, open an issu
 
 To open the same project on your phone, run `b9s web` in the same folder and follow [Phone and browser](#phone-and-browser).
 
-No Beads project at hand? Download the [sample project](examples/sample-project/), a made-up web shop with epics, blocked work and comments, and browse it:
+No Beads project at hand? Download the [sample project](examples/sample-project/), the made-up web shop the [demo](https://demo.b9s.osen.co) runs, with epics split into features and tasks, two releases, blocked work and comments, and browse it:
 
 ```bash
 mkdir -p b9s-sample/.beads && cd b9s-sample
@@ -153,7 +153,7 @@ Everywhere:
 
 In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a new line in Description and Notes, `→` completes an assignee or label, `Ctrl-E` opens Description or Notes in `$EDITOR`, `Ctrl-S` saves and `Esc` cancels.
 
-The detail pane opens with a card framed in the issue's status color: type, ID and last update, the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, and the comments come last.
+The detail pane opens with a card framed in the issue's status color: type, ID and last update (its age, with the exact local time below it), the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, and the comments come last.
 
 In the detail pane, Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with TD, TB or LR direction, and for `sequenceDiagram`. Other types, diagrams that fail to render, and diagrams wider than the pane stay as code. Widen the pane to retry a wide diagram. Copying an issue keeps the Mermaid source.
 
