@@ -150,6 +150,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 		Public:       *public,
 		Banner:       *banner,
 		BannerLink:   *bannerLink,
+		Skins:        webSkins(),
 		Projects: func() []config.Project {
 			cfg, err := config.Load()
 			if err != nil {

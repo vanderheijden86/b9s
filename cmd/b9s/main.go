@@ -511,3 +511,27 @@ func applyConfiguredSkin(ref string) error {
 	ui.UseSkin(p)
 	return nil
 }
+
+// webSkins returns the light and dark skins b9s web serves as /skin.css. It
+// reads ui.skin on every call, so a skin chosen with :skins in a running TUI
+// reaches the next page load (ADR 0034). It never touches the ui slots, which
+// concurrent requests would race on. A skin that does not load serves the
+// built-in pair.
+func webSkins() func() (light, dark skin.Palette) {
+	builtinLight, _ := skin.Resolve("sepia")
+	builtinDark, _ := skin.Resolve("dracula")
+	return func() (skin.Palette, skin.Palette) {
+		cfg, err := config.Load()
+		if err != nil || cfg.UI.Skin == "" {
+			return builtinLight, builtinDark
+		}
+		p, err := skin.Resolve(cfg.UI.Skin)
+		if err != nil {
+			return builtinLight, builtinDark
+		}
+		if p.Dark {
+			return builtinLight, p
+		}
+		return p, builtinDark
+	}
+}

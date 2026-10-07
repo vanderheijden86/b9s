@@ -16,6 +16,7 @@ import (
 
 	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/skin"
 	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
@@ -49,6 +50,10 @@ type Options struct {
 	// BannerLink an http(s) URL it links to.
 	Banner     string
 	BannerLink string
+	// Skins returns the light and dark skins for /skin.css. It is called on
+	// every request, so a skin chosen with :skins in the TUI reaches the next
+	// page load. Nil serves the skins in the ui slots at start.
+	Skins func() (light, dark skin.Palette)
 	// MaxStreams caps open event streams; zero means no cap. Public mode
 	// defaults it to publicMaxStreams.
 	MaxStreams int
@@ -58,7 +63,6 @@ type Options struct {
 type Server struct {
 	opts    Options
 	assets  fs.FS
-	skinCSS []byte
 	etags   map[string]string
 	mux     *http.ServeMux
 	etagMu  sync.Mutex
@@ -101,8 +105,10 @@ func NewServer(opts Options) (*Server, error) {
 		}
 	}
 	s := &Server{opts: opts, assets: assets, etags: map[string]string{}, idem: newIdempotency(512, 10*time.Minute)}
-	light, dark := ui.Skins()
-	s.skinCSS = []byte(SkinCSS(light, dark))
+	if s.opts.Skins == nil {
+		light, dark := ui.Skins()
+		s.opts.Skins = func() (skin.Palette, skin.Palette) { return light, dark }
+	}
 	if opts.Public {
 		s.writes = newRateLimiter(publicWritesPerMinute, time.Minute)
 	}
@@ -343,7 +349,8 @@ func (s *Server) handleOpenProject(w http.ResponseWriter, r *http.Request) {
 // handleSkin serves the colours outside the bundle: they come from ui.skin,
 // which the user changes without rebuilding b9s.
 func (s *Server) handleSkin(w http.ResponseWriter, r *http.Request) {
-	s.serveBytes(w, r, "skin.css", s.skinCSS)
+	css := []byte(SkinCSS(s.opts.Skins()))
+	s.serveTagged(w, r, "skin.css", css, contentTag(css))
 }
 
 func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
@@ -360,7 +367,10 @@ func (s *Server) handleAsset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serveBytes(w http.ResponseWriter, r *http.Request, name string, data []byte) {
-	etag := s.etag(name, data)
+	s.serveTagged(w, r, name, data, s.etag(name, data))
+}
+
+func (s *Server) serveTagged(w http.ResponseWriter, r *http.Request, name string, data []byte, etag string) {
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "no-cache")
 	if r.Header.Get("If-None-Match") == etag {
@@ -379,10 +389,14 @@ func (s *Server) etag(name string, data []byte) string {
 	if tag, ok := s.etags[name]; ok {
 		return tag
 	}
-	sum := sha256.Sum256(data)
-	tag := `"` + hex.EncodeToString(sum[:8]) + `"`
+	tag := contentTag(data)
 	s.etags[name] = tag
 	return tag
+}
+
+func contentTag(data []byte) string {
+	sum := sha256.Sum256(data)
+	return `"` + hex.EncodeToString(sum[:8]) + `"`
 }
 
 func contentType(name string) string {

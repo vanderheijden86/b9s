@@ -3,11 +3,15 @@ package web
 import (
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/skin"
+	"github.com/vanderheijden86/b9s/pkg/ui"
 )
 
 func TestSkinStylesheetCarriesBothSlots(t *testing.T) {
@@ -73,5 +77,50 @@ func TestSkinNameCannotBreakOutOfTheStylesheet(t *testing.T) {
 	}
 	if strings.Count(css, "{") != 2 || strings.Count(css, "}") != 2 {
 		t.Fatalf("want two blocks, got %s", css)
+	}
+}
+
+// :skins in the TUI rewrites ui.skin while b9s web runs. The next page load
+// must show it, and a cached stylesheet must not survive the change.
+func TestSkinStylesheetFollowsSkinChanges(t *testing.T) {
+	sepia, _ := skin.Resolve("sepia")
+	dracula, _ := skin.Resolve("dracula")
+	gruvbox, err := skin.Load(filepath.Join("..", "skin", "testdata", "gruvbox-light.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	light := sepia
+	dir := newFixtureProject(t)
+	store := NewStore(50 * time.Millisecond)
+	t.Cleanup(store.Close)
+	if failure := store.Open(datasource.OpenTarget{Name: "fixture", Dir: dir}, dir); failure != nil {
+		t.Fatalf("open fixture: %s", failure.Message())
+	}
+	srv, err := NewServer(Options{Store: store, Writer: ui.NewIssueWriter(), Assets: testAssets,
+		Skins: func() (skin.Palette, skin.Palette) { return light, dracula }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv)
+	t.Cleanup(ts.Close)
+
+	get := func() (string, string) {
+		t.Helper()
+		resp, err := ts.Client().Get(ts.URL + "/skin.css")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return string(body), resp.Header.Get("ETag")
+	}
+	before, tagBefore := get()
+	light = gruvbox
+	after, tagAfter := get()
+	if strings.Contains(before, "gruvbox") || !strings.Contains(after, `--skin-light: "gruvbox-light";`) {
+		t.Fatalf("stylesheet did not follow the skin change:\n%s", after)
+	}
+	if tagBefore == tagAfter {
+		t.Errorf("ETag %s unchanged after the skin changed", tagAfter)
 	}
 }
