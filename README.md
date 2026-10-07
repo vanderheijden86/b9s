@@ -32,6 +32,7 @@ b9s is a keyboard-driven terminal UI modelled on [k9s](https://k9scli.io/): if y
 - [Mouse and tmux](#mouse-and-tmux)
 - [Command-line options](#command-line-options)
 - [Development](#development)
+- [Contributing](#contributing)
 - [Documentation](#documentation)
 - [Acknowledgments](#acknowledgments)
 - [License](#license)
@@ -488,6 +489,18 @@ make web-e2e    # browser tests in Chromium and WebKit
 ```
 
 [docs/testing.md](docs/testing.md) describes the test layers and the Dolt rules in full.
+
+## Contributing
+
+Pull requests are welcome. To keep review quick:
+
+1. **Open an [issue](https://github.com/vanderheijden86/b9s/issues) first** for anything beyond a typo or a small bug fix. Agree on the change there before you write code, so no work is wasted on a change that will not be merged.
+2. **Keep one change per pull request.** A small, focused diff is reviewed sooner than a large one.
+3. **Include tests.** A bug fix comes with a test that fails before the fix. `go test ./... -skip DoltIntegration` must pass, and code must be `gofmt`-formatted. Tests never write to a shared Dolt server (see [Development](#development)).
+4. **Update the docs** that your change affects: the key tables in this README for a new key, [docs/](docs/) for new behaviour. A change that goes against a [decision record](docs/adr/) needs a new decision record, not a quiet exception.
+5. **Use [Conventional Commits](https://www.conventionalcommits.org/)** for the pull request title, for example `fix(tree): keep the selection after a refresh`.
+
+The maintainer reviews every pull request and merges it as one squashed commit on `main`, with the pull request title as its subject. A pull request can be declined when it does not fit the k9s-style direction of the project, even if the code is good. Contributions are licensed under the project's [MIT licence](LICENSE).
 
 ## Documentation
 
