@@ -57,7 +57,7 @@ export interface Project {
   writeIssues(list: FixtureIssue[]): void;
 }
 
-async function freePort(): Promise<number> {
+export async function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const s = net.createServer();
     s.listen(0, "127.0.0.1", () => { const p = (s.address() as net.AddressInfo).port; s.close(() => resolve(p)); });
@@ -65,16 +65,25 @@ async function freePort(): Promise<number> {
   });
 }
 
-async function waitFor(url: string, deadlineMs: number, log: () => string): Promise<void> {
+/**
+ * waitFor reports whether proc is serving url, or false when proc exited
+ * first. A health answer alone proves nothing: another test's server may hold
+ * the port. b9s web prints its banner only once it has bound the port.
+ */
+async function waitFor(proc: ChildProcess, url: string, deadlineMs: number, log: () => string): Promise<boolean> {
   const deadline = Date.now() + deadlineMs;
   while (Date.now() < deadline) {
-    try { const r = await fetch(url + "api/health"); if (r.ok || r.status === 401) return; } catch { /* not up yet */ }
+    if (proc.exitCode !== null || proc.signalCode !== null) return false;
+    if (log().includes("b9s web is serving")) {
+      try { const r = await fetch(url + "api/health"); if (r.ok || r.status === 401) return true; } catch { /* not up yet */ }
+    }
     await new Promise(r => setTimeout(r, 100));
   }
+  proc.kill("SIGTERM");
   throw new Error(`b9s web did not start within ${deadlineMs} ms:\n${log()}`);
 }
 
-export async function startProject(list: FixtureIssue[], env: Record<string, string> = {}, paired = false): Promise<Project> {
+export async function startProject(list: FixtureIssue[], env: Record<string, string> = {}, paired = false, nextPort: () => Promise<number> = freePort): Promise<Project> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "b9s-web-e2e-"));
   const beads = path.join(dir, ".beads");
   fs.mkdirSync(beads);
@@ -82,22 +91,28 @@ export async function startProject(list: FixtureIssue[], env: Record<string, str
   const bin = path.join(dir, "bin");
   fs.mkdirSync(bin);
   fs.writeFileSync(path.join(bin, "bd"), `#!/bin/sh\nexec "${process.execPath}" "${FAKE_BD}" "$@"\n`, { mode: 0o755 });
-  const port = await freePort();
-  let out = "";
-  const proc = spawn(BIN, ["web", ...(paired ? [] : ["--no-token"]), "--listen", `127.0.0.1:${port}`], {
-    cwd: dir,
-    env: {
-      ...process.env, ...env,
-      PATH: `${bin}:${process.env.PATH}`, XDG_CONFIG_HOME: path.join(dir, "config"), B9S_TEST_MODE: "1",
-      BEADS_DIR: "", BEADS_DOLT_PASSWORD: "",
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  proc.stdout!.on("data", d => { out += d; });
-  proc.stderr!.on("data", d => { out += d; });
-  const url = `http://127.0.0.1:${port}/`;
+  let out = "", url = "", proc: ChildProcess | undefined;
   const log = () => out;
-  await waitFor(url, 15000, log);
+  // The probed port is free only until the probe closes, so a parallel test
+  // can bind it first. Each attempt takes a fresh port.
+  for (let attempt = 0; attempt < 5 && !proc; attempt++) {
+    const port = await nextPort();
+    out = "";
+    const p = spawn(BIN, ["web", ...(paired ? [] : ["--no-token"]), "--listen", `127.0.0.1:${port}`], {
+      cwd: dir,
+      env: {
+        ...process.env, ...env,
+        PATH: `${bin}:${process.env.PATH}`, XDG_CONFIG_HOME: path.join(dir, "config"), B9S_TEST_MODE: "1",
+        BEADS_DIR: "", BEADS_DOLT_PASSWORD: "",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    p.stdout!.on("data", d => { out += d; });
+    p.stderr!.on("data", d => { out += d; });
+    url = `http://127.0.0.1:${port}/`;
+    if (await waitFor(p, url, 15000, log)) proc = p;
+  }
+  if (!proc) throw new Error(`b9s web could not bind a port in 5 attempts:\n${out}`);
   return {
     dir, url, proc, log,
     pairLink: () => (out.match(/This machine\s+(\S+\/pair\?t=\S+)/) || ["", ""])[1],

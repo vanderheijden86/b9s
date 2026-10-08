@@ -1,4 +1,6 @@
-import { expect, open, row, test } from "./harness";
+import http from "node:http";
+import net from "node:net";
+import { expect, freePort, open, row, SAMPLE, startProject, stopProject, test } from "./harness";
 
 test.describe("reading", () => {
   // The live stream re-renders the tree when it connects. A test that acts
@@ -94,5 +96,25 @@ test.describe("reading", () => {
     await open(page, project);
     await page.locator('[data-act="help"]').click();
     await expect(page.locator(".msheet .gtable tr")).toHaveCount(25);
+  });
+});
+
+test.describe("harness", () => {
+  // A parallel test can take the port between the probe and the bind. The
+  // server already on it answers health checks, so readiness must come from
+  // the started process, or a test reads another test's issues.
+  test("a project never reaches a server it did not start", async () => {
+    const squatter = http.createServer((_, res) => { res.writeHead(200); res.end("{}"); });
+    await new Promise<void>(r => squatter.listen(0, "127.0.0.1", () => r()));
+    const taken = (squatter.address() as net.AddressInfo).port;
+    const ports = [taken];
+    const p = await startProject(SAMPLE, {}, false, async () => ports.shift() ?? freePort());
+    try {
+      expect(p.url).not.toContain(`:${taken}/`);
+      expect(p.log()).toContain("b9s web is serving");
+    } finally {
+      stopProject(p);
+      squatter.close();
+    }
   });
 });
