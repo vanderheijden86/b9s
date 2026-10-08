@@ -9,12 +9,12 @@ Status: draft. This document feeds the reply to the contributor and a later ADR.
 - [What the issue asks for](#what-the-issue-asks-for)
 - [What b9s does today](#what-b9s-does-today)
 - [Constraints the issue does not mention](#constraints-the-issue-does-not-mention)
+- [Prior art: k9s](#prior-art-k9s)
 - [Options](#options)
 - [Comparison](#comparison)
 - [Recommendation](#recommendation)
 - [Roadmap](#roadmap)
 - [Open questions for the owner](#open-questions-for-the-owner)
-- [Draft reply to the contributor](#draft-reply-to-the-contributor)
 
 ## What the issue asks for
 
@@ -106,6 +106,20 @@ The proposal switches on `DISPLAY` and `WAYLAND_DISPLAY` being empty. The error 
 - Unit tests already inject `m.clipboardWrite`. A provider interface makes that injection the normal path rather than a test-only field.
 - The E2E harness runs b9s through the Unix `script` command in a PTY. CI has no `xclip`, so `y` fails there today. With the fallback, an E2E test can press `y` and assert that the captured output contains `\x1b]52;c;<base64 of the ID>\a`. That is a real end-to-end check of the feature with no clipboard involved, and it is also the measurement for the interleaving risk above.
 - `B9S_TEST_MODE` must not change clipboard behaviour, or the E2E test checks nothing.
+
+## Prior art: k9s
+
+k9s had the same report (derailed/k9s#3740, #3646) and merged the same fix in [derailed/k9s#3902](https://github.com/derailed/k9s/pull/3902), shipped in v0.51.0. It is 120 lines in `internal/view/clipboard.go`:
+
+- Same library, `atotto/clipboard` v0.1.4, same error.
+- One `clipboardWrite(text)`. Mode from the env var `K9S_CLIPBOARD`: `auto` (default), `native`, `osc52`. `auto` tries native first and sends OSC 52 only when native returns an error. No `DISPLAY` heuristic.
+- OSC 52 is refused when stdout is not a tty or `TERM=dumb`.
+- Base64 longer than 74994 bytes is an error (`K9S_OSC52_MAX` overrides). That is the tmux limit.
+- DCS wrapping when `$TMUX` is set (needs `allow-passthrough on`) and when `TERM` starts with `screen`. Bare sequence otherwise.
+- One `os.Stdout.WriteString`. tview renders from another goroutine too, and they accepted the risk.
+- A successful OSC 52 write reports as a normal copy.
+
+Where b9s follows k9s: the `auto` rule, the tty and `TERM=dumb` check, the payload cap, one write. Where it differs: the mode lives in `config.yaml` rather than an env var, because b9s validates settings at load, and tmux gets the bare sequence, because tmux's default `set-clipboard external` forwards it and `allow-passthrough` is off by default.
 
 ## Options
 
@@ -204,18 +218,3 @@ Step 1 alone closes the issue as reported. Steps 2 and 3 can follow in the same 
 2. Should the `command` provider be in scope for the first PR, or wait for someone to ask for it?
 3. Does any owner setup use tmux with `set-clipboard off`? That is the one tmux case that needs the `Tmux()` wrapping and `allow-passthrough on`.
 4. Accept the contributor's PR for step 1, or implement in-house and keep the contributor on review? The issue reads as a competent proposal and the shape is agreed up to the env heuristic.
-
-## Draft reply to the contributor
-
-Not posted. The owner writes all GitHub replies.
-
-> Thanks, this is a well-scoped request and OSC 52 is the right tool for it. A PR is welcome. Preferred shape, in short:
->
-> - A small `pkg/clipboard` package with a `Writer` interface and three writers: `system` (the current atotto path), `osc52`, and `auto`.
-> - `auto` tries `system` and falls back to `osc52` when it returns an error. Please switch on the error rather than on `DISPLAY`/`WAYLAND_DISPLAY`: the error already distinguishes "no utility" and "utility but no display", and it keeps macOS (`pbcopy`, no `DISPLAY`) and Windows on the native path without an OS check.
-> - Route all five copy sites in `pkg/ui/model.go` through it (three still call `clipboard.WriteAll` directly) and fold the status messages into one helper. The fallback should report "Sent to terminal clipboard (OSC 52)" rather than "Copied", because the terminal never confirms.
-> - Build the sequence with `go-osc52/v2`, which is already vendored. Wrap for `screen`, not for tmux (default `set-clipboard external` forwards it). One `Write` call for the whole sequence: Bubble Tea v1 renders from another goroutine, so keep the write atomic.
-> - Tests: unit tests per writer, and one E2E test in `tests/e2e` that presses `y` with no clipboard utility on PATH and asserts the `\x1b]52;c;<base64>\a` bytes in the PTY capture.
-> - A `clipboard.provider` config key (`auto | system | osc52`) can come in the same PR or a follow-up, your choice. `command` as a fourth provider is a possible later addition.
->
-> Docs: a line in the README key table note and the user guide, including the iTerm2 "applications may access clipboard" setting.
