@@ -80,13 +80,23 @@ Read [docs/testing.md](docs/testing.md). The rules that bite:
 - **E2E tests** live in `tests/e2e`, run the built binary under `script`, and use `B9S_TUI_AUTOCLOSE_MS` to bound a run. The identity E2E test needs the scratch server as well.
 - **Bound every wait.** A hung test is a bug to fix, not a timeout to raise.
 
-### Test-driven development (mandatory)
+### Test-driven development
+
+**Test-first is mandatory for bug fixes and pure logic.** The red run is the proof: it shows the test reproduces the bug or pins the behaviour, which a test written afterwards cannot show, because it may pass for the wrong reason.
 
 1. **RED**: write a failing test and watch it fail for the right reason.
 2. **GREEN**: write the minimal code to pass, then run the whole suite.
 3. **REFACTOR**: clean up with the tests green.
 
-No production code before a failing test. A bug fix includes a regression test that fails before the fix. One behaviour per test. Throwaway prototypes, generated code and configuration-only changes may skip TDD with explicit permission.
+A bug fix includes a regression test that fails before the fix. One behaviour per test. Run the red-green cycle on one focused test (`go test ./pkg/ui/ -run TestName`); the E2E suite takes minutes and belongs at the end, not in the loop.
+
+**Test-after is allowed where a test written first would lock in a guess or prove nothing:**
+
+- **Visual and layout work** (rendering, styling, the web graph and board). A unit test cannot judge whether a layout reads well. Check it by eye in the running program or a screenshot, then add tests that pin what you settled on.
+- **Spikes**, while the shape of the code is still unknown. Write the tests before the spike becomes the real change.
+- **Refactors with no behaviour change** that existing tests already cover. Run those tests before and after.
+
+Generated code and configuration-only changes need no new tests.
 
 ## Go practices
 

@@ -113,7 +113,7 @@ Change the version in the README's install section when a release passes or fail
 
 ## Writing tests
 
-b9s follows test-driven development: write the failing test first, make it pass, then clean up. A bug fix includes a regression test that fails before the fix.
+Bug fixes and pure logic follow test-driven development: write the failing test first, make it pass, then clean up. A bug fix includes a regression test that fails before the fix. Visual and layout work, spikes and refactors that existing tests cover may add tests afterwards, after a check by eye; `AGENTS.md` has the full rule.
 
 - **Use real data, not mocks.** Build issues with `pkg/testutil` generators or small literals, and run the real code. The generators are deterministic, so a failure reproduces.
 - **One behaviour per test.** A name with "and" in it is two tests.
