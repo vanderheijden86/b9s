@@ -120,6 +120,8 @@
   .ph .n { color: var(--muted); font-weight: 400; }
   .empty { padding: 32px 16px; color: var(--muted); text-align: center; }
   .empty button { color: var(--cyan); text-decoration: underline; }
+  .memoryLoading { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .memoryLoading progress { width: min(260px, 70%); accent-color: var(--cyan); }
   .fbar { flex: none; padding: 6px 16px; background: rgba(189,147,249,.1); color: var(--accent); display: flex; gap: 8px; align-items: center; font-size: 0.923rem; border-bottom: 1px solid var(--line); }
   .fbar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .fbar button { color: var(--text); padding: 4px 6px; }
@@ -380,3 +382,49 @@
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }
 [hidden] { display: none !important; }
+
+  #vMemory { overflow: auto; }
+  .memoryTools, .memoryLegend { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .memoryTools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .memoryTools label { display: flex; align-items: center; gap: 6px; }
+  .memoryTools select { max-width: min(360px, 70vw); }
+  .memoryTools button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; }
+  .memoryTools button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .memoryLegend { color: var(--dim); font-size: .85rem; line-height: 1.7; }
+  .memoryTools, .memoryLegend { flex-shrink: 0; }
+  .memoryCanvas { flex: 1 1 auto; min-height: 260px; position: relative; }
+  .memoryCanvas svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+  .memoryCanvas [data-node] { touch-action: none; }
+  #vMemory.memoryNoLabels .memoryEdgeLabel { display: none; }
+  .memoryCanvas [data-node] { cursor: pointer; outline: none; }
+  .memoryCanvas [data-node] { color: var(--cyan); transition: opacity 160ms; }
+  .memoryCanvas [data-node][data-kind="issue"] { color: var(--orange); }
+  .memoryCanvas .memoryCard { fill: var(--bg); stroke: currentColor; stroke-width: 1.5; }
+  .memoryCanvas [data-node]:hover .memoryCard, .memoryCanvas [data-node]:focus .memoryCard, .memoryCanvas [aria-pressed="true"] .memoryCard { stroke-width: 3; }
+  .memoryCanvas text { fill: currentColor; font-size: 12px; }
+  .memoryCanvas .memoryCardTitle { fill: var(--text); font-size: 13px; font-weight: 600; }
+  .memoryCanvas .memoryCardID, .memoryCanvas .memoryLane { fill: var(--dim); font-size: 11px; }
+  .memoryOverview .memoryCardKind, .memoryOverview .memoryCardTitle { visibility: hidden; }
+  .memoryOverview .memoryCardID { fill: currentColor; font-size: calc(10px / var(--memory-scale)); transform: translateY(-28px); }
+  .memoryOverview [data-kind="issue"] .memoryCardID { transform: translateY(65px); }
+  .memoryOverview .memoryEdgeLabel { opacity: 0; }
+  .memoryOverview [data-edge-kind]:hover .memoryEdgeLabel, .memoryOverview .memoryEdgeLabel:focus { opacity: 1; }
+  .memoryCanvas [data-edge-kind] > path { stroke-width: var(--memory-line, 2px); }
+  .memoryStep { display: flex; align-items: center; gap: 6px; }
+  .memoryZoom { position: absolute; right: 12px; top: 12px; display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .memoryZoom button { min-width: 36px; min-height: 36px; font-size: 1.2rem; }
+  .memoryZoom output { min-width: 5ch; text-align: center; color: var(--dim); }
+  .memoryStep output { min-width: 3ch; text-align: center; }
+  .memoryLegend svg { vertical-align: middle; overflow: visible; }
+  .memoryLegend small { opacity: .7; }
+  .memoryCanvas .memoryEdgeLabel { cursor: pointer; }
+  .memoryCanvas .memoryEdgeLabel rect { fill: var(--bg); stroke: currentColor; stroke-width: .5; }
+  .memoryCanvas .memoryEdgeLabel text { pointer-events: none; }
+  .memoryCanvas .memoryEdgeLabel:focus { text-decoration: underline; outline: none; }
+  .memoryCanvas [data-edge-kind] { transition: opacity 160ms; }
+  .memoryDim { opacity: calc(var(--memory-fade, .75) * .6); }
+  .memoryCanvas [data-node].memoryDim { opacity: var(--memory-fade, .75); }
+  .issueMemoryLink { margin: 10px 0; padding: 10px; border-left: 2px solid var(--cyan); }
+  .issueMemoryLink summary { cursor: pointer; line-height: 1.7; }
+  .issueMemoryLink summary span { color: var(--dim); font-size: .85rem; }
+  .issueMemoryLink small { overflow-wrap: anywhere; color: var(--dim); }

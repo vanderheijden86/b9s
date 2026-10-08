@@ -111,6 +111,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	if cfgErr != nil {
 		appCfg = config.DefaultConfig()
 	}
+	applyMemoryLever(appCfg)
 	startupBeadsDir, _ := loader.GetBeadsDir("")
 	startupDir := filepath.Dir(startupBeadsDir)
 	// Never fall back to another project: a server started in the wrong

@@ -1,8 +1,10 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -30,6 +32,8 @@ type Store struct {
 	loadErr     string
 	loadedAt    time.Time
 	issues      []model.Issue
+	memoryGraph MemoryGraphResponse
+	memory      memoryState
 	version     uint64
 	registry    *identity.Registry
 	actorDir    string
@@ -82,6 +86,7 @@ func (s *Store) Open(target datasource.OpenTarget, key string) *datasource.OpenF
 	s.loadErr = ""
 	s.loadedAt = time.Now()
 	s.issues = opened.Issues
+	s.resetMemoryLocked(opened.Source)
 	s.registry = registry
 	s.actorDir = target.Dir
 	s.version++
@@ -119,6 +124,8 @@ func (s *Store) OpenAll(dbs []datasource.DoltDBInfo) error {
 	s.loadErr = ""
 	s.loadedAt = time.Now()
 	s.issues = issues
+	s.memory = memoryState{generation: s.memory.generation + 1}
+	s.memoryGraph = MemoryGraphResponse{Reason: "the all-projects view has no Memory graph", Nodes: []MemoryGraphNode{}, Edges: []MemoryGraphEdge{}}
 	s.registry = nil
 	s.actorDir = ""
 	s.version++
@@ -175,6 +182,7 @@ func (s *Store) Reload() {
 	s.loadErr = ""
 	s.loadedAt = time.Now()
 	s.issues = issues
+	s.refreshMemoryLocked()
 	s.version++
 	version := s.version
 	s.mu.Unlock()
@@ -220,6 +228,167 @@ func (s *Store) Issues() ([]model.Issue, uint64) {
 	return s.issues, s.version
 }
 
+// memoryState tracks the Memory graph of a Memory workspace, which is read on
+// request rather than with the Issues (ADR 0051).
+type memoryState struct {
+	// beadsDir is the workspace's .beads directory, "" for any other project.
+	beadsDir string
+	// generation changes with every project opened, so a read that finishes
+	// after a switch is dropped.
+	generation uint64
+	reading    bool
+	// stale marks a reload that arrived during a read, which then reads again.
+	stale       bool
+	done, total int
+	// failure is the last read's error, reported to one request so the next
+	// one retries.
+	failure string
+}
+
+// memoryReadTimeout bounds one read of the whole graph.
+const memoryReadTimeout = 5 * time.Minute
+
+// resetMemoryLocked forgets the graph of the previous project. A Memory
+// workspace keeps no graph until it is requested; any other project gets the
+// reason it has none.
+func (s *Store) resetMemoryLocked(source datasource.DataSource) {
+	s.memory = memoryState{generation: s.memory.generation + 1}
+	s.memoryGraph = MemoryGraphResponse{Nodes: []MemoryGraphNode{}, Edges: []MemoryGraphEdge{}}
+	if source.Type != datasource.SourceTypeDoltEmbedded {
+		s.memoryGraph.Reason = "this project is not a Memory graph workspace"
+		return
+	}
+	beadsDir := datasource.EmbeddedBeadsDir(source)
+	if !datasource.MemoryWorkspaceFor(beadsDir) {
+		s.memoryGraph.Reason = memoryUnavailableReason(filepath.Dir(beadsDir))
+		return
+	}
+	s.memory.beadsDir = beadsDir
+}
+
+// refreshMemoryLocked reads a graph that was read before again after a
+// reload. A graph nobody requested stays unread.
+func (s *Store) refreshMemoryLocked() {
+	switch {
+	case s.memory.reading:
+		s.memory.stale = true
+	case s.memoryGraph.Available:
+		s.startMemoryReadLocked()
+	}
+}
+
+// requestMemoryLocked starts the first read of a workspace's graph. A failed
+// read waits for the next request.
+func (s *Store) requestMemoryLocked() {
+	if s.memory.beadsDir == "" || s.memoryGraph.Available || s.memory.reading || s.memory.failure != "" {
+		return
+	}
+	s.startMemoryReadLocked()
+}
+
+func (s *Store) startMemoryReadLocked() {
+	s.memory.reading, s.memory.stale = true, false
+	s.memory.done, s.memory.total = 0, 0
+	beadsDir, generation := s.memory.beadsDir, s.memory.generation
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), memoryReadTimeout)
+		defer cancel()
+		go func() {
+			select {
+			case <-s.done:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+		current := func() bool { return s.memory.generation == generation }
+		graph, err := func() (datasource.MemoryGraph, error) {
+			client, err := datasource.OpenGraphPreview(filepath.Dir(beadsDir))
+			if err != nil {
+				return datasource.MemoryGraph{}, err
+			}
+			return client.Graph(ctx, func(done, total int) {
+				s.mu.Lock()
+				if current() {
+					s.memory.done, s.memory.total = done, total
+				}
+				s.mu.Unlock()
+			})
+		}()
+
+		s.mu.Lock()
+		if !current() {
+			s.mu.Unlock()
+			return
+		}
+		s.memory.reading = false
+		if err != nil {
+			debug.Log("web: Memory graph read failed: %v", err)
+			if !s.memoryGraph.Available {
+				s.memory.failure = "the Memory graph could not be read: " + err.Error()
+			}
+			if s.memory.stale {
+				s.startMemoryReadLocked()
+			}
+			s.mu.Unlock()
+			return
+		}
+		s.memoryGraph = memoryGraphResponse(graph)
+		if s.memory.stale {
+			s.startMemoryReadLocked()
+		}
+		// The new version makes the browser fetch the graph and the open
+		// detail again.
+		s.version++
+		version := s.version
+		s.mu.Unlock()
+		s.publish(Event{Type: "changed", Version: version})
+	}()
+}
+
+func memoryGraphResponse(graph datasource.MemoryGraph) MemoryGraphResponse {
+	result := MemoryGraphResponse{Available: true, Nodes: []MemoryGraphNode{}, Edges: []MemoryGraphEdge{}}
+	for _, node := range graph.Nodes {
+		body := node.Body
+		if node.Kind == "issue" {
+			body = node.Issue.Description
+		}
+		result.Nodes = append(result.Nodes, MemoryGraphNode{ID: node.ID, Kind: node.Kind, Title: node.Title, Status: node.Status, Type: node.Type, Version: node.Version, Body: body})
+	}
+	for _, edge := range graph.Edges {
+		result.Edges = append(result.Edges, MemoryGraphEdge{ID: edge.ID, Type: edge.Type, Source: edge.Source, Target: edge.Target, Kind: edge.Kind, Note: edge.Note})
+	}
+	return result
+}
+
+// memoryUnavailableReason names why a project has no captured graph. The
+// detection is the same one that decided to skip the graph read, and costs a
+// metadata read and a cached probe. A ready project without a graph had its
+// read fail, which Health already reports.
+func memoryUnavailableReason(projectDir string) string {
+	capability := datasource.DetectMemory(context.Background(), projectDir)
+	if reason, ok := datasource.MemoryUnavailableReason(capability.Err); ok {
+		return reason
+	}
+	return "the Memory graph could not be read"
+}
+
+// MemoryGraph returns the graph of the open project. The first request for a
+// workspace's graph starts its read and reports the progress until it is read.
+func (s *Store) MemoryGraph() MemoryGraphResponse {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.requestMemoryLocked()
+	result := s.memoryGraph
+	result.Version = s.version
+	if s.memory.failure != "" {
+		result.Reason = s.memory.failure
+		s.memory.failure = ""
+	}
+	result.Loading = !result.Available && s.memory.reading
+	result.Done, result.Total = s.memory.done, s.memory.total
+	return result
+}
+
 // Snapshot converts the open project into its JSON form.
 func (s *Store) Snapshot(bdFound bool) Snapshot {
 	s.mu.RLock()
@@ -241,12 +410,34 @@ func (s *Store) Snapshot(bdFound bool) Snapshot {
 }
 
 // Issue returns one issue with every field, or false when it does not exist.
+// The detail lists the issue's Memory Links, so it asks for the graph.
 func (s *Store) Issue(id string) (Issue, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for i := range s.issues {
 		if s.issues[i].ID == id {
-			return convertIssue(&s.issues[i], statusByID(s.issues)), true
+			s.requestMemoryLocked()
+			issue := convertIssue(&s.issues[i], statusByID(s.issues))
+			issue.MemoryAvailable = s.memoryGraph.Available
+			issue.MemoryLoading = !s.memoryGraph.Available && s.memory.reading
+			issue.MemoryLinks = []IssueMemoryLink{}
+			for _, edge := range s.memoryGraph.Edges {
+				other := ""
+				if edge.Source == id {
+					other = edge.Target
+				} else if edge.Target == id {
+					other = edge.Source
+				}
+				if other == "" {
+					continue
+				}
+				for _, node := range s.memoryGraph.Nodes {
+					if node.ID == other && node.Kind == "memory" {
+						issue.MemoryLinks = append(issue.MemoryLinks, IssueMemoryLink{Link: edge, Memory: node, Outgoing: edge.Source == id})
+					}
+				}
+			}
+			return issue, true
 		}
 	}
 	return Issue{}, false

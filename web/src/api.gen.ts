@@ -4,6 +4,9 @@
 export type WriteOp = "status" | "close" | "delete" | "update" | "create" | "comment" | "defer";
 
 export interface Issue {
+  memory_available: boolean;
+  memory_loading: boolean;
+  memory_links: IssueMemoryLink[];
   id: string;
   title: string;
   description: string;
@@ -132,4 +135,40 @@ export interface Session {
 export interface Event {
   type: string;
   version: number;
+}
+
+export interface MemoryGraphResponse {
+  version: number;
+  available: boolean;
+  reason?: string;
+  loading: boolean;
+  done: number;
+  total: number;
+  nodes: MemoryGraphNode[];
+  edges: MemoryGraphEdge[];
+}
+
+export interface MemoryGraphNode {
+  id: string;
+  kind: string;
+  title: string;
+  status: string;
+  type: string;
+  record_version: string;
+  body: string;
+}
+
+export interface MemoryGraphEdge {
+  id: string;
+  type: string;
+  source: string;
+  target: string;
+  kind: string;
+  note: string;
+}
+
+export interface IssueMemoryLink {
+  link: MemoryGraphEdge;
+  memory: MemoryGraphNode;
+  outgoing: boolean;
 }

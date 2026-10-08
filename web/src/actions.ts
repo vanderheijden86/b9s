@@ -335,7 +335,7 @@ export const KEYS: [string, string][] = [
   ["o C r a", "open, closed, ready or all issues"], ["f, x", "only the branch or the subtree; again undoes it"], ["F", "follow live changes"],
   ["s, |", "sort, columns"], ["Space, V, u, Ctrl-\\", "mark, mark a range, unmark, clear the marks"],
   ["e, S, K, Delete", "edit, status, close, delete"], ["Ctrl-N, c", "create, copy ID and title"],
-  ["b, t, g, Esc", "board and back, tree or flat list, dependency graph, back"], ["1-9, 0", "open a recent project, all projects"],
+  ["b, t, g, Esc", "board and back, tree or flat list, dependency graph, back"], ["M", "Memory graph and back"], ["Memory: d, l, f, + -", "show or hide the detail, Link labels, fit, zoom"], ["1-9, 0", "open a recent project, all projects"],
   ["L, A, P", "put labels, assignees or projects on 1-9"], ["Ctrl-E H, D", "hide the header, source health"],
   ["Ctrl-R, F5", "reload"], ["Detail: n p, c, \\", "next or previous sibling, copy as Markdown, full size or back"],
   ["Board: h j k l, z Z", "move, fold the column, unfold all"], ["Board: o i C, r, c", "toggle open, in progress, closed; ready; closed column"],

@@ -35,6 +35,53 @@ var testAssets = fstest.MapFS{
 	"app.js":     {Data: []byte("console.log('b9s')")},
 }
 
+func TestMemoryGraphEndpointOutsidePreview(t *testing.T) {
+	ts := newTestServer(t, nil, nil)
+	resp, err := http.Get(ts.URL + "/api/memory-graph")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var graph struct {
+		Available bool
+		Nodes     []any
+		Edges     []any
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&graph); err != nil {
+		t.Fatal(err)
+	}
+	if graph.Available || graph.Nodes == nil || graph.Edges == nil {
+		t.Fatalf("non-preview graph = %+v", graph)
+	}
+}
+
+func TestMemoryGraphEndpointRequiresPairing(t *testing.T) {
+	ts := newTestServer(t, testAuth(t), nil)
+	response, err := http.Get(ts.URL + "/api/memory-graph")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d", response.StatusCode)
+	}
+}
+
+func TestMemoryGraphEndpointRejectsWrites(t *testing.T) {
+	ts := newTestServer(t, nil, nil)
+	response, err := http.Post(ts.URL+"/api/memory-graph", "application/json", strings.NewReader("{}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 400 {
+		t.Fatalf("write accepted with status %d", response.StatusCode)
+	}
+}
+
 // newFixtureProject writes a JSONL checkout and returns its directory.
 func newFixtureProject(t *testing.T) string {
 	t.Helper()

@@ -17,6 +17,7 @@ import {
   setFocus, setStatus, switchProject, toast, toggleMark,
 } from "./actions";
 import * as api from "./api";
+import { memoryKey } from "./memory";
 import { D, eff, get, kids, laneOf, pool } from "./data";
 import { detailKids, ensureVisible, render, renderBoard, siblings, wide } from "./render";
 import { S, saveChips, treeRows } from "./state";
@@ -46,6 +47,12 @@ export function onKey(e: KeyboardEvent): boolean {
   if (S.sheet) {
     if (k === "Escape") { closeSheet(); return true; }
     return false;
+  }
+  // The Memory view owns its detail, so the tree's hidden detail must not catch \ or the digits.
+  if (S.view === "memory") {
+    if (memoryKey(k)) return true;
+    if (k === "Escape") { S.view = "tree"; render(); return true; }
+    return globalKey(k);
   }
   if (k === "Escape") return escape();
   // The TUI's \ stacks the detail full width; here it sizes the sheet or the side panel.
@@ -99,6 +106,7 @@ let slots: Slots = "projects";
 function globalKey(k: string): boolean {
   switch (k) {
     case "b": S.view = S.view === "board" ? "tree" : "board"; S.detail = null; render(); return true;
+    case "M": S.view = S.view === "memory" ? "tree" : "memory"; S.detail = null; render(); return true;
     case "t": case "T":
       if (S.view !== "tree") { S.view = "tree"; render(); return true; }
       S.list = !S.list; store.set("list", S.list); render();

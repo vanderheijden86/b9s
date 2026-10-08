@@ -1,7 +1,7 @@
 // The only module that talks to b9s web. Every URL is relative, so the app
 // works behind a path prefix such as the one Tailscale Serve adds.
 
-import type { Health, Issue, ProjectInfo, ProjectList, QueryResult, Session, Snapshot, WriteRequest, WriteResult } from "./api.gen";
+import type { Health, Issue, MemoryGraphResponse, ProjectInfo, ProjectList, QueryResult, Session, Snapshot, WriteRequest, WriteResult } from "./api.gen";
 import { uid } from "./util";
 
 export class ApiError extends Error {
@@ -45,6 +45,7 @@ export const snapshot = () => get<Snapshot>("api/snapshot");
 export const issue = (id: string) => get<Issue>("api/issue?id=" + encodeURIComponent(id));
 export const query = (q: string) => get<QueryResult>("api/query?q=" + encodeURIComponent(q));
 export const health = () => get<Health>("api/health");
+export const memoryGraph = () => get<MemoryGraphResponse>("api/memory-graph");
 export const projects = () => get<ProjectList>("api/projects");
 export const openProject = (key: string) => post<ProjectInfo>("api/projects/open", { key });
 export const reload = () => post<Health>("api/reload", {});

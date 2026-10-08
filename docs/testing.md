@@ -8,6 +8,7 @@ b9s has three test layers. Unit tests cover packages, integration tests cover th
 - [Layers](#layers)
 - [Dolt rules](#dolt-rules)
 - [End-to-end tests](#end-to-end-tests)
+- [Memory preview terminal checks](#memory-preview-terminal-checks)
 - [Browser tests](#browser-tests)
 - [bd releases](#bd-releases)
 - [Writing tests](#writing-tests)
@@ -85,7 +86,82 @@ The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.js
 
 The mobile and preview shell scripts in `tests/` are not Go tests. They check a deployed preview through the URL a reviewer uses and take the base URL, task ID and commit SHA as arguments, so a run against the wrong build fails instead of passing on a sibling.
 
+## Memory preview terminal checks
+
+`memory_preview_e2e_test.go` creates fresh embedded graph workspaces with the
+explicit preview binary. It checks body updates, retained versions, Link
+ownership and direction, literal search, ordinary Issues and terminal version
+selection. Every subprocess has a deadline and receives isolated Beads settings.
+
+```bash
+B9S_TEST_MEMORY_BD="$HOME/Documents/b9s-memory-poc/.memory-preview/bin/bd" \
+  go test ./tests/e2e -run '^TestMemoryPreview' -count=1 -timeout=180s
+B9S_MEMORY_PREVIEW_WORKSPACE="$HOME/Documents/b9s-memory-poc" \
+  go test ./internal/datasource -run '^TestMemoryPreviewGraphReadTiming$' -count=1 -timeout=190s -v
+```
+
+The Memory capability probe in `internal/bdrun` runs against fake bd scripts.
+To check it against real builds, name a released bd and a preview bd. The probe
+reads only help output, from an empty directory, so it never opens a database:
+
+```bash
+B9S_TEST_STOCK_BD="$(command -v bd)" \
+B9S_TEST_PREVIEW_BD="$HOME/Documents/b9s-memory-poc/.memory-preview/bin/bd" \
+  go test ./internal/bdrun -run '^TestProbeMemory_RealBinaries$' -count=1 -v
+```
+
+`memory_gating_e2e_test.go` runs the same built b9s three times against an
+embedded graph workspace with a fake bd on a private `PATH` and a private probe
+cache: a released-like bd (`M` explains, no MEMORY LINKS column), a
+preview-like bd (`M` opens the Memory) and the preview with `B9S_MEMORY=off`
+(Issues load, Memory hidden). It needs no real bd:
+
+```bash
+go test ./tests/e2e -run '^TestMemory(Key|Lever)' -count=1 -timeout=120s
+```
+
+The timing test reads an existing embedded preview without writes. It compares
+the optimized graph with an unpruned traversal, then requires startup below
+11 seconds. Run it without other processes reading that embedded workspace.
+
+`tests/e2e/memory_preview.py` reads an existing embedded Memory preview through its pinned `bd`, in a real `script` terminal. It checks the list, focus wires, context expansion and collapse, removed mode keys, switching columns, opening a Memory and quitting. It never creates or changes Beads. The workspace must contain `.memory-preview/bin/bd` and ready graph metadata. Unit tests additionally cover distant endpoints, paging when relevant rows alone overflow, reverse arrows and narrow terminals.
+
+```bash
+python3 -m venv /tmp/b9s-memory-checks
+/tmp/b9s-memory-checks/bin/pip install pyte
+go build -o /tmp/b9s-memory-checks/b9s ./cmd/b9s
+/tmp/b9s-memory-checks/bin/python tests/e2e/memory_preview.py \
+  --binary /tmp/b9s-memory-checks/b9s \
+  --workspace "$HOME/Documents/b9s-memory-poc" \
+  --evidence /tmp/b9s-memory-checks/evidence
+```
+
+Each screen has a deadline, and the TUI has a three-minute exit timer. The test terminates only its own process group on failure. Evidence includes terminal bytes, screen text, and SVG captures. The final line is `=== MEMORY_PREVIEW DONE pass=N fail=M ===`. To compare a prior build, run the same command with its binary and a separate evidence directory.
+
+Add `--integrated` to start regular b9s and test `M` wires entry, rejected graph-view keys,
+`A/O/C` status filters, literal search, `\` detail expansion, and return to Issues.
+The integrated run also checks that wires reach Issue labels when selecting from
+either column. Use `--columns 300` to expose gaps beside short labels in a wide
+terminal. Rendering tests cover reverse arrows, Unicode labels and truncated titles.
+
+The opt-in Memory transport probes, isolated-copy preparation requirements and
+recorded measurements are in [memory-read-research.md](memory-read-research.md).
+`TestMemoryReadResearchStages` and `TestMemoryReadResearchTransportParity` read
+prepared copies. `TestMemoryReadResearchConcurrentWriter` additionally requires
+`B9S_MEMORY_RESEARCH_MUTATE=1` and adds probe data only to the checked local copy.
+
 ## Browser tests
+
+`web/tests/memory.spec.ts` covers the Memory constellation across Chromium, WebKit and Firefox, with bounded browser operations and local fixture projects. It checks shapes, directed Links, selection, neighbourhood highlighting, the authoritative problem filter, graph caching, errors and responsive layout.
+
+For the real embedded preview, start the server through the isolated launcher, then run the read-only probe in another terminal:
+
+```bash
+scripts/memory-preview b9s tui web --no-token --listen 127.0.0.1:58431
+node web/tests/memory-preview.mjs http://127.0.0.1:58431/ /tmp/b9s-memory-web-evidence
+```
+
+The probe refuses non-loopback URLs, compares visible nodes and Links with the cached endpoint, opens a Memory, checks the problem filter and saves desktop and phone screenshots. It ends with `=== MEMORY_WEB_PREVIEW DONE pass=N fail=M ===` and a nonzero exit on failure.
 
 `make web-e2e` (or `npm --prefix web run test:e2e`) runs the web UI in Playwright, as a Pixel 7 in Chromium and an iPhone 14 in WebKit. `wide.spec.ts` and `keys.spec.ts` run only in the wide projects: 1440 x 900 desktop Chrome, Safari (WebKit) and Firefox, and an iPad Pro 11 in WebKit. The phone projects skip them. The three desktop projects also run `read.spec.ts` and `write.spec.ts`, so the tree, search, the detail panel and every write are checked in each desktop browser. Global setup builds the bundle and `.b9s-e2e/b9s` from the working tree. Set `B9S_WEB_BIN` to test another binary. Every project runs with `reducedMotion: "reduce"`, which drops the app's transitions: under load WebKit reports a sliding sheet as stable, and a tap then lands where its button was (bd-foit.18). CI runs the suite in its own `web-e2e` job on Ubuntu, and uploads the Playwright traces when a test fails.
 

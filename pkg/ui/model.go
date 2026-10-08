@@ -462,6 +462,12 @@ type DatabaseHealth struct {
 
 // Model is the main Bubble Tea model for b9s
 type Model struct {
+	memoryBrowser    *MemoryBrowser
+	memoryVisible    bool
+	memoryGeneration uint64
+	// memoryRefused stops background graph requests after the project's
+	// Memory browser failed to open; a project switch clears it.
+	memoryRefused bool
 	// Data
 	issues           []model.Issue
 	pooledIssues     []*model.Issue // Issue pool refs for sync reloads (return to pool on replace)
@@ -1269,6 +1275,7 @@ func (m Model) WithSourceInfo(info string) Model {
 // triggered by the Shift+D database health popup.
 func (m Model) WithDoltSource(s datasource.DataSource) Model {
 	m.doltSource = s
+	m.tree.SetDecisionLookup(decisionLookupFor(s))
 	if s.User != "" {
 		m.startupDoltUser = s.User
 	}
@@ -1335,6 +1342,52 @@ func (m Model) Init() tea.Cmd {
 // that changes the layout (resize, query bar, picker, split) re-follows the
 // cursor at the new height.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if envelope, ok := msg.(embeddedMemoryMsg); ok {
+		if m.memoryBrowser == nil || envelope.generation != m.memoryGeneration {
+			return m, nil
+		}
+		browser, cmd := m.memoryBrowser.Update(envelope.msg)
+		m.memoryBrowser = &browser
+		if read, ok := envelope.msg.(memoryGraphMsg); ok && read.err == nil {
+			if dir := m.memoryBeadsDir(); dir != "" {
+				datasource.StoreMemoryGraph(dir, read.graph)
+			}
+			m.tree.refreshDecisions()
+		}
+		if !m.memoryVisible {
+			m.updateViewportContent()
+		}
+		return m, wrapMemoryCmd(cmd, m.memoryGeneration)
+	}
+	if size, ok := msg.(tea.WindowSizeMsg); ok && m.memoryBrowser != nil {
+		browser, _ := m.memoryBrowser.Update(size)
+		m.memoryBrowser = &browser
+	}
+	if m.memoryVisible && m.memoryBrowser != nil {
+		if key, ok := msg.(tea.KeyMsg); ok {
+			browser := *m.memoryBrowser
+			if key.String() == "r" && browser.pane != memoryPaneSearch && (browser.sourceErr != nil || browser.graphErr != nil) {
+				return m.openMemories()
+			}
+			if browser.pane != memoryPaneSearch && (key.String() == "M" || key.String() == "q" || key.String() == "esc" && browser.mode != memoryModeList && !browser.expandedDetail && !browser.wiresDetail) {
+				m.memoryVisible = false
+				return m, nil
+			}
+			if key.String() == "esc" && browser.expandedDetail && browser.pane != memoryPaneSearch {
+				browser.setExpandedDetail(false)
+				m.memoryBrowser = &browser
+				return m, nil
+			}
+			browser, cmd := browser.Update(msg)
+			m.memoryBrowser = &browser
+			return m, wrapMemoryCmd(cmd, m.memoryGeneration)
+		}
+		if mouse, ok := msg.(tea.MouseMsg); ok {
+			browser, _ := m.memoryBrowser.Update(mouse)
+			m.memoryBrowser = &browser
+			return m, nil
+		}
+	}
 	m.syncTreeSize()
 	var next tea.Model
 	var cmd tea.Cmd
@@ -1353,6 +1406,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if updated, ok := next.(Model); ok {
 		updated.retryPendingBranch()
 		updated.syncTreeSize()
+		if snapshot, ok := msg.(SnapshotReadyMsg); ok && snapshot.Snapshot != nil {
+			cmd = tea.Batch(cmd, updated.refreshMemoryGraph())
+		}
+		if read := updated.requestMemoryGraph(); read != nil {
+			cmd = tea.Batch(cmd, read)
+			updated.updateViewportContent()
+		}
 		// Key handlers return only a Model, so a command one of them needs to
 		// run (the editor O starts) waits on the model until here.
 		if updated.pendingCmd != nil {
@@ -2812,6 +2872,8 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		// Handle keys when not filtering
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
+			case "M":
+				return m.openMemories()
 			case "ctrl+c":
 				return m, tea.Quit
 
@@ -3800,7 +3862,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// macOS claims ctrl+space for input-source switching by default, so
 		// it often never arrives and V is the range key that always does.
 		m.tree.SpanMark()
-	case "ctrl+\\", "M":
+	case "ctrl+\\":
 		m.tree.UnmarkAll()
 	case "x":
 		// Toggle XRay drill-down mode (bd-0rc)
@@ -4210,6 +4272,9 @@ func (m Model) renderLoadingScreen() string {
 func (m Model) View() string {
 	if !m.ready {
 		return "Initializing..."
+	}
+	if m.memoryVisible && m.memoryBrowser != nil {
+		return m.memoryBrowser.View()
 	}
 
 	var body string
@@ -5005,7 +5070,8 @@ func (m *Model) renderHelpOverlay() string {
 		{"Space/m", "Mark / unmark"},
 		{"u", "Unmark row"},
 		{"^Space/V", "Mark range"},
-		{"^\\ / M / U", "Clear marks"},
+		{"^\\ / U", "Clear marks"},
+		{"M", "Memory wires, \\ detail"},
 		{"S", "Change status"},
 	}
 
@@ -5937,7 +6003,25 @@ func (m *Model) updateViewportContent() {
 	if m.updateAvailable {
 		update = &detailUpdateNotice{Tag: m.updateTag}
 	}
-	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.theme, m.viewport.Width, m.renderer, update))
+	var decisions []string
+	if g, ok := m.tree.MemoryGraph(); ok {
+		decisions = decisionSection(m.theme, g, item.ID, max(20, m.viewport.Width))
+	} else if b := m.memoryBrowser; b != nil && b.graphLoad == graphReading {
+		decisions = []string{m.theme.MutedText.Render(memoryGraphProgressText(b.graphDone, b.graphTotal))}
+	}
+	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.theme, m.viewport.Width, m.renderer, update, decisions))
+}
+
+// decisionLookupFor returns where the tree finds the Memory graph of source.
+// Only an embedded store can be a Memory graph workspace, and whether it is
+// one is known only after its first load, so the lookup asks the cache each
+// time rather than deciding now.
+func decisionLookupFor(source datasource.DataSource) func() (datasource.MemoryGraph, bool) {
+	if source.Type != datasource.SourceTypeDoltEmbedded {
+		return nil
+	}
+	beadsDir := datasource.EmbeddedBeadsDir(source)
+	return func() (datasource.MemoryGraph, bool) { return datasource.MemoryGraphFor(beadsDir) }
 }
 
 // personMarkdown renders a creator or assignee cell; an empty name stays
@@ -6989,6 +7073,7 @@ func (m *Model) enterAllProjectsMode() tea.Cmd {
 
 	m.multiDoltReader = reader
 	m.allProjectsMode = true
+	m.tree.SetDecisionLookup(nil)
 	m.isLoading = true
 	m.sourceInfo = fmt.Sprintf("all-projects (%d databases)", len(reader.DBNames()))
 	m.projectPicker.SetAllProjectsMode(true)
@@ -7028,6 +7113,7 @@ func (m *Model) exitAllProjectsMode() {
 	m.board.SetActiveProjectName(m.activeProjectName) // Restore project badge (bd-dy6r)
 	m.updateListDelegate()
 	m.sourceInfo = ""
+	m.tree.SetDecisionLookup(nil)
 	m.isLoading = true
 	m.issues = nil
 	m.issueMap = nil
@@ -7067,6 +7153,7 @@ func (m *Model) exitAllProjectsMode() {
 				break
 			}
 			if s.Type == datasource.SourceTypeDoltEmbedded {
+				m.tree.SetDecisionLookup(decisionLookupFor(s))
 				if dw, dwErr := datasource.NewDoltWatcher(s, m.doltPollInterval); dwErr == nil && dw.Start() == nil {
 					m.doltWatcher = dw
 					m.doltSource = s

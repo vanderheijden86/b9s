@@ -109,7 +109,9 @@ export async function startProject(list: FixtureIssue[], env: Record<string, str
 
 export function stopProject(p: Project): void {
   p.proc.kill("SIGTERM");
-  try { fs.rmSync(p.dir, { recursive: true, force: true }); } catch { /* temp dir */ }
+  if (!process.env.B9S_KEEP_TEST_FIXTURES) {
+    try { fs.rmSync(p.dir, { recursive: true, force: true }); } catch { /* temp dir */ }
+  }
 }
 
 // The fixture list is wrapped in an object: Playwright reads a bare array option as a [value, options] tuple.

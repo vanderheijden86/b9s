@@ -1,0 +1,92 @@
+package embeddeddolt_test
+
+import (
+	"context"
+	"github.com/steveyegge/beads/internal/storage/embeddeddolt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestMu5rOpenClose(t *testing.T) {
+	root := os.Getenv("B9S_MEMORY_RESEARCH_ROOT")
+	if !strings.HasPrefix(root, "/private/tmp/b9s-mu5r-") {
+		t.Fatal("isolated root required")
+	}
+	dir := filepath.Join(root, "embedded/.beads/embeddeddolt")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	for sample := 0; sample < 4; sample++ {
+		start := time.Now()
+		db, closeDB, err := embeddeddolt.OpenSQL(ctx, dir, "beads_graph_91e5e718b4215551f61706a070e5c46b", "main")
+		if err != nil {
+			t.Fatal(err)
+		}
+		opened := time.Since(start)
+		start = time.Now()
+		rows, err := db.QueryContext(ctx, `SELECT v.snapshot FROM graph_preview_catalog c JOIN graph_preview_versions v ON v.path=c.path AND v.version=c.revision WHERE c.allocation_state='live'`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for rows.Next() {
+			var raw []byte
+			if err := rows.Scan(&raw); err != nil {
+				t.Fatal(err)
+			}
+			n++
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		rows.Close()
+		read := time.Since(start)
+		start = time.Now()
+		if err := closeDB(); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("sample=%d open=%s native_query=%s close=%s generic_records=%d", sample, opened, read, time.Since(start), n)
+	}
+}
+
+func TestMu5rEmbeddedWriterLock(t *testing.T) {
+	root := os.Getenv("B9S_MEMORY_RESEARCH_ROOT")
+	if !strings.HasPrefix(root, "/private/tmp/b9s-mu5r-") {
+		t.Fatal("isolated root required")
+	}
+	workspace := filepath.Join(root, "embedded")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	_, closeDB, err := embeddeddolt.OpenSQL(ctx, filepath.Join(workspace, ".beads/embeddeddolt"), "beads_graph_91e5e718b4215551f61706a070e5c46b", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeDB()
+	run := func(timeout time.Duration) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, filepath.Join(workspace, ".memory-preview/bin/bd"), "remember", "Concurrent writer probe", "--id", "mu5r-lock-probe", "--title", "Lock probe")
+		cmd.Env = []string{"HOME=" + root, "PATH=/opt/homebrew/bin:/usr/bin:/bin", "BEADS_DOLT_AUTO_START=0", "BEADS_DIR=" + filepath.Join(workspace, ".beads")}
+		cmd.Dir = workspace
+		cmd.WaitDelay = time.Second
+		return cmd.CombinedOutput()
+	}
+	start := time.Now()
+	out, err := run(2 * time.Second)
+	if err == nil {
+		t.Fatal("writer unexpectedly acquired an open embedded store")
+	}
+	t.Logf("held-reader writer elapsed=%s err=%v output=%s", time.Since(start), err, out)
+	if err := closeDB(); err != nil {
+		t.Fatal(err)
+	}
+	start = time.Now()
+	out, err = run(8 * time.Second)
+	if err != nil {
+		t.Fatalf("writer after release: %v %s", err, out)
+	}
+	t.Logf("released-reader writer elapsed=%s success=true", time.Since(start))
+}

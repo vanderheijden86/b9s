@@ -36,7 +36,7 @@ func renderDetailFixture(t *testing.T, update *detailUpdateNotice) string {
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
 	issue, issueMap := detailFixture()
 	md := NewMarkdownRendererWithTheme(70, theme)
-	return stripANSI(renderIssueDetail(issue, issueMap, theme, 70, md, update))
+	return stripANSI(renderIssueDetail(issue, issueMap, theme, 70, md, update, nil))
 }
 
 func TestRenderIssueDetail_HeaderShowsMetaWithoutTable(t *testing.T) {
@@ -87,7 +87,7 @@ func TestRenderIssueDetail_MermaidInTextSections(t *testing.T) {
 				issue.Notes = source
 			}
 			theme := DefaultTheme(lipgloss.NewRenderer(nil))
-			out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+			out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil, nil))
 			if !strings.Contains(out, "┌") || strings.Contains(out, "graph LR") {
 				t.Fatalf("diagram not rendered in %s:\n%s", section, out)
 			}
@@ -99,7 +99,7 @@ func TestRenderIssueDetail_MermaidInComment(t *testing.T) {
 	issue, issueMap := detailFixture()
 	issue.Comments[0].Text = "```mermaid\nsequenceDiagram\nAlice->>Bob: Hello\n```"
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
-	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil, nil))
 	if !strings.Contains(out, "┌") || strings.Contains(out, "sequenceDiagram") {
 		t.Fatalf("comment diagram not rendered:\n%s", out)
 	}
@@ -119,7 +119,7 @@ func TestRenderIssueDetail_LinesFitWidth(t *testing.T) {
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
 	issue, issueMap := detailFixture()
 	issue.Title = strings.Repeat("very long title ", 12)
-	out := renderIssueDetail(issue, issueMap, theme, 40, NewMarkdownRendererWithTheme(40, theme), nil)
+	out := renderIssueDetail(issue, issueMap, theme, 40, NewMarkdownRendererWithTheme(40, theme), nil, nil)
 	for _, line := range strings.Split(out, "\n") {
 		if w := lipgloss.Width(line); w > 40 {
 			t.Fatalf("line wider than pane (%d > 40): %q", w, stripANSI(line))
@@ -172,7 +172,7 @@ func TestRenderIssueDetail_ShowsAttachmentsBlockWithMachineLinesStripped(t *test
 	issue.Comments = append(issue.Comments, &model.Comment{
 		ID: "cmt-1", Author: "carol", Text: text, CreatedAt: time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC),
 	})
-	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil, nil))
 	for _, want := range []string{"ATTACHMENTS · 1", "diagram.png", "image/png", "2.0 KB", "added by carol"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("attachments block missing %q:\n%s", want, out)
@@ -195,7 +195,7 @@ func TestRenderIssueDetail_ChildrenShowProgress(t *testing.T) {
 	issue, issueMap := detailFixture()
 	issueMap["bd-c2"] = &model.Issue{ID: "bd-c2", Title: "Second step", Status: model.StatusOpen, IssueType: model.TypeTask,
 		Dependencies: []*model.Dependency{{IssueID: "bd-c2", DependsOnID: "bd-e5u3.9", Type: model.DepParentChild}}}
-	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, NewMarkdownRendererWithTheme(70, theme), nil, nil))
 	for _, want := range []string{"CHILDREN · 1/2", "━", "Child step", "Second step"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("children section missing %q:\n%s", want, out)
@@ -211,7 +211,7 @@ func TestRenderIssueDetail_ExactUpdatedTimeBelowRelativeAge(t *testing.T) {
 	issue, issueMap := detailFixture()
 	issue.UpdatedAt = time.Now().Add(-5 * time.Hour)
 	exact := issue.UpdatedAt.Local().Format("2006-01-02 15:04")
-	lines := strings.Split(stripANSI(renderIssueDetail(issue, issueMap, theme, 70, nil, nil)), "\n")
+	lines := strings.Split(stripANSI(renderIssueDetail(issue, issueMap, theme, 70, nil, nil, nil)), "\n")
 	rel := -1
 	for i, l := range lines {
 		if strings.Contains(l, "updated 5h ago") {
@@ -238,7 +238,7 @@ func TestRenderIssueDetail_ExactUpdatedTimeSurvivesLongTitle(t *testing.T) {
 	issue, issueMap := detailFixture()
 	issue.UpdatedAt = time.Now().Add(-5 * time.Hour)
 	issue.Title = strings.Repeat("very long title ", 12)
-	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, nil, nil))
+	out := stripANSI(renderIssueDetail(issue, issueMap, theme, 70, nil, nil, nil))
 	if exact := issue.UpdatedAt.Local().Format("2006-01-02 15:04"); !strings.Contains(out, exact) {
 		t.Errorf("exact time %q missing with a long title:\n%s", exact, out)
 	}

@@ -8,6 +8,7 @@ import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, o
 import { PC, S, SORTS, matches, queryString, stOf, treeRows, tyOf, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
 import { renderMermaidBlocks } from "./mermaid";
+import { renderMemory, renderMemoryDetail } from "./memory";
 import { $, WIDE, age, esc, fmtDate, md, store, wide } from "./util";
 
 export function l2HTML(i: Item, opts: { proj?: boolean; status?: boolean } = {}): string {
@@ -47,12 +48,13 @@ export function rowHTML(r: TreeRow, flat = false): string {
 export function render(): void {
   if (!D.loaded) return;
   renderHeader(); renderChips(); renderBar(); renderStale();
-  (["tree", "board", "search", "more", "graph"] as const).forEach(v => { $("#v" + v[0].toUpperCase() + v.slice(1)).hidden = S.view !== v; });
+  (["tree", "board", "search", "more", "graph", "memory"] as const).forEach(v => { $("#v" + v[0].toUpperCase() + v.slice(1)).hidden = S.view !== v; });
   if (S.view === "tree") renderTree();
   if (S.view === "board") renderBoard();
   if (S.view === "search") renderSearch();
   if (S.view === "more") renderMore();
   if (S.view === "graph") renderGraph();
+  if (S.view === "memory") renderMemory();
   renderDetail();
   syncQuery();
   syncHistory();
@@ -121,7 +123,7 @@ function renderBar(): void {
     const on = S.view === v || (v === "more" && S.view === "graph");
     return `<button class="${on ? "on" : ""}" data-view="${v}" aria-current="${on ? "page" : "false"}"><span class="g">${g}</span>${l}</button>`;
   };
-  el.innerHTML = tab("tree", "≣", "Tree") + tab("board", "▥", "Board") + tab("search", "⌕", "Search") + tab("more", "⋯", "More");
+  el.innerHTML = tab("tree", "≣", "Tree") + tab("board", "▥", "Board") + tab("memory", "◇", "Memory") + tab("search", "⌕", "Search") + tab("more", "⋯", "More");
 }
 
 export function renderStale(): void {
@@ -720,7 +722,15 @@ function textSec(label: string, text: string | undefined, loading: boolean): str
   return "";
 }
 
+function memoryLinks(issue: Issue | null): string {
+  if (issue?.memory_loading) return '<div class="dsec">Memory Links</div><p style="color:var(--muted)">Loading Memory Links…</p>';
+  if (!issue?.memory_available) return "";
+  const links = issue.memory_links || [];
+  return `<div class="dsec">Memory Links · ${links.length}</div>${links.length ? links.map(({ link, memory, outgoing }) => `<details class="issueMemoryLink"><summary><span>${outgoing ? `This Issue → ${esc(link.kind)} → Memory` : `Memory → ${esc(link.kind)} → this Issue`}</span><br><b>${esc(memory.title)}</b></summary><p>${esc(memory.id)}</p><small>${esc(link.type)}</small>${link.note ? `<p>${esc(link.note)}</p>` : ""}<div class="md">${md(memory.body || "No body.")}</div></details>`).join("") : '<p>No Memory Links recorded.</p>'}`;
+}
+
 export function renderDetail(): void {
+  if (S.view === "memory") { renderMemoryDetail(); return; }
   const host = $("#detailHost");
   $("#app").classList.toggle("hasdetail", !!S.detail);
   if (!S.detail) { host.innerHTML = ""; return; }
@@ -752,6 +762,7 @@ export function renderDetail(): void {
       ${bl.length ? `<div class="dsec"><span style="color:var(--orange)">Blocks ${bl.length}</span><button data-act="dgraph">⋔ graph</button></div>${bl.map(relHTML).join("")}` : ""}
       ${i.discovered_from.some(x => get(x)) ? `<div class="dsec">Discovered from</div>${i.discovered_from.map(relHTML).join("")}` : ""}
       ${i.related.some(x => get(x)) ? `<div class="dsec">Related</div>${i.related.map(relHTML).join("")}` : ""}
+      ${memoryLinks(f)}
       ${textSec("Description", f?.description, !f)}${textSec("Design", f?.design, !f)}${textSec("Acceptance", f?.acceptance, !f)}${textSec("Notes", f?.notes, !f)}
       <div class="dsec"><span>Comments ${f ? cms.length : i.comment_count}</span>${ro ? "" : `<button data-act="comment">+ add</button>`}</div>
       ${cms.map(c => `<div class="cm"><div class="who"><b>${esc(c.author || "unknown")}</b> · ${age(Date.parse(c.created_at) || 0)}</div><div class="md">${md(c.text)}</div></div>`).join("") || `<div class="md"><p style="color:var(--muted)">${f || !i.comment_count ? "No comments." : "Loading…"}</p></div>`}

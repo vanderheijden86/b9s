@@ -24,7 +24,7 @@ import { S, defaultDetailSize, type View } from "./state";
 interface Place { v: View; d: string[] | null; g: string[]; s?: boolean }
 interface Entry { place: Place; n: number; prev: Place | null }
 
-const VIEWS: View[] = ["tree", "board", "search", "more", "graph"];
+const VIEWS: View[] = ["tree", "board", "search", "more", "graph", "memory"];
 
 let restoring = false;
 /** set between our own history.back() and its popstate, when history.state is still the entry being left */

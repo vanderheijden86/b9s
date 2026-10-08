@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Wires Options</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0d1117; --panel: #11161d; --text: #d7dae0; --dim: #6c7380; --line: #2a313c;
+    --f: #5fd7ff; --c: #b48cff; --r: #87d787; --b: #ffaf5f; --sel: #00afd7; --issue: #ffaf5f; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, system-ui, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 40px 0 6px; border-top: 1px solid var(--line); padding-top: 24px; }
+  h3 { font-size: 1rem; margin: 24px 0 4px; }
+  p, li { color: #b9bec8; max-width: 80ch; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto;
+    font: 13px/1.35 "JetBrains Mono", monospace; font-variant-ligatures: none; color: var(--text); }
+  pre i { font-style: normal; }
+  .d { color: var(--dim); } .f { color: var(--f); } .c { color: var(--c); } .r { color: var(--r); } .b { color: var(--b); }
+  .h { font-weight: 700; } .o { color: var(--issue); } .s { background: var(--sel); color: #000; }
+  .k { font-weight: 700; } .tag { display: inline-block; font: 600 12px monospace; padding: 1px 7px; border-radius: 4px; background: #1f2630; margin-right: 6px; }
+  .pick { color: var(--r); }
+</style>
+</head>
+<body><main>
+<h1>Memory wires: legible Links and a wires-owned detail</h1>
+<p>Same data in every frame: <b>adr-0019</b> is selected, with three incoming Links:
+<i class="c">hffz.18 cites</i>, <i class="f">xx9w.4 follows</i> and <i class="c">db5q.6 cites</i>.
+Colours are the terminal theme's: <i class="f">follows</i>, <i class="c">cites</i>, <i class="r">related</i>, <i class="b">depends on</i>.
+Pick one option from part 1 and one from part 2. Answer with two codes, such as "W1 + D1".</p>
+
+<h2>Part 1: make each wire's kind visible</h2>
+
+<h3><span class="tag">W0</span>Today (from your recording)</h3>
+<pre data-frame="W0"><i class="h">Work · Issues</i>                                             <i class="h">Knowledge · Memories</i>
+<i class="o">○ hffz.18  Public demo of b9s web</i>        ───────┐         <i class="d">… 18 above</i>
+<i class="d">○ hffz     Epic: v1.3 release</i>                   │         ■ adr-0018 Show epics as a rail
+<i class="d">○ n0wb     Migrate to cobra/pflag</i>               │    ┌╌╌╌&gt;<i class="s">■ adr-0019 Serve a mobile web UI</i>
+<i class="o">○ xx9w.4   Show releases in the web UI</i>   ───────┤    ╎    ■ adr-0020 Pair every browser
+<i class="d">○ xx9w     Epic: Releases</i>                       │    ╎
+<i class="o">○ db5q.6   Design the TUI Memory view</i>    ───────┴╌╌╌╌┘
+
+<i class="d">follows ╌▷ realization · depends on ╌&gt; dependency · cites ─&gt; directed association · related ── association</i></pre>
+<p>Three Links merge into one grey trunk with one arrowhead, so the kind of each wire is lost. Only the legend names the glyphs.</p>
+
+<h3><span class="tag">W1</span>Labelled runs: each Issue's own run carries its kind, colour and head</h3>
+<pre data-frame="W1"><i class="h">Work · Issues</i>                                                     <i class="h">Knowledge · Memories</i>
+<i class="o">○ hffz.18  Public demo of b9s web</i>        <i class="c">── cites ───────&gt;</i>┐       <i class="d">… 18 above</i>
+<i class="d">○ hffz     Epic: v1.3 release</i>                             │       ■ adr-0018 Show epics as a rail
+<i class="d">○ n0wb     Migrate to cobra/pflag</i>                         ├───────<i class="s">■ adr-0019 Serve a mobile web UI</i>
+<i class="o">○ xx9w.4   Show releases in the web UI</i>   <i class="f">╌╌ follows ╌╌╌╌╌▷</i>┤       ■ adr-0020 Pair every browser
+<i class="d">○ xx9w     Epic: Releases</i>                                 │
+<i class="o">○ db5q.6   Design the TUI Memory view</i>    <i class="c">── cites ───────&gt;</i>┘</pre>
+<p>The kind word, the UML stroke and the head sit on the run that belongs to one Link. The trunk only joins them in the
+last two columns. Costs about 18 columns for the label. With a narrow terminal the word drops and the coloured glyph stays.</p>
+
+<h3><span class="tag">W2</span>Numbered, coloured runs: the number matches the strip and the 1-9 keys</h3>
+<pre data-frame="W2"><i class="h">Work · Issues</i>                                               <i class="h">Knowledge · Memories</i>
+<i class="o">○ hffz.18  Public demo of b9s web</i>       <i class="c k">1</i><i class="c">──────────&gt;</i>┐       <i class="d">… 18 above</i>
+<i class="d">○ hffz     Epic: v1.3 release</i>                       │       ■ adr-0018 Show epics as a rail
+<i class="d">○ n0wb     Migrate to cobra/pflag</i>                   ├───────<i class="s">■ adr-0019 Serve a mobile web UI</i>
+<i class="o">○ xx9w.4   Show releases in the web UI</i>  <i class="f k">2</i><i class="f">╌╌╌╌╌╌╌╌╌╌▷</i>┤       ■ adr-0020 Pair every browser
+<i class="d">○ xx9w     Epic: Releases</i>                           │
+<i class="o">○ db5q.6   Design the TUI Memory view</i>   <i class="c k">3</i><i class="c">──────────&gt;</i>┘
+<i class="d">─ Links 1-3/3 · 1-9 open · J/K scroll</i>
+<i class="c k">1</i> <i class="c">&lt;─ cited by</i>     <i class="o">○ hffz.18</i> Public demo of b9s web
+<i class="f k">2</i> <i class="f">◁╌ followed by</i>  <i class="o">○ xx9w.4</i>  Show releases in the web UI
+<i class="c k">3</i> <i class="c">&lt;─ cited by</i>     <i class="o">○ db5q.6</i>  Design the TUI Memory view</pre>
+<p>Shorter runs than W1. The strip names the kind once per number, in the same colour, and <b>1</b>-<b>9</b> open that Link's record.</p>
+
+<h3><span class="tag">W3</span>No wires: coloured chips on the Issue rows</h3>
+<pre data-frame="W3"><i class="h">Work · Issues</i>                                                       <i class="h">Knowledge · Memories</i>
+<i class="o">○ hffz.18  Public demo of b9s web</i>        <i class="c">[cites ─&gt; adr-0019]</i>        <i class="d">… 18 above</i>
+<i class="d">○ hffz     Epic: v1.3 release</i>                                       ■ adr-0018 Show epics as a rail
+<i class="d">○ n0wb     Migrate to cobra/pflag</i>                                   <i class="s">■ adr-0019 Serve a mobile web UI</i>  <i class="k">◀ 3 Links</i>
+<i class="o">○ xx9w.4   Show releases in the web UI</i>   <i class="f">[follows ╌▷ adr-0019]</i>      ■ adr-0020 Pair every browser
+<i class="d">○ xx9w     Epic: Releases</i>
+<i class="o">○ db5q.6   Design the TUI Memory view</i>    <i class="c">[cites ─&gt; adr-0019]</i></pre>
+<p>Nothing to trace and nothing overlaps, however many Links there are. You lose the picture of lines meeting, which is
+what makes the view a map rather than a list.</p>
+
+<h3><span class="tag">+H</span>Add-on for W1 or W2: heavy strokes for the selection</h3>
+<pre data-frame="H"><i class="h">Work · Issues</i>                                                     <i class="h">Knowledge · Memories</i>
+<i class="o">○ hffz.18  Public demo of b9s web</i>        <i class="c">━━ cites ━━━━━━━&gt;</i>┓       <i class="d">… 18 above</i>
+<i class="d">○ hffz     Epic: v1.3 release</i>                             ┃       ■ adr-0018 Show epics as a rail
+<i class="d">○ n0wb     Migrate to cobra/pflag</i>                         ┣━━━━━━━<i class="s">■ adr-0019 Serve a mobile web UI</i>
+<i class="o">○ xx9w.4   Show releases in the web UI</i>   <i class="f">┅┅ follows ┅┅┅┅┅▷</i>┫       ■ adr-0020 Pair every browser
+<i class="d">○ xx9w     Epic: Releases</i>                                 ┃
+<i class="o">○ db5q.6   Design the TUI Memory view</i>    <i class="c">━━ cites ━━━━━━━&gt;</i>┛</pre>
+<p>Heavy box glyphs (━ ┅ ┃) make the selected Links stand out against other wires. Some fonts draw ┅ thinner than ━.</p>
+
+<h2>Part 2: open a Memory from the wires, and Esc back to the wires</h2>
+<p>All three options share the rule: a detail opened from the wires belongs to the wires, so <b>Esc</b> closes it and
+returns to the wires with the same cursor. <b>Enter</b> (or a click) on any record opens it.</p>
+
+<h3><span class="tag">D1</span>Side panel, as the tree opens its detail</h3>
+<pre data-frame="D1">┌─<i class="h"> Work · Issues </i>───────────────<i class="h"> Knowledge · Memories </i>──┐┌─<i class="h"> adr-0019 · memory </i>───────────────────────────────┐
+│<i class="o">○ hffz.18 Public demo</i>     <i class="c">── cites ───────&gt;</i>┐           ││ <i class="h">ADR 0019 (active): Serve a mobile web UI</i>          │
+│<i class="d">○ n0wb    Migrate to cobra</i>                 ├─<i class="s">■ adr-0019</i>││ <i class="h">from b9s web with an embedded SPA</i>                 │
+│<i class="o">○ xx9w.4  Show releases</i>   <i class="f">╌ follows ╌╌╌╌╌╌▷</i>┤ ■ adr-0020││ <i class="d">memory · preview-memory-v2 · v3</i>                   │
+│<i class="o">○ db5q.6  Design the TUI</i>  <i class="c">── cites ───────&gt;</i>┘           ││ <i class="d">─ Links 3</i>                                         │
+│                                                       ││ <i class="c">1 &lt;─ cited by</i>     ○ hffz.18 Public demo           │
+│                                                       ││ <i class="f">2 ◁╌ followed by</i>  ○ xx9w.4 Show releases          │
+│                                                       ││ <i class="c">3 &lt;─ cited by</i>     ○ db5q.6 Design the TUI         │
+│                                                       ││ <i class="d">─ Body</i>                                            │
+│                                                       ││ ## Context                                        │
+│                                                       ││ The phone needs the same project as the laptop…   │
+└───────────────────────────────────────────────────────┘└───────────────────────────────────────────────────┘
+<i class="d">esc wires · \ full width · 1-9 follow · backspace back · J/K scroll · n/p next record</i></pre>
+<p>The wires stay visible and follow the selection. Moving the cursor in the wires updates the panel. Matches the tree,
+so the keys are the ones you already use. On a narrow terminal the panel takes the full width, as the tree detail does.</p>
+
+<h3><span class="tag">D2</span>Full screen, with the wires as a breadcrumb</h3>
+<pre data-frame="D2"><i class="d">Memory wires ›</i> <i class="h">adr-0019</i>                                                         <i class="d">esc back to wires</i>
+<i class="h">ADR 0019 (active): Serve a mobile web UI from b9s web with an embedded SPA</i>
+<i class="d">memory · preview-memory-v2 · v3</i>
+<i class="d">─ Links 3</i>
+<i class="c">1 &lt;─ cited by</i>     <i class="o">○ hffz.18 </i> Public demo of b9s web
+<i class="f">2 ◁╌ followed by</i>  <i class="o">○ xx9w.4  </i> Show releases in the web UI
+<i class="c">3 &lt;─ cited by</i>     <i class="o">○ db5q.6  </i> Design the TUI Memory view
+<i class="d">─ Body</i>
+## Context
+The phone needs the same project as the laptop, without a second install…
+
+<i class="d">esc wires · 1-9 follow · backspace back · J/K scroll · n/p next record</i></pre>
+<p>Most room for the body. You lose sight of the wires while reading, and the breadcrumb says where Esc goes.</p>
+
+<h3><span class="tag">D3</span>The bottom strip grows into the detail</h3>
+<pre data-frame="D3"><i class="h">Work · Issues</i>                                               <i class="h">Knowledge · Memories</i>
+<i class="o">○ hffz.18 Public demo</i>     <i class="c">── cites ──────────────&gt;</i>┐
+<i class="d">○ n0wb    Migrate to cobra</i>                        ├──────── <i class="s">■ adr-0019 Serve a mobile web UI</i>
+<i class="o">○ xx9w.4  Show releases</i>   <i class="f">╌ follows ╌╌╌╌╌╌╌╌╌╌╌╌╌▷</i>┤
+<i class="o">○ db5q.6  Design the TUI</i>  <i class="c">── cites ──────────────&gt;</i>┘
+<i class="d">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</i>
+<i class="h">adr-0019 · ADR 0019 (active): Serve a mobile web UI from b9s web with an embedded SPA</i>
+<i class="c">1 &lt;─ cited by</i>     <i class="o">○ hffz.18 </i> Public demo of b9s web
+<i class="f">2 ◁╌ followed by</i>  <i class="o">○ xx9w.4  </i> Show releases in the web UI
+<i class="c">3 &lt;─ cited by</i>     <i class="o">○ db5q.6  </i> Design the TUI Memory view
+## Context
+The phone needs the same project as the laptop, without a second install…
+
+<i class="d">esc collapse to strip · 1-9 follow · J/K scroll</i></pre>
+<p>Nothing new to learn: the strip you already have grows to two thirds of the height and shows the body. The wires
+shrink to a few rows, so long wire maps scroll.</p>
+</main></body>
+</html>

@@ -33,6 +33,9 @@ export const parseTime = (s: string): number => (s ? Date.parse(s) || 0 : 0);
 export function md(src: string): string {
   const out: string[] = [];
   let list: { t: "ul" | "ol"; items: string[] } | null = null;
+  // Consecutive text lines form one paragraph, as in Markdown, so hard-wrapped
+  // text reads as prose and bold may span a line break.
+  let para: string[] = [];
   let code: string[] | null = null;
   let codeLanguage = "";
   const inline = (s: string) => esc(s)
@@ -40,6 +43,7 @@ export function md(src: string): string {
     .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "<u>$1</u>");
   const flush = () => {
+    if (para.length) { out.push(`<p>${inline(para.join(" "))}</p>`); para = []; }
     if (list) { out.push(`<${list.t}>${list.items.map(x => `<li>${inline(x)}</li>`).join("")}</${list.t}>`); list = null; }
   };
   for (const line of src.split("\n")) {
@@ -61,7 +65,9 @@ export function md(src: string): string {
       if (!list || list.t !== "ol") { flush(); list = { t: "ol", items: [] }; }
       list.items.push(m[1]);
     } else if (!line.trim()) flush();
-    else { flush(); out.push(`<p>${inline(line)}</p>`); }
+    // A line straight after a list item continues it, as Markdown's lazy continuation does.
+    else if (list) list.items[list.items.length - 1] += " " + line.trim();
+    else para.push(line.trim());
   }
   if (code) out.push(`<pre><code>${esc((code as string[]).join("\n"))}</code></pre>`);
   flush();

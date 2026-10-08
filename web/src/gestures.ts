@@ -7,6 +7,7 @@ import {
   openSheet, reload, setStatus, sheetAction, swipeRightLabel, tabTap, toast, toggleMark, markRange, hideToast,
 } from "./actions";
 import { adoptCursor, onKey } from "./keys";
+import { memoryBack } from "./memory";
 import { canGoBack } from "./nav";
 import { ALL, WIDE, appW, colOf, ensureVisible, fullH, halfH, openCols, phoneCols, render, renderBoard, renderSearch, scrollToLane, siblings, wide } from "./render";
 import { S } from "./state";
@@ -580,6 +581,7 @@ function bindClicks(): void {
       // Back inside the app only: on the entry the app opened on it would leave the page.
       e.preventDefault();
       if (S.sheet) closeSheet();
+      else if (memoryBack()) return;
       else if (canGoBack()) history.back();
       return;
     }

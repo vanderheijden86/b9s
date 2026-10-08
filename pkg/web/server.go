@@ -125,6 +125,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/snapshot", s.paired(s.handleSnapshot))
 	s.mux.HandleFunc("GET /api/query", s.paired(s.handleQuery))
 	s.mux.HandleFunc("GET /api/issue", s.paired(s.handleIssue))
+	s.mux.HandleFunc("GET /api/memory-graph", s.paired(s.handleMemoryGraph))
 	s.mux.HandleFunc("GET /api/health", s.paired(s.handleHealth))
 	s.mux.HandleFunc("GET /api/events", s.paired(s.handleEvents))
 	s.mux.HandleFunc("GET /api/projects", s.paired(s.handleProjects))
@@ -182,6 +183,10 @@ func (s *Server) handleIssue(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, r, s.opts.Store.Health(s.opts.Writer.IsAvailable()))
+}
+
+func (s *Server) handleMemoryGraph(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, r, s.opts.Store.MemoryGraph())
 }
 
 // handleQuery evaluates the TUI query language on the server, so a query

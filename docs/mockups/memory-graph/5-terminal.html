@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Terminal View</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .term { background: #0f1115; color: #d7dae0; font: 13px/1.5 var(--mono); border-radius: 10px; margin: 12px 16px 16px; overflow: auto; border: 1px solid #2a2e35; }
+  .term .bar { background: #1a1d23; color: #8b919c; padding: 4px 12px; display: flex; justify-content: space-between; }
+  .term .tabs span { padding: 0 8px; } .term .tabs .on { background: #3a6cd0; color: #fff; }
+  .panes { display: grid; grid-template-columns: minmax(520px, 1.15fr) minmax(460px, 1fr); }
+  .pane { padding: 8px 12px; white-space: pre; min-height: 470px; }
+  .pane + .pane { border-left: 1px solid #2a2e35; }
+  .r { cursor: pointer; display: block; }
+  .r.sel { background: #24324d; }
+  .h { color: #8b919c; }
+  .g { color: #4cc27f; } .y { color: #e9a640; } .x { color: #ef6a60; } .b { color: #6d9bff; } .p { color: #a687ef; } .m { color: #6b7180; } .w { color: #fff; font-weight: 700; }
+  .foot { background: #1a1d23; color: #8b919c; padding: 4px 12px; white-space: pre-wrap; }
+  .foot b { color: #e6e7ea; font-weight: 600; }
+  .ttl { color: #e6e7ea; font-weight: 700; }
+</style>
+</head>
+<body>
+<nav class="top"></nav>
+<header class="intro">
+  <h1>5 · Terminal</h1>
+  <p>The same graph inside b9s itself. The tree gains a DECISIONS column, and the detail pane draws the selected node's neighbourhood with box characters, two hops deep. <b>Tab</b> switches between Issues and Memories, <b>j/k</b> move, <b>p</b> shows problems only, <b>enter</b> jumps to the first neighbour. Click rows too.</p>
+</header>
+<div class="term" tabindex="0" id="term">
+  <div class="bar"><span class="tabs" id="tabs"></span><span>b9s · b9s-memory-poc · graph preview</span></div>
+  <div class="panes"><div class="pane" id="left"></div><div class="pane" id="right"></div></div>
+  <div class="foot" id="foot"></div>
+</div>
+<script src="data.js"></script>
+<script>
+renderNav('5-terminal.html');
+const term = document.getElementById('term'), left = document.getElementById('left'), right = document.getElementById('right');
+let mode = 'issues', problemsOnly = false, sel = 0;
+const pad = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s.padEnd(n); };
+const span = (cls, s) => `<span class="${cls}">${esc(s)}</span>`;
+const STATUS_CLS = { active: 'g', proposed: 'y', superseded: 'x' };
+
+function issueRows() {
+  const out = [];
+  const kids = id => ISSUES.filter(i => i.parent === id);
+  (function walk(list, depth) {
+    list.forEach(i => { out.push({ id: i.id, depth }); walk(kids(i.id), depth + 1); });
+  })(ISSUES.filter(i => !i.parent), 0);
+  return problemsOnly ? out.filter(r => ['dead', 'none', 'proposed'].includes(G.health(r.id))) : out;
+}
+function memoryRows() {
+  const rows = MEMORIES.map(m => ({ id: m.id }));
+  return problemsOnly ? rows.filter(r => G.nodes.get(r.id).status !== 'active' || !G.inc(r.id).length) : rows;
+}
+const rows = () => mode === 'issues' ? issueRows() : memoryRows();
+
+function decisionsCell(id) {
+  const d = G.decisionEdges(id);
+  if (!d.length) return G.nodes.get(id).type === 'epic' ? span('m', pad('', 16)) : span('m', pad('·  none', 16));
+  let txt = '', len = 0;
+  d.forEach(e => {
+    const m = G.nodes.get(e.to);
+    const mark = m.status === 'superseded' ? '✗' : m.status === 'proposed' ? '?' : '';
+    const piece = (e.kind === 'cites' ? '(' + m.n + ')' : m.n) + mark;
+    if (len + piece.length + 1 > 16) return;
+    txt += span(STATUS_CLS[m.status], piece) + ' '; len += piece.length + 1;
+  });
+  return txt + ' '.repeat(Math.max(0, 16 - len));
+}
+
+function renderLeft() {
+  const rs = rows(); sel = Math.min(sel, rs.length - 1);
+  let html;
+  if (mode === 'issues') {
+    html = span('h', pad('ID', 14) + pad('STATUS', 12) + pad('DECISIONS', 16) + 'TITLE') + '\n';
+    rs.forEach((r, i) => {
+      const n = G.nodes.get(r.id), h = G.health(r.id);
+      const idc = n.type === 'epic' ? 'p' : h === 'dead' ? 'x' : 'b';
+      html += `<span class="r${i === sel ? ' sel' : ''}" data-i="${i}">` + span(idc, pad('  '.repeat(r.depth) + r.id, 14)) +
+        span(n.status === 'in_progress' ? 'y' : 'h', pad(n.status.replace('_', ' '), 12)) + decisionsCell(r.id) + esc(pad(n.title, 40)) + '</span>';
+    });
+  } else {
+    html = span('h', pad('ADR', 7) + pad('STATUS', 12) + pad('USED BY', 10) + 'TITLE') + '\n';
+    rs.forEach((r, i) => {
+      const m = G.nodes.get(r.id), f = G.followers(r.id).length, c = G.citers(r.id).length;
+      const used = f || c ? `${f}f ${c}c` : '·';
+      const warn = m.status === 'superseded' && f ? 'x' : '';
+      html += `<span class="r${i === sel ? ' sel' : ''}" data-i="${i}">` + span('w', pad(m.n, 7)) + span(STATUS_CLS[m.status], pad(m.status, 12)) +
+        span(warn || 'h', pad(used, 10)) + esc(pad(m.title, 46)) + '</span>';
+    });
+  }
+  left.innerHTML = html;
+}
+
+function nodeLine(id) {
+  const n = G.nodes.get(id);
+  if (n.kind === 'memory') return span('w', 'ADR ' + n.n) + ' ' + span(STATUS_CLS[n.status], '● ' + n.status) + ' ' + esc(pad(n.title, 34));
+  const h = G.health(id);
+  return span(n.type === 'epic' ? 'p' : h === 'dead' ? 'x' : 'b', id) + ' ' + esc(pad(n.title, 36)) + ' ' + span('h', n.status.replace('_', ' '));
+}
+const CONN = { follows: '━━ follows ━━', cites: '┄┄ cites ┄┄┄', supersedes: '━━ supersedes', 'child-of': '── part of ──' };
+const CONN_IN = { follows: '━━ followed by', cites: '┄┄ cited by ┄', supersedes: '━━ replaced by', 'child-of': '── contains ──' };
+
+function renderRight() {
+  const rs = rows(); if (!rs.length) { right.innerHTML = span('m', 'nothing matches'); return; }
+  const id = rs[sel].id, n = G.nodes.get(id);
+  let s = span('ttl', G.label(id)) + '  ' + span('h', n.kind === 'memory' ? n.date : n.type) + '\n' + esc(n.title) + '\n\n';
+  const h = G.health(id);
+  if (h === 'dead') s += span('x', '✗ follows a superseded decision') + '\n\n';
+  if (h === 'none') s += span('m', '· no decision recorded for this work') + '\n\n';
+  if (h === 'proposed') s += span('y', '? follows a decision that is still proposed') + '\n\n';
+  if (n.kind === 'memory' && n.status === 'superseded' && G.followers(id).length) s += span('x', `✗ superseded, ${G.followers(id).length} open Issue still follows it`) + '\n\n';
+  const nb = G.neighbours(id).sort((a, b) => (a.dir === b.dir ? 0 : a.dir === 'out' ? -1 : 1));
+  if (!nb.length) s += span('m', '(no Links)');
+  nb.forEach((x, i) => {
+    const last = i === nb.length - 1;
+    const conn = (x.dir === 'out' ? CONN : CONN_IN)[x.edge.kind];
+    const cls = x.edge.kind === 'supersedes' || (x.edge.kind === 'follows' && G.nodes.get(x.edge.to).status === 'superseded') ? 'x' : x.edge.kind === 'cites' ? 'm' : 'h';
+    s += span('h', last ? '└' : '├') + span(cls, conn + ' ') + nodeLine(x.other) + '\n';
+    const stem = last ? '  ' : span('h', '│ ');
+    if (x.edge.note) s += stem + span('m', '   note: ' + x.edge.note) + '\n';
+    // Second hop: siblings that share this neighbour, the part a reader asks next.
+    const hop = G.neighbours(x.other).filter(y => y.other !== id && y.edge.kind !== 'child-of');
+    const groups = {};
+    hop.forEach(y => {
+      const verb = y.edge.kind === 'supersedes' ? (y.dir === 'out' ? 'replaces' : 'replaced by')
+        : G.nodes.get(x.other).kind === 'memory' ? 'also used by' : 'also uses';
+      (groups[verb] = groups[verb] || []).push(G.label(y.other));
+    });
+    Object.entries(groups).forEach(([verb, names]) => {
+      const cls = verb.startsWith('replace') ? 'x' : 'm';
+      s += stem + span(cls, `   └ ${verb} ${names.slice(0, 5).join(', ')}${names.length > 5 ? ' …' : ''}`) + '\n';
+    });
+  });
+  if (n.kind === 'issue' && G.decisionEdges(id).length) s += '\n' + span('m', 'read-at version: not recorded by the preview');
+  right.innerHTML = s;
+}
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = `<span class="${mode === 'issues' ? 'on' : ''}">Issues</span><span class="${mode === 'memories' ? 'on' : ''}">Memories</span>${problemsOnly ? '<span class="x">problems only</span>' : ''}`;
+  document.getElementById('foot').innerHTML = '<b>tab</b> issues/memories  <b>j/k</b> move  <b>enter</b> follow first link  <b>p</b> problems  ' +
+    (mode === 'issues' ? 'DECISIONS: <span class="g">0010</span> follows  <span class="g">(0004)</span> cites  <span class="y">0026?</span> proposed  <span class="x">0009✗</span> superseded' : 'USED BY: f follows, c cites');
+}
+function render() { renderTabs(); renderLeft(); renderRight(); }
+
+function jump(id) {
+  mode = G.nodes.get(id).kind === 'memory' ? 'memories' : 'issues'; problemsOnly = false;
+  sel = rows().findIndex(r => r.id === id); render();
+}
+term.addEventListener('keydown', e => {
+  const n = rows().length;
+  if (e.key === 'j' || e.key === 'ArrowDown') sel = Math.min(n - 1, sel + 1);
+  else if (e.key === 'k' || e.key === 'ArrowUp') sel = Math.max(0, sel - 1);
+  else if (e.key === 'Tab') { mode = mode === 'issues' ? 'memories' : 'issues'; sel = 0; }
+  else if (e.key === 'p') { problemsOnly = !problemsOnly; sel = 0; }
+  else if (e.key === 'Enter') { const nb = G.neighbours(rows()[sel].id); if (nb.length) { jump(nb[0].other); e.preventDefault(); return; } }
+  else return;
+  e.preventDefault(); render();
+});
+left.addEventListener('click', e => { const r = e.target.closest('.r'); if (r) { sel = +r.dataset.i; render(); term.focus(); } });
+sel = issueRows().findIndex(r => r.id === 'xx9w.2');
+render(); term.focus();
+</script>
+</body>
+</html>

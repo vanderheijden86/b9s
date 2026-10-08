@@ -1,5 +1,48 @@
 package web
 
+// MemoryGraphResponse is the Memory graph of the open project. The graph is
+// read on the first request for it (ADR 0051), so a response may report the
+// read in progress instead.
+type MemoryGraphResponse struct {
+	Version   uint64 `json:"version"`
+	Available bool   `json:"available"`
+	// Reason says in one line why Available is false.
+	Reason string `json:"reason,omitempty"`
+	// Loading is true while the first read runs. Done of Total counts the
+	// Issue components the latest read traversed, and Total is 0 while it
+	// reads the inventory.
+	Loading bool              `json:"loading"`
+	Done    int               `json:"done"`
+	Total   int               `json:"total"`
+	Nodes   []MemoryGraphNode `json:"nodes"`
+	Edges   []MemoryGraphEdge `json:"edges"`
+}
+
+type MemoryGraphNode struct {
+	ID      string `json:"id"`
+	Kind    string `json:"kind"`
+	Title   string `json:"title"`
+	Status  string `json:"status"`
+	Type    string `json:"type"`
+	Version string `json:"record_version"`
+	Body    string `json:"body"`
+}
+
+type MemoryGraphEdge struct {
+	ID     string `json:"id"`
+	Type   string `json:"type"`
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Kind   string `json:"kind"`
+	Note   string `json:"note"`
+}
+
+type IssueMemoryLink struct {
+	Link     MemoryGraphEdge `json:"link"`
+	Memory   MemoryGraphNode `json:"memory"`
+	Outgoing bool            `json:"outgoing"`
+}
+
 // These types are the JSON contract between b9s web and the browser. The
 // TypeScript in web/src/api.gen.ts is generated from them (see tsgen_test.go), so a
 // change here that is not regenerated fails TestGeneratedTypesAreCurrent.
@@ -9,22 +52,25 @@ package web
 // its size, and the detail view reads them from GET api/issue. Blocked, Ready and ClosedLike
 // are derived on the server with the TUI's rules, so both UIs count alike.
 type Issue struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Design      string `json:"design"`
-	Acceptance  string `json:"acceptance"`
-	Notes       string `json:"notes"`
-	Status      string `json:"status"`
-	Priority    int    `json:"priority"`
-	Type        string `json:"type"`
-	Assignee    string `json:"assignee"`
-	CreatedBy   string `json:"created_by"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-	ClosedAt    string `json:"closed_at"`
-	DeferUntil  string `json:"defer_until"`
-	Due         string `json:"due"`
+	MemoryAvailable bool              `json:"memory_available"`
+	MemoryLoading   bool              `json:"memory_loading"`
+	MemoryLinks     []IssueMemoryLink `json:"memory_links"`
+	ID              string            `json:"id"`
+	Title           string            `json:"title"`
+	Description     string            `json:"description"`
+	Design          string            `json:"design"`
+	Acceptance      string            `json:"acceptance"`
+	Notes           string            `json:"notes"`
+	Status          string            `json:"status"`
+	Priority        int               `json:"priority"`
+	Type            string            `json:"type"`
+	Assignee        string            `json:"assignee"`
+	CreatedBy       string            `json:"created_by"`
+	CreatedAt       string            `json:"created_at"`
+	UpdatedAt       string            `json:"updated_at"`
+	ClosedAt        string            `json:"closed_at"`
+	DeferUntil      string            `json:"defer_until"`
+	Due             string            `json:"due"`
 	// Summary is the first sentence of an epic's description, for the board's
 	// epic cell. A snapshot keeps it while it drops Description.
 	Summary        string   `json:"summary"`

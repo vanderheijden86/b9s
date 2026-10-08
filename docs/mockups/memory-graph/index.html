@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Graph Mockups</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  main { max-width: 1100px; padding: 0 16px 24px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; text-decoration: none; color: inherit; display: block; }
+  .card:hover { border-color: var(--issue); }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0 0 8px; color: var(--muted); }
+  .card dl { margin: 0; font-size: 13px; display: grid; grid-template-columns: 74px 1fr; gap: 3px 8px; }
+  .card dt { color: var(--muted); }
+  .card dd { margin: 0; }
+  table { border-collapse: collapse; margin-top: 18px; font-size: 13px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; width: 100%; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<nav class="top"></nav>
+<header class="intro">
+  <h1>Memories and Issues as one graph</h1>
+  <p>Five ways to show which work uses which decision. All five draw the same data: the 13 ADR Memories, 20 Issues, 20 decision Links and one supersedes Link from the b9s Memory POC, plus the epic hierarchy. Three problems sit in that data, and each mockup should make them obvious: <b>vd9g.1.6</b> follows ADR 0009, which 0027 replaced. Four <b>xx9w</b> features follow ADR 0026, which is still proposed. <b>n0wb</b> and <b>36s</b> record no decision at all.</p>
+</header>
+<main>
+  <div class="cards" id="cards"></div>
+  <div class="wrap">
+  <table>
+    <tr><th></th><th>Question it answers first</th><th>Scales to</th><th>Fits the TUI</th></tr>
+    <tr><td>1 Constellation</td><td>What is clustered around what?</td><td>~60 nodes, then a hairball</td><td>No</td></tr>
+    <tr><td>2 Two shores</td><td>Which decisions does this epic rest on?</td><td>Hundreds of rows, wires get dense</td><td>Partly, as two lists</td></tr>
+    <tr><td>3 Focus</td><td>What touches this one thing?</td><td>Any size, one node at a time</td><td>Yes, as a tree (see 5)</td></tr>
+    <tr><td>4 Decision metro</td><td>Who is affected if this decision changes?</td><td>~40 decisions wide, any number of rows</td><td>Yes, as a grid</td></tr>
+    <tr><td>5 Terminal</td><td>Same as 3, inside b9s</td><td>Any size</td><td>It is the TUI</td></tr>
+  </table>
+  </div>
+  <p class="fine">Data note: the preview stores only a <code>note</code> on a Link and has no status field on a Memory. The status shown here comes from each ADR's frontmatter, and no view can show which Memory version a task read.</p>
+</main>
+<script src="data.js"></script>
+<script>
+renderNav('index.html');
+const blurbs = [
+  ['Force-directed graph. Decisions are sized by how many tasks follow them, Issues orbit them, epics hold features together.', 'Shows clusters at a glance: the releases cluster around 0026, the web cluster around 0019.', 'Positions mean nothing, and it degrades fast as nodes grow.'],
+  ['Work on the left as the epic tree, decisions on the right grouped by status, wires between.', 'Both sides keep a familiar order. A wire into the red zone is a dead decision.', 'Wires cross. Two lists, not a true graph.'],
+  ['One node in the centre, its neighbours on a ring, one more hop outside. Click to walk.', 'Works the same for an Issue or a Memory, and stays readable at any graph size.', 'No overview. You must know where to start.'],
+  ['Decisions are stations in date order. Each Issue is a metro line that stops at the decisions it uses.', 'Impact reads down a column, grounding reads across a row. Uncovered work is an empty line.', 'Not a graph shape, and Memory-to-Memory links show only in the header.'],
+  ['The b9s tree with a DECISIONS column, and a two-hop neighbourhood tree in the detail pane.', 'Ships inside the existing TUI and keyboard model.', 'Text only, so no spatial overview.'],
+];
+document.getElementById('cards').innerHTML = MOCKUPS.map(([href, name], i) => `<a class="card" href="${href}"><h2>${i + 1} · ${name}</h2><p>${blurbs[i][0]}</p><dl><dt>Strength</dt><dd>${blurbs[i][1]}</dd><dt>Weakness</dt><dd>${blurbs[i][2]}</dd></dl></a>`).join('');
+</script>
+</body>
+</html>

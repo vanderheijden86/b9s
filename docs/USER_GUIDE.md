@@ -14,6 +14,7 @@ b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/b
 - [Creators, assignees and identities](#creators-assignees-and-identities)
 - [Board view](#board-view)
 - [Dependency graph](#dependency-graph)
+- [Memory Beads preview](#memory-beads-preview)
 - [Command prompt](#command-prompt)
 - [Projects](#projects)
 - [Data sources](#data-sources)
@@ -208,7 +209,8 @@ The first match is placed in the upper third of the viewport, not at the bottom 
 | `Space`, `m` | Mark or unmark the issue under the cursor |
 | `V`, `Ctrl-Space` | Mark the range from the nearest mark to the cursor |
 | `u` | Unmark the issue under the cursor |
-| `Ctrl-\`, `M`, `U` | Clear all marks |
+| `Ctrl-\`, `U` | Clear all marks |
+| `M` | Open Memories for the current graph workspace |
 
 `K` (close), `Delete` and `S` (set status) act on every marked issue, or on the cursor row when nothing is marked. Close and delete ask for confirmation first, and the confirmation lists the issues it covers. When the issue under the cursor disappears, the next issue takes its row.
 
@@ -313,6 +315,165 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 ## Dependency graph
 
 `g` opens the blocking neighbourhood of the issue under the cursor: what blocks it, and what it blocks. `j` and `k` move, `Enter` opens the selected issue in the detail pane, and `Esc` returns to the tree.
+
+## Memory Beads preview
+
+The [Memory Beads integration preview](https://blog.gascity.com/posts/extending-beads-memories-versions-and-the-wire-protocol/) uses a new graph workspace format. Create a **new** workspace with the preview build of `bd`. Do not point it at an existing Beads project.
+
+With that `bd` binary on `PATH`, run:
+
+```bash
+b9s memories --project /path/to/new/graph-workspace
+b9s memories --project /path/to/new/graph-workspace --id policy
+b9s memories --project /path/to/new/graph-workspace --print
+```
+
+A released `bd` lacks the graph commands, and b9s says so instead of showing its usage error. To run the preview without changing `PATH`, use `scripts/memory-preview`. It reads the workspace from `B9S_PREVIEW_WORKSPACE` (default `~/Documents/b9s-memory-poc`) and the preview `bd` from `<workspace>/.memory-preview/bin/bd`:
+
+```bash
+scripts/memory-preview bd memories --format records-json   # the preview bd
+scripts/memory-preview b9s                                 # main TUI, then M
+scripts/memory-preview b9s memories --print                 # scripted Memory reads
+scripts/memory-preview b9s web --no-token                   # browser view
+```
+
+It rebuilds b9s from its own checkout on every run, so it never runs a stale copy. It clears the environment to a short allowlist, and it refuses any workspace that is not an embedded, ready graph store, so the preview cannot reach a shared Beads database. It sets `XDG_CONFIG_HOME` to `<workspace>/.memory-preview/config`, replacing inherited personal configuration.
+
+On a terminal, the first command opens a read-only Memory browser. The left pane lists every Memory, and the right pane shows the selected Memory's body, its version token and its informational Links. `→` is an outgoing Link and `←` is an incoming Link, including citations from Issues. Links have no effect on scheduling. b9s reads a Memory only when you select it.
+
+| Key | Effect |
+|-----|--------|
+| `j` / `k` | Move in the list, or between Links in the detail pane |
+| `Enter`, `l`, `Tab` | Open the detail pane |
+| `Enter` on a Link | Follow a Link to another Memory. For an Issue, b9s names the `bd show` command |
+| `Esc`, `h` | Go back |
+| `Ctrl+D` / `Ctrl+U` | Scroll the body |
+| `v` | List the versions bd retains. `Enter` reads the selected version |
+| `/` | Literal search over title and body. There are no synonyms |
+| `q` | Quit |
+
+The versions list holds only what bd retains, not full history. A retained version is labelled "not current". Its outgoing Links are those of that version, and its incoming Links come from the current graph.
+
+### Graph views
+
+In regular b9s, press `M` to open Memory wires for the current graph workspace. Wires are the only terminal relationship layout. `M`, `q` or `Esc` returns to the issue view and preserves its selection and marks. `Ctrl+\` clears marks in the issue view.
+
+Selection highlights linked records and their directed wires. `[` and `]` page endpoints. The lower panel lists all relationships of the selected bead, including endpoints on other pages. `Tab` changes between Issues and Memories.
+
+`A`, `O` and `C` select all, open or closed Issues. Memories remain visible because they have no lifecycle status. `/` searches literal IDs, titles and bodies. Press `Enter` to hide nonmatching beads, or submit an empty search to restore them. `\` expands the selected bead's detail to the full screen and restores the view when pressed again. `J` and `K` scroll expanded details.
+
+`2` selects focus wires directly. `1` opens the Memory list and retained versions. The main application reuses the loaded graph. The standalone `b9s memories` command remains available for scripted reads and direct list access.
+
+Availability depends on the current project's ready Memory graph metadata and the `bd` executable on `PATH`. b9s asks that `bd` for its help output, never its version, and remembers the answer per binary. When either is missing, `M` still works and says why in one line, for example `Memories unavailable: bd at /opt/homebrew/bin/bd has no Memory Beads support`, and b9s shows no MEMORY LINKS column. The web **Memory** tab shows the same reason, and `b9s memories` prints it and exits with status 2. Run `b9s --reprobe` (or `b9s memories --reprobe`) after replacing `bd` in place. Set `B9S_MEMORY=off`, or `memory: off` in the config file, to turn Memory views off. A graph workspace still shows its Issues. No setting turns them on against a `bd` that lacks them. b9s also checks actual read results, not release or branch names. A future release with the same compatible commands and data format works without a version allowlist. Missing commands, disabled Memories, access failures, connection failures, timeouts and incompatible data receive distinct explanations with the original diagnostic. `r` retries a failed read in the integrated view.
+
+| Key | View |
+|-----|------|
+| `2` | **Focus wires.** Issues on the left and Memories on the right. Only the selected record's cross-column Links have wires. The lower strip includes all its Links |
+| `j` / `k`, `Home` / `End` | Move through all records, including collapsed ones |
+| `Tab`, `h` / `l` | Change side |
+| `Shift+Tab` | Collapse or expand unrelated context. All context shows by default |
+| `[` / `]`, `PgUp` / `PgDn` | Page endpoints when relevant records exceed the available height |
+| `J` / `K` | Scroll the lower detail strip, or the detail panel when it is open |
+| `Enter`, click | Open the selected record, Issue or Memory, in a detail panel beside the wires |
+| `d` | Show or hide the detail panel, as `d` does for the tree detail |
+
+The detail panel works like the tree's detail. It shows the record's title, its Links numbered `1` to `9`, and its body. The panel follows the cursor as you move through the wires. `1`-`9` follow a Link to the record at its other end, and `Backspace` goes back. `\` expands the panel to the full screen. `Esc` or `d` closes the panel and returns to the wires. Press `Esc` again to leave Memory wires. Below 100 columns the panel takes the full width.
+
+All records show by default, and the columns scroll with the selection. When the graph exceeds the terminal height, `Shift+Tab` collapses unrelated runs into counted context rows, so selected records and their linked endpoints take priority. Press `Shift+Tab` again to show the surrounding records. Endpoint paging makes every relevant record reachable even when those alone exceed the screen height.
+
+Wires use the native follows, cites and related Links. The blocking Type connects Issues only and reads source **depends on** target. Each kind draws as the UML connector the web graph uses, in heavy box strokes, and the legend under the wires names it: follows `┅┅▷` (realization), depends on `┅┅>` (dependency), cites `━━>` (directed association) and related `━━━` (association, no head). Each Link has its own run, in its own colour, with its UML head and, on terminals of 80 columns or more, its kind word, for example `━━ cites ━━>`. The vertical trunk only joins the runs to the selected record. The Links list uses the same lines, for example `╌╌ follows ╌▷` and `◁╌ followed by`. Same-kind Links appear in the detail strip. Memories have literal titles and bodies, without inferred status or supersession. Focus wires require at least 48 columns and 10 content rows. Smaller terminals show a resize hint.
+
+See [the test procedure](testing.md#memory-preview-terminal-checks) for bounded checks against the isolated preview.
+
+### Browser constellation
+
+The relationship graph is in **Memory** in `b9s web`. `M` opens it, as in the terminal, and `M` again returns to the tree. Orange circles represent Issues. Cyan rounded rectangles represent Memories. Native titles and IDs identify each record. Arrowheads meet the shape boundary and show stored direction. Each Link kind is drawn as its UML connector (ADR 0048): follows is a realization (dashed line, hollow triangle), depends on a dependency (dashed line, open arrow), cites a directed association (solid line, open arrow) and related an association (solid line, no head). Labels and colours repeat the kind, and the legend shows each connector. **Labels** (or `l`) hides and shows the Link labels. The **Line** − and + buttons set Link thickness from 1 to 6 px. Select a record, or a Link label, to open it in the same detail panel the tree uses: a side panel on a wide screen and a bottom sheet on a phone. A record shows its ID, title, kind and status pills, Type and version, numbered Links with direction and the far record, then its body. A Link shows its exact Type, available note and both ends. The panel takes the tree detail keys: `1`-`9` follow a numbered Link, `Backspace` returns to the record before it, `n` and `p` step through records, `\` toggles full width (full height on a phone), `c` copies the ID, and `Esc` closes it. `d` hides the detail and shows it again: with nothing selected, it reopens the record or Link last closed. **Show in tree** opens an Issue in the tree detail. Hover or focus highlights neighbours while unrelated records remain readable. The **Unselected opacity** slider, with its value beside it, sets how far records outside the selection fade, from hidden (0%) to full strength (100%). Links fade a little further than cards. The Type filter changes visible Links without moving records. Drag a record to move it, and its Links follow. A tap or click without movement still opens it. Drag the background to pan. The canvas fills the view below the toolbar. The − and + buttons in the canvas corner zoom out and in, with the zoom level between them. On a keyboard, `+` (or `=`) zooms in, `-` zooms out and `f` fits the whole graph. The mouse wheel and a trackpad pinch zoom toward the pointer, and a two-finger pinch zooms on a touch screen. **Fit** shows the whole graph and **Fit neighbours** the selection. The server serves the graph cached by the project load, with no `bd` call per browser request.
+
+Use the **Record** picker to bring any record into view at readable size, including on a phone. [Watch the implementation evidence](videos/native-memory-relationships--feat-bd-87qs-memory-beads.mp4).
+
+The web **Layout** selector offers **Network**, **Radial** and **Columns**. Network is the default and packs connected records into both dimensions. Radial arranges records in rings. Columns groups records by kind. Each layout initially fits the graph. **Fit** restores the overview, and **Fit neighbours** frames the selected record and its immediate neighbours. Selection, Type filtering and dragged positions are kept until you change the layout or the project data changes. At overview scale, beads show readable IDs. Zoom in or select a record for its title and body.
+
+### Use the preview bd in your own repository
+
+Plain `b9s` shows Memories when two things hold in the folder where you start it: the project is a ready graph workspace, and the `bd` on `PATH` is the preview build. The steps below make both true for one repository, without changing `bd` anywhere else on your machine.
+
+```
+  cd my-repo ──▶ direnv loads .envrc ──▶ PATH: .memory-preview/path/bd first
+                                              │
+       b9s (your latest go install) ──────────┤
+                                              ▼
+                    preview bd ──▶ .beads (graph workspace, embedded)
+```
+
+**1. Build the preview `bd`.** Check out the pinned integration revision in a separate source directory, then build into the repository:
+
+```bash
+git clone https://github.com/versioned-beads/beads.git ~/src/beads-preview
+git -C ~/src/beads-preview checkout 1f3466b5dfcb8c76ecb9ceaf4b847df695131f96
+mkdir -p my-repo/.memory-preview/bin my-repo/.memory-preview/path
+CGO_ENABLED=1 go build -C ~/src/beads-preview -tags gms_pure_go \
+  -o "$PWD/my-repo/.memory-preview/bin/bd" ./cmd/bd
+ln -s ../bin/bd my-repo/.memory-preview/path/bd
+```
+
+The `path` directory holds only `bd`. Do not put `.memory-preview/bin` itself on `PATH` if it also holds a `b9s` binary, because that copy then hides the `b9s` you install with `go install` or `make install`.
+
+**2. Keep local files out of git.** Add these lines to `.git/info/exclude` (or `.gitignore`):
+
+```text
+/.memory-preview/
+/.beads/
+.envrc
+```
+
+**3. Add `.envrc`** at the repository root:
+
+```bash
+# Every bd started in this folder is the Memory-capable preview. The release
+# bd refuses the graph store (newer schema), and shared-server credentials
+# from other projects do not apply here. b9s stays your latest install.
+PATH_add .memory-preview/path
+export BEADS_DIR="$PWD/.beads"
+export BEADS_DOLT_AUTO_START=0
+unset BEADS_DOLT_PASSWORD BEADS_DOLT_READ_USER BEADS_DOLT_READ_PASSWORD
+```
+
+Run `direnv allow` once. Your shell needs the direnv hook (`eval "$(direnv hook zsh)"`).
+
+**4. Create the graph workspace.** Only in a folder with no `.beads` yet. The preview cannot read or convert an existing Beads project, and the release `bd` cannot read the result:
+
+```bash
+env -u BEADS_DIR bd init --graph-mode link --scope-url http://127.0.0.1:8765/my-repo/
+bd status --graph --json
+```
+
+Init refuses with `not_authority` while `BEADS_DIR` points at a `.beads` that does not exist yet, so unset it for this one command. Init also writes an `AGENTS.md` and installs git hooks plus a Claude Stop hook. Add `--skip-hooks` to leave the hooks out, and delete or commit `AGENTS.md` as you prefer.
+
+The scope URL is a permanent identity, not a server, and the store records the absolute path of the workspace. Do not move the folder after init.
+
+**5. Check and run.**
+
+```bash
+which bd b9s      # bd: my-repo/.memory-preview/path/bd, b9s: your install
+bd remember "first Memory"
+b9s               # Issues in the tree, M for Memories
+```
+
+If `M` says the `bd` has no Memory Beads support, `PATH` still finds another `bd`: leave the folder and enter it again, or run `direnv allow`. After you rebuild `bd` in place, run `b9s --reprobe` once.
+
+Two rules keep the preview contained: never run the release `bd` against this `.beads` (it stops with `schema version mismatch`, and `--ignore-schema-skew` is not a fix), and never point this workspace at a shared Dolt server.
+
+### Startup troubleshooting
+
+If the regular b9s project reports `Access denied for user 'bd_b9s'`, load that project's credential environment. A shell inherited from another workspace can hold a different `BEADS_DOLT_PASSWORD`. From the b9s checkout, `direnv exec . b9s` runs with the project's approved environment.
+
+If the Memory POC reports a schema mismatch, the release `bd` is first on `PATH`. Set up the folder as in [Use the preview bd in your own repository](#use-the-preview-bd-in-your-own-repository), or run `scripts/memory-preview b9s` from this feature checkout. It selects the pinned preview `bd` and rebuilds this checkout's viewer. Plain `b9s` uses the binaries on your shell's `PATH`, which may belong to the released schema. Do not bypass the schema check or migrate the preview store to fix a launch command.
+
+### Memory Links in regular b9s
+
+Opening a graph workspace with plain `b9s` loads its Issues from the workspace's record inventory, because a graph workspace refuses `bd export`. The Memory graph takes one more `bd` read per group of linked Issues, so b9s reads it only when you ask for it: when `M` opens the Memory view, or when an Issue detail is shown (`d`). While it reads, the view and the detail's MEMORY LINKS section show a progress bar, `Reading Memory Links ▰▰▱ 3/8`. The web Memory tab and Issue detail do the same. After a change to the workspace, b9s reads the graph again and keeps the old one on screen until the new one arrives. The tree's **MEMORY LINKS** column counts incident Memory Links, including those on epics. The column shows on terminals wider than 120 columns, and `|` shows or hides it. The Issue detail section lists incoming and outgoing Memory Links with direction, native title and available note. Regular web Issue detail includes the same relationships, with expandable Memory bodies. Once the graph is read, these sections use it without another CLI read, and the MEMORY LINKS column appears.
+
+`--id` and `--print` print Memories instead, as does any run whose output is not a terminal. b9s does not edit Memories. The preview CLI currently limits an inventory to 1,000 Beads, and b9s refuses an incomplete one. See [ADR 0038](adr/0038-show-the-decision-graph-from-one-graph-read.md).
 
 ## Command prompt
 
@@ -602,7 +763,7 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |
 | `Enter` `d`, `e`, `S`, `K`, `Delete` or `Cmd-Backspace`, `c` | Open the detail, edit, status, close, delete, copy the ID and title. A Mac keyboard has no `Delete` key, and `Backspace` alone goes back |
 | `Ctrl-N` | Create an issue |
-| `b`, `g`, `Esc` | Board, dependency graph of the cursor, back |
+| `b`, `M`, `g`, `Esc` | Board, Memory graph, dependency graph of the cursor, back |
 | `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
 | `F1` `F2` `F3` `F4` | Show only epics, features, tasks or bugs; the same key again shows every type |
 | `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |

@@ -60,3 +60,30 @@ func TestOpenedEmbeddedProjectWatchesTheStore(t *testing.T) {
 		t.Errorf("health = backend %q database %q, want embedded Dolt gamma", h.Backend, h.Database)
 	}
 }
+
+func TestSwitchingProjectsPointsTheDecisionColumnAtTheNewStore(t *testing.T) {
+	m, _, _ := switchModel(t)
+	m.tree.SetDecisionLookup(func() (datasource.MemoryGraph, bool) { return fixtureMemoryGraph(), true })
+	gamma := config.Project{Name: "gamma", Path: writeEmbeddedCheckout(t, t.TempDir(), "gamma")}
+	m, _ = requestSwitch(t, m, gamma)
+	updated, _ := m.Update(projectOpenedMsg{generation: m.projectSwitch.generation, project: gamma})
+	m = updated.(Model)
+	if m.doltWatcher != nil {
+		defer m.doltWatcher.Stop()
+	}
+	if _, ok := m.tree.MemoryGraph(); ok {
+		t.Fatal("the previous project's graph must not annotate the new project's rows")
+	}
+	if m.tree.decisionLookup == nil {
+		t.Fatal("an embedded project must ask the graph cache, which answers once a graph workspace loads")
+	}
+}
+
+func TestDecisionLookupOnlyForEmbeddedSources(t *testing.T) {
+	if decisionLookupFor(datasource.DataSource{Type: datasource.SourceTypeDolt}) != nil {
+		t.Fatal("a server project has no Memory graph")
+	}
+	if decisionLookupFor(datasource.DataSource{Type: datasource.SourceTypeDoltEmbedded, Path: "/x/.beads/embeddeddolt/db"}) == nil {
+		t.Fatal("an embedded project may be a graph workspace")
+	}
+}

@@ -62,6 +62,7 @@ func convertIssue(src *model.Issue, status map[string]model.Status) Issue {
 		Related:        []string{},
 		DiscoveredFrom: []string{},
 		Comments:       make([]Comment, 0, len(src.Comments)),
+		MemoryLinks:    []IssueMemoryLink{},
 		Project:        src.SourceRepo,
 		ClosedLike:     ui.IsClosedLike(src.Status),
 	}

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Two Shores</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .stage svg { display: block; min-width: 760px; width: 100%; }
+  .row { cursor: pointer; }
+  .row rect.bg { fill: transparent; }
+  .row:hover rect.bg, .row.hl rect.bg { fill: var(--soft); }
+  .row text { font-size: 12.5px; }
+  .row .id { font-family: var(--mono); font-weight: 600; }
+  .row .sub { fill: var(--muted); font-size: 11px; }
+  .grp { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .wire { fill: none; transition: opacity .15s; }
+  .wire.follows { stroke: var(--issue); stroke-width: 1.8; opacity: .55; }
+  .wire.cites { stroke: var(--cites); stroke-width: 1.2; stroke-dasharray: 4 4; opacity: .6; }
+  .wire.bad { stroke: var(--superseded); opacity: .9; }
+  .wire.supersedes { stroke: var(--superseded); stroke-width: 2; }
+  svg.dim .wire { opacity: .07; }
+  svg.dim .wire.hl { opacity: 1; }
+  svg.dim .row { opacity: .35; }
+  svg.dim .row.hl { opacity: 1; }
+  .badge { font-size: 10.5px; fill: var(--muted); font-family: var(--mono); }
+</style>
+</head>
+<body>
+<nav class="top"></nav>
+<header class="intro">
+  <h1>2 · Two shores</h1>
+  <p>Work on the left, knowledge on the right, and the wires between them. The left keeps the epic tree you already know. The right sorts decisions by status, so a wire into the red zone is a task built on a dead decision.</p>
+</header>
+<div class="legend">
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--issue)" stroke-width="1.8"/></svg>follows</span>
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--cites)" stroke-dasharray="4 4"/></svg>cites</span>
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--superseded)" stroke-width="2"/></svg>follows a superseded decision, or supersedes</span>
+  <span><span class="dot h-none"></span>no decision recorded</span>
+</div>
+<div class="layout">
+  <div class="stage"><svg id="g"></svg></div>
+  <aside class="panel" id="panel"><div class="kicker">Hover a row to trace it. Click to read.</div></aside>
+</div>
+<script src="data.js"></script>
+<script>
+renderNav('2-two-shores.html');
+const svg = document.getElementById('g'), panel = document.getElementById('panel');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const W = 900, RH = 26, TOP = 34, LX = 12, LW = 300, RX = W - 312, RW = 300;
+
+// Left shore: epics with their children depth-first, then loose features.
+const left = [];
+const kids = id => ISSUES.filter(i => i.parent === id);
+function walk(i, depth) { left.push({ id: i.id, depth }); kids(i.id).forEach(k => walk(k, depth + 1)); }
+const roots = ISSUES.filter(i => !i.parent && i.type === 'epic' && (kids(i.id).length || G.decisionEdges(i.id).length));
+roots.forEach(r => walk(r, 0));
+const loose = ISSUES.filter(i => !i.parent && i.type !== 'epic');
+const empty = ISSUES.filter(i => !i.parent && i.type === 'epic' && !kids(i.id).length && !G.decisionEdges(i.id).length);
+
+// Right shore: grouped by status, most-used first.
+const use = id => G.inc(id).filter(e => e.kind === 'follows' || e.kind === 'cites').length;
+const groups = ['active', 'proposed', 'superseded'].map(s => ({ s, items: MEMORIES.filter(m => m.status === s).sort((a, b) => use(b.id) - use(a.id)) }));
+
+const pos = new Map();
+let y = TOP;
+el('text', { class: 'grp', x: LX, y: 20 }, svg).textContent = 'Work · Issues';
+el('text', { class: 'grp', x: RX, y: 20 }, svg).textContent = 'Knowledge · Memories';
+function leftRow(id, depth) {
+  const n = G.nodes.get(id), h = G.health(id);
+  const g = el('g', { class: 'row', 'data-id': id, transform: `translate(${LX},${y})` }, svg);
+  el('rect', { class: 'bg', x: -4, y: 0, width: LW + 8, height: RH - 2, rx: 5 }, g);
+  const ix = 8 + depth * 16;
+  const dotFill = h === 'epic' ? 'var(--epic)' : h === 'dead' ? 'var(--superseded)' : h === 'proposed' ? 'var(--proposed)' : h === 'none' ? 'none' : 'var(--issue)';
+  el('circle', { cx: ix, cy: RH / 2 - 1, r: 4.5, fill: dotFill, stroke: h === 'none' ? 'var(--muted)' : 'none', 'stroke-dasharray': '2 2' }, g);
+  const t = el('text', { x: ix + 10, y: RH / 2 + 3 }, g);
+  t.innerHTML = `<tspan class="id">${id}</tspan> <tspan${n.type === 'epic' ? ' font-weight="600"' : ''}>${esc(n.title.length > 34 - depth * 2 ? n.title.slice(0, 33 - depth * 2) + '…' : n.title)}</tspan>`;
+  pos.set(id, { x: LX + LW + 4, y: y + RH / 2 - 1, side: 'L' });
+  y += RH;
+}
+left.forEach(r => leftRow(r.id, r.depth));
+y += 8; el('text', { class: 'grp', x: LX, y: y + 12 }, svg).textContent = 'No epic'; y += 20;
+loose.forEach(i => leftRow(i.id, 0));
+y += 8; el('text', { class: 'grp', x: LX, y: y + 12 }, svg).textContent = 'Epics with no Links'; y += 20;
+empty.forEach(i => leftRow(i.id, 0));
+const leftH = y;
+
+y = TOP;
+const zone = { active: 'transparent', proposed: 'var(--prop-bg)', superseded: 'var(--dead-bg)' };
+groups.forEach(gr => {
+  const y0 = y;
+  el('rect', { x: RX - 8, y: y0, width: RW + 16, height: 22 + gr.items.length * RH, rx: 8, fill: zone[gr.s] }, svg);
+  el('text', { class: 'grp', x: RX, y: y0 + 15, style: `fill:var(--${gr.s})` }, svg).textContent = gr.s;
+  y += 22;
+  gr.items.forEach(m => {
+    const g = el('g', { class: 'row', 'data-id': m.id, transform: `translate(${RX},${y})` }, svg);
+    el('rect', { class: 'bg', x: -4, y: 0, width: RW + 8, height: RH - 2, rx: 5 }, g);
+    el('circle', { cx: 6, cy: RH / 2 - 1, r: 5, fill: `var(--${m.status})` }, g);
+    const t = el('text', { x: 16, y: RH / 2 + 3 }, g);
+    t.innerHTML = `<tspan class="id">${m.n}</tspan> ${esc(m.title.length > 30 ? m.title.slice(0, 29) + '…' : m.title)}`;
+    const f = G.followers(m.id).length, c = G.citers(m.id).length;
+    el('text', { class: 'badge', x: RW, y: RH / 2 + 3, 'text-anchor': 'end' }, g).textContent = f || c ? `${f}f ${c}c` : '';
+    pos.set(m.id, { x: RX - 6, y: y + RH / 2 - 1, side: 'R' });
+    y += RH;
+  });
+  y += 12;
+});
+const H = Math.max(leftH, y) + 10;
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+svg.style.height = H + 'px';
+
+const wires = el('g', {}, svg);
+svg.insertBefore(wires, svg.firstChild);
+G.edges.filter(e => e.kind !== 'child-of').forEach(e => {
+  const a = pos.get(e.from), b = pos.get(e.to);
+  let d;
+  if (e.kind === 'supersedes') {
+    const x = RX + RW + 6; d = `M${x},${a.y} C${x + 40},${a.y} ${x + 40},${b.y} ${x},${b.y}`;
+  } else {
+    const mx = (a.x + b.x) / 2; d = `M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`;
+  }
+  const bad = e.kind === 'follows' && G.nodes.get(e.to).status === 'superseded';
+  e.wire = el('path', { d, class: `wire ${e.kind}${bad ? ' bad' : ''}`, 'marker-end': '' }, wires);
+});
+
+function trace(id) {
+  svg.classList.toggle('dim', !!id);
+  svg.querySelectorAll('.hl').forEach(x => x.classList.remove('hl'));
+  if (!id) return;
+  const on = new Set([id]);
+  // Hovering an epic traces every wire its descendants own.
+  const desc = []; (function d(x) { kids(x).forEach(k => { desc.push(k.id); d(k.id); }); })(id);
+  desc.forEach(x => on.add(x));
+  G.edges.filter(e => e.wire && (on.has(e.from) || on.has(e.to))).forEach(e => {
+    e.wire.classList.add('hl'); on.add(e.from); on.add(e.to);
+  });
+  on.forEach(x => { const r = svg.querySelector(`.row[data-id="${CSS.escape(x)}"]`); r && r.classList.add('hl'); });
+}
+let pinned = null;
+svg.addEventListener('mousemove', e => { if (pinned) return; const r = e.target.closest('.row'); trace(r ? r.dataset.id : null); });
+svg.addEventListener('mouseleave', () => { if (!pinned) trace(null); });
+svg.addEventListener('click', e => {
+  const r = e.target.closest('.row');
+  pinned = r ? r.dataset.id : null; trace(pinned);
+  panel.innerHTML = pinned ? detailHTML(pinned) : '<div class="kicker">Hover a row to trace it. Click to read.</div>';
+});
+panel.addEventListener('click', e => { const li = e.target.closest('[data-id]'); if (!li) return; pinned = li.dataset.id; trace(pinned); panel.innerHTML = detailHTML(pinned); });
+</script>
+</body>
+</html>

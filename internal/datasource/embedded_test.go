@@ -256,3 +256,55 @@ func TestDoltWatcher_EmbeddedNotifiesOnStoreWrite(t *testing.T) {
 		t.Fatal("no change notification within 2s of a store write")
 	}
 }
+
+// A graph workspace read by a bd without Memory support loads Issues through
+// the ordinary export and records no Memory graph, so no Memory column shows.
+// A graph kept from an earlier load under a Memory-capable bd is dropped too.
+func TestLoadFromSource_GraphWorkspaceWithStockBdSkipsTheMemoryGraph(t *testing.T) {
+	_, beadsDir, storeDir := newEmbeddedProject(t)
+	memoryGraphs.Lock()
+	memoryGraphs.byDir[beadsDir] = MemoryGraph{}
+	memoryGraphs.Unlock()
+	writeFile(t, filepath.Join(beadsDir, "metadata.json"),
+		`{"backend":"dolt","dolt_mode":"embedded","dolt_database":"emb","graph_mode":"link","graph_ready":true}`)
+	log := onPath(t, stockHelpAnswer+`[ "$1" = export ] || exit 2
+echo '{"_type":"issue","id":"emb-1","title":"Live","status":"open","priority":1,"issue_type":"task"}'
+`)
+
+	issues, err := LoadFromSource(DataSource{Type: SourceTypeDoltEmbedded, Path: storeDir, Database: "emb"})
+
+	if err != nil || len(issues) != 1 {
+		t.Fatalf("LoadFromSource = %d issues, err %v; want 1 issue from export", len(issues), err)
+	}
+	if calls, _ := os.ReadFile(log); strings.Contains(string(calls), "graph") || strings.Contains(string(calls), "records-json") {
+		t.Errorf("bd calls = %q, want no graph read", calls)
+	}
+	if _, ok := MemoryGraphFor(beadsDir); ok {
+		t.Error("MemoryGraphFor reports a graph, want none without Memory support")
+	}
+	if MemoryWorkspaceFor(beadsDir) {
+		t.Error("MemoryWorkspaceFor = true, want false without Memory support")
+	}
+}
+
+// A graph workspace refuses bd export, so its Issues come only from the graph
+// read. Turning Memory views off must hide the graph, not the Issues.
+func TestLoadFromSource_MemoryLeverKeepsGraphWorkspaceIssues(t *testing.T) {
+	_, beadsDir, storeDir := newEmbeddedProject(t)
+	writeFile(t, filepath.Join(beadsDir, "metadata.json"),
+		`{"backend":"dolt","dolt_mode":"embedded","dolt_database":"emb","graph_mode":"link","graph_ready":true}`)
+	onPath(t, probeHelpAnswer+graphFixtureScript)
+	t.Setenv(MemoryLeverEnv, "off")
+
+	issues, err := LoadFromSource(DataSource{Type: SourceTypeDoltEmbedded, Path: storeDir, Database: "emb"})
+
+	if err != nil || len(issues) == 0 {
+		t.Fatalf("LoadFromSource = %d issues, err %v; want the graph workspace's Issues", len(issues), err)
+	}
+	if _, ok := MemoryGraphFor(beadsDir); ok {
+		t.Error("MemoryGraphFor reports a graph with Memory turned off, want none")
+	}
+	if MemoryWorkspaceFor(beadsDir) {
+		t.Error("MemoryWorkspaceFor = true with Memory turned off, want false")
+	}
+}

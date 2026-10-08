@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Constellation</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .stage svg { display: block; width: 100%; height: 640px; touch-action: none; }
+  .edge { fill: none; transition: opacity .15s; }
+  .edge.follows { stroke: var(--ink); stroke-width: 1.6; opacity: .55; }
+  .edge.cites { stroke: var(--cites); stroke-width: 1.2; stroke-dasharray: 4 4; opacity: .7; }
+  .edge.child-of { stroke: var(--hier); stroke-width: 1; }
+  .edge.supersedes { stroke: var(--superseded); stroke-width: 2.2; }
+  .edge.bad { stroke: var(--superseded); opacity: .9; }
+  .node { cursor: pointer; transition: opacity .15s; }
+  .node text { font-size: 11px; pointer-events: none; }
+  .node .lbl { fill: var(--muted); font-size: 10.5px; }
+  svg.dim .edge, svg.dim .node { opacity: .12; }
+  svg.dim .edge.hl, svg.dim .node.hl { opacity: 1; }
+  .ring-dead { stroke: var(--superseded); stroke-width: 2.5; fill: none; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { stroke-opacity: .25; } }
+  svg.nolabels .lbl { display: none; }
+  svg.nocites .edge.cites, svg.nohier .edge.child-of { display: none; }
+</style>
+</head>
+<body>
+<nav class="top"></nav>
+<header class="intro">
+  <h1>1 · Constellation</h1>
+  <p>One force-directed graph. Decisions are the stars, Issues orbit the decisions they use, and epics hold their features together. Drag to rearrange, hover to isolate a neighbourhood, click to read.</p>
+</header>
+<div class="legend">
+  <span><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="var(--active)"/></svg>Memory, active</span>
+  <span><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="var(--proposed)"/></svg>proposed</span>
+  <span><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="var(--superseded)"/></svg>superseded</span>
+  <span><svg width="16" height="16"><rect x="2" y="4" width="12" height="8" rx="3" fill="var(--issue)"/></svg>Issue</span>
+  <span><svg width="16" height="16"><rect x="1" y="3" width="14" height="10" rx="3" fill="var(--epic)"/></svg>Epic</span>
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--ink)" stroke-width="1.6"/></svg>follows</span>
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--cites)" stroke-dasharray="4 4"/></svg>cites</span>
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--superseded)" stroke-width="2.2"/></svg>supersedes</span>
+  <span><svg width="26" height="10"><line x1="0" y1="5" x2="26" y2="5" stroke="var(--hier)"/></svg>part of</span>
+</div>
+<div class="controls" style="margin-top:6px">
+  <label><input type="checkbox" id="cites" checked> Show cites</label>
+  <label><input type="checkbox" id="hier" checked> Show epics</label>
+  <label><input type="checkbox" id="labels" checked> Show titles</label>
+</div>
+<div class="layout">
+  <div class="stage"><svg id="g"></svg></div>
+  <aside class="panel" id="panel"></aside>
+</div>
+<script src="data.js"></script>
+<script>
+renderNav('1-constellation.html');
+const svg = document.getElementById('g');
+const panel = document.getElementById('panel');
+const W = 900, H = 640;
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+const nodes = [...G.nodes.values()].map((n, i) => {
+  const a = i * 2.399, r = 60 + 9 * i;
+  return { ...n, x: W / 2 + Math.cos(a) * r, y: H / 2 + Math.sin(a) * r, vx: 0, vy: 0 };
+});
+const byId = new Map(nodes.map(n => [n.id, n]));
+const links = G.edges.map(e => ({ ...e, s: byId.get(e.from), t: byId.get(e.to) }));
+const SPRING = { follows: [80, .06], cites: [130, .02], 'child-of': [55, .08], supersedes: [90, .05] };
+
+// A small deterministic force layout: repulsion, typed springs, weak gravity.
+function simulate(steps) {
+  for (let k = 0; k < steps; k++) {
+    const alpha = 1 - k / steps;
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy + .01;
+      const d = Math.sqrt(d2), f = Math.min(40, 2200 / d) * (.3 + .7 * alpha) / d * 6;
+      dx /= d; dy /= d;
+      a.vx -= dx * f; a.vy -= dy * f; b.vx += dx * f; b.vy += dy * f;
+    }
+    links.forEach(l => {
+      const [len, str] = SPRING[l.kind];
+      const dx = l.t.x - l.s.x, dy = l.t.y - l.s.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const f = (d - len) * str * alpha;
+      l.s.vx += dx / d * f; l.s.vy += dy / d * f; l.t.vx -= dx / d * f; l.t.vy -= dy / d * f;
+    });
+    nodes.forEach(n => {
+      n.vx += (W / 2 - n.x) * .004; n.vy += (H / 2 - n.y) * .007;
+      n.x += n.vx; n.y += n.vy; n.vx *= .6; n.vy *= .6;
+      n.x = Math.max(50, Math.min(W - 50, n.x)); n.y = Math.max(30, Math.min(H - 30, n.y));
+    });
+  }
+}
+simulate(500);
+
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const gEdges = el('g', {}, svg), gNodes = el('g', {}, svg);
+
+links.forEach(l => {
+  const bad = l.kind === 'follows' && l.t.status === 'superseded';
+  l.el = el('line', { class: `edge ${l.kind}${bad ? ' bad' : ''}` }, gEdges);
+});
+nodes.forEach(n => {
+  const g = el('g', { class: 'node', 'data-id': n.id }, gNodes);
+  if (n.kind === 'memory') {
+    const r = 15 + 3 * G.followers(n.id).length;
+    el('circle', { r, fill: `var(--${n.status})`, opacity: n.status === 'superseded' ? .55 : 1 }, g);
+    el('text', { 'text-anchor': 'middle', dy: 4, style: 'fill:#fff;font-weight:600' }, g).textContent = n.n;
+    el('text', { class: 'lbl', 'text-anchor': 'middle', y: r + 13 }, g).textContent = n.title.length > 34 ? n.title.slice(0, 33) + '…' : n.title;
+  } else {
+    const h = G.health(n.id), epic = n.type === 'epic';
+    const w = n.id.length * 7 + 16;
+    if (h === 'dead') el('rect', { class: 'ring-dead', x: -w / 2 - 5, y: -14, width: w + 10, height: 28, rx: 9 }, g);
+    el('rect', { x: -w / 2, y: -9, width: w, height: 18, rx: 5, fill: epic ? 'var(--epic)' : h === 'none' ? 'var(--panel)' : 'var(--issue)',
+      stroke: h === 'none' ? 'var(--muted)' : 'none', 'stroke-dasharray': h === 'none' ? '3 3' : '' }, g);
+    el('text', { 'text-anchor': 'middle', dy: 4, style: `fill:${h === 'none' ? 'var(--muted)' : '#fff'};font-family:var(--mono)` }, g).textContent = n.id;
+    el('text', { class: 'lbl', 'text-anchor': 'middle', y: 22 }, g).textContent = n.title.length > 28 ? n.title.slice(0, 27) + '…' : n.title;
+  }
+  n.el = g;
+});
+
+function draw() {
+  links.forEach(l => { l.el.setAttribute('x1', l.s.x); l.el.setAttribute('y1', l.s.y); l.el.setAttribute('x2', l.t.x); l.el.setAttribute('y2', l.t.y); });
+  nodes.forEach(n => n.el.setAttribute('transform', `translate(${n.x},${n.y})`));
+}
+draw();
+
+function highlight(id) {
+  svg.classList.toggle('dim', !!id);
+  nodes.forEach(n => n.el.classList.remove('hl'));
+  links.forEach(l => l.el.classList.remove('hl'));
+  if (!id) return;
+  byId.get(id).el.classList.add('hl');
+  links.forEach(l => { if (l.s.id === id || l.t.id === id) { l.el.classList.add('hl'); l.s.el.classList.add('hl'); l.t.el.classList.add('hl'); } });
+}
+
+function showProblems() {
+  const items = ISSUES.filter(i => ['dead', 'proposed', 'none'].includes(G.health(i.id)))
+    .sort((a, b) => ['dead', 'proposed', 'none'].indexOf(G.health(a.id)) - ['dead', 'proposed', 'none'].indexOf(G.health(b.id)));
+  panel.innerHTML = `<div class="kicker">Graph health</div><h2>${items.length} Issues need a look</h2>
+    <p class="muted" style="margin:0 0 10px">Click a node, or one of these, to read it.</p>
+    <ul class="problems">${items.map(i => `<li class="${G.health(i.id)}" data-id="${i.id}"><b>${i.id}</b> ${esc(i.title)}<div class="muted" style="font-size:12px">${G.HEALTH_TEXT[G.health(i.id)]}</div></li>`).join('')}</ul>`;
+}
+let selected = null;
+function select(id) {
+  selected = id;
+  if (!id) { showProblems(); highlight(null); return; }
+  panel.innerHTML = `<p style="margin:0 0 6px"><a href="#" id="back" class="muted">← graph health</a></p>` + detailHTML(id);
+  highlight(id);
+}
+panel.addEventListener('click', e => {
+  if (e.target.id === 'back') { e.preventDefault(); select(null); return; }
+  const li = e.target.closest('[data-id]'); if (li) select(li.dataset.id);
+});
+
+let drag = null, moved = false;
+function toSvg(e) { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+svg.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.node'); if (!g) { select(null); return; }
+  drag = byId.get(g.dataset.id); moved = false; svg.setPointerCapture(e.pointerId);
+});
+svg.addEventListener('pointermove', e => {
+  if (drag) { const p = toSvg(e); drag.x = p.x; drag.y = p.y; moved = true; draw(); return; }
+  const g = e.target.closest('.node');
+  if (!selected) highlight(g ? g.dataset.id : null);
+});
+svg.addEventListener('pointerup', () => { if (drag && !moved) select(drag.id); drag = null; });
+
+document.getElementById('cites').onchange = e => svg.classList.toggle('nocites', !e.target.checked);
+document.getElementById('hier').onchange = e => svg.classList.toggle('nohier', !e.target.checked);
+document.getElementById('labels').onchange = e => svg.classList.toggle('nolabels', !e.target.checked);
+showProblems();
+</script>
+</body>
+</html>

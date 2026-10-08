@@ -28,7 +28,7 @@ export default defineConfig({
     ...(["Desktop Chrome", "Desktop Safari", "Desktop Firefox"] as const).map((device) => ({
       name: device === "Desktop Chrome" ? "desktop" : device.toLowerCase().replace(" ", "-"),
       use: { ...devices[device], viewport: { width: 1440, height: 900 } },
-      testMatch: /(wide|keys|read|write)\.spec/,
+      testMatch: /(wide|keys|read|write|memory)\.spec/,
     })),
     { name: "ipad", use: { ...devices["iPad Pro 11"] }, testMatch: /(wide|keys)\.spec/ },
     ...(["Pixel 7", "iPhone 14"] as const).map((device) => ({

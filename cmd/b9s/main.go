@@ -29,6 +29,9 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "memories" {
+		os.Exit(runMemories(os.Args[2:], os.Stdout, os.Stderr))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "ctl" {
 		os.Exit(runCtl(os.Args[2:], os.Stdout, os.Stderr))
 	}
@@ -51,6 +54,7 @@ func main() {
 	noBackgroundMode := flag.Bool("no-background-mode", false, "Disable experimental background snapshot loading (TUI only)")
 	debugFlag := flag.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
 	noFallback := flag.Bool("no-fallback", false, "Exit when the current folder cannot be opened instead of opening the last project that worked")
+	reprobe := flag.Bool("reprobe", false, "Ask bd again whether it supports Memory Beads instead of using the cached answer")
 	flag.Parse()
 
 	// Debug logging to .b9s/debug.log
@@ -166,6 +170,10 @@ func main() {
 	appCfg, cfgErr := config.Load()
 	if cfgErr != nil {
 		appCfg = config.DefaultConfig()
+	}
+	applyMemoryLever(appCfg)
+	if *reprobe {
+		forgetMemoryProbe(os.Stderr)
 	}
 	// A hotkey the user asks for and b9s cannot honour stops startup, so a
 	// typo never leaves a key doing something other than the user wrote.

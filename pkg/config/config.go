@@ -116,6 +116,9 @@ type Config struct {
 	UI             UIConfig           `yaml:"ui,omitempty"`
 	Refresh        RefreshConfig      `yaml:"refresh,omitempty"`
 	Experimental   ExperimentalConfig `yaml:"experimental,omitempty"`
+	// Memory set to "off" turns the Memory views off, like B9S_MEMORY=off.
+	// Any other value leaves detection to decide.
+	Memory string `yaml:"memory,omitempty"`
 	// Attachments is nil when the project has not opted into attachments at
 	// all, which is distinct from an AttachmentsConfig zero value: Load
 	// never produces the latter, because a decoded section always has a

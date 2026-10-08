@@ -4,7 +4,7 @@
 import { D, ancestors, descendants, eff, get, isReady, kids, pool, projectOf, type Item } from "./data";
 import { store, wide } from "./util";
 
-export type View = "tree" | "board" | "search" | "more" | "graph";
+export type View = "tree" | "board" | "search" | "more" | "graph" | "memory";
 export type SortKey = "priority" | "updated" | "created" | "id" | "status";
 
 export interface Sheet { kind: string; id?: string; ids?: string[]; parent?: string | null; [k: string]: unknown }

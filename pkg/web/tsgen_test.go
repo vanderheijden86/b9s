@@ -15,6 +15,7 @@ var tsTypes = []any{
 	Issue{}, Comment{}, Snapshot{}, ProjectInfo{}, Health{}, Person{},
 	ProjectEntry{}, ProjectList{}, OpenProjectRequest{}, QueryResult{},
 	WriteRequest{}, WriteResult{}, Session{}, Event{},
+	MemoryGraphResponse{}, MemoryGraphNode{}, MemoryGraphEdge{}, IssueMemoryLink{},
 }
 
 var tsWriteOps = []WriteOp{OpStatus, OpClose, OpDelete, OpUpdate, OpCreate, OpComment, OpDefer}

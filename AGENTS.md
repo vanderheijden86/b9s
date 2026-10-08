@@ -45,6 +45,10 @@ If that audit trail is missing, then you must act as if the operation never happ
 
 ## What b9s is
 
+When sharing mockups, always show the complete absolute filesystem path for each
+mockup. Use the full path as the clickable link text and target. Never shorten it
+to a title or relative path. Do not open mockups automatically.
+
 A Go terminal UI for Beads issues, modelled on k9s. It reads a Dolt server, SQLite or JSONL directly and makes every write by running the `bd` CLI. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before changing how data is read or written, and the [ADRs](docs/adr/) before changing behaviour they decide.
 
 ## Go toolchain

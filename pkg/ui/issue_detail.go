@@ -26,7 +26,9 @@ type detailRelation struct {
 // renderIssueDetail draws the detail pane: a lipgloss header in the style of
 // the board cards, then the free-text sections through glamour. The clipboard
 // copy keeps formatIssueMarkdown, because markdown is what gets pasted.
-func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t Theme, width int, md *MarkdownRenderer, update *detailUpdateNotice) string {
+// decisions holds the rendered decision section of a Memory graph workspace,
+// or nil for a project without one.
+func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t Theme, width int, md *MarkdownRenderer, update *detailUpdateNotice, decisions []string) string {
 	if width < 20 {
 		width = 20
 	}
@@ -140,6 +142,12 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	markdownSection("DESIGN", item.Design)
 	markdownSection("ACCEPTANCE", item.AcceptanceCriteria)
 	markdownSection("NOTES", item.Notes)
+
+	if len(decisions) > 0 {
+		blocks = append(blocks, section("MEMORY LINKS"))
+		blocks = append(blocks, decisions...)
+		blocks = append(blocks, "")
+	}
 
 	rels, children := detailRelations(rawID, item, issueMap)
 	if len(children) > 0 {
