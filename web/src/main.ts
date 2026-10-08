@@ -5,7 +5,7 @@ import { ApiError } from "./api";
 import { D } from "./data";
 import { applyTextSize, closeSheet, refresh, setRetryLive, setText, toast } from "./actions";
 import { busy, bindAll } from "./gestures";
-import { bindHistory, openHash, parseHash } from "./nav";
+import { bindHistory, openHash, parseHash, startHistory } from "./nav";
 import { ensureVisible, render, renderBanner, renderStale, revealInTree } from "./render";
 import { S } from "./state";
 import { $, esc, store } from "./util";
@@ -50,6 +50,8 @@ function startLive(): void {
       if (type === "hello" && version !== D.version) void applyChange();
       if (type === "changed" && version > D.version) void applyChange();
       if (type === "project") void applyChange();
+      // Only b9s web --dev-assets sends it. The URL hash keeps view and selection.
+      if (type === "assets") location.reload();
       if (type === "health") api.health().then(h => { D.health = h; render(); }, () => { /* the next snapshot carries it */ });
     },
     onState(state, retryIn) {
@@ -77,7 +79,9 @@ async function boot(): Promise<void> {
     if (link) S.view = link.v;
     await refresh();
     // The link's place is the entry the app opened on, not a step after it.
-    if (link && openHash(link)) { history.replaceState(null, ""); render(); }
+    if (link && openHash(link)) history.replaceState(null, "");
+    startHistory();
+    render();
     bootEl.hidden = true;
     startLive();
   } catch (e) {

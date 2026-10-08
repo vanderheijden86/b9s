@@ -2,7 +2,7 @@
 #
 # Build with SQLite FTS5 (full-text search) support enabled
 
-.PHONY: build install clean test web web-types web-e2e book
+.PHONY: build install clean test web web-dev web-types web-e2e book
 
 # Enable FTS5 for full-text search in SQLite exports
 export CGO_CFLAGS := -DSQLITE_ENABLE_FTS5
@@ -26,6 +26,17 @@ web:
 	npm --prefix web ci
 	npm --prefix web run typecheck
 	npm --prefix web run build
+
+# Live preview of the web UI: esbuild rebuilds into .b9s/web-dev on every
+# save under web/, and b9s web serves that folder and reloads open browsers.
+# pkg/web/dist is untouched; run `make web` before committing. Pass server
+# flags with WEB_DEV_ARGS, for example WEB_DEV_ARGS="--no-token".
+WEB_DEV_DIR := $(CURDIR)/.b9s/web-dev
+web-dev:
+	@test -d web/node_modules || npm --prefix web ci
+	mkdir -p $(WEB_DEV_DIR)
+	node web/build.mjs --watch --out $(WEB_DEV_DIR) & trap "kill $$!" EXIT INT TERM; \
+	go run ./cmd/b9s web --dev-assets $(WEB_DEV_DIR) $(WEB_DEV_ARGS)
 
 # Regenerates web/src/api.gen.ts from the Go API types.
 web-types:

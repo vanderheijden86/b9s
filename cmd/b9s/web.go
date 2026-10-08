@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	iofs "io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -50,6 +51,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	public := fs.Bool("public", false, "Serve this project to anyone, with no pairing, on any address. For a disposable demo only: visitors can write")
 	banner := fs.String("banner", "", "Show this `text` in a thin strip above the board")
 	bannerLink := fs.String("banner-link", "", "Link the banner to this http(s) `url`")
+	devAssets := fs.String("dev-assets", "", "Serve the web UI from `dir` instead of the binary, and reload open browsers when it changes (loopback only; see make web-dev)")
 	debugFlag := fs.Bool("debug", false, "Enable debug logging to .b9s/debug.log")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: b9s web [flags]")
@@ -74,6 +76,16 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	if err := checkPublicFlags(fs, *public, *bannerLink); err != nil {
 		fmt.Fprintf(stderr, "b9s web: %v\n", err)
 		return 2
+	}
+	if *devAssets != "" {
+		if !web.IsLoopbackAddr(*listen) {
+			fmt.Fprintln(stderr, "b9s web: --dev-assets serves files from disk, so it listens on loopback only")
+			return 2
+		}
+		if st, err := os.Stat(*devAssets); err != nil || !st.IsDir() {
+			fmt.Fprintf(stderr, "b9s web: --dev-assets %s is not a directory\n", *devAssets)
+			return 2
+		}
 	}
 	if (*trustHeader == "") != (*owner == "") {
 		fmt.Fprintln(stderr, "b9s web: --trust-header and --owner go together")
@@ -139,6 +151,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	}
 
 	srv, err := web.NewServer(web.Options{
+		Assets:       devAssetsFS(*devAssets),
 		Store:        store,
 		Writer:       ui.NewIssueWriter(),
 		Auth:         auth,
@@ -179,6 +192,14 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if *devAssets != "" {
+		go func() {
+			if err := web.WatchAssets(ctx, *devAssets, 150*time.Millisecond, srv.AssetsChanged, nil); err != nil {
+				fmt.Fprintf(stderr, "b9s web: watching %s stopped: %v\n", *devAssets, err)
+			}
+		}()
+		fmt.Fprintf(stdout, "Serving the web UI from %s: open browsers reload when it changes.\n", *devAssets)
+	}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- httpServer.Serve(ln) }()
 	select {
@@ -196,6 +217,14 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// devAssetsFS is the --dev-assets directory, or nil for the embedded bundle.
+func devAssetsFS(dir string) iofs.FS {
+	if dir == "" {
+		return nil
+	}
+	return os.DirFS(dir)
+}
+
 // checkPublicFlags rejects --public beside any flag about pairing or other
 // projects, and a banner link that is not a web address.
 func checkPublicFlags(fs *flag.FlagSet, public bool, bannerLink string) error {
@@ -208,7 +237,7 @@ func checkPublicFlags(fs *flag.FlagSet, public bool, bannerLink string) error {
 	var conflict error
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
-		case "no-token", "new-token", "trust-header", "owner", "projects-root":
+		case "no-token", "new-token", "trust-header", "owner", "projects-root", "dev-assets":
 			if conflict == nil {
 				conflict = fmt.Errorf("--public cannot be combined with --%s", f.Name)
 			}

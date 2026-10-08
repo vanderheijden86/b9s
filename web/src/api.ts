@@ -90,7 +90,7 @@ export function live(h: LiveHandlers): { retryNow(): void } {
       if (type === "hello") { delay = 1000; h.onState("live", 0); }
       h.onEvent(type, v);
     });
-    ["hello", "changed", "project", "health"].forEach(on);
+    ["hello", "changed", "project", "health", "assets"].forEach(on);
     es.onerror = () => {
       es?.close(); es = null;
       h.onState("stale", delay);

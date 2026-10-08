@@ -114,3 +114,18 @@ func TestRecentFromTarget_ReadsServerOfCheckoutSoHeaderListsItOnce(t *testing.T)
 		t.Errorf("header = %+v, want one b9s row with path %s", got, checkout)
 	}
 }
+
+func TestWebDevAssetsNeedsLoopbackAndNoPublic(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"--dev-assets", dir, "--listen", "0.0.0.0:0"},
+		{"--dev-assets", dir, "--public", "--listen", "127.0.0.1:0"},
+		{"--dev-assets", filepath.Join(dir, "missing"), "--listen", "127.0.0.1:0"},
+	} {
+		var out, errOut bytes.Buffer
+		if code := runWeb(args, &out, &errOut); code != 2 {
+			t.Errorf("%v: exit %d, stderr %q", args, code, errOut.String())
+		}
+	}
+}

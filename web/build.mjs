@@ -4,23 +4,35 @@
 // records a hash of every input, and TestEmbeddedBundleIsCurrent in
 // pkg/web recomputes it, so a source change without a rebuild fails the Go
 // tests. Keep the input list and the hash format in step with that test.
+//
+// `node build.mjs --watch --out <dir>` is the live preview (make web-dev): it
+// rebuilds into <dir> on every change under src/ or public/, and
+// `b9s web --dev-assets <dir>` reloads the open browsers. It writes no
+// source.sha256, because <dir> is never embedded.
 
-import { build } from "esbuild";
+import { context } from "esbuild";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, statSync, watch, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const dist = join(root, "..", "pkg", "web", "dist");
+const { values: args } = parseArgs({ options: { watch: { type: "boolean" }, out: { type: "string" } } });
+const dist = args.out ? resolve(args.out) : join(root, "..", "pkg", "web", "dist");
+if (args.watch && !args.out) {
+  console.error("build.mjs: --watch needs --out, so a live preview never rewrites the embedded bundle");
+  process.exit(2);
+}
 
 mkdirSync(dist, { recursive: true });
 
-await build({
+const ctx = await context({
   entryPoints: [join(root, "src", "main.ts")],
   bundle: true,
-  minify: true,
+  minify: !args.watch,
+  sourcemap: args.watch ? "inline" : false,
   format: "iife",
   target: ["es2020", "safari15"],
   outfile: join(dist, "app.js"),
@@ -28,15 +40,40 @@ await build({
   logLevel: "warning",
 });
 
-copyFileSync(join(root, "src", "app.css"), join(dist, "app.css"));
-copyFileSync(join(root, "node_modules", "mermaid", "dist", "mermaid.min.js"), join(dist, "mermaid.min.js"));
-for (const name of readdirSync(join(root, "public"))) copyFileSync(join(root, "public", name), join(dist, name));
+/** buildAll writes app.js and copies every file esbuild does not bundle. */
+async function buildAll() {
+  await ctx.rebuild();
+  copyFileSync(join(root, "src", "app.css"), join(dist, "app.css"));
+  copyFileSync(join(root, "node_modules", "mermaid", "dist", "mermaid.min.js"), join(dist, "mermaid.min.js"));
+  for (const name of readdirSync(join(root, "public"))) copyFileSync(join(root, "public", name), join(dist, name));
+}
 
+await buildAll();
 writeFileSync(join(dist, "icon-192.png"), icon(192));
 writeFileSync(join(dist, "icon-512.png"), icon(512));
 writeFileSync(join(dist, "apple-touch-icon.png"), icon(180));
 
-writeFileSync(join(dist, "source.sha256"), sourceHash(root) + "\n");
+if (args.watch) {
+  // An editor save fires several events; one rebuild per burst is enough.
+  let timer;
+  const changed = () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        await buildAll();
+        console.log(`rebuilt ${relative(process.cwd(), dist) || "."} at ${new Date().toLocaleTimeString()}`);
+      } catch (e) {
+        // esbuild has printed the error; keep watching for the fix.
+      }
+    }, 50);
+  };
+  watch(join(root, "src"), { recursive: true }, changed);
+  watch(join(root, "public"), { recursive: true }, changed);
+  console.log(`watching web/src and web/public, writing ${dist}`);
+} else {
+  writeFileSync(join(dist, "source.sha256"), sourceHash(root) + "\n");
+  await ctx.dispose();
+}
 
 /** sourceHash is the hash TestEmbeddedBundleIsCurrent recomputes. */
 function sourceHash(dir) {

@@ -349,6 +349,7 @@ The phone gets a page in its browser, not a native app, and nothing works offlin
 | `--new-token` | Replace the pairing secret, which unpairs every browser |
 | `--no-token` | Serve without pairing, loopback only |
 | `--filter '<query>'` | Open browsers with this [query](#search) applied |
+| `--dev-assets <dir>` | Serve the web UI from `dir` and reload open browsers when it changes. Loopback only, for [development](#development) |
 | `--debug` | Write a debug log to `.b9s/debug.log` |
 
 Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects view and a project without a checkout are read-only, as in the TUI.
@@ -486,7 +487,10 @@ The web UI lives in `web/` (TypeScript, no framework) and builds into `pkg/web/d
 make web        # npm ci, typecheck, build pkg/web/dist
 make web-types  # regenerate web/src/api.gen.ts from the Go API types
 make web-e2e    # browser tests in Chromium and WebKit
+make web-dev    # live preview: rebuild on save, open browsers reload
 ```
+
+`make web-dev` serves the project in the current folder. Each save under `web/src` or `web/public` rebuilds into `.b9s/web-dev`, and every open browser reloads on the same view and issue. `pkg/web/dist` does not change, so run `make web` before you commit. Pass server flags through `WEB_DEV_ARGS`, for example `make web-dev WEB_DEV_ARGS="--no-token --listen 127.0.0.1:7980"`.
 
 [docs/testing.md](docs/testing.md) describes the test layers and the Dolt rules in full.
 

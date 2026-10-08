@@ -113,3 +113,14 @@ test.describe("sheets and history", () => {
     await expect(d).toHaveCount(0);
   });
 });
+
+test("a reload keeps the issue that was open", async ({ page, project }) => {
+  await open(page, project);
+  const d = page.locator(".detail");
+  await row(page, "t-3").click();
+  await expect(d).toHaveAttribute("data-id", "t-3");
+  await page.reload();
+  await expect(page.locator("#boot")).toBeHidden({ timeout: 10000 });
+  await expect(d).toHaveAttribute("data-id", "t-3");
+  await expect(page).toHaveURL(/#\/tree\/t-3$/);
+});

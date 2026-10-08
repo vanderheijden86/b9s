@@ -178,7 +178,8 @@ type Session struct {
 }
 
 // Event is one Server-Sent Event: "hello" on connect, "changed" after the
-// project's data changed, "project" after another project was opened.
+// project's data changed, "project" after another project was opened, and
+// "assets" after the SPA files changed under b9s web --dev-assets.
 type Event struct {
 	Type    string `json:"type"`
 	Version uint64 `json:"version"`

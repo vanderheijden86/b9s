@@ -67,6 +67,8 @@ type Server struct {
 	writes   *rateLimiter
 	streamMu sync.Mutex
 	streams  int
+	// assetSubs holds one channel per open event stream for AssetsChanged.
+	assetSubs map[chan struct{}]struct{}
 }
 
 // NewServer builds the handler.
@@ -99,7 +101,7 @@ func NewServer(opts Options) (*Server, error) {
 			return nil, err
 		}
 	}
-	s := &Server{opts: opts, assets: assets, etags: map[string]string{}, idem: newIdempotency(512, 10*time.Minute)}
+	s := &Server{opts: opts, assets: assets, etags: map[string]string{}, idem: newIdempotency(512, 10*time.Minute), assetSubs: map[chan struct{}]struct{}{}}
 	if opts.Public {
 		s.writes = newRateLimiter(publicWritesPerMinute, time.Minute)
 	}
@@ -219,6 +221,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	defer release()
 	events, cancel := s.opts.Store.Subscribe()
 	defer cancel()
+	assets, cancelAssets := s.subscribeAssets()
+	defer cancelAssets()
 
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
@@ -247,6 +251,10 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		case e := <-events:
 			if !send(e) {
+				return
+			}
+		case <-assets:
+			if !send(Event{Type: "assets", Version: s.opts.Store.Version()}) {
 				return
 			}
 		case <-heartbeat.C:

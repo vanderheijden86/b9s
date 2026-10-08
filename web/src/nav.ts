@@ -55,9 +55,19 @@ export function parseHash(h = location.hash): { v: View; id: string } | null {
   return { v: m[1] as View, id };
 }
 
+/**
+ * started is false until boot has applied the URL. A reload keeps
+ * history.state, so a render before the issues load would read the empty
+ * place as a closed detail and step Back off the issue the URL names.
+ */
+let started = false;
+
+/** startHistory lets syncHistory record places; boot calls it once the URL is applied. */
+export function startHistory(): void { started = true; }
+
 /** syncHistory records where the app is now. render() calls it last. */
 export function syncHistory(): void {
-  if (restoring || backing) return;
+  if (!started || restoring || backing) return;
   const now = here(), cur = entry();
   if (!cur) { history.replaceState({ place: now, n: 0, prev: null } satisfies Entry, "", hashOf(now)); return; }
   if (same(cur.place, now)) return;

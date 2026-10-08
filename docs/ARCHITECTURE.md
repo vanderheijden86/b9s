@@ -219,7 +219,7 @@ The Dolt SQL login is a workspace credential shared by every agent, so it is sho
 ```
 
 - **Store** (`store.go`) holds the open project and a version number that goes up on each watcher event. The snapshot is lean: long text and comments come from `/api/issue` when the detail opens.
-- **Events** (`/api/events`) send `hello` with the current version on connect, then `changed`, `project` and `health`. The browser fetches a new snapshot when the version moves, so a missed event costs one fetch, never a wrong list.
+- **Events** (`/api/events`) send `hello` with the current version on connect, then `changed`, `project` and `health`. Under `--dev-assets` they also send `assets` when the served files change, and the browser reloads (`make web-dev`). The browser fetches a new snapshot when the version moves, so a missed event costs one fetch, never a wrong list.
 - **Queries** go to the server (`/api/query`), which runs the TUI's `ParseIssueQuery`, so the browser never has a second query language.
 - **Writes** (`write.go`) accept a closed set of operations, check them, and call `IssueWriter`. A failed `bd` answers 422 with its output. A write needs the session cookie and the `X-B9s-CSRF` header.
 - **Auth** (`auth.go`) derives the pairing token from a secret in the config folder, so a paired phone stays paired across restarts. See [ADR 0020](adr/0020-pair-every-browser-with-a-persistent-token.md).
