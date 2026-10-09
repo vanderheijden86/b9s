@@ -540,3 +540,50 @@ func TestCreateModal_RightArrowAcceptsAssigneeSuggestion(t *testing.T) {
 		t.Errorf("assignee = %q, want %q", got, "alice")
 	}
 }
+
+// GitHub issue 21: e, Tab to Status, Down to closed, Enter. The reporter
+// expected Enter to save and found no hint naming another key.
+func TestEditModal_EnterOnStatusSelectSavesTheChosenStatus(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewEditModal(&model.Issue{ID: "x-1", Title: "t", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeTask}, theme)
+	modal.SetSize(100, 60)
+
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab}) // Title -> Status
+	for i := 0; i < 5; i++ {                                    // open -> closed
+		modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyDown})
+	}
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyEnter})
+
+	if !modal.IsSaveRequested() {
+		t.Fatal("Enter on the Status select must save")
+	}
+	if got := modal.BuildUpdateArgs()["status"]; got != "closed" {
+		t.Errorf("status arg = %q, want %q", got, "closed")
+	}
+}
+
+func TestEditModal_EnterOnTitleInputSaves(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewEditModal(&model.Issue{ID: "x-1", Title: "t", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeTask}, theme)
+	modal.SetSize(100, 60)
+
+	modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyEnter})
+
+	if !modal.IsSaveRequested() {
+		t.Error("Enter on the Title input must save")
+	}
+}
+
+func TestEditModal_ViewNamesTheSaveAndCancelKeys(t *testing.T) {
+	theme := DefaultTheme(lipgloss.DefaultRenderer())
+	modal := NewEditModal(&model.Issue{ID: "x-1", Title: "t", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeTask}, theme)
+	// Shorter than the form: the hint must still be on screen.
+	modal.SetSize(100, 30)
+
+	view := modal.View()
+	for _, want := range []string{"ctrl+s save", "esc cancel"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("view does not contain %q:\n%s", want, view)
+		}
+	}
+}

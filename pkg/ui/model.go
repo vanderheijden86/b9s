@@ -5080,7 +5080,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Space", "Status picker (list)"},
 		{"1-4", "Set priority (list)"},
 		{"Ctrl+n", "Create new issue"},
-		{"Ctrl+s", "Save (in editor)"},
+		{"Ctrl+s / Enter", "Save (in editor; Enter not in text areas)"},
 		{"Esc", "Cancel (in editor)"},
 	}
 

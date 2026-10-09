@@ -16,8 +16,9 @@ import (
 // editFormKeyMap makes tab the field-navigation key everywhere, so enter is
 // free to insert line breaks in the multi-line Description and Notes fields.
 // Tab therefore cannot also accept a suggestion: right arrow (at the end of the
-// typed text) or ctrl+e completes instead. Saving is ctrl+s, handled by
-// EditModal.Update, so no key submits the form from the last field.
+// typed text) or ctrl+e completes instead. Saving is ctrl+s anywhere, or enter
+// in a single-line field, both handled by EditModal.Update, so no key submits
+// the form from the last field.
 func editFormKeyMap() *huh.KeyMap {
 	km := huh.NewDefaultKeyMap()
 	km.Input.AcceptSuggestion = key.NewBinding(key.WithKeys("right", "ctrl+e"), key.WithHelp("→", "complete"))
@@ -296,6 +297,13 @@ func (m EditModal) Update(msg tea.Msg) (EditModal, tea.Cmd) {
 		case "esc":
 			m.cancelRequested = true
 			return m, nil
+		case "enter":
+			// Enter is the key people try first to save (GitHub issue 21). Only
+			// the multi-line text areas need it for line breaks.
+			if !m.focusIsTextArea() {
+				m.saveRequested = true
+				return m, nil
+			}
 		}
 	}
 
@@ -342,8 +350,19 @@ func (m EditModal) View() string {
 		boxWidth = 80
 	}
 
+	// The hint sits under the title rather than in huh's footer: a form taller
+	// than the terminal clips the footer, and huh hides help for bindings with
+	// no keys, which the Submit bindings deliberately are.
+	hint := "enter or ctrl+s save · esc cancel · tab next field"
+	if m.focusIsTextArea() {
+		hint = "ctrl+s save · esc cancel · tab next field · enter new line"
+	}
+	hintStyle := r.NewStyle().Foreground(m.theme.Secondary)
+
 	var content strings.Builder
 	content.WriteString(headerStyle.Render(title))
+	content.WriteString("\n")
+	content.WriteString(hintStyle.Render(hint))
 	content.WriteString("\n\n")
 	content.WriteString(formView)
 
@@ -355,6 +374,11 @@ func (m EditModal) View() string {
 
 	box := boxStyle.Render(content.String())
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+func (m EditModal) focusIsTextArea() bool {
+	_, ok := m.form.GetFocusedField().(*huh.Text)
+	return ok
 }
 
 // SetSize sets the modal dimensions

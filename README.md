@@ -153,7 +153,7 @@ Everywhere:
 | `?` | Help |
 | `Ctrl-C` | Quit |
 
-In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a new line in Description and Notes, `→` completes an assignee or label, `Ctrl-E` opens Description or Notes in `$EDITOR`, `Ctrl-S` saves and `Esc` cancels.
+In the edit form, `Tab` and `Shift-Tab` move between fields, `Enter` starts a new line in Description and Notes, `→` completes an assignee or label, `Ctrl-E` opens Description or Notes in `$EDITOR`, and `Esc` cancels. `Ctrl-S` saves from any field, and `Enter` saves from every field except Description and Notes. The line under the form title names these keys.
 
 The detail pane opens with a card framed in the issue's status color: type, ID and last update (its age, with the exact local time below it), the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, and the comments come last.
 
