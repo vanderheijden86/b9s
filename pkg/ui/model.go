@@ -5000,7 +5000,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"H", "Hybrid ranking"},
 		{"Alt+H", "Hybrid preset"},
 		{"o", "Open issues"},
-		{"c", "Closed issues"},
+		{"C", "Closed issues"},
 		{"r", "Ready (unblocked)"},
 		{"l", "Filter by label"},
 		{"L/A", "Label, assignee quick filter"},

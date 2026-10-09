@@ -111,3 +111,43 @@ func TestEscapeClosesTreePopupsWithoutClearingBranchFilter(t *testing.T) {
 		})
 	}
 }
+
+// The header legend is read as a promise about the tree, the default view.
+// Each filter it advertises must be the filter its key applies there (#20).
+func TestHeaderLegendFilterKeysMatchTreeBindings(t *testing.T) {
+	wantFilter := map[string]string{
+		"Open":   "open",
+		"Closed": "closed",
+		"Ready":  "ready",
+		"All":    "all",
+	}
+	seen := 0
+	for _, row := range pickerShortcuts() {
+		for _, entry := range row {
+			filter, ok := wantFilter[entry.desc]
+			if !ok {
+				continue
+			}
+			seen++
+			keys := []rune(entry.key)
+			if len(keys) != 1 {
+				t.Fatalf("legend %q names key %q, want a single key", entry.desc, entry.key)
+			}
+			m := newTreeShortcutModel(t)
+			m.clipboardWrite = func(string) error { return nil }
+			if filter == "all" {
+				m.currentFilter = "open"
+			}
+
+			m = pressTreeKey(m, keys[0])
+
+			if m.currentFilter != filter {
+				t.Errorf("legend says %s %s, but %s in the tree set filter %q, want %q",
+					entry.key, entry.desc, entry.key, m.currentFilter, filter)
+			}
+		}
+	}
+	if seen != len(wantFilter) {
+		t.Fatalf("legend lists %d of the %d filters", seen, len(wantFilter))
+	}
+}
