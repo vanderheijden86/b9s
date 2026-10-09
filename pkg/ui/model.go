@@ -1690,7 +1690,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 					RepoPrefix: ExtractRepoPrefix(m.issues[i].ID),
 				}
 			}
-			m.list.SetItems(items)
+			m.setListItems(items)
 			m.tree.Build(m.issues)
 			m.tree.SetSize(m.treeLayoutSize())
 			m.tree.SetGlobalIssueMap(m.issueMap)
@@ -2118,14 +2118,6 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			reloadWarnings = append(reloadWarnings, "comments could not be loaded: "+err.Error())
 		}
 
-		// Store selected issue ID to restore position after reload
-		var selectedID string
-		if sel := m.list.SelectedItem(); sel != nil {
-			if item, ok := sel.(IssueItem); ok {
-				selectedID = item.Issue.ID
-			}
-		}
-
 		// Apply default sorting: creation date descending (newest first) (bd-ctu)
 		var sortStart time.Time
 		if profileRefresh {
@@ -2205,17 +2197,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		if profileRefresh {
 			recordTiming("list_items", time.Since(listStart))
 		}
-		m.list.SetItems(items)
-
-		// Restore selection position
-		if selectedID != "" {
-			for i, item := range m.list.Items() {
-				if issueItem, ok := item.(IssueItem); ok && issueItem.Issue.ID == selectedID {
-					m.list.Select(i)
-					break
-				}
-			}
-		}
+		m.setListItems(items)
 
 		if m.isBoardView {
 			var graphStart time.Time
@@ -5792,7 +5774,7 @@ func (m *Model) applyFilter() {
 	// Apply sort mode (bv-3ita)
 	m.sortFilteredItems(filteredItems, filteredIssues)
 
-	m.list.SetItems(filteredItems)
+	m.setListItems(filteredItems)
 	boardIssues := m.boardIssuesForCurrentFilter()
 	if m.snapshot != nil && m.snapshot.BoardState != nil && m.currentFilter == "all" && m.labelFilter == "" && m.assigneeFilter == "" && (!m.workspaceMode || m.activeRepos == nil) && len(boardIssues) == len(m.snapshot.Issues) {
 		m.board.SetSnapshot(m.snapshot)
@@ -5802,11 +5784,31 @@ func (m *Model) applyFilter() {
 	m.board.SetIssueQuery(m.queryState.Query())
 	m.board.SetEpicUniverse(m.issues)
 
-	// Keep selection in bounds
-	if len(filteredItems) > 0 && m.list.Index() >= len(filteredItems) {
+	m.updateViewportContent()
+}
+
+// setListItems replaces the list rows and keeps the selection on the issue it
+// was on. The detail pane shows the selected row, so a selection kept by row
+// number would put another issue under the user's eyes whenever a reload or a
+// filter reorders the rows (bd-6nsy). When that issue is gone the row number
+// is kept, clamped to the first row past the end.
+func (m *Model) setListItems(items []list.Item) {
+	selectedID := ""
+	if item, ok := m.list.SelectedItem().(IssueItem); ok {
+		selectedID = item.Issue.ID
+	}
+	m.list.SetItems(items)
+	if selectedID != "" {
+		for i, it := range items {
+			if item, ok := it.(IssueItem); ok && item.Issue.ID == selectedID {
+				m.list.Select(i)
+				return
+			}
+		}
+	}
+	if len(items) > 0 && m.list.Index() >= len(items) {
 		m.list.Select(0)
 	}
-	m.updateViewportContent()
 }
 
 // cycleSortMode cycles through available sort modes (bv-3ita)

@@ -43,20 +43,42 @@ func requireScratchServer(t *testing.T) string {
 // aliases and a b9s.identities config, and a project directory pointing at it.
 func createIdentityProject(t *testing.T) string {
 	t.Helper()
-	addr := requireScratchServer(t)
-	dbName := fmt.Sprintf("b9s_e2e_ids_%d", time.Now().UnixNano())
+	dir, _ := createDoltProject(t, "ids",
+		`INSERT INTO issues (id, title, assignee, created_by) VALUES
+			('ids-1', 'First by login', 'e2e-login', 'e2e-login'),
+			('ids-2', 'Second by email', 'e2e@example.invalid', 'e2e-login'),
+			('ids-3', 'Third by agent', 'e2e-bot', 'e2e-bot')`,
+		`INSERT INTO config VALUES
+			('b9s.identities', '[{"name":"e2e-person","kind":"human","aliases":["e2e-login","e2e@example.invalid"]},{"name":"e2e-agents","kind":"agent","aliases":["e2e-bot"]}]')`,
+	)
+	return dir
+}
 
-	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(%s)/?multiStatements=true", addr))
+// createDoltProject makes a beads-schema database on the scratch server, runs
+// seed in it, commits, and returns a project directory pointing at it plus a
+// connection already using that database.
+func createDoltProject(t *testing.T, name string, seed ...string) (string, *sql.DB) {
+	t.Helper()
+	addr := requireScratchServer(t)
+	dbName := fmt.Sprintf("b9s_e2e_%s_%d", name, time.Now().UnixNano())
+
+	admin, err := sql.Open("mysql", fmt.Sprintf("root@tcp(%s)/?multiStatements=true", addr))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.Exec("DROP DATABASE IF EXISTS `" + dbName + "`")
-		db.Close()
+		_, _ = admin.Exec("DROP DATABASE IF EXISTS `" + dbName + "`")
+		admin.Close()
 	})
+	if _, err := admin.Exec("CREATE DATABASE `" + dbName + "`"); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("mysql", fmt.Sprintf("root@tcp(%s)/%s?multiStatements=true", addr, dbName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
 	stmts := []string{
-		"CREATE DATABASE `" + dbName + "`",
-		"USE `" + dbName + "`",
 		`CREATE TABLE issues (
 			id VARCHAR(255) PRIMARY KEY, title VARCHAR(500) NOT NULL,
 			description TEXT NOT NULL DEFAULT '', status VARCHAR(32) NOT NULL DEFAULT 'open',
@@ -77,14 +99,9 @@ func createIdentityProject(t *testing.T) string {
 		`CREATE TABLE comments (id CHAR(36) NOT NULL PRIMARY KEY, issue_id VARCHAR(255) NOT NULL,
 			author VARCHAR(255) NOT NULL, text TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
 		"CREATE TABLE config (`key` VARCHAR(255) PRIMARY KEY, value TEXT NOT NULL)",
-		`INSERT INTO issues (id, title, assignee, created_by) VALUES
-			('ids-1', 'First by login', 'e2e-login', 'e2e-login'),
-			('ids-2', 'Second by email', 'e2e@example.invalid', 'e2e-login'),
-			('ids-3', 'Third by agent', 'e2e-bot', 'e2e-bot')`,
-		`INSERT INTO config VALUES
-			('b9s.identities', '[{"name":"e2e-person","kind":"human","aliases":["e2e-login","e2e@example.invalid"]},{"name":"e2e-agents","kind":"agent","aliases":["e2e-bot"]}]')`,
-		"CALL DOLT_COMMIT('-Am', 'fixture')",
 	}
+	stmts = append(stmts, seed...)
+	stmts = append(stmts, "CALL DOLT_COMMIT('-Am', 'fixture')")
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
 			t.Fatalf("%s: %v", strings.Fields(stmt)[0], err)
@@ -105,7 +122,7 @@ func createIdentityProject(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(dir, ".beads", "metadata.json"), meta, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return dir
+	return dir, db
 }
 
 func TestAssigneePickerMergesAliasesE2E(t *testing.T) {

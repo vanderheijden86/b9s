@@ -364,6 +364,7 @@ type TreeModel struct {
 	issueQuery         IssueQuery              // Shared ID/title/facet query owned by Model
 	filterMatches      map[string]bool         // Issue IDs that match the filter
 	contextAncestors   map[string]bool         // Ancestor IDs shown for context (dimmed)
+	appliedFilterKey   string                  // filterKey whose context ancestors were last opened
 	contextDescendants map[string]bool         // Descendant IDs of query hits shown for context (dimmed) (bd-xkxb)
 	globalIssueMap     map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
 
@@ -581,7 +582,11 @@ func (t *TreeModel) Build(issues []model.Issue) {
 
 	// Step 8: Build the flat list for navigation
 	// This must come after loadState so expand states are applied
-	t.rebuildFlatList()
+	if !hadRows {
+		// A first build has no folds of its own to keep under the filter.
+		t.appliedFilterKey = ""
+	}
+	t.refreshFilteredView()
 
 	if hadRows {
 		t.restorePosition(prevSelectedID, prevCursor, prevOffset)
@@ -663,7 +668,7 @@ func (t *TreeModel) BuildFromSnapshot(snapshot *DataSnapshot) {
 	// Apply persisted expand/collapse state and rebuild visible list.
 	t.loadState()
 	t.restoreExpansion(prevExpanded)
-	t.rebuildFlatList()
+	t.refreshFilteredView()
 	t.built = true
 	t.lastHash = snapshot.DataHash
 
@@ -1406,6 +1411,7 @@ func (t *TreeModel) ApplyFilter(filter string) {
 	}
 	// When status, label, and assignee are all "show all", skip filtering
 	if t.currentFilter == "all" && t.labelFilter == "" && t.assigneeFilter == "" && t.issueQuery.Empty() {
+		t.appliedFilterKey = ""
 		t.filterMatches = nil
 		t.contextAncestors = nil
 		t.contextDescendants = nil
@@ -1433,12 +1439,16 @@ func (t *TreeModel) ApplyFilter(filter string) {
 		}
 	}
 
-	// Expand context ancestors so matching descendants are visible (bd-thpt).
-	// This replaces the old approach of force-showing children in
-	// appendFilteredVisible, which prevented TAB collapse from working.
-	for id := range t.contextAncestors {
-		if node, ok := t.issueMap[id]; ok {
-			node.Expanded = true
+	// Expand context ancestors so matching descendants are visible (bd-thpt),
+	// but only when the user changed the filter. A reload reapplies the same
+	// filter to fresh data, and opening the ancestors then would undo every
+	// fold the user made under that filter (bd-t3ig).
+	if key := t.filterKey(); key != t.appliedFilterKey {
+		t.appliedFilterKey = key
+		for id := range t.contextAncestors {
+			if node, ok := t.issueMap[id]; ok {
+				node.Expanded = true
+			}
 		}
 	}
 
@@ -1456,6 +1466,22 @@ func (t *TreeModel) ApplyFilter(filter string) {
 	t.refreshSearchMatches()
 
 	t.rebuildFlatList()
+}
+
+// filterKey names the combination of filters ApplyFilter applies.
+func (t *TreeModel) filterKey() string {
+	return strings.Join([]string{t.currentFilter, t.labelFilter, t.assigneeFilter, t.issueQuery.Raw()}, "\x00")
+}
+
+// refreshFilteredView recomputes the filter matches for freshly built nodes
+// and rebuilds the visible list. The matches belong to the issues they were
+// computed from, so a rebuild without this keeps showing yesterday's matches.
+func (t *TreeModel) refreshFilteredView() {
+	if t.filterMatches == nil {
+		t.rebuildFlatList()
+		return
+	}
+	t.ApplyFilter(t.currentFilter)
 }
 
 // nodeMatchesFilter checks if a single node matches the current filter (bd-e3w).

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -254,6 +255,15 @@ func runTreeTUIWithEnv(t *testing.T, dir string, autoCloseMs int, keys []keyStep
 			if k.delay > 0 {
 				time.Sleep(k.delay)
 			}
+			if k.action != nil {
+				k.action()
+				if k.mark != nil {
+					if fi, err := os.Stat(outPath); err == nil {
+						k.mark.Store(fi.Size())
+					}
+				}
+				continue
+			}
 			if _, err := io.WriteString(stdinW, k.key); err != nil {
 				return
 			}
@@ -296,11 +306,23 @@ func firstFrameDrawn(out []byte) bool {
 type keyStep struct {
 	key   string
 	delay time.Duration
+	// action, when set, runs in place of sending a key. It lets a test change
+	// the data source while the TUI is open. mark, when set, receives the
+	// output length right after the action, so the test can inspect only what
+	// the TUI drew in response.
+	action func()
+	mark   *atomic.Int64
 }
 
 // k is a shorthand for creating a keyStep with a default 100ms delay.
 func k(key string) keyStep {
 	return keyStep{key: key, delay: 100 * time.Millisecond}
+}
+
+// ka runs action after delay and stores the output length reached at that
+// moment in mark.
+func ka(delay time.Duration, action func(), mark *atomic.Int64) keyStep {
+	return keyStep{delay: delay, action: action, mark: mark}
 }
 
 // kd creates a keyStep with a custom delay.
