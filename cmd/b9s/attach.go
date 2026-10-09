@@ -29,7 +29,7 @@ const attachUsage = `usage: b9s attach <issue-id> <file>...
 
 Uploads a file to the project's configured blob store and writes the Beads
 reference comment that attaches it (ADR 0024). Needs an "attachments:"
-section in b9s's config file; see README.md, section "Attachments".
+section in b9s's config file; see docs/USER_GUIDE.md, section "Attachments".
 
 gc reports every blob no live comment still references and that has aged
 past --grace (default: the config's attachments.gc_grace, 24h). It is a dry
@@ -117,7 +117,7 @@ func newAttachEnv(ctx context.Context) (*attachEnv, error) {
 	}
 	if appCfg.Attachments == nil {
 		return nil, fmt.Errorf(
-			"attachments are not configured for this project; add an attachments: section to %s (README.md, section \"Attachments\"): %w",
+			"attachments are not configured for this project; add an attachments: section to %s (docs/USER_GUIDE.md, section \"Attachments\"): %w",
 			config.ConfigPath(), blobstore.ErrNotConfigured)
 	}
 
@@ -146,7 +146,7 @@ func newAttachEnv(ctx context.Context) (*attachEnv, error) {
 	if err != nil {
 		if errors.Is(err, blobstore.ErrNotConfigured) {
 			return nil, fmt.Errorf(
-				"attachments are not configured for this project; add an attachments: section to %s (README.md, section \"Attachments\"): %w",
+				"attachments are not configured for this project; add an attachments: section to %s (docs/USER_GUIDE.md, section \"Attachments\"): %w",
 				config.ConfigPath(), err)
 		}
 		return nil, err

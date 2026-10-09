@@ -33,7 +33,7 @@ A modal takes everything. When the edit form is open, `j` types a `j` into the f
 
 The query field takes everything while you type. This is decision record 0002 in one sentence: a query letter never triggers an action. Press `/`, type `bug`, and neither `b` opens the board nor `u` does anything else. Press `Enter` to keep the filter and leave the field, or `Esc` to clear it.
 
-Global keys beat pane keys. `b` opens the board from the tree, from the graph and from the detail. That consistency has a price, which the architecture document states plainly: the tree once had a bookmark on `b`, and it is now unreachable. Keys that fall into that trap are tracked as Beads issues rather than documented as features, and the README's key tables are the place to check before binding a new one.
+Global keys beat pane keys. `b` opens the board from the tree, from the graph and from the detail. That consistency has a price, which the architecture document states plainly: the tree once had a bookmark on `b`, and it is now unreachable. Keys that fall into that trap are tracked as Beads issues rather than documented as features, and the user guide's key tables are the place to check before binding a new one.
 
 ## Views are overlays, the tree is home
 

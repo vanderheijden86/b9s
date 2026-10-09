@@ -318,7 +318,7 @@ func osc8Hyperlink(url, label string) string {
 	return "\x1b]8;;" + url + "\x1b\\" + label + "\x1b]8;;\x1b\\"
 }
 
-const notConfiguredHint = `attachments are not configured for this project; add an attachments: section (README.md, section "Attachments")`
+const notConfiguredHint = `attachments are not configured for this project; add an attachments: section (docs/USER_GUIDE.md, section "Attachments")`
 
 // attachmentOpenCmd downloads and opens att, or (B9S_WEB=1) prints a
 // presigned link, returning its result as a tea.Msg rather than blocking
@@ -416,7 +416,7 @@ func attachmentOpenErrorMsg(err error) string {
 // opener to reach.
 func attachmentOpenWeb(ctx context.Context, handle *blobstore.Handle, att attachref.Attachment, result attachmentOpenResultMsg) attachmentOpenResultMsg {
 	if _, ok := handle.Store.(*blobstore.S3); !ok {
-		result.statusMsg = `attachments use the local backend; presigned links need the s3 backend (README.md, section "Attachments")`
+		result.statusMsg = `attachments use the local backend; presigned links need the s3 backend (docs/USER_GUIDE.md, section "Attachments")`
 		result.isError = true
 		return result
 	}

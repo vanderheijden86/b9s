@@ -12,7 +12,7 @@ This book answers those questions. It is written for three readers:
 - **The curious user** who wonders what happens between pressing `K` and seeing the issue vanish.
 - **The designer of some other tool** who is thinking about the same problems: reading a store you do not own, keeping a UI live, putting a keyboard-first program in front of a phone.
 
-It is not a reference manual. The README lists every key, `docs/ARCHITECTURE.md` lists every package, and the twenty-one decision records in `docs/adr/` hold the arguments in full. This book is the narrative that connects them. Where it says a thing, the code says it too, and where the two disagree, the code is right and the book needs a fix.
+It is not a reference manual. `docs/USER_GUIDE.md` lists every key, `docs/ARCHITECTURE.md` lists every package, and the twenty-one decision records in `docs/adr/` hold the arguments in full. This book is the narrative that connects them. Where it says a thing, the code says it too, and where the two disagree, the code is right and the book needs a fix.
 
 ## How to read it
 

@@ -1,6 +1,6 @@
 // The TUI's regular keys in a browser with a keyboard: the tree, the board,
 // the detail panel and the keys that work everywhere. Each key does what the
-// README key tables say it does in the terminal.
+// user guide key tables say it does in the terminal.
 
 import { expect, open, row, test } from "./harness";
 import type { Page } from "@playwright/test";

@@ -1,6 +1,6 @@
 # b9s user guide
 
-b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/beads) issues, modelled on [k9s](https://k9scli.io/). This guide covers every view, key, query and setting. The [README](../README.md) is the short version.
+b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/beads) issues, modelled on [k9s](https://k9scli.io/). This guide covers every view, key, query and setting. The [README](../README.md) is the front page: what b9s is, how to install it and the first five minutes. This guide is the reference.
 
 ## Contents
 
@@ -11,6 +11,7 @@ b9s is a keyboard-driven terminal UI for [Beads](https://github.com/steveyegge/b
 - [Search](#search)
 - [Marks and bulk actions](#marks-and-bulk-actions)
 - [Editing issues](#editing-issues)
+- [Attachments](#attachments)
 - [Creators, assignees and identities](#creators-assignees-and-identities)
 - [Board view](#board-view)
 - [Dependency graph](#dependency-graph)
@@ -120,6 +121,8 @@ The four time columns each show one field, whatever the sort: Created (`created_
 
 Dates put the day first (`30-09`) unless the locale is month-first, as in the United States, Canada and the Philippines. On macOS b9s takes the region from System Settings (`AppleLocale`), because terminals often export `LC_ALL=en_US.UTF-8` whatever the region. Elsewhere it reads `LC_ALL`, `LC_TIME` and then `LANG`. Set `ui.date_order` to `dmy` or `mdy` to choose the order yourself.
 
+Under Created and Updated a parent ranks by its newest descendant, so an epic moves up when a subtask is added or changed ([ADR 0032](adr/0032-rank-tree-parents-by-newest-descendant-date.md)).
+
 The sort fields are priority, created, updated, title, status, type, deps, pagerank and deferred. Deferred puts the issue that comes back soonest first, and issues without a defer date last in either direction. The default comes from the [configuration file](#configuration), and the tree starts sorted by creation date, newest first.
 
 ### Other tree keys
@@ -133,10 +136,18 @@ The sort fields are priority, created, updated, title, status, type, deps, pager
 | `c` | Copy the issue ID and title to the clipboard |
 | `Ctrl-N` | Create an issue |
 | `e`, `S`, `K`, `Delete` | Edit, set the status, close, delete ([bulk actions](#marks-and-bulk-actions)) |
+| `t` | Show a flat list instead of the tree, and back. The sort then runs over every issue, so `s` → Updated puts the latest changes at the top. b9s remembers the choice per project ([ADR 0027](adr/0027-show-a-flat-list-for-type-queries-and-on-t.md)) |
+| `v`, `:wrap` | Wrap long titles onto extra lines, or truncate them to one line again |
+| `R`, `I` | List the issue's [attachments](#attachments) and open one, attach files |
+| `U` | Open the update confirmation when a newer b9s release is available |
 
 ## Detail pane
 
-`Enter` moves focus to the detail pane, and `Enter` or `Esc` moves it back. The focused pane has the bright border, and the footer shows its keys. The pane renders the description, notes, comments and dependencies as Markdown.
+`Enter` moves focus to the detail pane, and `Enter` or `Esc` moves it back. The focused pane has the bright border, and the footer shows its keys.
+
+The pane opens with a card framed in the issue's status colour: type, ID and last update (its age, with the exact local time below it), the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, then the [attachments](#attachments), and the comments come last.
+
+Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with TD, TB or LR direction, and for `sequenceDiagram` ([ADR 0030](adr/0030-render-mermaid-as-terminal-text-in-the-detail-view.md)). Other types, diagrams that fail to render, and diagrams wider than the pane stay as code. Widen the pane to retry a wide diagram. Copying an issue keeps the Mermaid source.
 
 | Keys | Action |
 |------|--------|
@@ -231,6 +242,63 @@ Every change goes through the `bd` CLI, so b9s and `bd` always agree on what is 
 The edit form has the fields Title, Status, Description, Priority, Type, Assignee, Labels, Defer until and Notes, and shows the Creator in its title. `Tab` and `Shift-Tab` move between fields, and `Enter` starts a new line in Description and Notes. `→` at the end of the typed text completes an assignee or label. `Ctrl-E` opens Description or Notes in `$EDITOR` and reads the text back when the editor exits. `Ctrl-S` saves and `Esc` cancels. A value in Defer until, such as `tomorrow` or `+3d`, runs `bd defer`.
 
 The view reloads by itself once `bd` has written, because b9s watches the data source. The all-projects view (`0`) is read-only.
+
+## Attachments
+
+Files attach to an issue through a reference comment, and the bytes go to a blob store that b9s configures and Beads never sees ([ADR 0024](adr/0024-attach-files-through-reference-comments.md)). Attachments are off until the [configuration file](#configuration) has an `attachments` section.
+
+| Keys | Action |
+|------|--------|
+| `R` | List the cursor issue's attachments in a picker: `j`/`k` to move, `Enter` to open the highlighted one, `Esc` to cancel |
+| `I` | Attach files to the cursor issue. Type one path per line, or several on one line separated by spaces (quote a path that contains a space, e.g. `"my file.txt"`). `Ctrl-S` submits and `Esc` cancels |
+
+The detail pane shows an issue's attachments above its comments. Opening one downloads the file into a private per-run temporary directory, under the name it was attached with, and hands it to the system opener (`open` on macOS, `xdg-open` on Linux). b9s trusts the downloaded bytes, not the attachment's declared type: opening needs the sniffed content and the file name's extension to agree on one of image (except SVG), PDF, plain text, audio or video, so a disguised extension (a `.sh` or `.desktop` file whose bytes happen to sniff as text) never reaches the opener on the strength of the sniff alone. Anything else downloads without opening, and b9s shows the download path in the footer. In `b9s web`, where a session has no local file system to open into, `Enter` prints an OSC 8 hyperlink to a presigned URL, which needs the `s3` backend. A project with no `attachments` section still shows the list; `Enter` names the setting to add.
+
+In the `I` form, a leading `~` expands to the home directory, and a relative path resolves against the project's directory (the same checkout `bd` runs in), not wherever the `b9s` process was launched from. One submission attaches at most 50 files. The footer shows progress while the upload runs, then a summary of how many files attached, were already stored, or failed, with the first error's text. A successful attach reloads the issue so the detail pane picks up the new attachment.
+
+`R` and `I` are not available in all-projects mode (`0`): the merged issue list does not track which project's blob store each attachment belongs to. `I` also refuses when the project has no local checkout to write through.
+
+### The attach command
+
+`b9s attach` attaches and retrieves files without opening the TUI:
+
+```
+b9s attach <issue-id> <file>...          upload one or more files, then write the reference comment
+b9s attach --detach <issue-id> <sha256>  write a comment that marks a hash detached
+b9s attach list <issue-id> [--json]      list an issue's current attachments
+b9s attach get <issue-id> <sha256|name> [-o path] [--force]   download one, by full hash, a hash prefix, or its name
+b9s attach url <issue-id> <sha256|name>  print a presigned URL (s3 backend only)
+b9s attach gc [--apply] [--grace 24h] [--json] [--allow-empty-references]   reclaim blobs no live comment references
+```
+
+`get` refuses to overwrite an existing file (or a symlink) at its output path; pass `--force` to replace it. On a project whose data source is a plain `issues.jsonl` file, `attach list` can lag behind an `attach` made moments earlier, until `bd` writes its next export.
+
+`gc` lists every blob under the project's prefix, reads every comment in the database, and reports the blobs no live attach comment (`attachref.Collect`, detach-aware) still references and that are older than `--grace` (default: the config's `gc_grace`, 24h). It is a dry run unless `--apply` is given; with `--apply`, each candidate is re-checked immediately before deletion, so a blob re-attached after `gc` first listed it survives even under load. A key `gc` cannot parse back into a project blob is reported as unrecognised and never deleted. If the referenced set comes back empty while blobs exist, `gc` warns, and `--apply` additionally refuses to run unless `--allow-empty-references` is given, since an empty referenced set is far more likely a wrong database or a failed comments load than a project with zero live attachments.
+
+### Attachment settings
+
+The `attachments` section of the [configuration file](#configuration) chooses the blob store:
+
+```yaml
+attachments:
+  backend: s3           # s3 or local
+  max_bytes: 26214400   # 25 MiB
+  gc_grace: 24h
+  local_dir: ""         # local backend only; default <beads dir>/attachments
+  prefix: osenco        # the workspace; default is the project's database name; applies to both backends
+  local_with_dolt_server: false # required true to use the local backend when the project is a Dolt server
+  s3:
+    endpoint: https://nbg1.your-objectstorage.com
+    region: nbg1
+    bucket: osenco-beads-attachments
+    path_style: false
+    url_ttl: 15m         # at most 168h (7 days): the S3 presign limit
+    credential_command: "" # prints two lines: access key id, secret
+```
+
+The section never holds credentials: the `s3` backend reads them from `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID` and `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY`, or from `s3.credential_command`, which must print exactly two lines (access key id, then secret) within 10 seconds. Only the fields shown above are accepted under `attachments` and `attachments.s3`; any other key, and any YAML alias or merge (`<<`) node anywhere in the section, makes the whole file fail to load, naming the key it rejected.
+
+The `local` backend is refused for a project whose data source is a Dolt server unless `local_with_dolt_server: true` is set. A shared Dolt server reached through an SSH tunnel looks like loopback from every machine, so a host-based check cannot tell it apart from Dolt running solo, and files the local backend writes are invisible to every other operator sharing that server.
 
 ## Creators, assignees and identities
 
@@ -490,6 +558,7 @@ Opening a graph workspace with plain `b9s` loads its Issues from the workspace's
 | `:project` | `:projects`, `:proj` | List the databases on the Dolt server |
 | `:mouse` | | Hand the mouse to the terminal, or take it back |
 | `:layout` | | Stack the detail pane below the tree, or put it back to the right |
+| `:wrap` | | Wrap long titles onto extra lines, or truncate them again, as `v` does |
 | `:branch <id>` | | Select the issue and show only its top-level branch, as `f` does. The short id shown on screen works too |
 
 ## Steering b9s from another program
@@ -580,6 +649,7 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
     database: b9s
     host: 127.0.0.1:3306
     path: /Users/me/src/b9s   # empty for a database without a local checkout
+# attachments:          # absent by default; see Attachments
 ```
 
 `s` picks another sort for the current session only. The override survives reloads and is not saved, so the next start returns to the configured sort. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it. See [ADR 0010](adr/0010-take-tree-sort-from-user-config.md).
@@ -626,6 +696,7 @@ b9s reads the file once at startup. See [ADR 0035](adr/0035-take-hotkeys-from-a-
 | `BEADS_DIR` | The `.beads` directory to read, instead of the one in the current folder |
 | `BEADS_DOLT_PASSWORD` | The password for the Dolt user in `metadata.json` |
 | `B9S_TRUSTED_DOLT_ENDPOINTS` | Comma-separated `host:port` entries that may receive that password, besides loopback |
+| `B9S_ATTACHMENTS_S3_ACCESS_KEY_ID`, `B9S_ATTACHMENTS_S3_SECRET_ACCESS_KEY` | Credentials for the `s3` [attachments](#attachments) backend |
 | `B9S_DEBUG` | `1` writes debug messages to stderr |
 | `XDG_CONFIG_HOME` | Where `b9s/config.yaml` and `b9s/hotkeys.yaml` live; the default is `~/.config` |
 
@@ -803,13 +874,17 @@ bind-key B new-window -c '#{pane_current_path}' "b9s --filter 'status:open label
 | `--cpu-profile <file>` | Write a CPU profile |
 | `--background-mode`, `--no-background-mode` | Turn the experimental background loader on or off for this run |
 | `--check-update` | Report whether a newer release exists |
-| `--update` | Install the latest release; `--yes` skips the prompt |
+| `--update` | Install the latest release after verifying its checksum and its build provenance ([ADR 0028](adr/0028-verify-release-provenance-in-the-updater.md)); `--yes` skips the prompt |
 | `--rollback` | Go back to the version before the last update |
 | `--version` | Print the version and build information |
 | `--help` | List the options |
+| `web [options]` | Serve the project to a browser, see [Phone and browser](#phone-and-browser) |
+| `ctl [--pane %N] branch [--if-known] <id>...` | Steer a running b9s, see [Steering b9s from another program](#steering-b9s-from-another-program) |
+| `attach <issue-id> <file>...` | Attach files to an issue, see [Attachments](#attachments) |
+| `memories [--project <dir>] [--id <id>] [--print]` | Browse or print Memories, see [Memory Beads preview](#memory-beads-preview) |
 
 The background loader moves file reading off the UI thread. It is off by default. The flags win over `B9S_BACKGROUND_MODE=1` or `0` in the environment, which wins over `experimental.background_mode: true` in the configuration file.
 
 ## Updating b9s
 
-`b9s --check-update` compares the running version with the latest GitHub release. `b9s --update` downloads that release, verifies its checksum, keeps the current binary as `<binary>.backup` and replaces it. `b9s --rollback` restores the backup. With Homebrew, `brew upgrade b9s` does the same job.
+`b9s --check-update` compares the running version with the latest GitHub release, and `U` in the tree opens the same check as a confirmation. `b9s --update` downloads that release, verifies its checksum and its build provenance ([ADR 0028](adr/0028-verify-release-provenance-in-the-updater.md)), keeps the current binary as `<binary>.backup` and replaces it. `b9s --rollback` restores the backup. With Homebrew, `brew upgrade b9s` does the same job. A `.deb` or `.rpm` install is upgraded with the next release's package (`dpkg -i` or `rpm -U`), not with `b9s --update`, which would replace a file the package manager owns.
