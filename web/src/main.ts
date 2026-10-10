@@ -69,6 +69,7 @@ async function boot(): Promise<void> {
     const s = await api.session();
     setText(s.query || store.get("text", ""));
     D.public = s.public;
+    D.build = { version: s.version, commit: s.commit, commit_url: s.commit_url, modified: s.modified };
     renderBanner(s.banner, s.banner_link);
     bindAll();
     bindHistory(render, closeSheet);

@@ -716,6 +716,7 @@ The chips under the header are the status filters and the Ready filter from the 
 | Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
 | Tap the project name | Project sheet | `1`-`9`, `0` |
 | Tap the ● dot | Data source health | `D` |
+| Tap **More**, then **b9s version** | The release and the commit it was built from, linked on GitHub | The line under the `?` help title |
 | Swipe down on the header | Hide or show the filter chips | `Ctrl-E` |
 | Tap `F` | Follow live changes | `F` |
 
@@ -805,7 +806,7 @@ bind-key B new-window -c '#{pane_current_path}' "b9s --filter 'status:open label
 | `--check-update` | Report whether a newer release exists |
 | `--update` | Install the latest release; `--yes` skips the prompt |
 | `--rollback` | Go back to the version before the last update |
-| `--version` | Print the version and build information |
+| `--version` | Print the version and the GitHub link of the commit it was built from |
 | `--help` | List the options |
 
 The background loader moves file reading off the UI thread. It is off by default. The flags win over `B9S_BACKGROUND_MODE=1` or `0` in the environment, which wins over `experimental.background_mode: true` in the configuration file.

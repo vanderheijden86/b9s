@@ -18,6 +18,7 @@ import (
 
 	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/version"
 )
 
 // fixtureIssues covers every derivation rule: a parent-child link, an open
@@ -295,6 +296,21 @@ func TestPairingSetsAStrictHttpOnlyCookie(t *testing.T) {
 	var session Session
 	if code := getJSON(t, c, ts.URL+"/api/session", &session); code != http.StatusOK || session.CSRF != ts.auth.CSRF() {
 		t.Fatalf("session: %d %+v", code, session)
+	}
+}
+
+func TestSessionNamesTheRunningBuild(t *testing.T) {
+	ts := newTestServer(t, testAuth(t), nil)
+	var session Session
+	if code := getJSON(t, ts.pairedClient(t), ts.URL+"/api/session", &session); code != http.StatusOK {
+		t.Fatalf("session: %d", code)
+	}
+	build := version.Get()
+	if session.Version == "" || session.Version != build.Label() {
+		t.Errorf("version = %q, want %q", session.Version, build.Label())
+	}
+	if session.Commit != build.Commit || session.CommitURL != build.CommitURL() || session.Modified != build.Modified {
+		t.Errorf("commit = %q %q %v, want %q %q %v", session.Commit, session.CommitURL, session.Modified, build.Commit, build.CommitURL(), build.Modified)
 	}
 }
 

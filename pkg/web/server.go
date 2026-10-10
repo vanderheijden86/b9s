@@ -17,6 +17,7 @@ import (
 	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/ui"
+	"github.com/vanderheijden86/b9s/pkg/version"
 )
 
 // Options configures a Server.
@@ -165,7 +166,11 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	if s.opts.Auth != nil {
 		csrf = s.opts.Auth.CSRF()
 	}
-	writeJSON(w, r, Session{CSRF: csrf, Query: s.opts.InitialQuery, Public: s.opts.Public, Banner: s.opts.Banner, BannerLink: s.opts.BannerLink})
+	build := version.Get()
+	writeJSON(w, r, Session{
+		CSRF: csrf, Query: s.opts.InitialQuery, Public: s.opts.Public, Banner: s.opts.Banner, BannerLink: s.opts.BannerLink,
+		Version: build.Label(), Commit: build.Commit, CommitURL: build.CommitURL(), Modified: build.Modified,
+	})
 }
 
 func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {

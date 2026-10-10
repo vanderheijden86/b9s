@@ -385,6 +385,7 @@ Writes run `bd` on the machine that serves, as its `bd` actor. The all-projects 
 | Long-press a card, then drag | Move it to the column under the finger, or hold at an edge | |
 | Tap the project name | Project sheet | `1`-`9`, `0` |
 | Tap the ● dot | Data source health | `D` |
+| Tap **More**, then **b9s version** | The release and the commit it was built from, linked on GitHub | The line under the `?` help title |
 | Swipe down on the header | Hide or show the filter chips | `Ctrl-E` |
 | Tap `F` | Follow live changes | `F` |
 
@@ -464,9 +465,11 @@ Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:
 | `--check-update` | Report whether a newer release exists |
 | `--update` | Install the latest release after verifying its checksum and its build provenance ([ADR 0028](docs/adr/0028-verify-release-provenance-in-the-updater.md)); `--yes` skips the prompt |
 | `--rollback` | Go back to the version before the last update |
-| `--version` | Print the version |
+| `--version` | Print the version and the GitHub link of the commit it was built from |
 | `ctl [--pane %N] branch [--if-known] <id>...` | Steer a running b9s, see [Mouse and tmux](#mouse-and-tmux) |
 | `attach <issue-id> <file>...` | Attach files to an issue, see [Attachments](#attachments) |
+
+A release prints `b9s v1.3.3 (0704a347)`. A build from an untagged commit, such as `make build` or `go install`, prints `dev after v1.3.2 (0704a347, modified)`: the nearest earlier tag, and `modified` when the tree had uncommitted changes. The `?` help overlay and the web app's **More** tab show the same build, with the commit linked to GitHub.
 
 ## Development
 

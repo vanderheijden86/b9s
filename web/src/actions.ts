@@ -452,6 +452,17 @@ function sheetBody(sh: Sheet): [string, string, string] {
     case "log": return ["Write log", "Commands this browser asked the server to run through bd",
       S.log.length ? S.log.map(l => `<div class="cmd ${l.ok ? "" : "err"}">${esc(fmtDate(l.at).slice(11))} ${l.ok ? "" : "failed "}\n$ ${esc(l.cmd)}</div>`).join("") : `<div class="empty">Nothing written yet. Swipe a row.</div>`];
     case "keys": return ["Keys", "The TUI's keys. ? shows this, Esc closes it.", keyTable()];
+    case "about": {
+      const b = D.build;
+      const commit = b.commit_url
+        ? `<a href="${esc(b.commit_url)}" target="_blank" rel="noopener">${esc(b.commit.slice(0, 8))} ↗</a>`
+        : "unknown";
+      return ["b9s version", "The build serving this page. Quote both lines in a bug report.", `<table class="gtable">
+        <tr><td>Version</td><td>${esc(b.version || "unknown")}</td></tr>
+        <tr><td>Commit</td><td>${commit}</td></tr>
+        ${b.modified ? `<tr><td>Modified</td><td>built with uncommitted changes, so the commit alone does not reproduce it</td></tr>` : ""}
+        </table>`];
+    }
     case "help": return ["Gestures", "No gesture starts in the outer 24 px: both OSes use the edges for back and home.", gestureTable()];
   }
   return ["", "", ""];
@@ -649,6 +660,7 @@ export async function act(a: string): Promise<void> {
     case "projects": if (D.public) { toast("This demo shows one project"); break; } openSheet("projects"); void loadProjects(); break;
     case "health": openSheet("health"); api.health().then(h => { D.health = h; if (S.sheet?.kind === "health") renderSheet(); render(); }, () => { /* the snapshot's health still shows */ }); break;
     case "identity": openSheet("identity"); break;
+    case "about": openSheet("about"); break;
     case "help": openSheet("help"); break;
     case "create": {
       if (readOnly()) break;

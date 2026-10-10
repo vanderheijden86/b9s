@@ -92,7 +92,11 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Printf("b9s %s\n", version.Version)
+		info := version.Get()
+		fmt.Printf("b9s %s\n", info)
+		if u := info.CommitURL(); u != "" {
+			fmt.Printf("commit %s\n", u)
+		}
 		os.Exit(0)
 	}
 

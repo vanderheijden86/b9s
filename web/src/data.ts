@@ -24,6 +24,8 @@ export const D = {
   loaded: false,
   /** a server anyone may open: one project, no switching */
   public: false,
+  /** the b9s build that serves this page; the bundle is embedded in it */
+  build: { version: "", commit: "", commit_url: "", modified: false },
 };
 
 /** load replaces the data with a snapshot and returns the IDs it changed. */

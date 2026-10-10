@@ -5141,7 +5141,9 @@ func (m *Model) renderHelpOverlay() string {
 
 	title := titleStyle.Render("⌨️  Keyboard Shortcuts")
 	subtitle := subtitleStyle.Render("Ctrl+S: Search │ Space: Tutorial │ ? or Esc to close")
-	titleBar := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", subtitle)
+	titleBar := lipgloss.JoinVertical(lipgloss.Center,
+		lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", subtitle),
+		subtitleStyle.Render(buildLine(buildInfo())))
 	if m.helpSearching || query != "" {
 		searchLine := m.helpSearchInput.View()
 		if m.helpSearching {

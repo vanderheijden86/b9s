@@ -92,6 +92,21 @@ test.describe("reading", () => {
     await expect(sheet).toContainText(/jsonl/i);
   });
 
+  // The harness builds b9s with go build in this checkout, so the binary
+  // carries the commit it was built from.
+  test("about sheet names the build and links its commit on GitHub", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('[data-view="more"]').click();
+    const item = page.locator('#moreList [data-act="about"]');
+    await expect(item.locator(".v")).toHaveText(/ · [0-9a-f]{8}/);
+    await item.click();
+    const sheet = page.locator(".msheet");
+    await expect(sheet).toContainText("b9s version");
+    const link = sheet.locator("a");
+    await expect(link).toHaveAttribute("href", /^https:\/\/github\.com\/vanderheijden86\/b9s\/commit\/[0-9a-f]{40}$/);
+    await expect(link).toHaveAttribute("target", "_blank");
+  });
+
   test("gesture help lists every gesture", async ({ page, project }) => {
     await open(page, project);
     await page.locator('[data-act="help"]').click();

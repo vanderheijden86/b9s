@@ -599,6 +599,12 @@ export function syncQuery(): void {
 
 /* ================= more / graph ================= */
 
+/** buildLabel is the running build in one line: "v1.3.3 · 0704a347". */
+export function buildLabel(): string {
+  const b = D.build;
+  return [b.version || "unknown", b.commit.slice(0, 8)].filter(Boolean).join(" · ") + (b.modified ? " · modified" : "");
+}
+
 function renderMore(): void {
   const it = (a: string, g: string, x: string, sub: string, v?: string | null, on?: boolean) =>
     `<button class="item" data-act="${a}"><span class="g">${g}</span><span class="x">${x}${sub ? `<small>${sub}</small>` : ""}</span>${v != null ? `<span class="v ${on ? "on" : ""}">${esc(v)}</span>` : ""}</button>`;
@@ -618,7 +624,9 @@ function renderMore(): void {
     + it("pairing", "⌁", "Pairing", "b9s web · tailscale serve · pairing link", null)
     + it("log", "$", "Write log", "every bd command this browser asked for", String(S.log.length))
     + it("reload", "↻", "Reload", "also: pull down on the tree", null)
-    + it("help", "?", "Gestures", "every gesture and its TUI key", null);
+    + it("help", "?", "Gestures", "every gesture and its TUI key", null)
+    + `<div class="sec">About</div>`
+    + it("about", "ⓘ", "b9s version", "the release and the commit it was built from", buildLabel());
 }
 
 interface GRow { id: string; depth: number; cycle: boolean }

@@ -62,7 +62,7 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 | `pkg/identity` | The alias registry that maps creator and assignee names to people, agents and pools |
 | `pkg/config` | `~/.config/b9s/config.yaml`: sort defaults, poll interval, recent projects. `hotkeys.yaml`: user hotkeys |
 | `pkg/updater` | Self-update from GitHub releases: checksum and Sigstore provenance verification (ADR 0028), then rollback support. It reads `/releases/latest`, which skips a release candidate: GoReleaser publishes a `-rc` tag as a GitHub prerelease and does not push it to the Homebrew tap |
-| `pkg/debug`, `pkg/version` | Debug logging behind `B9S_DEBUG`, and the version string set at build time |
+| `pkg/debug`, `pkg/version` | Debug logging behind `B9S_DEBUG`, and the running build: version and commit from the release ldflags, or from Go build info for `go install` and local builds |
 | `pkg/testutil` | Deterministic fixture generators and assertion helpers for tests |
 | `pkg/web` | `b9s web`: the HTTP API, the server-sent event stream, pairing and sessions, the write endpoint, and the embedded browser bundle in `dist` |
 | `web` | The browser app in TypeScript, built with esbuild into `pkg/web/dist`, and its Playwright tests |

@@ -17,6 +17,7 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/vanderheijden86/b9s/pkg/version.Version=v{{.Version}}
+      - -X github.com/vanderheijden86/b9s/pkg/version.Commit={{.FullCommit}}
     goos:
       - linux
       - darwin

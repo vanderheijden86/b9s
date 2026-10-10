@@ -221,6 +221,16 @@ type Session struct {
 	Banner string `json:"banner"`
 	// BannerLink is an http(s) URL the banner links to, or "".
 	BannerLink string `json:"banner_link"`
+	// Version names the running b9s build for people to read: a release tag,
+	// "dev after <tag>" or "dev". The bundle is embedded in the binary, so it
+	// is also the web app's version.
+	Version string `json:"version"`
+	// Commit is the full commit hash the build came from, or "".
+	Commit string `json:"commit"`
+	// CommitURL links to Commit on GitHub, or is "".
+	CommitURL string `json:"commit_url"`
+	// Modified is true when the build had uncommitted changes.
+	Modified bool `json:"modified"`
 }
 
 // Event is one Server-Sent Event: "hello" on connect, "changed" after the

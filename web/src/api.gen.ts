@@ -130,6 +130,10 @@ export interface Session {
   public: boolean;
   banner: string;
   banner_link: string;
+  version: string;
+  commit: string;
+  commit_url: string;
+  modified: boolean;
 }
 
 export interface Event {
