@@ -1,389 +1,465 @@
-# Data IO target state: one transport layer for reads, writes and changes
+# Data IO target state: b9s as a bd client
 
 Status: proposal, no task filed. Companion to [docs/data-io.md](../data-io.md),
-which describes how reads and writes work today. This document describes where
-they should end up, and in which order to get there.
+which describes how reads and writes work today.
+
+Beads is the given: `bd` at `v1.3.1` (2026-09-30), the `v1.3.2` release
+candidates, what is on upstream `main` at `048f5e5`, and the
+[1.4 roadmap](https://github.com/gastownhall/beads/blob/main/ROADMAP.md)
+(versioned beads and history, Beads Graph Preview 2). b9s is the variable:
+this document redesigns its IO around the boundaries Beads now offers,
+without regard for how b9s is built today.
 
 ## Contents
 
-- [Goal](#goal)
-- [Why change](#why-change)
-- [Principles that stay](#principles-that-stay)
+- [What Beads offers a client](#what-beads-offers-a-client)
+- [The decision: HTTP where served, CLI where not, never SQL](#the-decision-http-where-served-cli-where-not-never-sql)
 - [Target architecture](#target-architecture)
-- [Choosing a transport per workspace](#choosing-a-transport-per-workspace)
+- [Opening a workspace](#opening-a-workspace)
 - [Reads](#reads)
-- [Writes](#writes)
+- [Writes carry a revision](#writes-carry-a-revision)
 - [Change detection](#change-detection)
-- [The Memory graph over BDP](#the-memory-graph-over-bdp)
-- [What stays the same](#what-stays-the-same)
+- [History (roadmap: versioned beads)](#history-roadmap-versioned-beads)
+- [Memory and Links (roadmap: Graph Preview 2)](#memory-and-links-roadmap-graph-preview-2)
+- [What b9s stops doing](#what-b9s-stops-doing)
 - [Phases](#phases)
-- [Risks and open questions](#risks-and-open-questions)
-- [Non-goals](#non-goals)
+- [Decisions for the owner](#decisions-for-the-owner)
+- [Rejected: the Go SDK as the boundary](#rejected-the-go-sdk-as-the-boundary)
+- [Risks](#risks)
 
-## Goal
+## What Beads offers a client
 
-b9s talks to a Beads workspace through one `Store` interface with three
-methods that matter: read, write, and watch. Behind it sit interchangeable
-transports. Each workspace gets the best transport its `bd` and its storage
-mode support, chosen once at open and shown in the `D` health popup. The TUI,
-the web server and the `b9s` subcommands never know which one they got.
+Beads' [charter](https://github.com/gastownhall/beads/blob/main/engdocs/PROJECT_CHARTER.md)
+says core exposes "stable issue data, metadata, CLI output, and documented
+extension points", and that storage is Dolt's business, behind a boundary. A
+client has three doors, and only three are supported:
 
-The preferred transport is `bd serve`'s HTTP API. It gives b9s what the current
-mix of SQL and CLI cannot give at the same time:
+| Door | What it is | Works on | Versioning | State |
+|---|---|---|---|---|
+| **CLI** | `bd ... --json`, `--format records-json`, `bd export`, `bd events tail` | Every mode: embedded, server, proxied, HTTP-backed | Help text; capability refusals name their token | Shipped, the stable surface |
+| **HTTP API v0** | `bd serve`: `/v0/beads/...`, RFC 9457 problems, `capabilities[]`, `wire_revision`, SSE `events:watch` | Server and proxied workspaces only; refuses embedded | `GET /v0/beads/context` advertises every operation and parameter as a token | Shipped in 1.2.1, about 43 operations now |
+| **Go SDK** | `beads.OpenFromConfig`, `OpenBestAvailableWith`, `backend/`, `memoryops/` | Every mode, in-process | "EXPERIMENTAL. Pin an exact beads version" | Shipped, for backends and embedders |
 
-- one process for every operation, instead of about 0.4 s of startup per
-  write and per Memory read;
-- compare-and-swap writes through `expected_version`, so b9s can refuse to
-  overwrite a change it has not shown yet;
-- a push change feed (`events:watch`) instead of polling a hash twice a second;
-- the same rules on every write, because `bd` still performs it;
-- one code path for the TUI, the web UI and a future remote (HTTP backend)
-  checkout.
+Two things the current `bd` adds on top of all three doors:
 
-Direct SQL stays as the read transport where no `bd serve` can run, and the
-`bd` CLI stays as the write transport for embedded workspaces, which `bd serve`
-refuses.
+- **Revisions.** Every issue has an opaque `revision`. A write may assert it:
+  `expected_version` over HTTP (409 `precondition_failed`), `--if-revision`
+  on the CLI (exit 13) for `update`, `close`, `claim`, `release` and, on
+  `main`, `reopen`. Roadmap 1.4 extends this into full history: every change
+  recorded as a version, `expectedRevision` CAS everywhere, as-of reads.
+- **The events journal.** Opt-in (`events-journal: true`). One record per
+  committed mutation, in the same transaction, carrying the resulting state.
+  Read by sequence over HTTP (`/events`, `/events:watch`) or the CLI
+  (`bd events tail --since N --follow`).
 
-## Why change
+And the direction of travel: `bd` itself is becoming an HTTP client of
+`bd serve` (`bd connect`, the `http` backend, on `main`), the SDK grows
+embedder hooks (`OpenWith`, per-open credentials), and Graph Preview 2 ships
+the Bead-and-Link graph through the CLI first, BDP Read second, HTTP Write
+last.
 
-Today's shape works, but it has four seams that the newer `bd` closes:
+## The decision: HTTP where served, CLI where not, never SQL
 
-| Seam today | Cost | What closes it |
-|---|---|---|
-| Every write is a new `bd` process | 0.4 s per action, 60 s deadlines, process-group kills | `bd serve` handles a write in one request |
-| Reads and writes see the store differently (SQL vs. CLI) | Schema drift lands in `DoltReader` first, with a narrow-column fallback | `bd serve` returns `bd`'s own view of an issue |
-| The UI cannot tell "nobody changed this" from "someone changed this since I loaded it" | Last writer wins on `bd update` | `revision` and `expected_version` (409 `precondition_failed`) |
-| A checkout on the HTTP backend has no Dolt address | b9s cannot open it at all | Read `http_target.json` and use the same HTTP client |
+**b9s becomes a client of `bd`. It speaks the HTTP API to a `bd serve` when
+one can exist, and runs the `bd` CLI when one cannot. It never opens a Dolt
+connection and never parses a store.**
 
-The Memory graph has a fifth: a complete read takes 5 to 8 s through the
-preview CLI, and BDP read the same graph in about 0.4 s
-([memory-read-research.md](../memory-read-research.md)).
+Why this pair, and not something else:
 
-## Principles that stay
+- **Embedded is `bd init`'s default and `bd serve` refuses it.** A boundary
+  that excludes embedded excludes most new users. The CLI is the only
+  supported door there, so b9s keeps a CLI transport.
+- **A server workspace deserves better than one process per action.** The
+  HTTP API gives one long-lived connection, CAS, a push change feed, batch
+  endpoints, and capability tokens that let b9s and `bd` move at different
+  speeds. The CLI's `--watch` and `events tail --follow` poll once a second
+  and start a process per call.
+- **Direct SQL is the door Beads does not offer.** It is why b9s carries a
+  schema-fallback query, an address-resolution ladder, a proxy pid-file
+  reader and a password-trust list. Every one of those re-implements
+  something `bd` already does. Dropping SQL removes them all.
+- **The SDK couples the b9s binary to one `bd` version** and brings the Dolt
+  engine into it. See [Rejected](#rejected-the-go-sdk-as-the-boundary).
 
-1. **b9s never writes to a store itself.** Every write is performed by `bd`,
-   whether through its CLI or its HTTP API.
-2. **b9s never holds an embedded store open.** Embedded workspaces keep the
-   `bd export` reader and the fingerprint watcher
-   ([ADR 0025](../adr/0025-read-embedded-dolt-through-bd-export.md)).
-3. **The store is the source of truth.** After a write, the UI reloads what
-   `bd` stored; it never patches its own copy.
-4. **Credentials follow trust, not convenience.** `BEADS_DOLT_PASSWORD` goes
-   only to trusted endpoints ([ADR 0013](../adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md)).
-   A `bd serve` bearer token is read from the same places `bd` reads it, and
-   sent only to the address it was issued for.
-5. **Capability, not version.** A transport is chosen from what the workspace
-   and the `bd` say they can do (`/v0/beads/context`, `metadata.json`,
-   `bd --help` probes), never from a version number
-   ([ADR 0045](../adr/0045-probe-bd-help-before-memory-reads.md)).
-6. **Every wait is bounded, every fallback is explained.** A transport that
-   fails to come up is reported in the health popup with its reason, and the
-   next one down is used.
+With one `Client` interface over the two transports, every b9s feature is
+written once. Where a transport cannot do something, the client says so with
+`bd`'s own reason.
 
 ## Target architecture
 
 ```mermaid
 flowchart TB
-    subgraph Clients
-        TUI[pkg/ui]
+    subgraph b9s
+        UI[pkg/ui]
         WEB[pkg/web]
-        CMD[b9s attach / memories / ctl]
+        SUB[b9s attach / memories / ctl]
+        C["bd client: Issues, Issue, Write(op, revision),<br/>Events, History, Graph, Capabilities"]
+        H[http transport]
+        X[cli transport]
+        UI --> C
+        WEB --> C
+        SUB --> C
+        C --> H
+        C --> X
     end
-    subgraph Store["internal/store (one interface)"]
-        S[Store: Issues, Issue, Write, Watch, Graph]
-    end
-    subgraph Transports
-        H[serve: bd serve HTTP v0]
-        Q[sql: DoltReader + bd CLI writer]
-        X[export: bd export + bd CLI writer]
-        G[bdp: graph reads]
-    end
-    BD[bd serve child or configured URL]
+    S[bd serve: child b9s started,<br/>or a configured URL]
+    BD[bd CLI, --json]
     D[(Dolt server / proxied)]
     E[(embedded Dolt)]
-
-    TUI --> S
-    WEB --> S
-    CMD --> S
-    S --> H
-    S --> Q
-    S --> X
-    S --> G
-    H -- HTTP + SSE --> BD
-    G -- HTTP --> BD
-    BD -- SQL --> D
-    Q -- "SQL reads, bd CLI writes" --> D
-    X -- "bd export, bd CLI writes" --> E
+    H -- "HTTP + SSE" --> S
+    X -- "argv, stdout" --> BD
+    S --> D
+    BD --> D
+    BD --> E
 ```
 
-The `Store` interface, in a new `internal/store` package, is the only thing
-`pkg/ui` and `pkg/web` import for data. It carries today's reader methods
-(`LoadIssues`, `GetIssueByID`, `AllComments`), the `IssueWriter` operations as
-one `Write(op)` with an optional expected revision, a `Watch()` channel of
-change events, and the Memory graph client. `internal/datasource` keeps
-discovery and becomes the `sql` and `export` transports; `pkg/ui/issue_writer.go`
-becomes the CLI writer those two transports share.
+`internal/bd` is the only package that knows how to reach a workspace. It
+owns both transports, the capability model, the `bd serve` child and the
+revision bookkeeping. `pkg/ui`, `pkg/web` and the subcommands import it and
+nothing else for data.
 
-## Choosing a transport per workspace
+## Opening a workspace
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant O as store.Open
+    participant O as bd.Open(dir)
     participant M as .beads/metadata.json
-    participant P as capability probe
     participant BD as bd
-    O->>M: read backend, dolt_mode
+    O->>M: backend? dolt_mode?
     alt backend = http
-        O->>M: read http_target.json (url, expect_project_id)
-        O->>BD: GET url/v0/beads/context
-        BD-->>O: api_version v0, wire_revision, capabilities
-        O-->>O: transport serve (remote)
+        O->>M: http_target.json: url, expect_project_id
+        O->>BD: GET url/v0/beads/context (bearer from bd's own token ladder)
+        BD-->>O: api_version, project_id, capabilities, wire_revision
+        O-->>O: http transport, remote
     else dolt_mode = server or proxied-server
-        O->>P: does this bd have `serve`? (bd serve --help, cached per binary)
-        alt yes and io.serve is not off
-            O->>BD: spawn bd serve --addr 127.0.0.1:0 in the checkout
-            BD-->>O: stdout "listening on http://127.0.0.1:PORT"
-            O->>BD: GET /v0/beads/context
-            BD-->>O: capabilities
-            O-->>O: transport serve (child)
-        else no, or the child failed
-            O-->>O: transport sql, reason recorded for D
-        end
+        O->>BD: bd serve --addr 127.0.0.1:0 (child, own process group, cwd = dir)
+        BD-->>O: stdout: listening on http://127.0.0.1:PORT
+        O->>BD: GET /v0/beads/context
+        BD-->>O: capabilities
+        O-->>O: http transport, child
     else dolt_mode = embedded
-        O-->>O: transport export (bd serve refuses embedded)
-    else SQLite or JSONL
-        O-->>O: transport sql (file readers), writes through bd CLI if a checkout
+        O->>BD: bd --help probes (cached per binary): versions? events? graph?
+        O-->>O: cli transport
     end
+    O-->>O: capability set recorded for D and for feature gating
 ```
 
-Decisions in this flow:
-
+- b9s reads `metadata.json` for one field pair, `backend` and `dolt_mode`,
+  to pick a transport. It no longer resolves a Dolt address, a proxy root or
+  a port file: `bd serve` and the `bd` CLI do that themselves.
 - **b9s supervises its own `bd serve` child** for a local server or proxied
-  workspace. `bd serve` writes no pid or port file, so there is nothing to
-  discover; spawning is the only way to get one without asking the user to run
-  it. The child runs in its own process group under the same `bdrun` rules as
-  every `bd` call, listens on a free loopback port, needs no token, and is
-  killed when the project closes or b9s exits. Two b9s instances on one
-  workspace run two children; `bd serve` is built for that.
-- **A configured URL wins over a child.** `io.serve_url` in `config.yaml`, or
-  the HTTP backend's `http_target.json`, points b9s at a server somebody else
-  runs. The bearer token comes from `BEADS_HTTP_TOKEN`, then
-  `BEADS_HTTP_TOKEN_COMMAND`, then `bd`'s credentials file, the same ladder `bd
-  connect` uses.
-- **`B9S_IO=sql`** (and `io.transport: sql` in config) forces the old
-  transport. The lever can only subtract, as `B9S_MEMORY=off` does
-  ([ADR 0046](../adr/0046-memory-lever-keeps-graph-workspace-issues.md)).
-- **The all-projects view (`0`)** stays on `MultiDoltReader` over SQL. It is
-  read-only, spans databases, and one child per database would be waste.
+  workspace. `bd serve` writes no pid or port file, so starting one is the
+  only way to have one without asking the user. The child needs no token on
+  loopback, is killed with its process group when the project closes, and is
+  reported in `D` with its port. A configured `io.serve_url` in `config.yaml`
+  takes precedence, for a server somebody else runs.
+- Capability is read from `/v0/beads/context` over HTTP and from `--help`
+  probes on the CLI, never from a version string
+  ([ADR 0045](../adr/0045-probe-bd-help-before-memory-reads.md)). Every b9s
+  feature declares the tokens or verbs it needs; a missing one turns the
+  feature off with a one-line reason, as `M` does today.
+- The lever `B9S_IO=cli` forces the CLI transport for a served workspace. It
+  can only subtract.
 
 ## Reads
 
-### Through `bd serve`
+### Over HTTP
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant UI as ui.Model
-    participant S as store (serve)
-    participant BD as bd serve
-    UI->>S: Issues()
-    loop pages of 500
-        S->>BD: GET /v0/beads/issues?limit=500&cursor=...
-        BD-->>S: {items[], has_more, next_cursor}
+    participant C as bd client (http)
+    participant S as bd serve
+    UI->>C: Issues(scope)
+    loop limit 500, follow next_cursor
+        C->>S: GET /v0/beads/issues?limit=500&cursor=...
+        S-->>C: {items[], has_more, next_cursor}
     end
-    S-->>UI: issues (lean: no long text)
-    UI->>S: Issue(id) when the detail opens
-    S->>BD: GET /v0/beads/issues/ID
-    BD-->>S: {..., description, comments, revision}
-    S-->>UI: issue + revision kept beside it
+    C-->>UI: lean rows (no long text, no comments)
+    UI->>C: Issue(id) when the detail opens
+    C->>S: GET /v0/beads/issues/ID
+    S-->>C: full issue + revision
+    C-->>UI: issue, with its revision kept in the client by id
+    UI->>C: Search(text)
+    C->>S: GET /v0/beads/issues?q=text (issues.list.search)
 ```
 
-The list stays lean, as the web snapshot already is: long text and comments
-arrive when a detail opens. That removes the "four separate reads" window that
-the SQL reader has today, because each issue's detail is one consistent
-response. The `revision` from the detail read is what the next write asserts.
+The list is lean, as the web snapshot already is. Fuzzy search over titles and
+ids stays local; description search goes to the server where
+`issues.list.search` is advertised, and is otherwise off with a reason.
 
-### Through SQL (unchanged)
+### Over the CLI (embedded)
 
-`DoltReader` and `MultiDoltReader` keep their queries. The narrow-column
-fallback stays until every supported workspace can serve, and is then removed
-rather than extended.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as ui.Model
+    participant C as bd client (cli)
+    participant BD as bd
+    participant E as embedded store
+    UI->>C: Issues()
+    C->>BD: bd export (BEADS_DIR set, deadline, stdout only)
+    BD->>E: open, read, close
+    BD-->>C: JSONL
+    C-->>UI: issues
+    UI->>C: Issue(id)
+    C->>BD: bd show ID --json
+    BD-->>C: issue + revision where this bd reports one
+    Note over C,E: b9s holds no handle on the store between calls (ADR 0025)
+```
 
-### Embedded (unchanged)
+## Writes carry a revision
 
-`bd export` on a fingerprint change, as ADR 0025 decides.
-
-## Writes
+Every single-issue edit asserts the revision the user saw. Bulk actions on
+marks do not: "close all of these" is the instruction, and a concurrent edit
+to one of them is not a reason to stop. The confirmation lists the targets as
+today.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant U as User
     participant UI as ui.Model
-    participant S as store (serve)
-    participant BD as bd serve
-    participant D as Dolt
-    U->>UI: edit priority in the detail
-    UI->>S: Write(update id, {priority: 1}, expected: "17")
-    S->>BD: PATCH /v0/beads/issues/ID {priority: 1, expected_version: "17"}
-    BD->>D: one transaction, DOLT_COMMIT
-    alt still revision 17
-        BD-->>S: 200 {revision: "18"}
-        S-->>UI: ok, new revision
-    else changed by someone else
-        BD-->>S: 409 {code: precondition_failed}
-        S-->>UI: Conflict(id)
-        UI->>UI: reload the issue, show "changed since you opened it: reapply?"
+    participant C as bd client
+    participant H as bd serve (http)
+    participant X as bd CLI (embedded)
+    U->>UI: set priority to 1 in the detail
+    UI->>C: Write(update, id, {priority: 1}, revision "17")
+    alt served
+        C->>H: PATCH /v0/beads/issues/ID {priority: 1, expected_version: "17"}
+        H-->>C: 200 {revision: "18"} or 409 precondition_failed
+    else embedded
+        C->>X: bd update ID --priority 1 --if-revision 17
+        X-->>C: exit 0, or exit 13
+    end
+    alt accepted
+        C-->>UI: ok, revision 18
+    else stale
+        C-->>UI: Conflict(id)
+        UI->>C: Issue(id)
+        UI->>U: "changed since you opened it", show diff, offer reapply
     end
 ```
 
-- **Single-issue edits assert a revision.** Bulk actions on marks do not: the
-  user asked for "close all these", and a concurrent edit to one of them is
-  not a reason to stop. The confirmation lists the targets as it does today.
-- **Batch verbs map to batch endpoints.** `bd close a b c` becomes
-  `POST /v0/beads/issues:batchClose`, which the server commits once.
-- **The CLI writer stays for `sql` and `export`** and keeps its deadlines.
-  Behind the `Store` interface it is one more transport, so the TUI and the
-  web write code lose their knowledge of `bd` arguments.
-- **Attachments** keep the blob-then-comment order
+- Bulk verbs use batch endpoints over HTTP (`issues:batchClose`,
+  `issues:batchApply` up to 1000 items) and one `bd` call with all ids on the
+  CLI, as today.
+- Attachments keep the blob-then-comment order
   ([ADR 0024](../adr/0024-attach-files-through-reference-comments.md)); the
-  comment goes through `POST /v0/beads/issues/ID/comments` when serving.
+  comment goes through `POST /v0/beads/issues/ID/comments` or
+  `bd comments add`.
+- `b9s` never bypasses a refusal. A 409 `not_closable` with its `blockers`,
+  or `bd close`'s non-zero exit, is shown with `bd`'s text.
 
 ## Change detection
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant S as store (serve)
-    participant BD as bd serve
+    participant C as bd client
+    participant S as bd serve / bd CLI
     participant UI as ui.Model
-    S->>BD: GET /v0/beads/context
-    alt capabilities contain events.list
-        S->>BD: GET /v0/beads/events:watch?since=HEAD
-        loop each write anywhere
-            BD-->>S: id: N, data: {op, issue_id, issue}
-            S->>S: debounce 100 ms, coalesce ids
-            S-->>UI: Changed(ids)
+    alt served and events.list advertised and the journal is on
+        C->>S: GET /v0/beads/events:watch?since=HEAD
+        loop each committed write
+            S-->>C: id: N, data: {op, issue_id, issue}
         end
-        BD-->>S: ": heartbeat" every 20 s
-        Note over S,BD: a dropped stream resumes with Last-Event-ID,<br/>410 truncated means one full reload
-    else journal off
-        loop every refresh.poll_interval
-            S->>BD: GET /v0/beads/stats (or DOLT_HASHOF_DB() over SQL)
+        C->>C: coalesce 100 ms
+        C-->>UI: Changed(ids) with the new issue state
+        Note over C,S: resume with Last-Event-ID, and a 410 truncated means one full reload
+    else served, journal off
+        loop refresh.poll_interval
+            C->>S: GET /v0/beads/stats
         end
-        S-->>UI: Changed(all)
+        C-->>UI: Changed(all)
+    else embedded, journal on
+        C->>S: bd events tail --since N --follow (one long-lived process)
+        S-->>C: JSONL records
+        C-->>UI: Changed(ids)
+    else embedded, journal off
+        C->>C: fingerprint of manifest + journal size (ADR 0025)
+        C-->>UI: Changed(all)
     end
 ```
 
-- The stream gives b9s the changed ids, so a reload can be partial: fetch
-  those issues, keep the rest. The tree keeps cursor, marks and folds as it
-  does for a full reload.
-- The events journal is opt-in on the `bd` side. When it is off, b9s polls as
-  today. The health popup says which mode is active, so a user who wants push
-  updates knows to turn on `events-journal`.
-- The watcher interface is the same channel for every transport, so
-  `pkg/watcher` (JSONL), `DoltWatcher` (hash and fingerprint) and the SSE
-  client are three implementations of one thing.
+The event record carries the resulting issue, so a change arrives with its
+data: b9s updates that row and keeps the rest, cursor, marks and folds
+included. The health popup names the active mode and, when polling, the
+`events-journal` key that would turn on push.
 
-## The Memory graph over BDP
+## History (roadmap: versioned beads)
 
-The preview CLI stays the reader until BDP ships with what
-[ADR 0041](../adr/0041-retain-cli-memory-reads-after-transport-probes.md)
-requires: a common snapshot or graph revision across the Bead and Link
-collections, and a retained-version path. When it does, the graph client
-becomes one more transport behind `Store.Graph()`.
+Roadmap 1.4 records every change as a version, behind a flag, with as-of
+reads and `bd history`. b9s adds a history pane that reads whatever the
+workspace's `bd` can answer:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant UI as detail pane
+    participant C as bd client
+    participant BD as bd serve or bd CLI
+    U->>UI: H on an issue
+    UI->>C: History(id)
+    alt capability: versions / history
+        C->>BD: GET versions or bd history ID --json
+        BD-->>C: versions with revision, actor, time
+        UI->>C: Version(id, token) on select
+        C->>BD: as-of read
+        C-->>UI: that version's fields, diffed against current
+    else not advertised
+        C-->>UI: "history not available: <bd's reason>"
+    end
+```
+
+The pane is built against the preview's `bd versions` and `bd show --version`
+today, and switches to the upstream surface by capability when 1.4 names it.
+Nothing in b9s depends on the flag's name.
+
+## Memory and Links (roadmap: Graph Preview 2)
+
+Preview 2 ships the graph through the installed CLI on embedded and
+shared-server Dolt first, BDP Read behind `bd --graph-mode link serve`
+second, and HTTP Write after the CLI journey is complete. b9s follows that
+order:
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant V as Memory view
-    participant S as store (bdp)
-    participant BD as bd --graph-mode link serve
-    V->>S: Graph()
-    S->>BD: GET /SCOPE/beads/?limit=200
-    BD-->>S: page + graph revision R + next
-    loop until no next
-        S->>BD: GET next
-        BD-->>S: page (revision R)
+    participant C as bd client
+    participant BDP as bd --graph-mode link serve
+    participant CLI as graph-mode bd
+    V->>C: Graph()
+    alt served and BDP Read advertised with a revision fence
+        C->>BDP: GET beads/ and links/ pages
+        BDP-->>C: records at one graph revision
+        C-->>V: graph in under a second
+    else CLI journey (embedded or no graph server)
+        C->>CLI: list --format records-json --all, graph SEED --view generic
+        CLI-->>C: Beads and Links
+        C-->>V: graph (progress per traversal)
     end
-    S->>BD: GET /SCOPE/links/?limit=200 (revision R)
-    BD-->>S: pages
-    alt revision moved between collections
-        S->>S: retry once, then show the last good graph as stale
-    end
-    S-->>V: graph in under a second
-    V->>S: Version(id, token) on select
-    S->>BD: GET /SCOPE/beads/ID?version=TOKEN
+    V->>C: EditLink / EditMemory
+    C->>CLI: graph-mode verbs (HTTP Write comes later)
 ```
 
-Embedded graph workspaces cannot serve BDP, so they keep the CLI reader. The
-capability probe decides, as it does today for the preview dialect.
+The two transports already exist in spirit: the CLI journey is today's
+`GraphPreviewClient`, and the BDP leg is what
+[the transport investigation](../memory-read-research.md) measured.
+[ADR 0041](../adr/0041-retain-cli-memory-reads-after-transport-probes.md)'s
+conditions for the BDP leg stand: a common snapshot across the two
+collections and a retained-version path.
 
-## What stays the same
+## What b9s stops doing
 
-- `DiscoverSources` and `resolveDoltAddress`: files only, same precedence.
-- The embedded path end to end: `bd export`, fingerprint watcher, CLI writes.
-- `Checkout` as the gate on writing: a project opened from its database alone
-  stays read-only, including over `bd serve`.
-- The all-projects view, the catalog and the preview's SELECT-only account
-  ([ADR 0007](../adr/0007-read-shared-beads-through-one-select-only-catalog-account.md)).
-- `bdrun` as the one place that starts a `bd` process, now including the
-  `serve` child.
-- The web API: `pkg/web` keeps its endpoints and SSE; it calls `Store` instead
-  of the readers and `IssueWriter` directly.
+| Removed | Replaced by |
+|---|---|
+| `DoltReader`, `MultiDoltReader`, the 22-column query and its narrow fallback | `GET /v0/beads/issues`, `bd export` |
+| `resolveDoltAddress`, `proxied_server.go`, the port-file and `proxy.pid` readers | `bd serve` and `bd` resolve their own store |
+| `BEADS_DOLT_PASSWORD` handling, `B9S_TRUSTED_DOLT_ENDPOINTS` ([ADR 0013](../adr/0013-trust-dolt-endpoints-before-sending-environment-credentials.md)) | No SQL credential in b9s. HTTP bearer tokens come from `bd`'s own ladder |
+| `DoltWatcher` hash polling | `events:watch`, `bd events tail --follow`, or `/stats` polling |
+| `IssueWriter`'s per-verb argument building in `pkg/ui` | `bd client.Write(op)` in `internal/bd`, with the CLI argv in one table |
+| `go-sql-driver/mysql` | Removed from `go.mod` |
+| SQLite and JSONL as live sources | **Decision below** |
+
+The embedded path keeps `bd export`, the fingerprint watcher and
+[ADR 0025](../adr/0025-read-embedded-dolt-through-bd-export.md) unchanged.
+`internal/bdrun` stays as the one place that starts a `bd` process, now
+including the `serve` child and the `events tail` follower.
 
 ## Phases
 
-Each phase ships on its own, behind the capability check, with the `sql`
-transport as the fallback the whole way.
+Each phase ships behind the capability check, with the previous transport as
+the fallback until the retire phase.
 
 | Phase | Delivers | Proof |
 |---|---|---|
-| 1. `Store` interface | `internal/store` wrapping today's readers, `IssueWriter` and watchers. No behaviour change | Existing unit and E2E suites pass unchanged; `pkg/ui` and `pkg/web` import only `internal/store` |
-| 2. `serve` child and reads | Spawn `bd serve` for server and proxied workspaces, read issues through it, SQL fallback with reason in `D` | E2E against a scratch server (`B9S_TEST_DOLT_SCRATCH_ADDR`) opens through `serve`; killing the child falls back to `sql` within one poll |
-| 3. Writes with CAS | `Write` over HTTP, `expected_version` on single-issue edits, conflict dialog, batch endpoints | A test writes through `bd` CLI between load and save and sees the 409 path; bulk close of 50 issues is one request |
-| 4. Change feed | `events:watch` when `events.list` is advertised, partial reloads, poll fallback | A write from a second `bd` appears in the TUI without a poll tick; a cut stream resumes from `Last-Event-ID` |
-| 5. HTTP backend checkouts | Open a `backend: http` checkout through its `http_target.json` and token ladder | E2E against a `bd serve` with `--auth-token-file`; no token means a one-line reason, never a prompt |
-| 6. BDP graph | Graph reads over BDP where a graph server exists and advertises a revision fence | The parity probes from `memory_read_research_test.go` pass against the shipped server; the CLI reader stays for embedded |
-| 7. Retire | Remove the narrow-column SQL fallback and the per-process Memory inventory reads once no supported workspace needs them | Tests for the removed paths are deleted with them |
+| 1. `internal/bd` | The `Client` interface and the CLI transport, wrapping today's `bd export` reader, `IssueWriter` and fingerprint watcher. No behaviour change | Existing suites pass; `pkg/ui` and `pkg/web` import only `internal/bd` for data |
+| 2. HTTP transport | `bd serve` child for server and proxied workspaces, reads over HTTP, `D` shows the transport | E2E on the scratch server opens through HTTP; killing the child reports and reopens |
+| 3. Revisions | Single-issue edits assert `expected_version` / `--if-revision`, conflict flow, batch endpoints | A `bd` write between load and save produces the conflict dialog on both transports |
+| 4. Change feed | `events:watch` and `bd events tail --follow` when the journal is on, partial row updates | A write from a second `bd` appears without a poll tick; a cut stream resumes |
+| 5. History pane | `H` reads versions where advertised | Against the preview `bd` today; against upstream 1.4 when it ships |
+| 6. Remote workspaces | Open a `backend: http` checkout through `http_target.json` and the token ladder | E2E against `bd serve --auth-token-file` |
+| 7. BDP graph leg | Graph reads over BDP when a graph server advertises a fence | The parity probes pass against the shipped server |
+| 8. Retire SQL | Delete the SQL readers, address resolution, watcher and the MySQL driver | Tests go with the code; `go mod tidy` drops the driver |
 
-Phase 1 is a refactor and goes first because it is the only one with no
-external dependency. Phases 2 to 4 depend on a released `bd` with the v0 API,
-which `v1.3.1` has. Phase 5 waits for `bd connect` to ship. Phase 6 waits for
-BDP collections with a revision fence.
+Phases 1 to 4 need only `bd v1.3.1`. Phase 6 waits for `bd connect` to be
+released. Phases 5 and 7 track the two roadmap areas and are built against
+the preview builds until then. Phase 8 waits until every supported workspace
+opens through phases 2 or 1.
 
-## Risks and open questions
+## Decisions for the owner
 
-- **A `bd serve` child per b9s instance.** Each holds a pool of up to 20
-  connections to the Dolt server. Ten open b9s windows on one shared server
-  would be 200 connections. Mitigation: a child per workspace, shared between
-  b9s instances through the control socket's registry
-  ([ADR 0023](../adr/0023-steer-a-running-b9s-through-a-control-socket.md)),
-  the last instance out stopping it. Decide after measuring.
-- **Child lifetime after a crash.** `bd serve` has no idle timeout. A b9s
-  killed with `SIGKILL` leaves its child running. Mitigation: the child is
-  started with a parent-death signal where the platform has one, and
-  `b9s ctl` lists and reaps orphans by the pid file b9s writes beside its own.
-- **Lean lists hide long text from search.** Today the fuzzy search covers
-  descriptions because the SQL reader loads them. Either `issues:query` serves
-  the search, or the list fetch stays full. Measure the list size on the
-  largest workspace before choosing.
-- **The journal is opt-in.** Most workspaces will poll until their owner turns
-  it on. The health popup should say so in one line, with the config key.
-- **Proxied workspaces and `bd serve`.** The server unwraps the proxied
-  provider and should work; the Gas City rigs are the place to prove it.
-- **Wire revision drift.** b9s sends `Bd-Wire-Revision: 2`. A server below
-  `min_client_wire_revision` refuses with `wire_revision_unsupported`; b9s
-  falls back to `sql` and names the mismatch.
-- **BDP is not released.** Phase 6 is contingent, and the retained-version
-  path is still a 400 in the preview. Nothing in phases 1 to 5 depends on it.
+1. **SQLite and JSONL as live sources.** Beads' supported paths are embedded
+   Dolt, Dolt server and (per its changelog) SQLite; JSONL is the export and
+   import format. Proposal: b9s stops reading `beads.db` and `issues.jsonl`
+   as projects, and keeps JSONL as a test fixture format and for
+   `git`-history views. Users on those files run `bd import` once.
+2. **The all-projects view (`0`).** Today it is `MultiDoltReader` over a
+   SELECT-only catalog account ([ADR 0007](../adr/0007-read-shared-beads-through-one-select-only-catalog-account.md)).
+   Without SQL it becomes a list of workspaces, each opened through its own
+   transport, with one `bd serve` child per server workspace. Proposal: keep
+   the view, source it from `config.yaml`'s recent projects, and accept one
+   child per workspace. The Kubernetes preview's read-only catalog needs a
+   `bd serve` per database, started by the preview, with a read-only token.
+3. **One `bd serve` child per b9s instance or per workspace.** Per instance
+   is simplest. Sharing through the control socket registry
+   ([ADR 0023](../adr/0023-steer-a-running-b9s-through-a-control-socket.md))
+   saves Dolt connections when many windows open one workspace. Proposal:
+   per instance first, measure, then share if a shared server shows strain.
+4. **Go toolchain.** None of this needs the Beads module, so b9s stays on
+   its own Go version.
 
-## Non-goals
+## Rejected: the Go SDK as the boundary
 
-- Opening an embedded store in-process, or starting a `dolt sql-server` on
-  one. ADR 0025 stands.
-- A direct-SQL Memory reader. ADR 0041 stands.
-- Writing through SQL under any circumstances.
-- Replacing `bd` for anything but transport. Rules, hooks and history are
-  `bd`'s.
+Importing `github.com/steveyegge/beads` would give one in-process door to
+every mode, embedded included, and the HTTP backend inside it. It was
+rejected because:
+
+- The SDK calls itself experimental and asks embedders to "pin an exact beads
+  version and re-run the conformance suite on every bump". A user upgrades
+  `bd` on their own schedule; a b9s pinned to an older beads refuses a
+  workspace the newer `bd` migrated (the migration gate fails closed), and a
+  b9s pinned to a newer one would migrate a shared server under other
+  clients unless told not to.
+- It pulls the Dolt engine into the b9s binary and requires the Beads
+  module's Go toolchain (1.26.5 today, against b9s's 1.25).
+- Holding an embedded store open from a long-lived process blocks the user's
+  own `bd` writes; opening per operation is what `bd export` already does
+  from outside the binary.
+- The capability model of the HTTP API (tokens, `wire_revision`,
+  `min_client_wire_revision`) is built for exactly the independent-release
+  relationship b9s has with `bd`. The SDK offers no equivalent.
+
+Reconsider if Beads declares the SDK stable with a compatibility promise
+across minor versions, or ships `bd serve` for embedded workspaces, which
+would remove the CLI transport's reason to exist.
+
+## Risks
+
+- **The journal is opt-in.** Most workspaces will poll until the owner sets
+  `events-journal: true`, and it must be on for every writer, including the
+  `bd serve` child. b9s can start its child with `BD_EVENTS_JOURNAL=1`, but
+  writes from other `bd` processes still need the config key. The health
+  popup says so.
+- **Orphaned children.** `bd serve` has no idle timeout. A `SIGKILL`ed b9s
+  leaves one running. Mitigation: a parent-death signal where the platform
+  has one, a pid file beside b9s's own control registration, and `b9s ctl`
+  reaping children whose b9s is gone.
+- **Lean lists and local search.** Fuzzy search over descriptions moves to
+  the server (`issues.list.search`) or is dropped. Measure the largest
+  workspace's list payload before choosing full rows.
+- **Wire revision drift.** b9s sends `Bd-Wire-Revision` for the revision it
+  was built against. A server below its `min_client_wire_revision` refuses
+  with `wire_revision_unsupported`; b9s shows the mismatch and offers the CLI
+  transport.
+- **Revision on the CLI.** `--if-revision` and the `revision` field in
+  `bd show --json` are recent; an older `bd` has neither. The client treats a
+  missing revision as "no CAS available", never as "matches".
+- **Graph Preview 2 is unreleased.** Phases 5 and 7 are built against preview
+  binaries and gated by capability, so a different final shape costs a
+  parser, not a design.
