@@ -1,11 +1,112 @@
 package ui
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestSearchHistoryRetainsRecentQueries(t *testing.T) {
+	var state QueryState
+	for i := 0; i < maxSearchHistory+5; i++ {
+		state.SetText(fmt.Sprintf("query-%d", i))
+		state.saveHistory()
+		state.saveHistory()
+	}
+	if len(state.history) != maxSearchHistory || state.history[0] != "query-5" {
+		t.Fatalf("history did not bound or deduplicate entries: %v", state.history)
+	}
+}
+
+func TestSearchHistoryIgnoresEmptyQueries(t *testing.T) {
+	var state QueryState
+	for _, query := range []string{"", " ", "\t"} {
+		state.SetText(query)
+		state.saveHistory()
+	}
+	if len(state.history) != 0 {
+		t.Fatalf("empty queries entered history: %q", state.history)
+	}
+}
+
+func TestSearchHistoryEmptyNavigationKeepsDraft(t *testing.T) {
+	var state QueryState
+	state.StartEditing()
+	state.SetText("draft")
+	for _, previous := range []bool{true, false} {
+		state.recallHistory(previous)
+		if state.Text() != "draft" {
+			t.Fatalf("empty history changed draft to %q", state.Text())
+		}
+	}
+}
+
+func TestSearchHistoryEditingRecallKeepsStoredQuery(t *testing.T) {
+	var state QueryState
+	state.SetText("alpha")
+	state.saveHistory()
+	state.StartEditing()
+	state.SetText("draft")
+	state.recallHistory(true)
+	state.Append('β')
+	state.recallHistory(false)
+	if state.Text() != "draft" {
+		t.Fatalf("draft = %q", state.Text())
+	}
+	state.recallHistory(true)
+	if state.Text() != "alpha" {
+		t.Fatalf("editing recall changed stored query: %q", state.Text())
+	}
+}
+
+func TestSearchHistoryPersistenceIsProjectLocal(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	var state QueryState
+	state.useHistoryFile(first)
+	state.SetText("alpha")
+	state.saveHistory()
+	state.SetText("alpha")
+	state.saveHistory()
+	state.SetText("beta")
+	state.saveHistory()
+
+	var reopened QueryState
+	reopened.useHistoryFile(first)
+	if !reflect.DeepEqual(reopened.history, []string{"alpha", "beta"}) {
+		t.Fatalf("reopened history = %q", reopened.history)
+	}
+	reopened.useHistoryFile(second)
+	if len(reopened.history) != 0 {
+		t.Fatalf("history leaked to another project: %q", reopened.history)
+	}
+	reopened.useHistoryFile(first)
+	reopened.StartEditing()
+	reopened.recallHistory(true)
+	if reopened.Text() != "beta" {
+		t.Fatalf("return to first project recalled %q", reopened.Text())
+	}
+}
+
+func TestSearchHistoryCorruptFileKeepsSearchUsable(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "search-history.json"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var state QueryState
+	state.useHistoryFile(dir)
+	state.StartEditing()
+	state.SetText("draft")
+	state.recallHistory(true)
+	if state.Text() != "draft" || len(state.history) != 0 {
+		t.Fatalf("corrupt history changed search: %+v", state)
+	}
+}
 
 func TestIssueQueryPlainTextMatchesIDAndTitle(t *testing.T) {
 	issue := model.Issue{ID: "bd-sxgr", Title: "Live refresh support"}

@@ -91,7 +91,7 @@ Each paragraph names the key to press and links to the [user guide](docs/USER_GU
 
 **Follow the agents.** b9s checks the Dolt database hash every 500 ms, so changes from `bd` or another agent appear by themselves, uncommitted ones included. `F` moves the cursor to whatever changed last. JSONL files reload when they change on disk. [Live reload](docs/USER_GUIDE.md#live-reload).
 
-**Query, do not scroll.** `/` searches as you type. Plain words match IDs, titles and labels, and predicates narrow by field: `status:open label:backend`, `type:bug !assignee:andre`. `Tab` completes names, values and labels from the loaded issues. `--filter` starts b9s with a query, which suits shell scripts and tmux bindings. [Search](docs/USER_GUIDE.md#search).
+**Query, do not scroll.** `/` searches as you type. Plain words match IDs, titles and labels, and predicates narrow by field: `status:open label:backend`, `type:bug !assignee:andre`. `Tab` completes names, values and labels from the loaded issues. While editing, `Up` and `Down` recall submitted queries and restore your draft after the newest query. `--filter` starts b9s with a query, which suits shell scripts and tmux bindings. [Search](docs/USER_GUIDE.md#search).
 
 **Work the board.** `b` groups the issues into status columns, one swimlane per epic, with the epic's completion, open P0 and P1 count and last change in a rail on the left. `h` and `l` change the column, `Tab` folds a lane, `z` folds a column into a rail, and `s` regroups by priority or type. [Board view](docs/USER_GUIDE.md#board-view).
 

@@ -1,14 +1,129 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestSearchHistoryKeepsSelectionVisible(t *testing.T) {
+	for _, key := range []tea.KeyType{tea.KeyUp, tea.KeyDown} {
+		t.Run(tea.KeyMsg{Type: key}.String(), func(t *testing.T) {
+			m := NewModel(searchViewportIssues(80, -1), "")
+			m.focused = focusTree
+			m.tree.SetSize(100, 16)
+			m.queryState.SetText("Ordinary")
+			m.queryState.saveHistory()
+			m.queryState.StartEditing()
+			m.queryState.SetText("title:Ordinary")
+			if key == tea.KeyDown {
+				m.queryState.recallHistory(true)
+			}
+			m.setQueryText(m.queryState.Text())
+			selectedID := m.tree.flatList[len(m.tree.flatList)-1].Issue.ID
+			m.tree.SelectByID(selectedID)
+			m.tree.ensureCursorVisible()
+
+			updated, _ := m.Update(tea.KeyMsg{Type: key})
+			m = updated.(Model)
+
+			if got := m.tree.GetSelectedID(); got != selectedID {
+				t.Fatalf("selected issue = %q, want %q", got, selectedID)
+			}
+			start, end := m.tree.visibleRange()
+			if m.tree.cursor < start || m.tree.cursor >= end {
+				t.Fatalf("selected cursor %d outside visible rows [%d,%d)", m.tree.cursor, start, end)
+			}
+		})
+	}
+}
+
+func TestSearchHistoryCheckoutWithoutJSONLPersists(t *testing.T) {
+	for _, source := range []datasource.SourceType{datasource.SourceTypeDolt, datasource.SourceTypeSQLite} {
+		t.Run(string(source), func(t *testing.T) {
+			checkout := t.TempDir()
+			beadsDir, _ := projectBeadsDir(checkout)
+			if err := os.Mkdir(beadsDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			open := func() Model {
+				m := newSearchFilterModel(t, "").WithSourceType(source)
+				m.activeProjectPath = checkout
+				return m
+			}
+			m := typeKeys(open(), "/", "alpha")
+			if m.beadsPath != "" {
+				t.Fatal("test requires a checkout with no JSONL path")
+			}
+			_, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+			reopened := typeKeys(open(), "/")
+			updated, _ := reopened.Update(tea.KeyMsg{Type: tea.KeyUp})
+			reopened = updated.(Model)
+			if got := reopened.queryState.Text(); got != "alpha" {
+				t.Fatalf("restart recalled %q, want alpha", got)
+			}
+			if _, err := os.Stat(filepath.Join(beadsDir, "search-history.json")); err != nil {
+				t.Fatalf("checkout history file: %v", err)
+			}
+		})
+	}
+}
+
+func TestSearchHistoryKeys(t *testing.T) {
+	m := newSearchFilterModel(t, "")
+	key := func(k tea.KeyType) {
+		t.Helper()
+		updated, _ := m.Update(tea.KeyMsg{Type: k})
+		m = updated.(Model)
+	}
+	for _, query := range []string{"title:", "label:"} {
+		m = typeKeys(m, "/", query)
+		key(tea.KeyEnter)
+		key(tea.KeyEsc)
+	}
+	m = typeKeys(m, "/", "status:")
+	m.tree.SelectByID("bv-3")
+	for _, step := range []struct {
+		key  tea.KeyType
+		want string
+	}{
+		{tea.KeyUp, "label:"},
+		{tea.KeyUp, "title:"},
+		{tea.KeyUp, "title:"},
+		{tea.KeyDown, "label:"},
+		{tea.KeyDown, "status:"},
+		{tea.KeyDown, "status:"},
+	} {
+		key(step.key)
+		if got := m.queryState.Text(); got != step.want {
+			t.Fatalf("key %v: query = %q, want %q", step.key, got, step.want)
+		}
+		if got := m.tree.GetSelectedID(); got != "bv-3" {
+			t.Fatalf("history key moved selection to %q", got)
+		}
+	}
+}
+
+func TestSearchHistoryEscapeDoesNotSubmitQuery(t *testing.T) {
+	m := newSearchFilterModel(t, "")
+	m = typeKeys(m, "/", "alpha")
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m = updated.(Model)
+	m = typeKeys(m, "/", "draft")
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	m = updated.(Model)
+	if got := m.queryState.Text(); got != "draft" {
+		t.Fatalf("Escape submitted canceled query: %q", got)
+	}
+}
 
 func TestSlashStartsSharedQueryEditingInEveryView(t *testing.T) {
 	tests := []struct {

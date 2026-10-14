@@ -168,6 +168,7 @@ Press `/` to query the loaded issues. The query field appears only while you typ
 |------|--------|
 | `Enter` | Hide the field and keep the query |
 | `/` | Edit the query again |
+| `Up`, `Down` while editing | Recall the previous or next submitted query. Down past the newest restores your draft |
 | `Esc` | Clear the query |
 | `Tab` | Complete a field name, a value, a label or a word from the loaded issues |
 | `n`, `N` | Go to the next or previous match |
@@ -175,6 +176,10 @@ Press `/` to query the loaded issues. The query field appears only while you typ
 | `&` | Occur: show only the matches. Press again to show the tree |
 
 `/` filters, as it does in a k9s table: issues without a hit leave the view. `Ctrl-F` makes the same query find, as `/` does in a k9s YAML view: every issue stays, `n` and `N` step through the hits and unfold the branch around each one. The mode lasts until you press `Ctrl-F` again, also through `Esc` and new queries. Status and type keys write into the query, so in find mode they mark issues instead of hiding the rest. `&` is the occur key from `less`. See [ADR 0057](adr/0057-find-with-ctrl-f-and-occur-on-ampersand.md).
+
+History keeps the latest 100 nonempty queries submitted with `Enter`, without consecutive repeats.
+Each checkout saves its history in `.beads/search-history.json` for later sessions.
+Without a checkout, history lasts for the current session. `Esc` discards a query without adding it to history.
 
 ### Plain words
 

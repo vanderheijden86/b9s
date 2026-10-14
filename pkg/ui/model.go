@@ -5641,12 +5641,23 @@ func (m *Model) filterSelectedTreeBranch() {
 }
 
 func (m Model) handleQueryKey(msg tea.KeyMsg) Model {
+	beadsDir, _ := projectBeadsDir(m.activeProjectPath)
+	m.queryState.useHistoryFile(beadsDir)
 	switch msg.String() {
 	case "esc":
 		m.queryState.Clear()
 		m.setQueryText("")
 	case "enter":
+		m.queryState.saveHistory()
 		m.queryState.Accept()
+	case "up", "down":
+		selectedID := m.tree.GetSelectedID()
+		m.queryState.recallHistory(msg.String() == "up")
+		m.setQueryText(m.queryState.Text())
+		if m.tree.SelectByID(selectedID) {
+			m.tree.ensureCursorVisible()
+			m.syncTreeToDetail()
+		}
 	case "backspace":
 		m.queryState.Backspace()
 		m.setQueryText(m.queryState.Text())

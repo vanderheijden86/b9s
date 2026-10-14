@@ -1,9 +1,13 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/vanderheijden86/b9s/pkg/debug"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
@@ -273,6 +277,11 @@ type QueryState struct {
 	text  string
 	query IssueQuery
 	find  bool
+
+	history       []string
+	historyCursor int
+	historyDraft  string
+	historyFile   string
 }
 
 // ToggleFind switches the query between filtering and finding.
@@ -293,8 +302,12 @@ func (s QueryState) FilterQuery() IssueQuery {
 	return s.query
 }
 
+const maxSearchHistory = 100
+
 func (s *QueryState) StartEditing() {
 	s.mode = QueryEditing
+	s.historyCursor = len(s.history)
+	s.historyDraft = ""
 }
 
 func (s *QueryState) Accept() {
@@ -343,6 +356,83 @@ func (s QueryState) Query() IssueQuery {
 // mode it keeps every issue.
 func (s QueryState) Matches(issue model.Issue) bool {
 	return s.FilterQuery().Matches(issue)
+}
+
+func (s *QueryState) recallHistory(previous bool) {
+	if previous {
+		if s.historyCursor == 0 {
+			return
+		}
+		if s.historyCursor == len(s.history) {
+			s.historyDraft = s.text
+		}
+		s.historyCursor--
+	} else {
+		if s.historyCursor == len(s.history) {
+			return
+		}
+		s.historyCursor++
+	}
+	if s.historyCursor == len(s.history) {
+		s.SetText(s.historyDraft)
+	} else {
+		s.SetText(s.history[s.historyCursor])
+	}
+}
+
+func (s *QueryState) appendHistory(text string) {
+	if strings.TrimSpace(text) == "" || len(s.history) > 0 && s.history[len(s.history)-1] == text {
+		return
+	}
+	s.history = append(s.history, text)
+	if len(s.history) > maxSearchHistory {
+		s.history = s.history[len(s.history)-maxSearchHistory:]
+	}
+}
+
+func (s *QueryState) useHistoryFile(beadsDir string) {
+	path := ""
+	if beadsDir != "" {
+		path = filepath.Join(beadsDir, "search-history.json")
+	}
+	if s.historyFile == path {
+		return
+	}
+	s.historyFile = path
+	s.history = nil
+	s.historyDraft = ""
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			var entries []string
+			if err := json.Unmarshal(data, &entries); err == nil {
+				for _, entry := range entries {
+					s.appendHistory(entry)
+				}
+			} else {
+				debug.Log("loading search history: %v", err)
+			}
+		} else if !os.IsNotExist(err) {
+			debug.Log("loading search history: %v", err)
+		}
+	}
+	s.historyCursor = len(s.history)
+}
+
+func (s *QueryState) saveHistory() {
+	s.appendHistory(s.text)
+	s.historyCursor = len(s.history)
+	s.historyDraft = ""
+	if s.historyFile == "" {
+		return
+	}
+	data, err := json.Marshal(s.history)
+	if err == nil {
+		err = os.WriteFile(s.historyFile, data, 0600)
+	}
+	if err != nil {
+		debug.Log("saving search history: %v", err)
+	}
 }
 
 // WithInitialQuery applies the canonical issue query before the TUI starts.

@@ -7,9 +7,49 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestSearchHistoryE2E(t *testing.T) {
+	tempDir := t.TempDir()
+	writeTreeFixture(t, tempDir, makeLabelSearchFixture(t))
+	var historyStart atomic.Int64
+	out, err := runTreeTUI(t, tempDir, 3500, []keyStep{
+		k("/"), k("alpha"), k("\r"), k("\x1b"),
+		k("/"), k("beta"), k("\r"), k("\x1b"),
+		k("/"), k("draft"),
+		ka(150*time.Millisecond, func() {}, &historyStart),
+		k("\x1b[A"), k("\x1b[A"), k("\x1b[B"), k("\x1b[B"),
+	})
+	if err != nil {
+		t.Fatalf("history TUI failed: %v\n%s", err, out)
+	}
+	start := historyStart.Load()
+	if start <= 0 || start >= int64(len(out)) {
+		t.Fatalf("missing history output boundary: %d / %d", start, len(out))
+	}
+	frames := string(out[start:])
+	for _, query := range []string{"beta", "alpha", "beta", "draft"} {
+		want := "/ " + query + "█"
+		index := strings.Index(frames, want)
+		if index < 0 {
+			t.Fatalf("missing recalled field %q\n%s", want, frames)
+		}
+		frames = frames[index+len(want):]
+	}
+
+	// The second process uses the same checkout with no submitted query.
+	reopened, err := runTreeTUI(t, tempDir, 1500, []keyStep{k("/"), k("\x1b[A")})
+	if err != nil {
+		t.Fatalf("reopened history TUI failed: %v\n%s", err, reopened)
+	}
+	if !strings.Contains(string(reopened), "/ beta█") {
+		t.Fatalf("history did not survive a restart\n%s", reopened)
+	}
+	fmt.Println("=== SEARCH HISTORY DONE pass=1 fail=0 ===")
+}
 
 // makeLabelSearchFixture builds a fixture where the "bug" label is the most used
 // one, so it is reachable as label number 1 in the picker (labels are numbered by
