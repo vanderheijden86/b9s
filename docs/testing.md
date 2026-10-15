@@ -38,7 +38,7 @@ The E2E suite runs its PTY tests one after another and takes about seven minutes
 | End-to-end | `tests/e2e/` | The `script` command and a terminal |
 | bd contract | `pkg/web/bd_contract_test.go` | The `bd` command on `PATH` |
 | Browser | `web/tests/*.spec.ts` | Node, `npx playwright install chromium webkit firefox` |
-| Shell | `tests/preview_contract_test.sh`, `tests/mobile_*_e2e.sh` | A deployed preview, see [preview-contract.md](preview-contract.md) |
+| Shell | `tests/preview_contract_test.sh` | A deployed preview, see [preview-contract.md](preview-contract.md) |
 
 Unit tests in `pkg/ui` build a `Model` with fixture issues and send it key messages. Accessors such as `TreeSelectedID()` and `TreeNodeCount()` in `pkg/ui/model.go` expose the state a test needs without rendering.
 
