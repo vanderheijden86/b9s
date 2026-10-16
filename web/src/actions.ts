@@ -6,7 +6,7 @@ import * as api from "./api";
 import type { ProjectEntry, WriteRequest, WriteResult } from "./api.gen";
 import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type Item } from "./data";
 import { boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, siblings, treeList } from "./render";
-import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveBoardFolded, saveChips, stOf, type Sheet, type SortKey } from "./state";
+import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveBoardFolded, saveChips, stOf, typeTerms, type Sheet, type SortKey } from "./state";
 import { syncSoon } from "./nav";
 import { $, $opt, copyText, esc, fmtDate, haptic, split, store } from "./util";
 
@@ -271,6 +271,16 @@ function remember(v: string): void {
 }
 
 export function chipTap(k: string): void {
+  if (k.startsWith("type:")) {
+    const types = typeTerms();
+    const clear = types.length === 1 && types[0] === k;
+    const terms = S.text.split(/\s+/).filter(token => token && !/^!?type:/i.test(token));
+    if (!clear) terms.push(k);
+    setText(terms.join(" "));
+    if (S.view === "search") $<HTMLInputElement>("#sIn").value = S.text;
+    render();
+    return;
+  }
   if (k === "all") { S.st.clear(); S.ready = false; }
   else if (k === "ready") S.ready = !S.ready;
   else if (S.st.has(k)) S.st.delete(k); else S.st.add(k);

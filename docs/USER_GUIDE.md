@@ -779,7 +779,9 @@ The database password never reaches the browser. The server reads the store and 
 | Graph | The chains of blockers and blocked issues around one issue, with parent, children and discovered-from |
 | More | Projects, health, the write log, identity, pairing, board and tree options |
 
-The chips under the header are the status filters and the Ready filter from the TUI, with counts. The ● dot turns red when the live connection or the data source has a problem, and a banner then says the list shows the last snapshot.
+The chips under the header are the status filters and the Ready filter from the TUI, with counts. The type chips, Epic, Feature, Task, Bug and Chore, set `type:<name>` in the shared query. Tap another type to replace the type terms, including negated terms, while keeping other query terms. Tap the sole selected type again to clear it. Typed queries select the same chips, and the query survives a reload. Scroll the chip row sideways on a phone to reach every filter.
+
+The ● dot turns red when the live connection or the data source has a problem, and a banner then says the list shows the last snapshot.
 
 ### Gestures
 

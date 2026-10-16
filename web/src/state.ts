@@ -169,6 +169,11 @@ export function queryString(): string {
   return parts.join(" ");
 }
 
+/** Type chips derive from the shared query so typed predicates and stored queries select the same chips. */
+export function typeTerms(): string[] {
+  return S.text.toLowerCase().split(/\s+/).filter(token => /^!?type:/.test(token));
+}
+
 export interface TreeRow { i?: Item; d: number; dim?: boolean; hasKids?: boolean; folded?: boolean; hdr?: string; n?: number; key?: string }
 
 export function treeRows(): { rows: TreeRow[]; matchCount: number } {

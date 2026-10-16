@@ -5,7 +5,7 @@
 import * as api from "./api";
 import type { Issue } from "./api.gen";
 import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, openBlockers, pool, progress, projectOf, shortId, type Item } from "./data";
-import { DEFAULT_CHIPS, PC, S, SORTS, chipRowVisible, laneHeight, matches, nextLaneHeight, queryString, stOf, textMatches, treeRows, tyOf, type LaneHeight, type TreeRow } from "./state";
+import { DEFAULT_CHIPS, PC, S, SORTS, chipRowVisible, laneHeight, matches, nextLaneHeight, queryString, stOf, textMatches, treeRows, tyOf, typeTerms, type LaneHeight, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
 import { renderMermaidBlocks } from "./mermaid";
 import { renderMemory, renderMemoryDetail } from "./memory";
@@ -118,7 +118,7 @@ function renderHeader(): void {
 }
 
 /**
- * renderChips draws the status filter. On the tree a chip counts every issue
+ * renderChips draws the status and type filters. On the tree a status chip counts every issue
  * with that status; on the board it counts cards, with the board's own filter
  * (boardCard), so the Open chip and the Open box header agree.
  */
@@ -140,6 +140,11 @@ function renderChips(): void {
     + chip("C", "closed", "Closed", "var(--muted)", S.st.has("closed"), cnt("closed"))
     + chip("r", "ready", "Ready", "var(--priority)", S.ready, counted.filter(isReady).length)
     + chip("a", "all", "All", "var(--dim)", S.st.size === 0 && !S.ready, null);
+  h += `<span class="sep"></span>`;
+  const types = typeTerms();
+  for (const name of ["epic", "feature", "task", "bug", "chore"]) {
+    h += chip(`Show ${name} issues`, `type:${name}`, name[0].toUpperCase() + name.slice(1), tyOf(name)[1], types.includes(`type:${name}`), null);
+  }
   h += `<span class="sep"></span>`;
   if (S.text.trim()) {
     const err = S.qres && S.qres.text === S.text && S.qres.error;

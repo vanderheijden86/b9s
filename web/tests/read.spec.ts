@@ -150,6 +150,121 @@ test.describe("reading", () => {
   });
 });
 
+test.describe("type chips", () => {
+  test.use({ fixture: { issues: [
+    ...SAMPLE,
+    { id: "t-feature", title: "New feature", type: "feature" },
+    { id: "t-bug", title: "Open bug", type: "bug" },
+  ] } });
+
+  for (const [type, ids] of [
+    ["epic", ["t-epic"]],
+    ["feature", ["t-feature"]],
+    ["task", ["t-1", "t-2", "t-3"]],
+    ["bug", ["t-bug"]],
+    ["chore", ["t-5"]],
+  ] as const) {
+    test(`${type} toggles its query term and matching rows`, async ({ page, project }, testInfo) => {
+      const errors: string[] = [];
+      page.on("pageerror", error => errors.push(error.message));
+      page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
+      await open(page, project);
+      const chip = page.locator(`[data-chip="type:${type}"]`);
+      await chip.click();
+      await expect(chip).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("#chips .q")).toHaveText(`⌕ type:${type}`);
+      await expect.poll(() => page.locator("#treeRows .row:not(.dim)").evaluateAll(
+        rows => rows.map(row => (row as HTMLElement).dataset.id).sort(),
+      )).toEqual([...ids]);
+      for (const id of ids) await expect(row(page, id).locator(".t")).toBeVisible();
+      await expect(row(page, "t-4")).toHaveCount(0);
+      if (type === "bug") await page.screenshot({ path: testInfo.outputPath("type-chip.png") });
+      await chip.click();
+      await expect(chip).toHaveAttribute("aria-pressed", "false");
+      await expect(page.locator("#chips .q")).toHaveCount(0);
+      await expect(row(page, "t-bug")).toBeVisible();
+      await expect(row(page, "t-feature")).toBeVisible();
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test("selecting another type replaces the previous type", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('[data-chip="type:epic"]').click();
+    await page.locator('[data-chip="type:feature"]').click();
+    await expect(page.locator('[data-chip="type:epic"]')).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("#chips .q")).toHaveText("⌕ type:feature");
+    await expect(row(page, "t-feature")).toBeVisible();
+    await expect(row(page, "t-epic")).toHaveCount(0);
+  });
+
+  test("a type chip synchronizes an open search query", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('[data-chip="type:epic"]').click();
+    await page.locator('#bar [data-view="search"]').click();
+    await page.locator('[data-chip="type:feature"]').click();
+    await expect(page.locator("#sIn")).toHaveValue("type:feature");
+    await expect(page.locator('#sList .row[data-id="t-feature"]')).toBeVisible();
+    await expect(page.locator('#sList .row[data-id="t-epic"]')).toHaveCount(0);
+    await page.locator("#sApply").click();
+    await expect(row(page, "t-feature")).toBeVisible();
+    await expect(row(page, "t-epic")).toHaveCount(0);
+  });
+
+  for (const query of [
+    "status:open type:bug",
+    "status:open TYPE:FEATURE",
+    "status:open type:feature type:bug",
+    "status:open !type:feature",
+    "status:open type:feature !type:bug",
+  ]) {
+    test(`a chip replaces type predicates in ${query}`, async ({ page, project }) => {
+      await open(page, project);
+      await page.locator('#bar [data-view="search"]').click();
+      await page.locator("#sIn").fill(query);
+      await page.locator("#sApply").click();
+      const chip = page.locator('[data-chip="type:feature"]');
+      await expect(chip).toHaveAttribute("aria-pressed", String(/(^|\s)type:feature(\s|$)/i.test(query)));
+      await chip.click();
+      const expected = query === "status:open TYPE:FEATURE" ? "status:open" : "status:open type:feature";
+      await expect(page.locator("#chips .q")).toHaveText(`⌕ ${expected}`);
+      await expect(row(page, "t-feature")).toBeVisible();
+      await expect(row(page, "t-1")).toHaveCount(0);
+      await page.locator('#chips [data-act="search"]').click();
+      await expect(page.locator("#sIn")).toHaveValue(expected);
+    });
+  }
+
+  test("the query and selected type survive reload and clear together", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('[data-chip="closed"]').click();
+    await page.locator('[data-chip="type:bug"]').click();
+    await page.reload();
+    await expect(page.locator("body")).toHaveAttribute("data-live", "live");
+    await expect(page.locator('[data-chip="type:bug"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-chip="closed"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(row(page, "t-4")).toBeVisible();
+    await expect(row(page, "t-feature")).toHaveCount(0);
+    await page.locator('[data-act="clearq"]').click();
+    await expect(page.locator('[data-chip="type:bug"]')).toHaveAttribute("aria-pressed", "false");
+    await expect(row(page, "t-feature")).toBeVisible();
+    await page.reload();
+    await expect(page.locator('[data-chip="type:bug"]')).toHaveAttribute("aria-pressed", "false");
+    await expect(row(page, "t-feature")).toBeVisible();
+  });
+
+  test("the server startup query selects its type chip", async ({ page, project }) => {
+    await page.route("**/api/session", async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, json: { ...await response.json(), query: "type:chore" } });
+    });
+    await open(page, project);
+    await expect(page.locator('[data-chip="type:chore"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(row(page, "t-5")).toBeVisible();
+    await expect(row(page, "t-bug")).toHaveCount(0);
+  });
+});
+
 test.describe("harness", () => {
   // A parallel test can take the port between the probe and the bind. The
   // server already on it answers health checks, so readiness must come from
