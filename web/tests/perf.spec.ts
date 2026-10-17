@@ -121,14 +121,17 @@ async function firstOpenLeaf(page: Page, exclude: string[] = []): Promise<string
       continue;
     }
     try {
-      await row(page, id).scrollIntoViewIfNeeded({ timeout: 1000 });
+      // The row's intrinsic placeholder can precede layout of its contents.
+      const content = row(page, id).locator(".rc");
+      await content.evaluate(el => el.scrollIntoView({ block: "nearest", inline: "nearest" }));
+      await expect(content).toBeInViewport({ ratio: 1, timeout: 1000 });
       return id;
     } catch {
       await page.waitForTimeout(20);
     }
   }
   expect(lastID).toBeTruthy();
-  throw new Error(`open leaf ${lastID} did not stay attached`);
+  throw new Error(`open leaf ${lastID} did not become fully visible`);
 }
 
 async function waitForFixtureStatus(project: { issues(): Record<string, unknown>[] }, id: string, status: string, timeoutMs: number): Promise<void> {
