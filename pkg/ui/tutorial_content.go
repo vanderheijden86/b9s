@@ -223,7 +223,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Section{Title: "Priority Levels"},
 				KeyTable{Bindings: []KeyBinding{
 					{Key: "P0", Desc: "Critical/emergency - drop everything"},
-					{Key: "P1", Desc: "High priority - this sprint/week"},
+					{Key: "P1", Desc: "High priority - this week"},
 					{Key: "P2", Desc: "Medium - this cycle/month"},
 					{Key: "P3", Desc: "Low - when you have time"},
 					{Key: "P4", Desc: "Backlog - someday/maybe"},
@@ -599,7 +599,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "Use Cases"},
 				Bullet{Items: []string{
-					"Sprint review: What did we accomplish?",
+					"Weekly review: What did we accomplish?",
 					"Debugging: When did this get blocked?",
 					"Onboarding: What was the project like 6mo ago?",
 				}},
@@ -693,7 +693,6 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "Built-in Recipes"},
 				KeyTable{Bindings: []KeyBinding{
-					{Key: "Sprint Ready", Desc: "Actionable work for this sprint"},
 					{Key: "Quick Wins", Desc: "Low-effort items"},
 					{Key: "Blocked Review", Desc: "Stuck items needing attention"},
 					{Key: "High Impact", Desc: "Top PageRank scores"},
@@ -737,7 +736,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 		},
 
 		// =============================================================
-		// WORKFLOWS (5 pages)
+		// WORKFLOWS (4 pages)
 		// =============================================================
 		{
 			ID:      "workflow-new-feature",
@@ -800,34 +799,6 @@ func structuredTutorialPages() []StructuredTutorialPage {
 			},
 		},
 		{
-			ID:      "workflow-sprint-planning",
-			Title:   "Sprint Planning Session",
-			Section: "Workflows",
-			Elements: []TutorialElement{
-				Section{Title: "Data-driven sprint decisions"},
-				Spacer{Lines: 1},
-				Section{Title: "Step 1: Review Health"},
-				Paragraph{Text: "Press i for Insights panel. Check open/blocked counts and top blockers."},
-				Spacer{Lines: 1},
-				Section{Title: "Step 2: Identify Dependencies"},
-				Paragraph{Text: "Use bv --robot-graph to inspect dependency structure:"},
-				Bullet{Items: []string{
-					"Tall chains = sequential (can't parallelize)",
-					"Wide clusters = parallel opportunities",
-					"Bottlenecks = single nodes blocking many",
-				}},
-				Spacer{Lines: 1},
-				Section{Title: "Step 3: Filter to Ready Work"},
-				Paragraph{Text: "Press r to show only unblocked issues."},
-				Spacer{Lines: 1},
-				Section{Title: "Step 4: Assign & Label"},
-				Paragraph{Text: "For each sprint candidate: L -> 'sprint-42'"},
-				Spacer{Lines: 1},
-				Section{Title: "Step 5: Export Plan"},
-				Paragraph{Text: "Press x to export filtered list to markdown."},
-			},
-		},
-		{
 			ID:      "workflow-onboarding",
 			Title:   "Onboarding New Team Members",
 			Section: "Workflows",
@@ -865,7 +836,7 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Section{Title: "Share with non-terminal users"},
 				Spacer{Lines: 1},
 				Section{Title: "Generate Dashboard"},
-				Code{Text: "bv --pages  # Interactive wizard\n# Or direct:\nbv --export-pages ./dashboard --pages-title \"Sprint 42\""},
+				Code{Text: "bv --pages  # Interactive wizard\n# Or direct:\nbv --export-pages ./dashboard --pages-title \"Project Status\""},
 				Spacer{Lines: 1},
 				Section{Title: "Output Includes"},
 				Bullet{Items: []string{

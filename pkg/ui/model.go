@@ -673,9 +673,6 @@ type Model struct {
 	activeRepos      map[string]bool // Which repos are currently shown (nil = all)
 	workspaceSummary string          // Summary text for footer (e.g., "3 repos")
 
-	// Sprint view (bv-161)
-	sprints []model.Sprint
-
 	// Tutorial integration (bv-8y31)
 	showTutorial  bool
 	tutorialModel TutorialModel
