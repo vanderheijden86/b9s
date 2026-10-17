@@ -152,6 +152,22 @@ prepared copies. `TestMemoryReadResearchConcurrentWriter` additionally requires
 
 ## Browser tests
 
+`npm --prefix web run test:api` runs bounded client regression tests against the
+bundled API module. They cover stale CSRF recovery for writes and open-project,
+idempotency keys, unrelated refusals, failed refreshes and the shared single
+replay limit for CSRF and network failures. `test:e2e` runs them before Playwright.
+
+`pairing.spec.ts` also keeps a browser page and an unsent comment open while it
+stops a real header-auth server process. It starts a replacement on the same
+port with a renewed secret, then sends the comment through the UI. The test
+requires a CSRF 403, one session refresh, a successful replay with the same body,
+one `bd` call and the same page marker. The `restart-proof` attachment records
+the process IDs and requests. Run it with:
+
+```bash
+npm --prefix web run test:e2e -- tests/pairing.spec.ts -g 'an open page writes' --project pixel --project iphone --workers 1
+```
+
 `web/tests/memory.spec.ts` covers the Memory constellation across Chromium, WebKit and Firefox, with bounded browser operations and local fixture projects. It checks shapes, directed Links, selection, neighbourhood highlighting, the authoritative problem filter, graph caching, errors and responsive layout.
 
 For the real embedded preview, start the server through the isolated launcher, then run the read-only probe in another terminal:
