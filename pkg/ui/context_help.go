@@ -105,7 +105,7 @@ const contextHelpList = `## List View
   K         Close issue (confirm, C to comment)
   Del       Delete issue (confirm)
   t/T       Time-travel
-  U         Update b9s`
+  :update   Update b9s`
 
 const contextHelpTree = `## Tree View
 
@@ -113,8 +113,8 @@ const contextHelpTree = `## Tree View
   j/k       Move up/down
   h         Collapse or go to parent
   l         Expand or go to child
-  ^b/^f     Page back/fwd (←/→ PgUp/PgDn; ^u/^d half)
-  Enter/Spc Toggle expand/collapse
+  PgUp/PgDn Page back/fwd (^u/^d half)
+  Enter     Open detail
   Home/End  Jump to top/bottom (G also bottom)
   p         Jump to parent node
 
@@ -122,22 +122,21 @@ const contextHelpTree = `## Tree View
   X/Z       Expand/collapse all · ^w Wide · v Wrap titles
   Tab       Cycle node visibility
   S-Tab     Cycle global visibility
-  1-9       Expand to level N
   d  Detail panel   ◈N  Open blockers (g inspects)
 
 **Filtering**
   o/c/r/a   Open/closed/ready/all
-  s         Sort popup · C  Columns · /  Search
+  s         Sort popup · |  Columns · /  Search
   f         Toggle highlighted branch
   n/N       Next/prev match · ^F  Filter/find
 
 **Modes**
   &  Occur   x  XRay
   t  List    F  Follow
-  b/B  Bookmark/cycle   m/M  Mark
+  Alt-b/B   Bookmark/cycle   Space  Mark
 
 **Actions**
-  K  Close   Del  Delete   g  Graph   U  Update b9s`
+  K  Close   Del  Delete   g  Graph   :update  Update b9s`
 
 const contextHelpGraph = `## Dependency Graph
 
@@ -158,7 +157,7 @@ const contextHelpBoard = `## Board View
 
 **Navigation**
   h/l  j/k  Column, issue (epics: the first column)
-  1-4  H/L  Jump to column, first/last
+  Home/End  First/last card
   gg/G      Top/bottom of column
 
 **Filter, search, group**
@@ -200,7 +199,6 @@ const contextHelpDetail = `## Detail View
 **Actions**
   c         Copy full ticket Markdown
   s         Reverse comment order (newest first by default)
-  O         Open in editor
 
 **Info Shown**
 • Full description (markdown)
@@ -249,16 +247,10 @@ const contextHelpLabelPicker = `## Label Picker
 **Navigation**
   j/k       Move selection
   Enter     Apply label
-  Space     Toggle multi-select
   Esc       Cancel
 
 **Search**
-  /         Filter labels
-
-**Actions**
-  n         Create new label
-  d         Delete label
-  e         Edit label`
+  Type text Filter labels`
 
 const contextHelpHelp = `## Help Overlay
 
@@ -297,7 +289,7 @@ const contextHelpGeneric = `## Quick Reference
   ?         Help overlay
   ` + "`" + `         Full tutorial
   Esc       Close/back
-  q         Quit
+  Ctrl-c    Quit
 
 **Navigation**
   j/k       Move up/down

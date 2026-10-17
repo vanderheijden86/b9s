@@ -3,11 +3,9 @@ package ui
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/vanderheijden86/b9s/pkg/config"
-	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 // chdirIntoProjectWithOpenIssue makes the working directory a checkout whose
@@ -52,25 +50,5 @@ func TestHeaderEntrySeedsNoCountsForProjectWithoutCheckout(t *testing.T) {
 		if entry.Project.Name == "remote" && entry.OpenCount != 0 {
 			t.Errorf("remote entry OpenCount = %d; it was seeded from the working directory", entry.OpenCount)
 		}
-	}
-}
-
-// A project read from a Dolt server has no checkout. O must open the selected
-// issue from that project, never the working directory's issues file.
-func TestOpenInEditorWithoutCheckoutOpensSelectedIssue(t *testing.T) {
-	chdirIntoProjectWithOpenIssue(t)
-	t.Setenv("B9S_TEST_MODE", "1")
-	t.Setenv("TMPDIR", t.TempDir())
-	remote := []model.Issue{{ID: "remote-1", Title: "Remote issue", Status: model.StatusOpen, IssueType: model.TypeTask}}
-	m := NewModel(remote, "").WithConfig(config.Config{}, "remote", "")
-
-	m.openInEditor()
-
-	body, err := os.ReadFile(m.OpenedIssueFile())
-	if err != nil {
-		t.Fatalf("status = %q; O wrote no file: %v", m.statusMsg, err)
-	}
-	if !strings.Contains(string(body), "Remote issue") || strings.Contains(string(body), "Working directory issue") {
-		t.Errorf("O opened the wrong content:\n%s", body)
 	}
 }

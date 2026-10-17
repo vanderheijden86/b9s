@@ -141,6 +141,108 @@ func TestDependencyGraphView(t *testing.T) {
 	})
 }
 
+func TestGraphEnterRoutingE2E(t *testing.T) {
+	dir := t.TempDir()
+	writeTreeFixture(t, dir, makeFilterFixture(t))
+	out, err := runTreeTUI(t, dir, 2500, []keyStep{
+		kd("g", 200*time.Millisecond),
+		kd("\x1b[H", 200*time.Millisecond),
+		kd("j", 200*time.Millisecond),
+		kd("\r", 200*time.Millisecond),
+	})
+	if err != nil {
+		t.Fatalf("TUI failed: %v\n%s", err, out)
+	}
+	frame := plainFinalFrame(out)
+	if !strings.Contains(frame, "Closed Epic") {
+		t.Fatalf("graph Enter must open epic-f2 selected after Home,j:\n%s", frame)
+	}
+}
+
+func TestGraphLabelPickerReturnRoutingE2E(t *testing.T) {
+	for _, dismiss := range []string{"\x1b", "\r"} {
+		for _, action := range []string{"\r", "E"} {
+			t.Run(fmt.Sprintf("dismiss=%q/action=%q", dismiss, action), func(t *testing.T) {
+				dir := t.TempDir()
+				issues := makeFilterFixture(t)
+				for i := range issues {
+					issues[i].Labels = []string{"keep"}
+				}
+				writeTreeFixture(t, dir, issues)
+				out, err := runTreeTUI(t, dir, 3500, []keyStep{
+					kd("g", 200*time.Millisecond), kd("\x1b[H", 200*time.Millisecond),
+					kd("j", 200*time.Millisecond), kd("l", 200*time.Millisecond),
+					kd(dismiss, 200*time.Millisecond), kd(action, 200*time.Millisecond),
+				})
+				if err != nil {
+					t.Fatalf("TUI failed: %v\n%s", err, out)
+				}
+				frame := plainFinalFrame(out)
+				if strings.Contains(frame, "Dependency Graph") || strings.Contains(frame, "Filter by Label") {
+					t.Fatalf("action must leave graph and label picker:\n%s", frame)
+				}
+				if action == "\r" && !strings.Contains(frame, "Closed Epic") {
+					t.Fatalf("Enter must open selected epic-f2 after label picker:\n%s", frame)
+				}
+				if action == "E" && !strings.Contains(frame, "g:deps") {
+					t.Fatalf("E must return to tree after label picker:\n%s", frame)
+				}
+			})
+		}
+	}
+}
+
+func TestDetailActionsAfterExcludedLabelE2E(t *testing.T) {
+	for _, view := range []string{"tree", "board"} {
+		for _, action := range []string{"e", "K", "\x1b[3~"} {
+			t.Run(fmt.Sprintf("%s/%q", view, action), func(t *testing.T) {
+				dir := t.TempDir()
+				writeTreeFixture(t, dir, []treeFixtureIssue{
+					{ID: "target", Title: "Displayed target", Status: "open", Priority: 0, IssueType: "task", CreatedAt: time.Now().Add(time.Hour).Format(time.RFC3339)},
+					{ID: "kept", Title: "Replacement row", Status: "open", Priority: 2, IssueType: "task", CreatedAt: time.Now().Format(time.RFC3339), Labels: []string{"keep"}},
+				})
+				keys := []keyStep{}
+				if view == "board" {
+					keys = append(keys, kd("b", 200*time.Millisecond))
+				}
+				keys = append(keys, kd("\x1b[H", 200*time.Millisecond), kd("\r", 200*time.Millisecond),
+					kd("l", 200*time.Millisecond), kd("\r", 200*time.Millisecond), kd(action, 200*time.Millisecond))
+				out, err := runTreeTUI(t, dir, 3500, keys)
+				if err != nil {
+					t.Fatalf("TUI failed: %v\n%s", err, out)
+				}
+				frame := plainFinalFrame(out)
+				want := "Close issue?"
+				switch action {
+				case "e":
+					want = "Edit Issue: target"
+				case "\x1b[3~":
+					want = "Delete issue?"
+				}
+				if !strings.Contains(frame, want) || !strings.Contains(frame, "Displayed target") {
+					t.Fatalf("action must target displayed issue after keep excludes it, want %q:\n%s", want, frame)
+				}
+			})
+		}
+	}
+}
+
+func TestTreeBookmarkRoutingE2E(t *testing.T) {
+	dir := t.TempDir()
+	writeTreeFixture(t, dir, makeFilterFixture(t))
+	out, err := runTreeTUI(t, dir, 1800, []keyStep{kd("\x1bb", 200*time.Millisecond)})
+	if err != nil {
+		t.Fatalf("TUI failed: %v\n%s", err, out)
+	}
+	state, err := os.ReadFile(filepath.Join(dir, ".beads", "tree-state.json"))
+	if err != nil || !strings.Contains(string(state), `"bookmarks"`) {
+		t.Fatalf("Alt+b must persist a bookmark: state=%s err=%v", state, err)
+	}
+	if strings.Contains(plainFinalFrame(out), "BOARD") {
+		t.Fatal("Alt+b must leave the tree visible")
+	}
+}
+
 func TestTreeViewShowsComputedBlockerBadge(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeFilterFixture(t))

@@ -115,6 +115,21 @@ func (m *ProjectPickerModel) SetSize(w, h int) {
 	m.height = h
 }
 
+// SetEntries refreshes project data without interrupting keyboard input.
+func (m *ProjectPickerModel) SetEntries(entries []ProjectEntry) {
+	selected := m.SelectedEntry()
+	m.entries = entries
+	m.applyFilter()
+	if selected != nil {
+		for cursor, index := range m.filtered {
+			if m.entries[index].Project == selected.Project {
+				m.cursor = cursor
+				break
+			}
+		}
+	}
+}
+
 // Update handles keyboard input for the project picker.
 func (m ProjectPickerModel) Update(msg tea.Msg) (ProjectPickerModel, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -136,6 +151,7 @@ func (m ProjectPickerModel) updateNormal(msg tea.KeyMsg) (ProjectPickerModel, te
 		m.scrollOffset = 0
 		m.filterInput.SetValue("")
 		m.filterInput.Focus()
+		m.applyFilter()
 	case "j", "down":
 		// Scroll the visible window down through the project list (bd-i8t3).
 		maxScroll := len(m.filtered) - m.visibleProjectCapacity()

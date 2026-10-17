@@ -68,3 +68,19 @@ func TestTreeFindModeKeepsEveryRowE2E(t *testing.T) {
 
 	fmt.Printf("=== TREE FIND MODE DONE pass=%d fail=%d ===\n", pass, fail)
 }
+
+func TestTreeOccurEscapeRoutingE2E(t *testing.T) {
+	dir := t.TempDir()
+	writeTreeFixture(t, dir, makeLabelSearchFixture(t))
+	out, err := runTreeTUI(t, dir, 2800, searchAlphaKeys(
+		kd("&", 150*time.Millisecond),
+		kd("\x1b", 200*time.Millisecond),
+	))
+	if err != nil {
+		t.Fatalf("TUI failed: %v\n%s", err, out)
+	}
+	frame := plainFinalFrame(out)
+	if strings.Contains(frame, "OCCUR[") || strings.Contains(frame, "Quit b9s?") || !strings.Contains(frame, "alpha") {
+		t.Fatalf("Esc must leave occur and retain the query:\n%s", frame)
+	}
+}

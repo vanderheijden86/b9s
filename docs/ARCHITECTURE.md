@@ -156,7 +156,9 @@ Every TUI instance serves `internal/control` on a unix socket in a 0700 state di
 3. Global keys: project digits, `L` and `A` pickers, `b` and `g` for the board and the graph, `e`, `K`, `Delete`, `Ctrl-N`, `Ctrl-E`, `?`, `:` and `/`.
 4. The focused pane: `handleTreeKeys`, `handleBoardKeys`, `handleGraphKeys` or the detail pane.
 
-A key that a global handler consumes never reaches a pane. `b` is the board everywhere, so the tree's bookmark on `b` is unreachable. Keys that fall into this trap are tracked in Beads rather than documented as features.
+A key that a global handler consumes never reaches a pane. `b` opens the board and `Alt-b` bookmarks a tree row. Board `g` and `0` reach board navigation before global view and project shortcuts. Active label and project filters own their text input before global shortcuts run. Table-driven routing tests exercise the keys advertised by help through `Model.Update`.
+
+The label picker records the focus of the pane that opened it and restores that focus on cancellation or acceptance. Applying a label from detail keeps the displayed issue, even if the filtered tree or board selects another row. Issue actions resolve the displayed issue while detail has focus. Tree marks apply only outside detail.
 
 The tree is always present. The board and the graph are overlays that `Esc` closes, and the detail pane sits beside the tree when the terminal is at least 100 columns wide, and over it otherwise. Each view owns its cursor and scroll state, and nothing else.
 

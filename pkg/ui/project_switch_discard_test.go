@@ -220,7 +220,7 @@ func TestOverlayKeysRefusedWhileProjectOpening(t *testing.T) {
 		isOpen func(m Model) bool
 	}{
 		{"edit", runeKey("e"), nil, func(m Model) bool { return m.showEditModal }},
-		{"edit-list-mode", runeKey("e"), func(m Model) Model { m.focused = focusList; return m }, func(m Model) bool { return m.showEditModal }},
+		{"edit-list-mode", runeKey("e"), func(m Model) Model { m.tree.ToggleFlatMode(); return m }, func(m Model) bool { return m.showEditModal }},
 		{"create", tea.KeyMsg{Type: tea.KeyCtrlN}, nil, func(m Model) bool { return m.showEditModal }},
 		{"attach", runeKey("I"), nil, func(m Model) bool { return m.showAttachAddModal }},
 		{"status", runeKey("S"), nil, func(m Model) bool { return m.showStatusPicker }},
@@ -391,17 +391,11 @@ func TestOverlayWriteRefusedOnGenerationMismatch(t *testing.T) {
 	})
 }
 
-// TestListModeEditSavesAfterProjectSwitch is the positive counterpart to the
-// refusal tests above: a list-mode "e" opened with no switch in flight must
-// stamp the current (non-zero) generation and let its save through, proving
-// handleListKeys' opener is not left behind by a future change to the other
-// two edit-modal openers (bd-l66t regression: handleListKeys used to open
-// the modal directly and skip the stamp, so every list-mode edit after any
-// project switch was refused as stale even though nothing was).
+// Flat layout edits must retain the current project generation.
 func TestListModeEditSavesAfterProjectSwitch(t *testing.T) {
 	m, _, _, recordPath := switchModelWithFakeBd(t)
 	m.projectGeneration = 3
-	m.focused = focusList
+	m.tree.ToggleFlatMode()
 
 	m, _ = pressBulkKey(t, m, runeKey("e"))
 	if !m.showEditModal {
