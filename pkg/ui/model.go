@@ -1251,6 +1251,8 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	m.tree.SetSort(sortFromConfig(cfg.UI.Sort))
 	m.activeProjectName = projectName
 	m.activeProjectPath = projectPath
+	beadsDir, _ := projectBeadsDir(projectPath)
+	m = m.WithBeadsDir(beadsDir)
 	m.activeProjectServer, _ = config.RecentFromCheckout(projectName, projectPath)
 	checkout, _ := NewCheckout(projectPath)
 	m.issueWriter.SetCheckout(checkout)
@@ -1263,6 +1265,18 @@ func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Mo
 	entries := m.buildProjectEntries()
 	m.projectPicker = NewProjectPicker(entries, m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)
+	return m
+}
+
+// WithBeadsDir chooses the active project's persistence directory independently
+// of its JSONL export. Call it after WithConfig for a resolved BEADS_DIR override.
+func (m Model) WithBeadsDir(dir string) Model {
+	if m.tree.beadsDir != dir {
+		// Expansion from another directory must not override the saved folds.
+		m.tree.Build(nil)
+		m.tree.SetBeadsDir(dir)
+		m.tree.Build(m.issues)
+	}
 	return m
 }
 

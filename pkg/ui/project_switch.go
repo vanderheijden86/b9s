@@ -360,6 +360,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	m.tree.ApplyFilter("all")
 	m.tree.ClearSearch()
 	m.tree.Build(nil)
+	m.tree.SetBeadsDir(beadsDir)
 	// Start new background worker or watcher for the new project
 	bw, bwErr := NewBackgroundWorker(WorkerConfig{BeadsPath: newPath})
 	if bwErr == nil && !m.sourceType.IsDolt() {

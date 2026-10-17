@@ -208,6 +208,8 @@ The header lists recent projects from `config.yaml`, not folders discovered by s
 
 A project switch is a small state machine in `project_switch.go`. While a project is `Opening`, the current one stays on screen and usable, and it is replaced only once the new one has loaded. A deadline of ten seconds bounds the wait, with the Dolt connect timeout of five seconds inside it. A failure keeps the old project and shows the `OpenReason`, a closed set that the CLI and the TUI share.
 
+Tree expansion, bookmarks and layout persist in the active project's `.beads/tree-state.json`, independently of whether a JSONL export exists. Startup passes the resolved beads directory, including `BEADS_DIR` overrides. A successful switch selects the destination's directory and clears the previous project's bookmarks and layout before loading destination state. A database opened without a checkout has no persistence directory and cannot write the previous project's state file.
+
 ## People and identities
 
 Each issue carries a fixed Creator (`created_by`, with the git email in `owner`) and a changing Assignee. The readers fill `CreatedBy` and `Owner` in `internal/datasource/creators.go`, and leave them empty on schemas without those columns.

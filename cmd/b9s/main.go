@@ -357,6 +357,7 @@ func main() {
 		WithDoltFailure(doltFailure).
 		WithSourceInfo(sourceInfo).
 		WithConfig(appCfg, projectName, projectPath).
+		WithBeadsDir(beadsDir).
 		WithHotkeys(hotkeys).
 		WithMonthFirst(appCfg.UI.DateOrder.MonthFirst(config.SystemLocale)).
 		WithInitialQuery(*initialFilter).
