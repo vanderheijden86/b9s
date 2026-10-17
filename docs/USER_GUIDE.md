@@ -773,6 +773,8 @@ Behind a login proxy, `b9s web --trust-header X-Forwarded-Email --owner you@exam
 
 `b9s web --projects-root <dir>` lists every Beads checkout directly under `<dir>` in the project sheet, after the recent projects. The recent list holds nine, so a server that should offer more projects than that needs this flag.
 
+Add `--discover-dolt` to discover readable Beads databases on the startup project's Dolt server whenever the project sheet opens. It requires `--projects-root`, where it creates a checkout for each new database. Databases that disappear or deny reads leave the sheet on its next request. A transient discovery failure keeps the last list. Local checkouts keep their existing behavior. The server stays running, so browser sessions keep their CSRF value.
+
 The database password never reaches the browser. The server reads the store and runs `bd`, and the browser only sends requests with its cookie and a CSRF header.
 
 ### Screens

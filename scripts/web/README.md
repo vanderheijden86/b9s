@@ -38,7 +38,17 @@ A deployment runs one such pod per person, for example at
   session hands out.
 - On start, `entrypoint.sh` lists the databases the Dolt user can see, keeps
   those with an `issues` table, and writes a `.beads/metadata.json` per project
-  plus the b9s project list. A database granted later appears after a restart.
+  so the first project can open. It passes `--discover-dolt` with
+  `--projects-root`. Each project-list or project-open request runs
+  `SHOW DATABASES` and probes each candidate's `issues` table in the existing
+  b9s process. A newly readable database gets a checkout and appears in the
+  sheet. A missing database, denied read or missing `issues` table removes its
+  row, including the active row, without deleting its checkout or recent entry.
+  An outage or other transient query failure keeps the last discovered list
+  until a later request succeeds. Discovery has a ten-second deadline.
+  A checkout creation failure affects only that database. Other additions and
+  removals proceed, and an existing local checkout keeps its contents.
+  The server and its CSRF secret stay in place.
 - `BEADS_DIR` is left unset, so each write runs `bd` in the open project's
   folder rather than always in the first one.
 - The password reaches b9s and bd through the environment, never a command line.

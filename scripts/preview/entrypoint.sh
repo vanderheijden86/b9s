@@ -102,4 +102,4 @@ tmux new-session -d -s b9s -c "/data/projects/$current_database" /usr/local/bin/
 cd "/data/projects/$current_database"
 exec /usr/local/bin/b9s web --listen 0.0.0.0:7681 \
   --trust-header "$PREVIEW_VIEWER_HEADER" --owner "$PREVIEW_VIEWER" \
-  --projects-root /data/projects
+  --projects-root /data/projects --discover-dolt

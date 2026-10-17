@@ -107,6 +107,15 @@ namespace, so an edited environment variable cannot make one image claim to be
 another commit. `preview-verify` reads `/__preview` through the Service and
 compares all three identity fields with the requested preview.
 
+The web process runs with `--projects-root /data/projects --discover-dolt`.
+Project-list and project-open requests refresh readable Beads databases through
+the same SELECT-only account. Discovery creates only local checkout metadata,
+adds newly readable projects, and drops projects whose database disappears or
+denies reads. Transient discovery failures retain the last list. It requires
+no pod restart, so the running server retains its CSRF value. Discovery does
+not grant database access or enable shared Dolt writes. The identity endpoint
+continues to report the image's baked commit, task and namespace.
+
 ## Terminal UI access
 
 The TUI starts in a detached tmux session named `b9s` and opens the all-projects
