@@ -44,6 +44,83 @@ const catalogQueryTimeout = 10 * time.Second
 
 const trustedDoltEndpointsEnv = "B9S_TRUSTED_DOLT_ENDPOINTS"
 
+func readableProjectDatabases(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, "SHOW DATABASES")
+	if err != nil {
+		return nil, fmt.Errorf("listing Dolt databases: %w", err)
+	}
+	var candidates []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("reading Dolt database name: %w", err)
+		}
+		if IsProjectDatabaseName(name) {
+			candidates = append(candidates, name)
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, fmt.Errorf("listing Dolt databases: %w", err)
+	}
+
+	var databases []string
+	for _, name := range candidates {
+		probe, err := db.QueryContext(ctx, "SELECT 1 FROM `"+name+"`.issues LIMIT 0")
+		if err == nil {
+			for probe.Next() {
+			}
+			err = probe.Err()
+			probe.Close()
+		}
+		if err == nil {
+			databases = append(databases, name)
+			continue
+		}
+		var mysqlErr *mysql.MySQLError
+		if ClassifyConnError(err) == ReachDenied || ClassifyConnError(err) == ReachNoIssuesTable ||
+			(errors.As(err, &mysqlErr) && mysqlErr.Number == mysqlErrUnknownDatabase) {
+			continue
+		}
+		// An incomplete scan must not turn a network outage into project loss.
+		return nil, fmt.Errorf("probing Dolt database %s: %w", name, err)
+	}
+	return databases, nil
+}
+
+// IsProjectDatabaseName restricts generated checkout names and SQL identifiers
+// to the hosted image's database naming contract.
+func IsProjectDatabaseName(name string) bool {
+	switch name {
+	case "", "information_schema", "mysql", "performance_schema", "sys", "dolt_cluster":
+		return false
+	}
+	for _, ch := range name {
+		if ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9' || ch == '_' || ch == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+// ReadableProjectDatabases probes the startup user's current grants without
+// selecting a database, so loss of the startup database cannot block discovery.
+func ReadableProjectDatabases(ctx context.Context, source DataSource) ([]string, error) {
+	dsn, err := serverDSN(source)
+	if err != nil {
+		return nil, err
+	}
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("opening Dolt discovery connection: %w", err)
+	}
+	defer db.Close()
+	return readableProjectDatabases(ctx, db)
+}
+
 func (r Reachability) String() string {
 	switch r {
 	case ReachReachable:

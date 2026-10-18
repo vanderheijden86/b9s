@@ -40,8 +40,8 @@ mkdir -p /www
 printf '{"commit":"%s"}\n' "$(sed -n '1p' /app/.commit-sha)" > /www/__version
 httpd -f -p 7682 -h /www &
 
-# The home is rebuilt on every start, so a database the user gained or lost
-# since the last start shows up or disappears.
+# Startup checkouts let b9s open its first project before serving requests.
+# Runtime discovery reconciles the project sheet without replacing the server.
 home=/data/home
 rm -rf "$home"
 mkdir -p "$home/.config/b9s" "$home/projects"
@@ -95,4 +95,4 @@ unset EDITOR VISUAL
 cd "$home/projects/$first"
 exec /usr/local/bin/b9s web --listen 0.0.0.0:7681 \
   --trust-header "$B9S_WEB_AUTH_HEADER" --owner "$B9S_WEB_OWNER_EMAIL" \
-  --projects-root "$home/projects"
+  --projects-root "$home/projects" --discover-dolt
