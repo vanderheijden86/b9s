@@ -105,6 +105,7 @@ The tree is always present. Every issue sits under its parent, and an issue with
 | `f` | Show only the top-level branch of the issue under the cursor. Each further press steps one parent down the path to that issue (epic, child epic, feature), skipping an issue without children, and the press after the lowest one shows the whole tree again |
 | `x` | Show only the subtree of the issue under the cursor. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
+| `Alt-B`, `B` | Bookmark the selected issue, or cycle through bookmarks. `b` opens the board |
 
 Ready means open with no open blocker. Filters compose with each other and with the [search query](#search).
 
@@ -142,6 +143,10 @@ The sort fields are priority, created, updated, title, status, type, deps, pager
 | `v`, `:wrap` | Wrap long titles onto extra lines, or truncate them to one line again |
 | `R`, `I` | List the issue's [attachments](#attachments) and open one, attach files |
 | `:update` | Open the update confirmation when a newer b9s release is available |
+
+`Esc` closes a tree popup first, then leaves occur or XRay, then clears the
+query and remaining filters. With no active mode or filter, it asks to quit.
+The flat layout stays on `t` (ADR 0027). Backtick opens the tutorial.
 
 ## Detail pane
 
@@ -257,6 +262,11 @@ Every change goes through the `bd` CLI, so b9s and `bd` always agree on what is 
 The edit form has the fields Title, Status, Description, Priority, Type, Assignee, Labels, Defer until and Notes, and shows the Creator in its title. `Tab` and `Shift-Tab` move between fields, and `Enter` starts a new line in Description and Notes. `→` at the end of the typed text completes an assignee or label. `Ctrl-E` opens Description or Notes in `$EDITOR` and reads the text back when the editor exits. `Esc` cancels. `Ctrl-S` saves from any field, and `Enter` saves from every field except Description and Notes. The line under the form title names these keys. A value in Defer until, such as `tomorrow` or `+3d`, runs `bd defer`.
 
 The view reloads by itself once `bd` has written, because b9s watches the data source. The all-projects view (`0`) is read-only.
+
+The label picker returns to the pane that opened it, on `Esc` or `Enter`.
+In the detail pane, applying a label keeps the displayed issue, even when that label excludes it from the tree or board.
+`e`, `K` and `Delete` target the displayed issue.
+Tree marks apply when the tree has focus.
 
 ## Attachments
 
@@ -394,6 +404,10 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `e` | Hide or show empty columns |
 | `y` | Copy the issue ID |
 | `Esc` | Back to the tree |
+
+In the board, `g` waits for the second `g`. Return to the tree before pressing
+`g` to open the dependency graph. Digits `1`-`9` keep their header shortcuts.
+The removed inspector has no `Ctrl-J` or `Ctrl-K` bindings (ADR 0017).
 
 ## Dependency graph
 
@@ -601,6 +615,14 @@ Each b9s registers in `~/.local/state/b9s/instances` (or `$XDG_STATE_HOME/b9s/in
 | `PostToolUse` on `Bash` | `bd update <id> --claim` or `--status in_progress` | `branch --if-known <id>` |
 
 ## Projects
+
+`P` shows the project header and starts its filter. Type to narrow the projects,
+use `Up` and `Down` to choose, then `Enter` to open. `Esc` cancels.
+Reopening the filter with `P` starts with an empty query and all projects.
+The filter owns every key while it is open, including letters and digits that
+otherwise switch views or projects.
+Count and issue refreshes preserve the filter and its selection.
+Close Help, tutorial or database health before using `P`.
 
 The header lists the project b9s started in and up to nine projects you opened recently, on the keys `1`-`9`. A project b9s has not seen yet is added as `1`, and a project already in the list keeps its number, so switching never renumbers the header. A project is identified by its Dolt host and database when it has one, so a checkout and an entry opened through `:project` on the same database share one row. `0` combines the issues of every Dolt project in the list into one read-only view. b9s does not scan folders for projects. A recent project whose server or tunnel is down stays in the header and shows `✗` in place of its issue counts. A recent project whose database refuses the startup project's Dolt user stays out of the header for that session. It stays in `recent_projects` and comes back when b9s starts as a user with access to that database. The counts come from the checkout's configured source, never from a JSONL export beside a Dolt checkout. See [ADR 0008](adr/0008-list-recent-projects-instead-of-discovered-folders.md) and [ADR 0015](adr/0015-hide-recent-projects-the-startup-user-cannot-read.md).
 
@@ -866,7 +888,6 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
 | `/`, `n` `N`, `Ctrl-F`, `&` | Search, next or previous match, filter or find, only the matches without their ancestors |
-| `O` | Open the selected issue as a read-only Markdown file in `$VISUAL`, else `$EDITOR`, else the system default editor, in every view. b9s waits while a terminal editor runs |
 | `f`, `x` | Show only the cursor's branch or subtree; again undoes it |
 | `s`, `\|`, `v`, `F` | Sort, columns, wrap titles, follow live changes |
 | `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |

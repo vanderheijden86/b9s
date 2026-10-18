@@ -377,7 +377,7 @@ func TestContextHelpFilterModeComplete(t *testing.T) {
 func TestContextHelpGenericFallback(t *testing.T) {
 	generic := contextHelpGeneric
 
-	universalShortcuts := []string{"?", "Esc", "q", "j/k"}
+	universalShortcuts := []string{"?", "Esc", "Ctrl-c", "j/k"}
 	for _, shortcut := range universalShortcuts {
 		if !strings.Contains(generic, shortcut) {
 			t.Errorf("Generic context help should include universal shortcut %q", shortcut)

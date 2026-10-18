@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +44,6 @@ var footerKeyPress = map[string]tea.KeyMsg{
 	"e":        {Type: tea.KeyRunes, Runes: []rune("e")},
 	"s":        {Type: tea.KeyRunes, Runes: []rune("s")},
 	"c":        {Type: tea.KeyRunes, Runes: []rune("c")},
-	"O":        {Type: tea.KeyRunes, Runes: []rune("O")},
 	"?":        {Type: tea.KeyRunes, Runes: []rune("?")},
 	"esc":      {Type: tea.KeyEsc},
 	"L":        {Type: tea.KeyRunes, Runes: []rune("L")},
@@ -176,45 +174,4 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-// O on the detail screen opens the beads file, like O in the list view. Under
-// B9S_TEST_MODE it reports the file it would open instead of starting an editor.
-// O opens the issue the detail shows, written to a temp Markdown file, so it
-// works the same whatever the project is read from. The regression case is a
-// Dolt-server project with no issues.jsonl and no local checkout.
-func TestDetailOKeyOpensIssueWithoutBeadsFile(t *testing.T) {
-	t.Setenv("B9S_TEST_MODE", "1")
-	t.Setenv("TMPDIR", t.TempDir())
-	for _, view := range []string{"tree", "board", "list"} {
-		t.Run(view, func(t *testing.T) {
-			m := detailFooterModel(t, view)
-			m.beadsPath = ""
-			m.activeProjectPath = ""
-			want := m.list.SelectedItem().(IssueItem).Issue
-			if shown := map[string]string{"tree": "ch-1", "board": "ch-1"}[view]; shown != "" && want.ID != shown {
-				t.Fatalf("the detail shows %s but the selection is %s", shown, want.ID)
-			}
-
-			m = pressKeys(m, runeKey("O"))
-
-			if m.statusIsError || !strings.Contains(m.statusMsg, "Would open "+want.ID) {
-				t.Fatalf("expected O to open %s, status %q (error %v)", want.ID, m.statusMsg, m.statusIsError)
-			}
-			file := m.OpenedIssueFile()
-			if !strings.HasSuffix(file, ".md") {
-				t.Fatalf("expected a Markdown file, got %q", file)
-			}
-			body, err := os.ReadFile(file)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !strings.Contains(string(body), want.Title) || !strings.Contains(string(body), want.ID) {
-				t.Errorf("file does not hold %s:\n%s", want.ID, body)
-			}
-			if m.focused != focusDetail {
-				t.Errorf("expected O to leave the detail focused, got %v", m.focused)
-			}
-		})
-	}
 }

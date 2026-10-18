@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -115,7 +113,6 @@ const (
 	SortCreatedDesc                 // By creation date, newest first
 	SortPriority                    // By priority only (ascending)
 	SortUpdated                     // By last update, newest first
-	numSortModes                    // Keep this last - used for cycling
 )
 
 // String returns a human-readable label for the sort mode
@@ -582,8 +579,9 @@ type Model struct {
 	countClosed  int
 
 	// Label picker (bv-126)
-	showLabelPicker bool
-	labelPicker     LabelPickerModel
+	showLabelPicker        bool
+	labelPicker            LabelPickerModel
+	labelPickerReturnFocus focus
 
 	// Status picker for quick status changes (bd-a83)
 	showStatusPicker bool
@@ -661,11 +659,6 @@ type Model struct {
 	statusHyperlink    string
 	statusHyperlinkFor string
 	clipboardWrite     func(string) error
-
-	// openedIssueFile is the Markdown file O last wrote for the editor.
-	openedIssueFile string
-	// pendingCmd is a command a key handler queued for Update to return.
-	pendingCmd tea.Cmd
 
 	// Workspace mode state
 	workspaceMode    bool            // True when viewing multiple repos
@@ -1205,6 +1198,7 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		countBlocked:     cBlocked,
 		countClosed:      cClosed,
 		labelPicker:      labelPicker,
+		projectPicker:    NewProjectPicker(nil, theme),
 		statusMsg:        initialStatus,
 		statusIsError:    initialStatusErr,
 		clipboardWrite:   clipboard.WriteAll,
@@ -1415,8 +1409,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		next = m.handleShowKnownBranch(msg.IDs)
 	case showBranchDeadlineMsg:
 		next = m.expireShowBranch(msg.ID)
-	case editorFinishedMsg:
-		next = m.handleEditorFinished(msg)
 	default:
 		next, cmd = m.update(msg)
 	}
@@ -1429,12 +1421,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if read := updated.requestMemoryGraph(); read != nil {
 			cmd = tea.Batch(cmd, read)
 			updated.updateViewportContent()
-		}
-		// Key handlers return only a Model, so a command one of them needs to
-		// run (the editor O starts) waits on the model until here.
-		if updated.pendingCmd != nil {
-			cmd = tea.Batch(cmd, updated.pendingCmd)
-			updated.pendingCmd = nil
 		}
 		next = updated
 	}
@@ -1565,7 +1551,6 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-	var listKeyConsumed bool // set by handleListKeys when key was handled (bd-kob)
 
 	switch msg := msg.(type) {
 	case UpdateMsg:
@@ -1760,7 +1745,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			m.projectReach[key] = reach
 		}
 		entries := m.buildProjectEntries()
-		m.projectPicker = NewProjectPicker(entries, m.theme)
+		m.projectPicker.SetEntries(entries)
 		m.projectPicker.SetSourceInfo(m.sourceInfo)
 		m.projectPicker.SetSize(m.width, m.height)
 		return m, pickerRefreshTickCmd()
@@ -1966,7 +1951,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		// Rebuild picker entries with updated counts (bd-ey3)
 		if len(m.allProjects) > 0 {
 			pickerEntries := m.buildProjectEntries()
-			m.projectPicker = NewProjectPicker(pickerEntries, m.theme)
+			m.projectPicker.SetEntries(pickerEntries)
 			m.projectPicker.SetSourceInfo(m.sourceInfo)
 			m.projectPicker.SetSize(m.width, m.height)
 		}
@@ -2551,6 +2536,24 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		}
 
+		// Pickers own text and navigation before any global shortcut.
+		if m.showLabelPicker || m.projectPicker.Filtering() {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			if m.showLabelPicker {
+				return m.handleLabelPickerKeys(msg), nil
+			}
+			m.projectPicker, cmd = m.projectPicker.Update(msg)
+			return m, cmd
+		}
+		if m.focused == focusTree && (m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen()) {
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			return m.handleTreeKeys(msg), nil
+		}
+
 		// An open free-text search bar owns every key (bd-oe1y).
 		// The tree/board search handlers live in handleTreeKeys/handleBoardKeys,
 		// which run *after* the global shortcut block below. Global shortcuts are
@@ -2599,9 +2602,11 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			next, cmd := m.executeCommand(hotkey.command)
 			return next, tea.Batch(append(cmds, cmd)...)
 		}
-		// An open tree popup sits above the filtered tree, so its Escape
-		// closes the popup (handled below) and leaves the filter in place.
+		// A view's narrowing mode is left before the shared query is cleared.
 		treePopupOpen := m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen()
+		if msg.String() == "esc" && m.focused == focusTree && (m.tree.IsOccurMode() || m.tree.IsXRayMode()) {
+			return m.handleTreeKeys(msg), nil
+		}
 		if msg.String() == "esc" && m.queryState.Text() != "" && !treePopupOpen {
 			m.queryState.Clear()
 			m.setQueryText("")
@@ -2683,13 +2688,13 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		// Handle P to switch to project picker mode (bd-j764)
-		if msg.String() == "P" && m.list.FilterState() != list.Filtering {
-			if m.pickerMode == pickerModeProjects {
-				m.pickerMode = pickerModeProjects // already there, no-op
-			} else {
-				m.pickerMode = pickerModeProjects
-			}
-			return m, nil
+		if msg.String() == "P" && m.list.FilterState() != list.Filtering &&
+			!m.showHelp && !m.showTutorial && !m.showDBHealth {
+			m.pickerMode = pickerModeProjects
+			m.pickerVisible = true
+			m.resizeBodyComponents()
+			m.projectPicker, cmd = m.projectPicker.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")})
+			return m, cmd
 		}
 
 		// Handle Shift+D to toggle database health popup (bd-597f)
@@ -2875,6 +2880,11 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		}
 
+		// Board g/gg and 0 address rows, ahead of graph and header shortcuts.
+		if m.focused == focusBoard && (msg.String() == "g" || msg.String() == "0") {
+			return m.handleBoardKeys(msg), nil
+		}
+
 		// 0 key: clear filter (label/assignee mode) or toggle all-projects (project mode)
 		if msg.String() == "0" && m.list.FilterState() != list.Filtering {
 			if m.pickerMode == pickerModeLabels {
@@ -2964,8 +2974,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				// Tree view: first ESC clears tree filter, second exits tree view (bd-kob)
 				if m.treeViewActive || m.focused == focusTree {
 					if m.tree.GetFilter() != "" && m.tree.GetFilter() != "all" {
-						m.tree.ApplyFilter("all")
-						m.syncTreeToDetail()
+						m.clearAllFilters()
 						return m, nil
 					}
 					// Tree view is permanent (bd-8hw.4), don't exit
@@ -2982,7 +2991,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 
 			case "tab":
 				// Tab is always fold (CycleNodeVisibility) — handled by view-specific keys (bd-lt1l)
-				// Falls through to handleTreeKeys / handleBoardKeys / handleListKeys
+				// Falls through to the focused tree or board handler.
 
 			case "\\":
 				if m.isSplitView {
@@ -3228,6 +3237,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				m.labelPicker.Reset()
 				m.labelPicker.SetSize(m.width, m.height-1)
 				m.showLabelPicker = true
+				m.labelPickerReturnFocus = m.focused
 				m.focused = focusLabelPicker
 				return m, nil
 
@@ -3250,28 +3260,9 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			case focusGraph:
 				m = m.handleGraphKeys(msg)
 
-			case focusList:
-				// Handle priority quick-keys (bd-a83) before other list keys
-				// These need access to cmds, so can't be in handleListKeys
-				if !m.list.SettingFilter() && m.list.FilterState() != list.Filtering {
-					switch msg.String() {
-					case "1", "2", "3", "4":
-						if issue := m.getSelectedIssue(); issue != nil {
-							priority := int(msg.String()[0] - '0')
-							cmds = append(cmds, m.issueWriter.SetPriority(issue.ID, priority))
-							listKeyConsumed = true
-						}
-					}
-				}
-				if !listKeyConsumed {
-					m, listKeyConsumed = m.handleListKeys(msg)
-				}
-
 			case focusDetail:
 				if msg.String() == "c" || msg.String() == "C" {
 					m.copyIssueToClipboard()
-				} else if msg.String() == "O" {
-					m.openInEditor()
 				} else if msg.String() == "backspace" {
 					m.detailBackKey()
 				} else if msg.String() == "enter" {
@@ -3356,26 +3347,6 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 
 		m.resizeBodyComponents()
 		m.updateListDelegate()
-	}
-
-	// Update list for navigation, but NOT for WindowSizeMsg
-	// (we handle sizing ourselves to account for header/footer)
-	// Only forward keyboard messages to list when list has focus (bv-hmkz fix)
-	// This prevents j/k keys in detail view from changing list selection
-	// Skip forwarding when handleListKeys already consumed the key (bd-kob fix)
-	// to prevent filter shortcut keys (o/c/r/a etc.) from starting the
-	// built-in fuzzy search, which captures arrow keys and escape.
-	if m.focused == focusList {
-		if _, isWindowSize := msg.(tea.WindowSizeMsg); !isWindowSize && !listKeyConsumed {
-			m.list, cmd = m.list.Update(msg)
-			cmds = append(cmds, cmd)
-		}
-		m.updateListDelegate()
-	}
-
-	// Update viewport if list selection changed in split view
-	if m.isSplitView && m.focused == focusList {
-		m.updateViewportContent()
 	}
 
 	return m, tea.Batch(cmds...)
@@ -3468,8 +3439,6 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 	// Normal key handling (bv-yg39 enhanced)
 	// ═══════════════════════════════════════════════════════════════════════════
 	switch key {
-	case "O":
-		m.openInEditor()
 	// Basic navigation (existing)
 	case "h", "left":
 		m.board.MoveLeft()
@@ -3487,17 +3456,6 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 		m.board.PageDown(m.height / 3)
 	case "ctrl+u", "ctrl+b", "pgup":
 		m.board.PageUp(m.height / 3)
-
-	// Column jumping (bv-yg39)
-	case "1":
-		m.board.JumpToColumn(ColOpen)
-	case "2":
-		m.board.JumpToColumn(ColInProgress)
-	case "3":
-		m.board.JumpToColumn(ColBlocked)
-	case "4":
-		m.board.JumpToColumn(ColClosed)
-	// H/L now used for picker mode (bd-u90z), use home/end for column jumping
 
 	// Vim-style navigation (bv-yg39)
 	case "g":
@@ -3920,8 +3878,7 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 		// Toggle XRay drill-down mode (bd-0rc)
 		m.tree.ToggleXRay()
 		m.syncTreeToDetail()
-	case "b":
-		// Toggle bookmark on current node (bd-k4n)
+	case "alt+b":
 		m.tree.ToggleBookmark()
 	case "B":
 		// Cycle through bookmarked nodes (bd-k4n)
@@ -3930,8 +3887,6 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 	case "F":
 		// Toggle follow mode (bd-c0c)
 		m.tree.ToggleFollowMode()
-	case "O":
-		m.openInEditor()
 	case "&":
 		// Toggle occur mode (bd-sjs.2) - uses current search pattern. & is
 		// less's key for showing only the matching lines.
@@ -3976,8 +3931,6 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 
 func (m Model) handleGraphKeys(msg tea.KeyMsg) Model {
 	switch msg.String() {
-	case "O":
-		m.openInEditor()
 	case "j", "down":
 		m.graph.MoveDown()
 	case "k", "up":
@@ -3991,7 +3944,10 @@ func (m Model) handleGraphKeys(msg tea.KeyMsg) Model {
 	case "ctrl+u", "ctrl+b", "pgup":
 		m.graph.PageUp()
 	case "enter":
-		m.updateViewportContent()
+		if selected := m.graph.SelectedIssue(); selected != nil {
+			m.selectDetailIssue(selected.ID)
+			m.updateViewportContent()
+		}
 		m.focused = focusDetail
 	}
 	return m
@@ -4038,138 +3994,40 @@ func (m Model) handleLabelPickerKeys(msg tea.KeyMsg) Model {
 	switch msg.String() {
 	case "esc":
 		m.showLabelPicker = false
-		m.focused = focusTree
+		m.focused = m.labelPickerReturnFocus
 	case "j", "down", "ctrl+n":
 		m.labelPicker.MoveDown()
 	case "k", "up", "ctrl+p":
 		m.labelPicker.MoveUp()
 	case "enter":
 		if selected := m.labelPicker.SelectedLabel(); selected != "" {
+			detailID := ""
+			if m.labelPickerReturnFocus == focusDetail {
+				if issue := m.detailIssue(); issue != nil {
+					detailID = issue.ID
+				}
+			}
 			m.labelFilter = selected
 			m.pickerMode = pickerModeLabels
 			m.rebuildPickerEntries()
 			m.applyFilter()
 			m.tree.SetLabelFilter(m.labelFilter)
-			m.syncTreeToDetail()
+			if detailID != "" {
+				m.selectDetailIssue(detailID)
+				m.updateViewportContent()
+			} else if m.labelPickerReturnFocus == focusTree {
+				m.syncTreeToDetail()
+			}
 			m.statusMsg = fmt.Sprintf("Filtered by label: %s", selected)
 			m.statusIsError = false
 		}
 		m.showLabelPicker = false
-		m.focused = focusTree
+		m.focused = m.labelPickerReturnFocus
 	default:
 		// Pass other keys to text input for fuzzy search
 		m.labelPicker.UpdateInput(msg)
 	}
 	return m
-}
-
-// handleListKeys handles keyboard input when the list is focused.
-// Returns (model, consumed) where consumed=true means the key was handled
-// and should NOT be forwarded to the bubbles/list component (bd-kob).
-func (m Model) handleListKeys(msg tea.KeyMsg) (Model, bool) {
-	switch msg.String() {
-	case "/":
-		m.queryState.StartEditing()
-		return m, true
-	case "enter":
-		if !m.isSplitView {
-			m.showDetails = true
-			m.focused = focusDetail
-			m.viewport.GotoTop() // Reset scroll position for new issue
-			m.updateViewportContent()
-		}
-		return m, true
-	case "home":
-		m.list.Select(0)
-		return m, true
-	case "G", "end":
-		if len(m.list.Items()) > 0 {
-			m.list.Select(len(m.list.Items()) - 1)
-		}
-		return m, true
-	case "ctrl+d":
-		// Page down
-		itemCount := len(m.list.Items())
-		if itemCount > 0 {
-			currentIdx := m.list.Index()
-			newIdx := currentIdx + m.height/3
-			if newIdx >= itemCount {
-				newIdx = itemCount - 1
-			}
-			m.list.Select(newIdx)
-		}
-		return m, true
-	case "ctrl+u":
-		// Page up
-		if len(m.list.Items()) > 0 {
-			currentIdx := m.list.Index()
-			newIdx := currentIdx - m.height/3
-			if newIdx < 0 {
-				newIdx = 0
-			}
-			m.list.Select(newIdx)
-		}
-		return m, true
-	case "o":
-		m.currentFilter = "open"
-		m.applyFilter()
-		return m, true
-	case "c":
-		m.currentFilter = "closed"
-		m.applyFilter()
-		return m, true
-	case "r":
-		m.currentFilter = "ready"
-		m.applyFilter()
-		return m, true
-	case "a":
-		m.currentFilter = "all"
-		m.applyFilter()
-		return m, true
-	case "C":
-		// Copy selected issue to clipboard
-		m.copyIssueToClipboard()
-		return m, true
-	case "O":
-		m.openInEditor()
-		return m, true
-	case "s":
-		// Cycle sort mode (bv-3ita)
-		m.cycleSortMode()
-		return m, true
-	case "y":
-		// Copy ID to clipboard (consistent with board view - bv-yg39)
-		selectedItem := m.list.SelectedItem()
-		if selectedItem == nil {
-			m.statusMsg = "❌ No issue selected"
-			m.statusIsError = true
-		} else if issueItem, ok := selectedItem.(IssueItem); ok {
-			if err := clipboard.WriteAll(issueItem.Issue.ID); err != nil {
-				m.statusMsg = fmt.Sprintf("❌ Clipboard error: %v", err)
-				m.statusIsError = true
-			} else {
-				m.statusMsg = fmt.Sprintf("📋 Copied %s to clipboard", issueItem.Issue.ID)
-				m.statusIsError = false
-			}
-		}
-		return m, true
-	// Space removed from list view (bd-1of)
-	case "e":
-		// Open edit modal (bd-a83)
-		// Skip if filtering is active
-		if m.list.SettingFilter() || m.list.FilterState() == list.Filtering {
-			return m, false
-		}
-		if m.modalRefusedBySwitch() {
-			return m, true
-		}
-		if issue := m.getSelectedIssue(); issue != nil {
-			m.openEditModal(issue)
-			m.focused = focusEditModal
-		}
-		return m, true
-	}
-	return m, false
 }
 
 // restoreFocusFromHelp returns the appropriate focus based on current view state.
@@ -4955,6 +4813,79 @@ func (m Model) renderTreeSplitView() string {
 	return m.renderSplitPanes(treeStyle, detailStyle, treeInnerWidth, m.tree.View())
 }
 
+func commonKeyHelp() []struct{ key, desc string } {
+	return []struct{ key, desc string }{
+		{"E", "Tree view"}, {"b", "Kanban board"},
+		{"?", "This help"}, {":", "Command prompt"},
+		{"ctrl+e", "Toggle header"}, {"P", "Find project"}, {"`", "Tutorial"},
+		{"esc", "Back / clear / quit"}, {"ctrl+c", "Force quit"},
+		{"K", "Close marked / selected"},
+		{"delete", "Delete marked / selected"},
+		{"ctrl+r", "Force refresh"}, {"f5", "Force refresh"},
+		{"ctrl+n", "Create new issue"},
+	}
+}
+
+// viewKeyHelp is also exercised through Model.Update by the routing guard.
+func viewKeyHelp(view focus) []struct{ key, desc string } {
+	switch view {
+	case focusTree:
+		return []struct{ key, desc string }{
+			{"g", "Dependency graph"}, {"e", "Edit issue"},
+			{"S", "Status of marked / selected"}, {"ctrl+f", "Search: filter or find"},
+			{"j", "Move down"}, {"k", "Move up"},
+			{"h", "Collapse / parent"}, {"l", "Expand / child"},
+			{"home", "First row"}, {"end", "Last row"}, {"G", "Last row"},
+			{"pgdown", "Page down"}, {"pgup", "Page up"},
+			{"ctrl+d", "Half page down"}, {"ctrl+u", "Half page up"},
+			{"enter", "Open detail"}, {"tab", "Fold node"}, {"shift+tab", "Fold tree"},
+			{"t", "Flat list / tree"}, {"v", "Wrap long titles"},
+			{"s", "Sort popup"}, {"|", "Choose columns"}, {"T", "Times: age / date"},
+			{"/", "Search tree"}, {"f", "Highlighted branch"},
+			{"n", "Next match"}, {"N", "Previous match"},
+			{"o", "Open issues"}, {"C", "Closed issues"}, {"r", "Ready issues"}, {"a", "All issues"},
+			{"x", "XRay drill-down"}, {"&", "Occur: only the hits"},
+			{"alt+b", "Bookmark row"}, {"B", "Next bookmark"},
+			{"space", "Mark / unmark"}, {"m", "Mark, next row"}, {"u", "Unmark, next row"},
+			{"backspace", "Unmark row above"}, {"V", "Mark range"}, {"U", "Clear marks"},
+			{"d", "Toggle detail"}, {"p", "Parent"}, {"X", "Expand all"}, {"Z", "Collapse all"},
+			{"F", "Follow changes"}, {"ctrl+w", "Wide columns"},
+		}
+	case focusBoard:
+		return []struct{ key, desc string }{
+			{"ctrl+f", "Search: filter or find"},
+			{"h", "Previous column"}, {"l", "Next column"},
+			{"j", "Next card"}, {"k", "Previous card"},
+			{"g", "gg: first card"}, {"0", "First card"}, {"home", "First card"},
+			{"G", "Last card"}, {"$", "Last card"}, {"end", "Last card"},
+			{"ctrl+d", "Page down"}, {"ctrl+u", "Page up"},
+			{"pgdown", "Page down"}, {"pgup", "Page up"},
+			{"enter", "Open detail"}, {"/", "Search board"},
+			{"n", "Next match"}, {"N", "Previous match"},
+			{"o", "Toggle open"}, {"i", "Toggle in progress"}, {"C", "Toggle closed"},
+			{"c", "Show closed column"}, {"r", "Ready issues"},
+			{"s", "Group columns"}, {"e", "Empty columns"},
+			{"z", "Fold column"}, {"Z", "Unfold columns"},
+			{"v", "Epic rail / rows"}, {"{", "Previous epic"}, {"}", "Next epic"},
+			{"f", "Highlighted branch"}, {"tab", "Fold epic"}, {"shift+tab", "Fold all epics"},
+		}
+	case focusGraph:
+		return []struct{ key, desc string }{
+			{"g", "Return to tree"}, {"ctrl+f", "Page down"},
+			{"j", "Next issue"}, {"k", "Previous issue"},
+			{"home", "First issue"}, {"end", "Last issue"}, {"G", "Last issue"},
+			{"ctrl+d", "Page down"}, {"ctrl+u", "Page up"},
+			{"pgdown", "Page down"}, {"pgup", "Page up"},
+			{"enter", "Open selected issue"},
+		}
+	case focusDetail:
+		return []struct{ key, desc string }{{"e", "Edit issue"}}
+	case focusHelp:
+		return []struct{ key, desc string }{{"ctrl+s", "Search this help"}}
+	}
+	return nil
+}
+
 func (m *Model) renderHelpOverlay() string {
 	t := m.theme
 
@@ -5028,136 +4959,6 @@ func (m *Model) renderHelpOverlay() string {
 		return panelStyle.Render(content.String())
 	}
 
-	// Define all sections
-	navSection := []struct{ key, desc string }{
-		{"j / ↓", "Move down"},
-		{"k / ↑", "Move up"},
-		{"Home/End", "Go to first / last"},
-		{"Ctrl+f/PgDn", "Page down"},
-		{"Ctrl+b/PgUp", "Page up"},
-		{"Ctrl+d/u", "Half page down / up"},
-		{"Tab", "Switch focus"},
-		{"Enter", "View details"},
-		{"Esc", "Back / close"},
-	}
-
-	viewsSection := []struct{ key, desc string }{
-		{"E", "Tree view"},
-		{"b", "Kanban board"},
-		{"g", "Dependency graph"},
-		{"i", "Insights"},
-		{"h", "History view"},
-		{"a", "Actionable"},
-		{"f", "Flow matrix"},
-		{"[", "Label dashboard"},
-		{"]", "Attention view"},
-	}
-
-	globalSection := []struct{ key, desc string }{
-		{"?", "This help"},
-		{"Ctrl+S", "Search this help"},
-		{":", "Command prompt"},
-		{":mouse", "Mouse: select text / scroll"},
-		{"Ctrl+e", "Toggle header"},
-		{";", "Shortcuts bar"},
-		{"!", "Alerts panel"},
-		{"'", "Recipes"},
-		{"w", "Repo picker"},
-		{"Esc", "Back (2x quit)"},
-		{"Ctrl+c", "Force quit"},
-	}
-
-	filterSection := []struct{ key, desc string }{
-		{"/", "Fuzzy search"},
-		{"H", "Hybrid ranking"},
-		{"Alt+H", "Hybrid preset"},
-		{"o", "Open issues"},
-		{"C", "Closed issues"},
-		{"r", "Ready (unblocked)"},
-		{"l", "Filter by label"},
-		{"L/A", "Label, assignee quick filter"},
-		{"F1-F4", "Show only epics, features, tasks, bugs"},
-		{"s", "Cycle sort"},
-		{"S", "Triage sort"},
-	}
-
-	insightsSection := []struct{ key, desc string }{
-		{"h/l/Tab", "Switch panels"},
-		{"j/k", "Navigate items"},
-		{"e", "Explanations"},
-		{"x", "Calc details"},
-		{"m", "Toggle heatmap"},
-		{"Enter", "Jump to issue"},
-	}
-
-	historySection := []struct{ key, desc string }{
-		{"j/k", "Navigate beads"},
-		{"J/K", "Navigate commits"},
-		{"Tab", "Toggle focus"},
-		{"y", "Copy SHA"},
-		{"c", "Confidence filter"},
-	}
-
-	actionsSection := []struct{ key, desc string }{
-		{"p", "Priority hints"},
-		{"K", "Close marked / selected"},
-		{"S", "Status of marked / selected"},
-		{"Delete", "Delete marked / selected"},
-		{"Ctrl+R", "Force refresh"},
-		{"F5", "Force refresh"},
-		{"x", "Export markdown"},
-		{"C", "Copy to clipboard"},
-		{"O", "Open issue in editor"},
-	}
-
-	treeSection := []struct{ key, desc string }{
-		{"j/k/↕", "Move up/down"},
-		{"h", "Collapse / parent"},
-		{"l", "Expand / child"},
-		{"←/→", "Page back/forward"},
-		{"Enter", "Open detail"},
-		{"Home/End/G", "Top / bottom"},
-		{"Ctrl+w", "Toggle wide columns"},
-		{"p", "Jump to parent"},
-		{"X/Z", "Expand / collapse all"},
-		{"t", "Flat list / tree"},
-		{"v", "Wrap long titles"},
-		{"Tab", "Cycle node visibility"},
-		{"1-9", "Expand to level N"},
-		{"d", "Toggle detail panel"},
-		{"n/p", "Detail: next/prev sibling"},
-		{"1-9", "Detail: open numbered child"},
-		{"c", "Copy ID and title"},
-		{"o/C/r/a", "Filter: open/closed/ready/all"},
-		{"s", "Sort popup"},
-		{"|", "Choose columns"},
-		{"T", "Times: age / date"},
-		{"/", "Search tree"},
-		{"f", "Toggle highlighted branch"},
-		{"n/N", "Next/prev match"},
-		{"O", "Open issue in editor"},
-		{"&", "Occur: only the hits"},
-		{"ctrl+f", "Search: filter or find"},
-		{"x", "XRay drill-down"},
-		{"b/B", "Bookmark / cycle"},
-		{"Space", "Mark / unmark"},
-		{"m / u", "Mark / unmark, next row"},
-		{"Bksp", "Unmark row above"},
-		{"^Space/V", "Mark range"},
-		{"^\\ / U", "Clear marks"},
-		{"M", "Memory wires, \\ detail"},
-		{"S", "Change status"},
-	}
-
-	editingSection := []struct{ key, desc string }{
-		{"e", "Edit issue"},
-		{"Space", "Status picker (list)"},
-		{"1-4", "Set priority (list)"},
-		{"Ctrl+n", "Create new issue"},
-		{"Ctrl+s / Enter", "Save (in editor; Enter not in text areas)"},
-		{"Esc", "Cancel (in editor)"},
-	}
-
 	statusSection := []struct{ key, desc string }{
 		{"◌ metrics", "Phase 2 metrics computing"},
 		{"⚠ age", "Snapshot getting stale"},
@@ -5174,17 +4975,14 @@ func (m *Model) renderHelpOverlay() string {
 		colorIdx    int
 		shortcuts   []struct{ key, desc string }
 	}{
-		{"Navigation", "🧭", 0, navSection},
-		{"Views", "👁", 1, viewsSection},
-		{"Global", "🌐", 2, globalSection},
-		{"History", "📜", 3, historySection},
 		{"Hotkeys", "⚙️", 3, m.hotkeyHelpRows()},
-		{"Tree View", "🌳", 4, treeSection},
-		{"Insights", "💡", 0, insightsSection},
+		{"Global", "🌐", 2, commonKeyHelp()},
+		{"Tree View", "🌳", 4, viewKeyHelp(focusTree)},
+		{"Board View", "🧭", 0, viewKeyHelp(focusBoard)},
+		{"Graph View", "🔍", 3, viewKeyHelp(focusGraph)},
+		{"Detail View", "✏️", 4, viewKeyHelp(focusDetail)},
+		{"Help Search", "🔍", 3, viewKeyHelp(focusHelp)},
 		{"Status", "🩺", 2, statusSection},
-		{"Filters & Sort", "🔍", 3, filterSection},
-		{"Actions", "⚡", 1, actionsSection},
-		{"Editing", "✏️", 4, editingSection},
 	}
 	query := m.helpSearchInput.Value()
 	var panels []string
@@ -5378,14 +5176,14 @@ func (m *Model) renderFooter() string {
 		}
 	case "board":
 		hints = []hint{
-			{"0-9", "project"},
+			{"1-9", "project"},
+			{"gg/0", "top"},
 			{"^R", "refresh"},
 			{"v", "epics"},
 			{"tab", "fold"},
 			{"enter", "detail"},
 			{"j/k", "card"},
 			{"f", "branch"},
-			{"m", "move"},
 			{"s", "swim"},
 			{"/", "search"},
 			{"K", "close"},
@@ -5429,7 +5227,6 @@ func (m *Model) renderFooter() string {
 			hint{"s", "comment order"},
 			hint{"e", "edit"},
 			hint{"c", "copy"},
-			hint{"O", "open"},
 			hint{"?", "help"},
 			hint{"esc", "back"},
 		)
@@ -5521,13 +5318,12 @@ func (m Model) getDiffStatus(id string) DiffStatus {
 	return DiffStatusNone
 }
 
-// hasActiveFilters returns true if any filter is currently applied
-// (status filter, label filter, recipe filter, or fuzzy search)
+// hasActiveFilters reports scope filters that remain after the query is cleared.
 func (m *Model) hasActiveFilters() bool {
 	if m.currentFilter != "all" {
 		return true
 	}
-	if m.labelFilter != "" {
+	if m.labelFilter != "" || m.assigneeFilter != "" {
 		return true
 	}
 	if m.list.FilterState() == list.Filtering || m.list.FilterState() == list.FilterApplied {
@@ -5540,9 +5336,15 @@ func (m *Model) hasActiveFilters() bool {
 func (m *Model) clearAllFilters() {
 	m.currentFilter = "all"
 	m.labelFilter = ""
+	m.assigneeFilter = ""
 	// Reset the fuzzy search filter by resetting the filter state
 	m.list.ResetFilter()
+	m.rebuildPickerEntries()
+	m.tree.SetLabelFilter("")
+	m.tree.SetAssigneeFilter("")
+	m.tree.ApplyFilter("all")
 	m.applyFilter()
+	m.syncTreeToDetail()
 }
 
 func (m *Model) matchesCurrentFilter(issue model.Issue) bool {
@@ -5945,12 +5747,6 @@ func (m *Model) setListItems(items []list.Item) {
 	if len(items) > 0 && m.list.Index() >= len(items) {
 		m.list.Select(0)
 	}
-}
-
-// cycleSortMode cycles through available sort modes (bv-3ita)
-func (m *Model) cycleSortMode() {
-	m.sortMode = (m.sortMode + 1) % numSortModes
-	m.applyFilter() // Re-apply filter with new sort
 }
 
 // sortFilteredItems sorts the filtered items based on current sortMode (bv-3ita)
@@ -6373,6 +6169,9 @@ func (m Model) FocusState() string {
 // getSelectedIssue returns the currently selected issue from the active view.
 // Returns nil if no issue is selected.
 func (m *Model) getSelectedIssue() *model.Issue {
+	if m.focused == focusDetail {
+		return m.detailIssue()
+	}
 	if m.isGraphView {
 		return m.graph.SelectedIssue()
 	}
@@ -6434,11 +6233,6 @@ func (m *Model) collectEditSuggestions() EditSuggestions {
 // IsBoardView returns true if the board view is active (bv-5e5q).
 func (m Model) IsBoardView() bool {
 	return m.isBoardView
-}
-
-// OpenedIssueFile returns the Markdown file O last wrote for the editor, or "".
-func (m Model) OpenedIssueFile() string {
-	return m.openedIssueFile
 }
 
 // TreeSelectedID returns the ID of the currently selected tree node, or "".
@@ -6689,448 +6483,6 @@ func (m *Model) showSelfUpdateModal() {
 	m.updateModal.SetSize(m.width, m.height)
 	m.showUpdateModal = true
 	m.focused = focusUpdateModal
-}
-
-func parseCommandLine(input string) ([]string, error) {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return nil, nil
-	}
-
-	var args []string
-	var current strings.Builder
-	inSingle := false
-	inDouble := false
-
-	flush := func() {
-		if current.Len() == 0 {
-			return
-		}
-		args = append(args, current.String())
-		current.Reset()
-	}
-
-	for i := 0; i < len(input); {
-		ch := input[i]
-		if inSingle {
-			if ch == '\'' {
-				inSingle = false
-				i++
-				continue
-			}
-			current.WriteByte(ch)
-			i++
-			continue
-		}
-		if inDouble {
-			switch ch {
-			case '"':
-				inDouble = false
-				i++
-				continue
-			case '\\':
-				if i+1 >= len(input) {
-					return nil, fmt.Errorf("unterminated escape")
-				}
-				next := input[i+1]
-				// In double quotes, only treat \" and \\ as escapes; otherwise preserve backslash.
-				if next == '"' || next == '\\' {
-					current.WriteByte(next)
-					i += 2
-					continue
-				}
-				current.WriteByte('\\')
-				i++
-				continue
-			default:
-				current.WriteByte(ch)
-				i++
-				continue
-			}
-		}
-
-		switch ch {
-		case ' ', '\t', '\n', '\r':
-			flush()
-			i++
-		case '\'':
-			inSingle = true
-			i++
-		case '"':
-			inDouble = true
-			i++
-		case '\\':
-			if i+1 >= len(input) {
-				return nil, fmt.Errorf("unterminated escape")
-			}
-			next := input[i+1]
-			if next == ' ' || next == '\t' || next == '\n' || next == '\r' || next == '\\' || next == '"' || next == '\'' {
-				current.WriteByte(next)
-				i += 2
-				continue
-			}
-			current.WriteByte('\\')
-			i++
-		default:
-			current.WriteByte(ch)
-			i++
-		}
-	}
-
-	if inSingle {
-		return nil, fmt.Errorf("unterminated single quote")
-	}
-	if inDouble {
-		return nil, fmt.Errorf("unterminated double quote")
-	}
-	flush()
-	return args, nil
-}
-
-type editorCommandKind int
-
-const (
-	editorCommandOK editorCommandKind = iota
-	editorCommandEmpty
-	editorCommandForbidden
-)
-
-type allowlistedGUIEditorKind int
-
-const (
-	allowlistedGUIEditorUnknown allowlistedGUIEditorKind = iota
-	allowlistedGUIEditorOpenText
-	allowlistedGUIEditorXdgOpen
-	allowlistedGUIEditorCode
-	allowlistedGUIEditorCodeInsiders
-	allowlistedGUIEditorCursor
-	allowlistedGUIEditorGedit
-	allowlistedGUIEditorKate
-	allowlistedGUIEditorXed
-	allowlistedGUIEditorNotepad
-)
-
-var forbiddenEditorExecutables = map[string]bool{
-	// Shells and command interpreters.
-	"sh":         true,
-	"bash":       true,
-	"zsh":        true,
-	"fish":       true,
-	"cmd":        true,
-	"powershell": true,
-	"pwsh":       true,
-}
-
-func normalizeExecutableBase(executable string) string {
-	executable = strings.TrimSpace(executable)
-	if executable == "" {
-		return ""
-	}
-	base := executable
-	if idx := strings.LastIndexAny(base, `/\`); idx >= 0 {
-		base = base[idx+1:]
-	}
-	base = strings.ToLower(base)
-	return strings.TrimSuffix(base, ".exe")
-}
-
-func classifyEditorCommand(editorArgs []string) (string, editorCommandKind) {
-	if len(editorArgs) == 0 {
-		return "", editorCommandEmpty
-	}
-	base := normalizeExecutableBase(editorArgs[0])
-	if base == "" {
-		return "", editorCommandEmpty
-	}
-	if forbiddenEditorExecutables[base] {
-		return base, editorCommandForbidden
-	}
-	return base, editorCommandOK
-}
-
-func allowlistedGUIEditorKindForBase(base string) allowlistedGUIEditorKind {
-	switch base {
-	case "open":
-		return allowlistedGUIEditorOpenText
-	case "xdg-open":
-		return allowlistedGUIEditorXdgOpen
-	case "code":
-		return allowlistedGUIEditorCode
-	case "code-insiders":
-		return allowlistedGUIEditorCodeInsiders
-	case "cursor":
-		return allowlistedGUIEditorCursor
-	case "gedit":
-		return allowlistedGUIEditorGedit
-	case "kate":
-		return allowlistedGUIEditorKate
-	case "xed":
-		return allowlistedGUIEditorXed
-	case "notepad":
-		return allowlistedGUIEditorNotepad
-	default:
-		return allowlistedGUIEditorUnknown
-	}
-}
-
-func allowlistedGUIEditorDisplayName(kind allowlistedGUIEditorKind) string {
-	switch kind {
-	case allowlistedGUIEditorOpenText:
-		return "default text editor"
-	case allowlistedGUIEditorXdgOpen:
-		return "default app"
-	case allowlistedGUIEditorCode:
-		return "code"
-	case allowlistedGUIEditorCodeInsiders:
-		return "code-insiders"
-	case allowlistedGUIEditorCursor:
-		return "cursor"
-	case allowlistedGUIEditorGedit:
-		return "gedit"
-	case allowlistedGUIEditorKate:
-		return "kate"
-	case allowlistedGUIEditorXed:
-		return "xed"
-	case allowlistedGUIEditorNotepad:
-		return "notepad"
-	default:
-		return "editor"
-	}
-}
-
-func startAllowlistedGUIEditor(kind allowlistedGUIEditorKind, targetFile string) (allowlistedGUIEditorKind, error) {
-	switch kind {
-	case allowlistedGUIEditorOpenText:
-		return kind, exec.Command("open", "-t", targetFile).Start()
-	case allowlistedGUIEditorXdgOpen:
-		return kind, exec.Command("xdg-open", targetFile).Start()
-	case allowlistedGUIEditorCode:
-		if runtime.GOOS == "darwin" {
-			// Prefer launching the app directly so we don't depend on the `code` CLI being installed in PATH.
-			if err := exec.Command("open", "-a", "Visual Studio Code", targetFile).Start(); err == nil {
-				return kind, nil
-			}
-		}
-		if _, err := exec.LookPath("code"); err == nil {
-			return kind, exec.Command("code", targetFile).Start()
-		}
-		if runtime.GOOS == "linux" {
-			if _, err := exec.LookPath("xdg-open"); err == nil {
-				return allowlistedGUIEditorXdgOpen, exec.Command("xdg-open", targetFile).Start()
-			}
-		}
-		return kind, fmt.Errorf("code not found in PATH")
-	case allowlistedGUIEditorCodeInsiders:
-		if runtime.GOOS == "darwin" {
-			// Prefer launching the app directly so we don't depend on the `code-insiders` CLI being installed in PATH.
-			if err := exec.Command("open", "-a", "Visual Studio Code - Insiders", targetFile).Start(); err == nil {
-				return kind, nil
-			}
-		}
-		if _, err := exec.LookPath("code-insiders"); err == nil {
-			return kind, exec.Command("code-insiders", targetFile).Start()
-		}
-		if runtime.GOOS == "linux" {
-			if _, err := exec.LookPath("xdg-open"); err == nil {
-				return allowlistedGUIEditorXdgOpen, exec.Command("xdg-open", targetFile).Start()
-			}
-		}
-		return kind, fmt.Errorf("code-insiders not found in PATH")
-	case allowlistedGUIEditorCursor:
-		if runtime.GOOS == "darwin" {
-			// Prefer launching the app directly so we don't depend on the `cursor` CLI being installed in PATH.
-			if err := exec.Command("open", "-a", "Cursor", targetFile).Start(); err == nil {
-				return kind, nil
-			}
-		}
-		if _, err := exec.LookPath("cursor"); err == nil {
-			return kind, exec.Command("cursor", targetFile).Start()
-		}
-		if runtime.GOOS == "linux" {
-			if _, err := exec.LookPath("xdg-open"); err == nil {
-				return allowlistedGUIEditorXdgOpen, exec.Command("xdg-open", targetFile).Start()
-			}
-		}
-		return kind, fmt.Errorf("cursor not found in PATH")
-	case allowlistedGUIEditorGedit:
-		return kind, exec.Command("gedit", targetFile).Start()
-	case allowlistedGUIEditorKate:
-		return kind, exec.Command("kate", targetFile).Start()
-	case allowlistedGUIEditorXed:
-		return kind, exec.Command("xed", targetFile).Start()
-	case allowlistedGUIEditorNotepad:
-		return kind, exec.Command("notepad", targetFile).Start()
-	default:
-		return kind, fmt.Errorf("unsupported editor")
-	}
-}
-
-// openInEditor writes the selected issue to a temp Markdown file and opens it
-// in a GUI editor. The file is a read-only snapshot: edits go through e. A
-// snapshot rather than the project's issues.jsonl, because a project read from
-// a Dolt server, or without a local checkout, has no such file.
-func (m *Model) openInEditor() {
-	selected := m.getSelectedIssue()
-	if m.focused == focusDetail {
-		// The detail can show a child opened with 1-9, which the tree cursor
-		// has not moved to.
-		if issue := m.detailIssue(); issue != nil {
-			selected = issue
-		}
-	}
-	if selected == nil {
-		m.statusMsg = "❌ No issue selected"
-		m.statusIsError = true
-		return
-	}
-	issue := *selected
-	issueFile, err := writeIssueSnapshot(issue, m.issueMap)
-	if err != nil {
-		m.statusMsg = fmt.Sprintf("❌ Could not write %s for the editor: %v", issue.ID, err)
-		m.statusIsError = true
-		return
-	}
-	m.openedIssueFile = issueFile
-
-	editorArgs, haveEditor, err := environmentEditor()
-	if err != nil {
-		m.statusMsg = "❌ " + err.Error()
-		m.statusIsError = true
-		return
-	}
-	editorName := "the default editor"
-	if haveEditor {
-		editorName = normalizeExecutableBase(editorArgs[0])
-	}
-
-	// Tests and E2E runs must never start a real editor.
-	if os.Getenv("B9S_TEST_MODE") != "" {
-		m.statusMsg = fmt.Sprintf("📝 Would open %s in %s (B9S_TEST_MODE)", issue.ID, editorName)
-		m.statusIsError = false
-		return
-	}
-
-	if haveEditor {
-		// ExecProcess suspends the TUI while the editor runs, so a terminal
-		// editor gets the terminal and a waiting one (code --wait, emacsclient)
-		// holds b9s until it returns, as git commit does.
-		cmd := exec.Command(editorArgs[0], append(editorArgs[1:], issueFile)...)
-		id := issue.ID
-		m.pendingCmd = tea.ExecProcess(cmd, func(err error) tea.Msg {
-			return editorFinishedMsg{id: id, editor: editorName, err: err}
-		})
-		m.statusMsg = fmt.Sprintf("📝 Opening %s in %s", id, editorName)
-		m.statusIsError = false
-		return
-	}
-
-	var requestedEditorKind allowlistedGUIEditorKind
-	// With neither variable set, open the platform's GUI default.
-	{
-		switch runtime.GOOS {
-		case "darwin":
-			requestedEditorKind = allowlistedGUIEditorOpenText
-		case "windows":
-			requestedEditorKind = allowlistedGUIEditorNotepad
-		case "linux":
-			// Try xdg-open first, then common GUI editors
-			for _, tryEditor := range []string{"xdg-open", "code", "code-insiders", "cursor", "gedit", "kate", "xed"} {
-				if _, err := exec.LookPath(tryEditor); err == nil {
-					requestedEditorKind = allowlistedGUIEditorKindForBase(tryEditor)
-					break
-				}
-			}
-		}
-	}
-
-	if requestedEditorKind == allowlistedGUIEditorUnknown {
-		m.statusMsg = "❌ No editor found. Set $VISUAL or $EDITOR"
-		m.statusIsError = true
-		return
-	}
-
-	actualKind, err := startAllowlistedGUIEditor(requestedEditorKind, issueFile)
-	if err != nil {
-		m.statusMsg = fmt.Sprintf("❌ Failed to open editor: %v", err)
-		m.statusIsError = true
-		return
-	}
-	m.statusMsg = fmt.Sprintf("📝 Opened %s in %s", issue.ID, allowlistedGUIEditorDisplayName(actualKind))
-	m.statusIsError = false
-}
-
-// editorFinishedMsg reports that the editor O started has exited.
-type editorFinishedMsg struct {
-	id, editor string
-	err        error
-}
-
-func (m Model) handleEditorFinished(msg editorFinishedMsg) Model {
-	if msg.err != nil {
-		m.statusMsg = fmt.Sprintf("❌ %s failed for %s: %v", msg.editor, msg.id, msg.err)
-		m.statusIsError = true
-		return m
-	}
-	m.statusMsg = fmt.Sprintf("📝 Closed %s in %s", msg.id, msg.editor)
-	m.statusIsError = false
-	return m
-}
-
-// environmentEditor returns the user's editor command line from $VISUAL and
-// then $EDITOR, the order git reads them in. ok is false when neither is set.
-// A shell is refused: the file name would become a script for it to run.
-func environmentEditor() (args []string, ok bool, err error) {
-	for _, name := range []string{"VISUAL", "EDITOR"} {
-		value := strings.TrimSpace(os.Getenv(name))
-		if value == "" {
-			continue
-		}
-		args, err := parseCommandLine(value)
-		if err != nil {
-			return nil, false, fmt.Errorf("invalid $%s: %v", name, err)
-		}
-		base, kind := classifyEditorCommand(args)
-		switch kind {
-		case editorCommandEmpty:
-			return nil, false, fmt.Errorf("invalid $%s: empty command", name)
-		case editorCommandForbidden:
-			return nil, false, fmt.Errorf("refusing to run %s from $%s as an editor (shell)", base, name)
-		}
-		return args, true, nil
-	}
-	return nil, false, nil
-}
-
-// writeIssueSnapshot writes the issue as Markdown to a new file in the system
-// temp directory. The file outlives b9s on purpose: a GUI editor reads it
-// after the start command returns, and may still show it after b9s quits.
-func writeIssueSnapshot(issue model.Issue, issueMap map[string]*model.Issue) (string, error) {
-	f, err := os.CreateTemp("", "b9s-"+safeFileComponent(issue.ID)+"-*.md")
-	if err != nil {
-		return "", err
-	}
-	if _, err := f.WriteString(formatIssueMarkdown(issue, issueMap)); err != nil {
-		f.Close()
-		os.Remove(f.Name())
-		return "", err
-	}
-	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
-		return "", err
-	}
-	return f.Name(), nil
-}
-
-// safeFileComponent keeps an issue ID usable in a file name pattern:
-// CreateTemp rejects a path separator, and "*" would move the random part.
-func safeFileComponent(id string) string {
-	return strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '.', r == '_':
-			return r
-		}
-		return '_'
-	}, id)
 }
 
 // Stop cleans up resources (file watcher, instance lock, background worker, etc.)
@@ -7986,7 +7338,7 @@ func (c issueConfirmation) targetIDs() []string {
 // treeSelectionActive reports whether actions target the tree rather than the
 // board, graph or list selection. Marks exist only in the tree.
 func (m *Model) treeSelectionActive() bool {
-	return !m.isGraphView && !m.isBoardView && (m.focused == focusTree || m.treeViewActive)
+	return m.focused != focusDetail && !m.isGraphView && !m.isBoardView && (m.focused == focusTree || m.treeViewActive)
 }
 
 // actionTargets resolves the issues an issue action applies to, following
