@@ -70,10 +70,13 @@ func TreeStatePath(beadsDir string) string {
 	return filepath.Join(beadsDir, treeStateFileName)
 }
 
-// SetBeadsDir sets the beads directory for persistence (bv-19vz).
-// This should be called before any expand/collapse operations if a custom
-// beads directory is desired. If not called, defaults to ".beads" in cwd.
+// SetBeadsDir sets the persistence directory before building a project's tree.
+// An empty directory disables persistence for projects without a checkout.
 func (t *TreeModel) SetBeadsDir(dir string) {
+	// Distinct database-only projects share an empty persistence directory.
+	t.bookmarks = nil
+	t.flatMode = false
+	t.listStateDir = ""
 	t.beadsDir = dir
 }
 
@@ -201,7 +204,7 @@ func (t *TreeModel) applyState(state *TreeState) {
 // keyed by issue ID, so a rebuild can lay it over the new nodes. The nodes on
 // screen are the only complete record: tree-state.json lags behind expansions
 // that are never saved (filter context) and does not exist at all when no
-// beads directory is known, as for a Dolt project without an issues.jsonl.
+// beads directory is known, as for a database opened without a checkout.
 func (t *TreeModel) expansionByID() map[string]bool {
 	if len(t.issueMap) == 0 {
 		return nil
