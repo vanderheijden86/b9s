@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"net"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -111,5 +116,67 @@ func TestFormatOpenFailure_ShowsReasonAndNextSteps(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestFormatOpenFailure_StaleTunnelHint(t *testing.T) {
+	timeoutErr := fmt.Errorf("cannot connect to Dolt: %w", &net.OpError{
+		Op: "read", Net: "tcp", Err: os.ErrDeadlineExceeded,
+	})
+	cases := []struct {
+		name       string
+		server     string
+		err        error
+		wantTunnel bool
+	}{
+		{"IPv4", "127.0.0.1:3306", timeoutErr, true},
+		{"IPv4 loopback range", "127.0.0.2:13306", timeoutErr, true},
+		{"localhost", "localhost:13306", timeoutErr, true},
+		{"uppercase localhost", "LOCALHOST:3306", timeoutErr, true},
+		{"IPv6", "[::1]:13306", timeoutErr, true},
+		{"mapped IPv4", "[::ffff:127.0.0.1]:3306", timeoutErr, true},
+		{"remote hostname", "db.example:3306", timeoutErr, false},
+		{"private IPv4", "10.0.0.5:3306", timeoutErr, false},
+		{"remote IPv6", "[2001:db8::1]:3306", timeoutErr, false},
+		{"wildcard", "0.0.0.0:3306", timeoutErr, false},
+		{"missing port", "localhost", timeoutErr, false},
+		{"no error", "127.0.0.1:3306", nil, false},
+		{"refused connection", "127.0.0.1:3306", &net.OpError{Op: "dial", Net: "tcp", Err: syscall.ECONNREFUSED}, false},
+		{"context deadline", "127.0.0.1:3306", context.DeadlineExceeded, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &datasource.OpenFailure{
+				Reason: datasource.OpenServerDown, Project: "ghost",
+				Server: tc.server, Err: tc.err,
+			}
+			out := formatOpenFailure(f)
+			_, hints, ok := strings.Cut(out, "  Try     ")
+			if !ok {
+				t.Fatalf("output has no Try lines:\n%s", out)
+			}
+			for _, want := range []string{
+				"Check that " + tc.server + " is the Dolt server's address and that this computer can reach it",
+				"Test the connection with bd: bd list",
+			} {
+				if !strings.Contains(hints, want) {
+					t.Errorf("Try lines lack existing hint %q:\n%s", want, hints)
+				}
+			}
+			if tc.wantTunnel {
+				for _, want := range []string{
+					"SSH tunnel on " + tc.server + " may be stale",
+					"restart",
+					"osenco",
+					"launchctl kickstart -k gui/$UID/com.osenco.dolt-tunnel",
+				} {
+					if !strings.Contains(hints, want) {
+						t.Errorf("Try lines lack %q:\n%s", want, hints)
+					}
+				}
+			} else if strings.Contains(strings.ToLower(hints), "tunnel") {
+				t.Errorf("Try lines unexpectedly mention a tunnel:\n%s", hints)
+			}
+		})
 	}
 }
