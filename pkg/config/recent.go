@@ -33,11 +33,19 @@ type RecentProject struct {
 // SameProject compares server identity only when both entries carry one. An
 // entry written by hand may lack the database of a Dolt checkout, and must
 // still match that checkout by path rather than gain a duplicate.
+// Checkout paths resolve symlinks, with lexical cleaning when resolution fails.
 func (p RecentProject) SameProject(other RecentProject) bool {
 	if p.Database != "" && other.Database != "" {
 		return p.Host == other.Host && p.Database == other.Database
 	}
-	return p.Path != "" && p.Path == other.Path
+	return p.Path != "" && other.Path != "" && canonicalCheckoutPath(p.Path) == canonicalCheckoutPath(other.Path)
+}
+
+func canonicalCheckoutPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return filepath.Clean(path)
 }
 
 // TouchRecent records p as viewed and reports whether the list changed.
