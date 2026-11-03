@@ -64,7 +64,7 @@ func runMemories(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	graph, err := loadMemoryGraph(client, *id)
+	graph, err := loadMemoryGraph(context.Background(), client, *id)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -103,15 +103,34 @@ func isTerminal(w io.Writer) bool {
 	return ok && term.IsTerminal(int(f.Fd()))
 }
 
-// loadMemoryGraph reads the inventory, then the incident Links of the
-// Memories that will be printed. Incoming Links are owned by other Beads, so
-// only bd links reports them per Memory.
-func loadMemoryGraph(client *datasource.GraphPreviewClient, selected string) (datasource.GraphPreview, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+// Incoming Links can be owned by other Beads, so printing a Memory requires
+// its incident Links even when its owned Links are already available.
+func loadMemoryGraph(ctx context.Context, client *datasource.GraphPreviewClient, selected string) (datasource.GraphPreview, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	graph, err := client.Inventory(ctx)
-	if err != nil {
-		return datasource.GraphPreview{}, err
+	var graph datasource.GraphPreview
+	if selected == "" {
+		var err error
+		graph, err = client.Inventory(ctx)
+		if err != nil {
+			return datasource.GraphPreview{}, err
+		}
+	} else {
+		bead, err := client.Memory(ctx, selected, "")
+		if err != nil {
+			return datasource.GraphPreview{}, err
+		}
+		if bead.ID == "" {
+			return datasource.GraphPreview{}, fmt.Errorf("Memory %q: graph record has no ID", selected)
+		}
+		if !strings.HasSuffix(bead.Type, "/preview-memory-v2") {
+			return datasource.GraphPreview{}, fmt.Errorf("record %q is not a Memory", selected)
+		}
+		if !memoryMatches(bead, selected) {
+			return datasource.GraphPreview{}, fmt.Errorf("Memory %q: bd returned record %q", selected, bead.ID)
+		}
+		bead.Kind = "memory"
+		graph = datasource.GraphPreview{Beads: []datasource.GraphBead{bead}, Links: bead.Owned}
 	}
 	links := make(map[string]datasource.GraphLink)
 	for _, link := range graph.Links {
