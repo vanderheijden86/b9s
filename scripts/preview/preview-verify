@@ -12,21 +12,47 @@ if preview_wait_for_rollout >/dev/null 2>&1; then check_pass rollout "deployment
 identity_file="$PREVIEW_EVIDENCE_DIR/identity.json"
 session_file="$PREVIEW_EVIDENCE_DIR/session.json"
 pane_file="$PREVIEW_EVIDENCE_DIR/tui-pane.txt"
-if curl -fsS --connect-timeout 3 --max-time 10 "$(preview_identity_url)" -o "$identity_file"; then
-  check_pass identity-http "service returned 200"
+identity_url="$(preview_identity_url)"
+web_url="$(preview_web_url)"
+if curl -fsS --connect-timeout 3 --max-time 10 "$identity_url" -o "$identity_file"; then
+  check_pass identity-http "$identity_url returned 200"
 else
-  check_fail identity-http "identity endpoint is unreachable"
-  preview_finish
+  identity_rc=$?
+  case "$identity_rc" in
+    6|7|28)
+      # Service DNS and addresses are cluster-local. A transport failure may
+      # select ingress, but a response from another image must fail identity.
+      identity_url="$PREVIEW_URL/__preview"
+      web_url="$PREVIEW_URL/"
+      preview_log "Service transport failed (curl $identity_rc); trying $identity_url"
+      if curl -fsS --connect-timeout 3 --max-time 10 "$identity_url" -o "$identity_file"; then
+        check_pass identity-http "$identity_url returned 200"
+      else
+        identity_rc=$?
+        check_fail identity-http "$identity_url failed (curl $identity_rc); check preview DNS, ingress access and rollout"
+        preview_finish
+      fi ;;
+    *)
+      check_fail identity-http "$identity_url failed (curl $identity_rc); check the Service response; ingress was not tried"
+      preview_finish ;;
+  esac
 fi
 
-identity_line="$(python3 - "$identity_file" <<'PY'
+if identity_line="$(python3 - "$identity_file" 2>"$PREVIEW_EVIDENCE_DIR/identity-error.log" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as source:
     value = json.load(source)
-print("\t".join(value.get(key, "") for key in ("commit", "taskId", "namespace")))
+fields = [value[key] for key in ("commit", "taskId", "namespace")]
+if any(not isinstance(field, str) or not field or any(c.isspace() for c in field) for field in fields):
+    raise ValueError("identity fields must be nonempty strings without whitespace")
+print("\t".join(fields))
 PY
-)"
-IFS=$'\t' read -r served_commit served_task served_namespace <<<"$identity_line"
+)"; then
+  IFS=$'\t' read -r served_commit served_task served_namespace <<<"$identity_line"
+else
+  check_fail identity-json "$identity_url must return commit, taskId and namespace strings; see $PREVIEW_EVIDENCE_DIR/identity-error.log"
+  preview_finish
+fi
 if [[ ${served_commit:-} == "$PREVIEW_COMMIT_SHA" ]]; then check_pass served-commit "$PREVIEW_COMMIT_SHA"; else check_fail served-commit "${served_commit:-missing}"; fi
 if [[ ${served_task:-} == "$PREVIEW_TASK_ID" ]]; then check_pass served-task "$PREVIEW_TASK_ID"; else check_fail served-task "${served_task:-missing}"; fi
 if [[ ${served_namespace:-} == "$PREVIEW_NAMESPACE" ]]; then check_pass served-namespace "$PREVIEW_NAMESPACE"; else check_fail served-namespace "${served_namespace:-missing}"; fi
@@ -35,7 +61,7 @@ if [[ ${served_namespace:-} == "$PREVIEW_NAMESPACE" ]]; then check_pass served-n
 # ingress sets in front of a browser and this check sets itself.
 if curl -fsS --connect-timeout 3 --max-time 10 \
   -H "$PREVIEW_VIEWER_HEADER: $PREVIEW_VIEWER" \
-  "$(preview_web_url)api/session" -o "$session_file"; then
+  "${web_url}api/session" -o "$session_file"; then
   web_commit="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("commit", ""))' "$session_file" 2>/dev/null || true)"
   # A build without VCS stamping reports no commit, and the identity check
   # above already pins the image to the commit.

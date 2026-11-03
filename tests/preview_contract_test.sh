@@ -370,5 +370,140 @@ bad_sa_rc=$?
 set -e
 if [[ $bad_sa_rc -ne 0 ]]; then ok "a deployer without namespace/name is refused"; else bad "a deployer without namespace/name is refused"; fi
 
+# Simulate the transport boundary, while executing the real verifier and JSON
+# parser. Each invocation has a deadline and records every HTTP destination.
+verify_dir="$(mktemp -d "${TMPDIR:-/tmp}/b9s-verify-contract.XXXXXX")"
+run_verify() (
+  export TEST_SCENARIO="$1" TEST_SERVICE_RC="$2" TEST_INGRESS_RC="$3" TEST_STATE_DIR="$4"
+  export TEST_SHA=1111111111111111111111111111111111111111
+  export B9S_PREVIEW_KUBECONFIG="$ROOT/go.mod" B9S_PREVIEW_CONTEXT=preview
+  export B9S_PREVIEW_EVIDENCE_DIR="$TEST_STATE_DIR/evidence"
+  export B9S_PREVIEW_INGRESS_PORT=18081
+  mkdir -p "$TEST_STATE_DIR"
+  git() {
+    case "$*" in
+      *'rev-parse HEAD') printf '%s\n' "$TEST_SHA" ;;
+      *'cat-file -e '*|*'status --porcelain'*) return 0 ;;
+      *) command git "$@" ;;
+    esac
+  }
+  kubectl() {
+    [[ $1 == --kubeconfig && $2 == "$B9S_PREVIEW_KUBECONFIG" &&
+       $3 == --context && $4 == preview ]] || return 90
+    shift 4
+    case "$1" in
+      version) return 0 ;;
+      --namespace)
+        [[ $2 == b9s-bd-b6jw-4 ]] || return 91
+        shift 2
+        case "$1" in
+          rollout) return 0 ;;
+          exec)
+            printf '%s\n' "$*" >>"$TEST_STATE_DIR/kubectl"
+            [[ $* == *'deploy/b9s -- tmux capture-pane -p -t b9s' ]] || return 92
+            printf 'b9s terminal UI\n' ;;
+          *) return 93 ;;
+        esac ;;
+      *) return 94 ;;
+    esac
+  }
+  curl() {
+    local url='' output='' header='' connect='' max='' flags=''
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        -fsS) flags="$1"; shift ;;
+        --connect-timeout) connect="$2"; shift 2 ;;
+        --max-time) max="$2"; shift 2 ;;
+        -H) header="$2"; shift 2 ;;
+        -o) output="$2"; shift 2 ;;
+        http://*) url="$1"; shift ;;
+        *) return 95 ;;
+      esac
+    done
+    [[ $flags == -fsS && $connect == 3 && $max == 10 && -n $output ]] || return 96
+    printf '%s\n' "$url" >>"$TEST_STATE_DIR/http"
+    case "$url" in
+      */__preview)
+        if [[ $url == *svc.cluster.local* ]]; then
+          [[ $TEST_SERVICE_RC == 0 ]] || return "$TEST_SERVICE_RC"
+        else
+          [[ $TEST_INGRESS_RC == 0 ]] || return "$TEST_INGRESS_RC"
+        fi
+        local commit="$TEST_SHA" task=bd-b6jw.4 namespace=b9s-bd-b6jw-4
+        case "$TEST_SCENARIO" in
+          bad-commit) commit=2222222222222222222222222222222222222222 ;;
+          bad-task) task=bd-other ;;
+          bad-namespace) namespace=b9s-bd-other ;;
+          malformed) printf '{' >"$output"; return 0 ;;
+          array) printf '[]' >"$output"; return 0 ;;
+          missing) printf '{"commit":"%s"}' "$commit" >"$output"; return 0 ;;
+          nonstring) printf '{"commit":42,"taskId":"bd-b6jw.4","namespace":"b9s-bd-b6jw-4"}' >"$output"; return 0 ;;
+        esac
+        printf '{"commit":"%s","taskId":"%s","namespace":"%s"}' "$commit" "$task" "$namespace" >"$output" ;;
+      */api/session)
+        [[ $header == "$PREVIEW_VIEWER_HEADER: $PREVIEW_VIEWER" ]] || return 97
+        [[ $TEST_SCENARIO != web-failure ]] || return 22
+        local commit="$TEST_SHA"
+        [[ $TEST_SCENARIO != web-commit ]] || commit=2222222222222222222222222222222222222222
+        printf '{"commit":"%s"}' "$commit" >"$output" ;;
+      *) return 98 ;;
+    esac
+  }
+  export -f git kubectl curl
+  "$timeout_bin" 5s bash "$PREVIEW/preview-verify" bd-b6jw.4 "$TEST_SHA"
+)
+
+verify_case() {
+  local name="$1" scenario="$2" service_rc="$3" ingress_rc="$4"
+  local expected_rc="$5" boundary="$6" session="$7" detail="${8:-}"
+  local state="$verify_dir/$name" output rc expected
+  if output="$(run_verify "$scenario" "$service_rc" "$ingress_rc" "$state" 2>&1)"; then rc=0; else rc=$?; fi
+  printf '%s\n' "$output" >"$state/result.log"
+  if [[ $rc == "$expected_rc" ]]; then ok "verifier $name exit $expected_rc"; else bad "verifier $name exit $expected_rc" "exit $rc: $output"; fi
+  contains "verifier $name prints final counts" '=== preview-verify DONE pass=' "$output"
+  expected='http://b9s.b9s-bd-b6jw-4.svc.cluster.local:7682/__preview'
+  if [[ $boundary == ingress ]]; then
+    expected+=$'\nhttp://b9s-bd-b6jw-4.previews.example.test:18081/__preview'
+  fi
+  if [[ $session == 1 ]]; then
+    if [[ $boundary == ingress ]]; then
+      expected+=$'\nhttp://b9s-bd-b6jw-4.previews.example.test:18081/api/session'
+    else
+      expected+=$'\nhttp://b9s.b9s-bd-b6jw-4.svc.cluster.local:7681/api/session'
+    fi
+  fi
+  if [[ $(cat "$state/http" 2>/dev/null) == "$expected" ]]; then
+    ok "verifier $name uses only the selected HTTP boundary with bounded requests"
+  else
+    bad "verifier $name uses only the selected HTTP boundary with bounded requests" "$(cat "$state/http" 2>/dev/null)"
+  fi
+  if [[ $session == 1 ]]; then
+    contains "verifier $name reads the task terminal through Kubernetes" 'deploy/b9s -- tmux capture-pane -p -t b9s' \
+      "$(cat "$state/kubectl" 2>/dev/null)"
+  fi
+  if [[ -n $detail ]]; then contains "verifier $name reports the failure" "$detail" "$output"; fi
+}
+
+verify_case cluster healthy 0 0 0 service 1
+for transport in 6 7 28; do
+  verify_case "laptop-$transport" healthy "$transport" 0 0 ingress 1
+done
+for transport in 5 22 35 52 56; do
+  verify_case "service-error-$transport" healthy "$transport" 0 1 service 0 identity-http
+done
+verify_case ingress-unreachable healthy 6 7 1 ingress 0 'check preview DNS, ingress access'
+for boundary in service ingress; do
+  service_rc=0
+  [[ $boundary != ingress ]] || service_rc=6
+  for field in commit task namespace; do
+    verify_case "$boundary-bad-$field" "bad-$field" "$service_rc" 0 1 "$boundary" 1 "served-$field"
+  done
+  for invalid in malformed array missing nonstring; do
+    verify_case "$boundary-$invalid" "$invalid" "$service_rc" 0 1 "$boundary" 0 identity-json
+  done
+  verify_case "$boundary-web-failure" web-failure "$service_rc" 0 1 "$boundary" 1 web-board
+  verify_case "$boundary-web-commit" web-commit "$service_rc" 0 1 "$boundary" 1 web-board
+done
+
 printf '=== preview-contract DONE pass=%d fail=%d ===\n' "$pass" "$fail"
 [[ $fail -eq 0 ]]
