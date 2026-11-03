@@ -104,8 +104,19 @@ graph TB
 
 The image bakes `/app/.commit-sha`. Deployment supplies only the task and
 namespace, so an edited environment variable cannot make one image claim to be
-another commit. `preview-verify` reads `/__preview` through the Service and
-compares all three identity fields with the requested preview.
+another commit. `preview-verify` first reads `/__preview` through the Service.
+On a DNS, connection or timeout failure (curl exit 6, 7 or 28), it tries the
+task's ingress URL. This lets a workstation use the configured ingress while
+a runner can use the cluster Service. Each HTTP request has a three-second
+connection timeout and a ten-second total timeout, with at most two identity
+requests. If both fail, the report names the endpoint and curl exit code and
+asks the operator to check preview DNS, ingress access and rollout.
+
+The verifier compares all three identity fields with the requested preview
+on the selected boundary. An HTTP error, malformed identity or identity
+mismatch fails verification without selecting another boundary. The board's
+`/api/session` request uses the same selected boundary, so identity from the
+Service cannot approve a board reached through ingress, or the reverse.
 
 ## Terminal UI access
 
@@ -303,8 +314,11 @@ evaluate the namespace policy. A lane cannot read or provision the reader
 Secret; a missing one shows up as a failed rollout, not as a precondition.
 
 `preview-verify` checks the served identity, asks the board for `/api/session`
-with the viewer header, and reads the tmux pane through `kubectl exec`, so a
-preview passes only when the board and the terminal UI both run.
+with the viewer header on the selected HTTP boundary, and reads the tmux pane
+through `kubectl exec` in the task's namespace, so a preview passes only when
+the board and the terminal UI both run. The contract tests simulate Service
+and ingress reachability, transport and HTTP failures, invalid JSON, each
+identity mismatch and board failures without contacting a real cluster.
 
 ## Cleanup
 
