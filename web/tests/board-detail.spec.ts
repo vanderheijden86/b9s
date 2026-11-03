@@ -109,19 +109,28 @@ test.describe("title-focused board rows", () => {
     },
   });
 
-  test("density, selected rows and epic context survive opening issue details", async ({ page, project }, info) => {
+  test("density, selected rows and epic context survive opening issue details", async ({ page, project, hasTouch }, info) => {
+    // Lane mode is a saved preference, independent of the current size class.
+    await page.addInitScript(() => localStorage.setItem("b9s.boardLanes", JSON.stringify("rail")));
     await open(page, project);
     await page.locator('#bar [data-view="board"]').click();
     const row = page.locator('[data-card="c-0"]');
     await expect(row).toBeVisible();
     await expect(row.locator(".l2, .l3, .tags")).toHaveCount(0);
     await expect(row).toHaveCSS("border-top-width", "0px");
-    const touch = info.project.name.startsWith("phone") || info.project.name.startsWith("tablet");
+    await expect(row).toHaveCSS("height", hasTouch ? "44px" : "24px");
     const rowHeight = (await row.boundingBox())!.height;
-    if (touch) expect(rowHeight).toBeGreaterThanOrEqual(44);
-    else expect(rowHeight).toBeLessThanOrEqual(26);
+    const phone = await page.locator("#app").evaluate(el => el.classList.contains("phone"));
     const epic = page.locator('[data-epic="c-epic"]');
-    if (!info.project.name.startsWith("phone")) {
+    if (phone) {
+      await expect(epic).toHaveCount(0);
+      const lanes = page.locator('.lane[data-lane="c-epic"]');
+      await expect(lanes).toHaveCount(2);
+      await expect(lanes.first()).toBeVisible();
+      await expect(lanes.first().locator(".t")).toContainText("Compact checkout");
+    } else {
+      await expect(page.locator('#tabs [data-act="boardopts"]')).toContainText("lanes rail");
+      await expect(epic).toBeVisible();
       await expect(epic.locator(".es")).toHaveText("Ship checkout.");
       await expect(epic.locator(".en")).toHaveText("0/17 · P1 1");
       await expect(epic.locator(".ec")).toHaveText("wip 9·ready 8");
@@ -131,6 +140,7 @@ test.describe("title-focused board rows", () => {
     await info.attach("compact-board", { body: await page.screenshot(), contentType: "image/png" });
     await row.click();
     await expect(row).toHaveClass(/sel/);
+    await expect(row).toHaveCSS("height", hasTouch ? "44px" : "24px");
     await expect(row.locator(".l2, .l3, .tags")).toHaveCount(0);
     const detail = page.locator('.detail[data-id="c-0"]');
     await expect(detail).toContainText("Complete issue context.");
@@ -142,7 +152,7 @@ test.describe("title-focused board rows", () => {
     await parent.click();
     await expect(page.locator(".detail")).toHaveAttribute("data-id", "c-parent");
     await info.attach("row-density", {
-      body: JSON.stringify({ rowHeight, rowsPer240px: Math.floor(240 / rowHeight), touchTarget: touch }),
+      body: JSON.stringify({ rowHeight, rowsPer240px: Math.floor(240 / rowHeight), touchTarget: hasTouch, phoneLayout: phone }),
       contentType: "application/json",
     });
   });
