@@ -119,6 +119,10 @@ func main() {
 
 	// Handle --update
 	if *updateFlag {
+		if _, err := updater.GetSelfUpdateBinaryPath(); err != nil {
+			fmt.Fprintf(os.Stderr, "Update failed: %v\n", err)
+			os.Exit(1)
+		}
 		release, err := updater.GetLatestRelease()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error fetching release info: %v\n", err)
