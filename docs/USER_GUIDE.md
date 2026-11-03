@@ -367,6 +367,12 @@ An issue belongs to its nearest epic ancestor through parent-child links. The bo
 | Epic rail (default) | A column on the left holds each lane's epic as a box as tall as the lane: its ID and title, the first sentence of its description, a completion bar with done/total and the open P0 and P1 count, the in-progress, waiting and ready counts, and its labels, owner, due date and last change. A due date in the past shows in red. A folded epic shows only its title and bar. The epic stays in view while its lane scrolls. A selected epic gets the same highlighted border and fill as a selected card. |
 | Epic rows | A full-width box above each lane. Its first line holds the epic's ID and title, its counts, labels, owner and last change, and the completion bar with done/total on the right. Its second line holds the first sentence of the description. A selected epic gets the highlighted border and fill of a selected card. |
 
+The web board uses borderless issue rows with status, short ID, title and only
+P0 or P1. Selection highlights the row and wraps a long title without adding
+metadata or parent breadcrumbs. Open issue details for all metadata and parent
+relationships. Epic summaries retain their rich content. Phone and tablet rows
+retain 44 px touch targets ([ADR 0065](adr/0065-keep-web-board-issue-rows-title-focused.md)).
+
 Issues without an epic sit in a last `No epic` lane. `Tab` folds the selected issue's epic: its cards leave the board and each column shows how many it hides. `Shift-Tab` folds every epic, or unfolds them all when one is folded. The epic's own issue is the lane header, not a card; selecting it highlights the lane.
 
 The epics form the first column of the board: the rail cells in the rail design, the header rows in the rows design. `Left` and `Right` (`h` `l`) move between the epic column and the status columns inside the selected lane, and skip a column where the lane has no card. `Right` from an epic goes to the lane's card in the first column that has one. `Up` and `Down` (`j` `k`) move through the cards of the column and cross into the next lane at a lane's edge, passing the epic headers. In the epic column they go to the epic above or below, which is how you change lane; the lane without an epic is the last stop. `gg`, `G` and the page keys move over all the cards of the column. `}` selects the next epic, and `{` selects the epic of the current lane, then the epic before it. A selected epic shows in the detail pane.
