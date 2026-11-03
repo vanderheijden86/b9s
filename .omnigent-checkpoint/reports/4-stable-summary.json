@@ -1,0 +1,75 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "environment": {
+    "GOMAXPROCS": "4",
+    "GOFLAGS": "-p=4 -v -count=1",
+    "runtime": "go version go1.25.5 linux/amd64",
+    "make": "GNU Make 4.4.1",
+    "CGO_ENABLED": "1"
+  },
+  "exit_code": 0,
+  "top_level": {
+    "passed": 2058,
+    "failed": 0,
+    "skipped": 18
+  },
+  "all_test_events": {
+    "passed": 3357,
+    "failed": 0,
+    "skipped": 20
+  },
+  "packages_passed": 21,
+  "packages": [
+    "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t0.402s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.269s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.015s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t8.877s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.129s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.006s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t0.782s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.036s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.005s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.004s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t17.405s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.010s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.008s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.009s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t36.805s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.251s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.007s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.004s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.402s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t1.696s",
+    "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.040s"
+  ],
+  "skipped_tests": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "scope": "Required make test-stable, run alone with no base-branch comparison. Recipe excludes E2E and named host-sensitive tests."
+}

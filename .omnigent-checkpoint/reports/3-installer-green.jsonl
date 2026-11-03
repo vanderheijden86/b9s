@@ -1,0 +1,52 @@
+{"Time":"2026-11-03T15:30:17.81930655Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/updater"}
+{"Time":"2026-11-03T15:30:17.826617956Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement"}
+{"Time":"2026-11-03T15:30:17.826648896Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement","Output":"=== RUN   TestInstallerGoRequirement\n"}
+{"Time":"2026-11-03T15:30:17.826732425Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/old_advertised_minimum"}
+{"Time":"2026-11-03T15:30:17.826738432Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/old_advertised_minimum","Output":"=== RUN   TestInstallerGoRequirement/old_advertised_minimum\n"}
+{"Time":"2026-11-03T15:30:17.833876444Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/old_advertised_minimum","Output":"--- PASS: TestInstallerGoRequirement/old_advertised_minimum (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.833896648Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/old_advertised_minimum","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.833905716Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/below_module_minimum"}
+{"Time":"2026-11-03T15:30:17.833908958Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/below_module_minimum","Output":"=== RUN   TestInstallerGoRequirement/below_module_minimum\n"}
+{"Time":"2026-11-03T15:30:17.84052874Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/below_module_minimum","Output":"--- PASS: TestInstallerGoRequirement/below_module_minimum (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.840550282Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/below_module_minimum","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.84055648Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/module_minimum"}
+{"Time":"2026-11-03T15:30:17.840561262Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/module_minimum","Output":"=== RUN   TestInstallerGoRequirement/module_minimum\n"}
+{"Time":"2026-11-03T15:30:17.846742633Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/module_minimum","Output":"--- PASS: TestInstallerGoRequirement/module_minimum (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.846764864Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/module_minimum","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.84677379Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/minimum_without_patch"}
+{"Time":"2026-11-03T15:30:17.846776893Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/minimum_without_patch","Output":"=== RUN   TestInstallerGoRequirement/minimum_without_patch\n"}
+{"Time":"2026-11-03T15:30:17.852952846Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/minimum_without_patch","Output":"--- PASS: TestInstallerGoRequirement/minimum_without_patch (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.85297945Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/minimum_without_patch","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.852988366Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_patch"}
+{"Time":"2026-11-03T15:30:17.852991628Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_patch","Output":"=== RUN   TestInstallerGoRequirement/later_patch\n"}
+{"Time":"2026-11-03T15:30:17.859316438Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_patch","Output":"--- PASS: TestInstallerGoRequirement/later_patch (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.859336459Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_patch","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.859344731Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_minor"}
+{"Time":"2026-11-03T15:30:17.859347928Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_minor","Output":"=== RUN   TestInstallerGoRequirement/later_minor\n"}
+{"Time":"2026-11-03T15:30:17.865391542Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_minor","Output":"--- PASS: TestInstallerGoRequirement/later_minor (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.86540946Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_minor","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.865416481Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_major"}
+{"Time":"2026-11-03T15:30:17.865419562Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_major","Output":"=== RUN   TestInstallerGoRequirement/later_major\n"}
+{"Time":"2026-11-03T15:30:17.871455445Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_major","Output":"--- PASS: TestInstallerGoRequirement/later_major (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.871471805Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/later_major","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.871479243Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/missing"}
+{"Time":"2026-11-03T15:30:17.871482302Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/missing","Output":"=== RUN   TestInstallerGoRequirement/missing\n"}
+{"Time":"2026-11-03T15:30:17.87595411Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/missing","Output":"--- PASS: TestInstallerGoRequirement/missing (0.00s)\n"}
+{"Time":"2026-11-03T15:30:17.875968025Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/missing","Elapsed":0}
+{"Time":"2026-11-03T15:30:17.875974644Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_unsupported"}
+{"Time":"2026-11-03T15:30:17.875977686Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_unsupported","Output":"=== RUN   TestInstallerGoRequirement/source_fallback_unsupported\n"}
+{"Time":"2026-11-03T15:30:17.883439533Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_unsupported","Output":"--- PASS: TestInstallerGoRequirement/source_fallback_unsupported (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.883470228Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_unsupported","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.883479507Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_missing"}
+{"Time":"2026-11-03T15:30:17.883483094Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_missing","Output":"=== RUN   TestInstallerGoRequirement/source_fallback_missing\n"}
+{"Time":"2026-11-03T15:30:17.889025495Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_missing","Output":"--- PASS: TestInstallerGoRequirement/source_fallback_missing (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.88906095Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_missing","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.889072416Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_supported"}
+{"Time":"2026-11-03T15:30:17.889076143Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_supported","Output":"=== RUN   TestInstallerGoRequirement/source_fallback_supported\n"}
+{"Time":"2026-11-03T15:30:17.89896292Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_supported","Output":"--- PASS: TestInstallerGoRequirement/source_fallback_supported (0.01s)\n"}
+{"Time":"2026-11-03T15:30:17.898998725Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement/source_fallback_supported","Elapsed":0.01}
+{"Time":"2026-11-03T15:30:17.899010104Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement","Output":"--- PASS: TestInstallerGoRequirement (0.07s)\n"}
+{"Time":"2026-11-03T15:30:17.899023044Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Test":"TestInstallerGoRequirement","Elapsed":0.07}
+{"Time":"2026-11-03T15:30:17.899029813Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Output":"PASS\n"}
+{"Time":"2026-11-03T15:30:17.900005015Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/updater","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.080s\n"}
+{"Time":"2026-11-03T15:30:17.900024441Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/updater","Elapsed":0.081}

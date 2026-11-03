@@ -1,0 +1,85 @@
+Task bd-6z37: installer Go floor mismatch
+Status: scoped implementation complete. All required implementer checks passed.
+Unresolved required-check blockers: none. Previous blocker bd-lbtz is closed and make test-stable now ran successfully.
+Unrelated follow-up work: none.
+Independent reviewer and tester: pending with Polly.
+Delivery commit, delivery push and PR: not performed, expressly forbidden pending approval.
+
+Git preflight (before implementation):
+Repository: /home/omnigent/workspace/b9s
+Origin: https://github.com/vanderheijden86/b9s.git
+Assigned base and PR target: main
+Actual branch: omnigent/bd-6z37
+HEAD: 793407bd86c74ba9985c9870c39392974ec8380e
+Fetched origin/main: 793407bd86c74ba9985c9870c39392974ec8380e
+Required commits and required ancestry checks: none.
+git merge-base --is-ancestor origin/main HEAD exited 0.
+Initial tree clean. Local delivery absent. Exact remote delivery probe exit 2 (absent).
+Created delivery branch from fetched origin/main, not bootstrap HEAD.
+Checkpoint inspect exit 0: d02a5312353a3a1f119489757cfd66a4444ffbcf, mismatches [].
+Restore exit 0 after matching branch, source HEAD, fetched base and clean tree checks.
+Checkpoint compare exit 2 after current environment/command differed from saved run.
+Old GREEN results were not reused as current verification. Fresh focused and full required checks ran.
+No additional source edits were necessary after restoring the matching implementation.
+Preflight report: /tmp/bd-6z37-resume/preflight.txt
+
+Changed files:
+install.sh: ensure_go minimum and source failure message both require Go 1.25.
+pkg/updater/integration_test.go: TestInstallerGoRequirement checks version boundaries and errors against go.mod, plus failure before source fetch/build/install. Each shell subprocess has a five-second deadline.
+docs/testing.md: focused installer command, isolation and deadlines.
+Guard: minimum-version boundary and required error text derive from go.mod, so future mismatches fail regression coverage.
+README already requires Go 1.25. No ADR decision changed. Read project and baseline instructions, docs/testing.md, executable-guards.md and relevant updater ADR 0028.
+
+Environment:
+go version go1.25.5 linux/amd64, /usr/local/bin/go
+GNU Make 4.4.1, /usr/bin/make
+CGO_ENABLED=1, compiler /usr/bin/cc
+Go commands below use GOMAXPROCS=4 and GOFLAGS=-p=4 unless specified otherwise.
+Committed go.mod and go.sum unchanged. No production/acceptance database used.
+
+Commands and measured results:
+1. beads-connect
+   Exit 0, connected to b9s as bd_b9s. Executed once.
+2. timeout 300s go -C /home/omnigent/workspace/b9s mod download
+   Exit 0. Committed dependencies installed before checks.
+   Report: /tmp/bd-6z37-resume/dependencies.txt
+3. Saved test-first RED run, inspected from matching checkpoint, not rerun:
+   GOMAXPROCS=4 GOFLAGS=-p=4 timeout 180s /tmp/bd-6z37-toolchain/go/bin/go -C /home/omnigent/workspace/b9s test ./pkg/updater -run '^TestInstallerGoRequirement$' -count=1 -timeout=60s -json
+   Saved environment CGO_ENABLED=0, go1.25.5.
+   Exit 1. 7 subtests passed, 4 failed, 0 skipped. Parent failed (all test events 7 passed, 5 failed).
+   Failures reproduce Go 1.21/1.24 acceptance, source side effects under unsupported Go, and inaccurate missing-Go error.
+   Report: /home/omnigent/workspace/b9s/.git/lane-checkpoints/bd-6z37/1-bd-6z37-installer-red.jsonl
+4. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 90s go -C /home/omnigent/workspace/b9s test ./pkg/updater -run '^TestInstallerGoRequirement$' -count=1 -timeout=60s -json
+   Fresh exit 0. 11 subtests passed, 0 failed, 0 skipped. Parent passed.
+   All test events 12 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun.
+   Reports: /tmp/bd-6z37-resume/installer-green.jsonl, installer-green.exit, installer-summary.json, installer-evidence.json
+5. timeout 30s bash -n /home/omnigent/workspace/b9s/install.sh
+   Exit 0. No test counts apply.
+   Report: /tmp/bd-6z37-resume/bash-syntax.txt
+6. GOMAXPROCS=4 GOFLAGS='-p=4 -v -count=1' timeout 660s make -C /home/omnigent/workspace/b9s test-stable
+   Required command ran alone, with no baseline comparison. GOFLAGS enables verbose counts and disables test-result caching.
+   Exit 0. 21 packages passed.
+   Top-level tests: 2058 passed, 0 failed, 18 skipped.
+   All test/subtest events: 3357 passed, 0 failed, 20 skipped. No interrupted tests. No retries.
+   Skips: opt-in S3/Dolt/Memory/stress fixtures and two absent real-issue JSONL fixtures (subtests).
+   Makefile excludes E2E and named host-sensitive tests by design. These are outside the selected suite, not reported passes or skips.
+   Reports: /tmp/bd-6z37-resume/stable.txt, stable.exit, stable-summary.json
+7. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 180s go -C /home/omnigent/workspace/b9s build ./...
+   Exit 0. No test counts apply. Go build provides type checking.
+   Report: /tmp/bd-6z37-resume/build.txt
+8. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 180s go -C /home/omnigent/workspace/b9s vet ./...
+   Exit 0. No test counts apply.
+   Report: /tmp/bd-6z37-resume/vet.txt
+9. timeout 30s git -C /home/omnigent/workspace/b9s diff --check
+   Exit 0. No test counts apply.
+   Report: /tmp/bd-6z37-resume/diff-check.txt
+10. timeout 30s gofmt -l /home/omnigent/workspace/b9s/pkg/updater/integration_test.go
+    Exit 0, no filenames. Changed Go file already formatted.
+    Reports: /tmp/bd-6z37-resume/gofmt.txt, format-summary.txt
+
+Residual risks and scope limits:
+The version tests execute real installer functions with isolated local tool commands, not actual installations of each Go version.
+Homebrew and official macOS package installation paths were not exercised.
+No browser or TUI changes. Browser and preview checks are outside this task's required checks.
+The stable suite's 18 top-level skips remain explicit, with names in stable-summary.json.
+Review/tester approval and delivery authorization remain pending.
