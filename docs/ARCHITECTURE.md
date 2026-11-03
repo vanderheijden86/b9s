@@ -210,6 +210,15 @@ Bulk actions act on the marked issues, or on the cursor row when nothing is mark
 
 The header lists recent projects from `config.yaml`, not folders discovered by scanning. A new project takes key `1`, a known project keeps its key, and `lock_recent` freezes the list. A recent project whose database denies the startup user is left out of the header for the session, and its counts always come from the checkout's configured source. See [ADR 0008](adr/0008-list-recent-projects-instead-of-discovered-folders.md) and [ADR 0015](adr/0015-hide-recent-projects-the-startup-user-cannot-read.md).
 
+`:forget <number>` removes an inactive recent project by its current visible
+header number, without opening its server. `Config.ForgetRecent` respects
+`lock_recent`. `SaveRecentTo` excludes the explicit target from both the
+in-memory and on-disk lists before merging, so the disk copy cannot undo the
+removal. Other windows' additions and unrelated YAML settings and comments
+survive. The UI applies the shorter list only after the atomic save succeeds.
+A refresh already in flight may finish, but later header counts use the
+shorter list. A stale window can still restore its own copy on a later save.
+
 `:project` opens the project table, which lists the databases on the startup project's Dolt server that the startup user can read. `catalog.go` classifies each database into a closed `Reachability` set from the MySQL error number, so a down tunnel is never reported as refused access or the reverse. Opening a database without a checkout reads it as the startup user, the only credential b9s holds. See [ADR 0007](adr/0007-read-shared-beads-through-one-select-only-catalog-account.md) and [ADR 0009](adr/0009-open-entity-views-from-a-colon-command-prompt.md), superseded in part by [ADR 0027](adr/0027-show-a-flat-list-for-type-queries-and-on-t.md).
 
 A project switch is a small state machine in `project_switch.go`. While a project is `Opening`, the current one stays on screen and usable, and it is replaced only once the new one has loaded. A deadline of ten seconds bounds the wait, with the Dolt connect timeout of five seconds inside it. A failure keeps the old project and shows the `OpenReason`, a closed set that the CLI and the TUI share.

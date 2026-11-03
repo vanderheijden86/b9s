@@ -19,13 +19,14 @@ const (
 	CommandWrap
 	CommandBranch
 	CommandUpdate
+	CommandForget
 )
 
 // Command is a resolved ':' command.
 type Command struct {
 	Kind      CommandKind
 	IssueType model.IssueType
-	// Arg is the issue id a branch command names.
+	// Arg is a branch's issue ID or a forget command's header number.
 	Arg string
 	// Query holds the query terms after a type or issues command. When set,
 	// they replace the shared query instead of editing its type term.
@@ -38,7 +39,7 @@ func typeFilterCommand(t model.IssueType) Command {
 
 // commandNames are the canonical spellings offered as suggestions. The alias
 // table below must resolve every one of them.
-var commandNames = []string{"branch", "bug", "chore", "epic", "feature", "issues", "layout", "mouse", "project", "task", "update", "wrap"}
+var commandNames = []string{"branch", "bug", "chore", "epic", "feature", "forget", "issues", "layout", "mouse", "project", "task", "update", "wrap"}
 
 // commandAliases is a closed table in code rather than config: the set of
 // entity views is fixed by the Beads schema, and tests can check it is total.
@@ -54,12 +55,13 @@ var commandAliases = map[string]Command{
 	"layout":  {Kind: CommandLayout},
 	"wrap":    {Kind: CommandWrap},
 	"update":  {Kind: CommandUpdate},
+	"forget":  {Kind: CommandForget},
 	"project": {Kind: CommandProjects}, "projects": {Kind: CommandProjects}, "proj": {Kind: CommandProjects},
 }
 
 // ResolveCommand maps prompt text to a command. A type or issues command may
 // carry query terms after its name, as k9s takes a filter after a resource
-// (:pods app=kindnet); the other commands take no arguments, except branch.
+// (:pods app=kindnet). Branch takes an issue ID, and forget a header number.
 func ResolveCommand(text string) (Command, error) {
 	fields := strings.Fields(text)
 	if len(fields) > 0 && strings.EqualFold(fields[0], "branch") {
@@ -79,6 +81,15 @@ func ResolveCommand(text string) (Command, error) {
 	command, ok := commandAliases[name]
 	if !ok {
 		return Command{}, fmt.Errorf("unknown command: %s", name)
+	}
+	if command.Kind == CommandForget {
+		if len(fields) > 2 {
+			return Command{}, fmt.Errorf("usage: forget <header number 1-9>")
+		}
+		if len(fields) == 2 {
+			command.Arg = fields[1]
+		}
+		return command, nil
 	}
 	if len(fields) > 1 {
 		if command.Kind != CommandTypeFilter && command.Kind != CommandClearType {
