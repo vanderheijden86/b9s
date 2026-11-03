@@ -27,6 +27,13 @@ go test ./... -short -skip DoltIntegration   # skips the slow cases
 
 `make test` runs the default set. Every run must have a bounded timeout. A test that hangs is a bug in the test or the code, never a reason to raise the timeout.
 
+The source installer's Go requirement is checked against `go.mod` with
+`go test ./pkg/updater -run '^TestInstallerGoRequirement$' -count=1 -timeout=60s`.
+The test runs `install.sh` functions in Bash with isolated tool commands. It
+checks supported versions, rejects older or missing Go before fetching or
+building source, and checks the required version in errors. Each shell run has
+a five-second deadline and does not download, build or install software.
+
 The E2E suite runs its PTY tests one after another and takes about seven minutes, or up to eleven on a loaded machine. The 1200s limit covers the whole suite, not one test: each PTY run has its own deadline of 10 to 15 seconds, and a run that reaches it fails, so a hang still shows within seconds. Count the results of a verbose run with `grep -c '^--- SKIP' e2e.log` (and `PASS`, `FAIL`): a skip that no missing server or tool explains needs a look.
 
 ## Layers
