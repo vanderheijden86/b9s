@@ -1,0 +1,73 @@
+Implementation report: bd-xx9w.1.2, attempt 1
+Role: implementer (Codex)
+Result: required implementation checks green. No unresolved required-check failures. No issues filed.
+
+Git preflight
+Repository: /home/omnigent/workspace/b9s
+Origin: https://github.com/vanderheijden86/b9s.git
+Assigned base and PR target: main
+Initial checkout: main, clean worktree
+Base command: timeout 60s git -C /home/omnigent/workspace/b9s fetch origin main, exit 0
+Fetched base origin/main: 793407bd86c74ba9985c9870c39392974ec8380e
+Delivery probe: timeout 60s git -C /home/omnigent/workspace/b9s ls-remote --exit-code --heads origin refs/heads/omnigent/bd-xx9w.1.2, exit 2 (absent)
+No local delivery branch existed. Created from origin/main with git switch -c.
+Actual delivery branch: omnigent/bd-xx9w.1.2
+Actual HEAD at preparation and handoff: 793407bd86c74ba9985c9870c39392974ec8380e
+Required commits: none. Required-commit ancestry against base and HEAD: not applicable.
+Foreign changes: none at preflight. At handoff only the three assigned files below are changed.
+Checkpoint inspection: absent, exit 2. Fresh implementation permitted.
+Dependency bd-xx9w.1.1: closed. ADR 0026 exists on assigned base (status proposed) and governed this dispatched implementation.
+
+Changed files
+~ pkg/model/types.go: TypeMilestone, Release snapshot (named Issue field, Epics, State), ReleaseState closed vocabulary and validity predicate, BuildReleases with supplied clock.
+~ pkg/model/types_test.go: four state cases, state precedence, clock boundary, no due date, partial scope, edge direction/type, missing targets, duplicate/shared scope, nonmutation and state validity.
+~ docs/ARCHITECTURE.md: model API and derivation contract.
+
+Behavior
+Released wins when the milestone is closed. Otherwise ready_to_ship wins when every epic is closed, then overdue for a past nonzero due date, otherwise planned.
+Empty scope is ready. Unknown blocking targets prevent readiness. Known non-epic targets are outside epic scope.
+Existing IsBlocking semantics include untyped legacy blocking edges. Other edge types, nil and foreign edges are ignored.
+Milestone order and dependency order are retained, duplicate epic edges deduplicated, shared scope retained in each release for downstream conflict reporting.
+Pure derivation, no clock reads inside production logic, no database writes or workflow state persistence.
+
+Commands and observed results
+1. timeout 300s go mod download
+   Exit 0. go.mod/go.sum unchanged. Runtime go version go1.25.5 linux/amd64, CGO_ENABLED=1.
+2. timeout 90s go test ./pkg/model -run '^TestBuildReleases' -count=1 -timeout=60s -json
+   RED against declaration-only builder: exit 1, leaf counts 1 passed, 26 failed, 0 skipped, 0 interrupted, 0 unrun.
+   Failure reason: got 0 releases, want 1.
+3. Same focused command after implementation
+   GREEN: exit 0, leaf counts 27 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun.
+4. timeout 660s env GOFLAGS=-v make test-stable
+   Run alone, no base comparison. Makefile declares go test -timeout 10m and excludes tests/e2e and its host-sensitive selection.
+   Exit 0. Leaf counts: 3196 passed, 0 failed, 20 skipped, 0 interrupted, 0 unrun.
+   Top-level counts: 2062 passed, 0 failed, 18 skipped. Twenty-one package summaries, all ok.
+   Count basis: leaf results exclude aggregate parents. Makefile exclusions were not executed and are not counted as skipped events.
+   The skipped names are retained in stable-summary.json. They cover optional S3, Dolt, Memory, absent fixture and stress prerequisites.
+5. timeout 180s go build ./...
+   Exit 0, no diagnostics. Build includes Go type checking. Test counts not applicable.
+6. timeout 180s go vet ./...
+   Exit 0, no diagnostics. Test counts not applicable.
+7. git -C /home/omnigent/workspace/b9s diff --check
+   Exit 0. gofmt -l on both changed Go files returned no paths.
+
+Evidence files (absolute directory /tmp/bd-xx9w.1.2-evidence)
+preflight.txt, dependencies.txt
+red.jsonl, red.exit, red-summary.json
+green.jsonl, green.exit, green-summary.json
+stable.txt, stable.exit, stable-summary.json
+build.txt, vet.txt, self-review.txt, implementation.txt, final-report.txt
+All test evidence was measured in this attempt. No saved test result was reused. No retries were used.
+
+Review and residual risks
+Implementer self-review: scope, precedence, graph direction, nil safety, missing targets, nonmutation, formatting and diff whitespace checked with no findings.
+Independent reviewer and tester have not yet run. This report does not substitute for them.
+This task adds a model API. Datasource wiring remains in existing task bd-xx9w.1.3. No UI or browser changes or browser checks apply here.
+Optional skipped tests do not exercise external S3, Dolt or Memory environments in this Pod.
+No new ADR is required: implementation follows dispatched ADR 0026 without changing its decision.
+
+Delivery
+No delivery commits, delivery-branch push or PR. HEAD remains unchanged.
+Initial unapproved checkpoint push succeeded to refs/heads/omnigent-checkpoints/bd-xx9w.1.2.
+A final checkpoint save includes this report and stable-suite summary. Its actual outcome is reported separately after command exit.
+Task status, assignee, labels and dependencies were not changed.
