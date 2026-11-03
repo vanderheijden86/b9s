@@ -234,6 +234,12 @@ The Dolt SQL login is a workspace credential shared by every agent, so it is sho
 
 `b9s web` (`cmd/b9s/web.go`) serves one project to browsers. It reuses the TUI's readers, watcher, query parser and `IssueWriter`, so the browser sees the same data and makes the same `bd` calls.
 
+Ordinary board issues render as borderless title rows with status, short ID and
+urgent priority. Selection highlights and wraps the title without adding
+metadata or parent breadcrumbs. Complete issue details carry that context.
+Epic summaries retain their description, counts and metadata, and same-cell
+ordering and indentation retain hierarchy ([ADR 0065](adr/0065-keep-web-board-issue-rows-title-focused.md)).
+
 ```text
   phone ──https──▶ tailscale serve ──▶ 127.0.0.1:7979  pkg/web.Server
                                           │

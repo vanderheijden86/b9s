@@ -57,8 +57,9 @@ test.describe("tokens", () => {
     await expect(card.locator(".ty")).toHaveCount(0);
     await expect.poll(() => card.locator(".st").evaluate(el => getComputedStyle(el).backgroundColor)).toBe(openColor);
     await card.click();
-    await expectColor(card.locator(".l2 > span").filter({ hasText: /^P2$/ }), neutral);
-    await expectColor(card.locator(".l2 > span").filter({ hasText: /task/ }), neutral);
+    await expect(card.locator(".l2, .l3")).toHaveCount(0);
+    await expectColor(page.locator(".detail .pill").filter({ hasText: /^P2$/ }), neutral);
+    await expectColor(page.locator(".detail .pill").filter({ hasText: /^task$/ }), neutral);
     await page.locator('.detail [data-act="dclose"]').last().click();
     await expect(page.locator(".detail")).toHaveCount(0);
 
