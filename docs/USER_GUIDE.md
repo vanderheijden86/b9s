@@ -479,6 +479,18 @@ are in `pkg/skin/builtin/`; copy one to start a new skin. If a skin file does
 not load, b9s starts with the built-in skins and shows the error in the status
 bar. See [ADR 0033](adr/0033-load-k9s-skins-into-theme-slots.md).
 
+Picker numbers, command suggestions, health warnings, triage symbols and heatmaps
+also follow the skin. Their optional overrides are `pickerText`,
+`commandSuggestion`, `healthWarning`, `healthError`, `priorityUp`, `priorityDown`,
+`triageStar`, `triageUnblocks` and `triageUnblocksAlt`. `heatGradient` takes eight
+colours from empty to hot. `heatBackgrounds` and `heatForegrounds` each take six
+colours, for empty cells and the intensity bands below 0.2, 0.4, 0.6, 0.8 and at
+least 0.8. Without overrides, these colours derive from the skin's text, status
+colours and tints. Built-in Dracula retains its original colours. On terminals
+with fewer than 24-bit colours, heatmap cells keep the terminal's background.
+On 16-colour terminals, triage and heatmap text use black for a light theme and
+white for a dark theme.
+
 ### Environment variables
 
 | Variable | Effect |
