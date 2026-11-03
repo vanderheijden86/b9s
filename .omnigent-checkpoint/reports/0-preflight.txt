@@ -1,0 +1,10 @@
+Beads connection: beads-connect exit 0, connected to b9s as bd_b9s.
+Initial branch: main, clean worktree.
+Fetch: timeout 60s git fetch origin main, exit 0.
+Delivery probe: timeout 60s git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-e5u3.20.14, exit 2 (absent).
+Local delivery branch: absent before preparation.
+Created branch from origin/main: omnigent/bd-e5u3.20.14.
+HEAD: 793407bd86c74ba9985c9870c39392974ec8380e
+Fetched base origin/main: 793407bd86c74ba9985c9870c39392974ec8380e
+Required commits: none. Required ancestry checks: not applicable.
+Checkpoint inspect: exit 2, no checkpoint exists for this task.
