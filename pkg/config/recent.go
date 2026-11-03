@@ -54,6 +54,26 @@ func (c *Config) TouchRecent(p RecentProject) bool {
 	return true
 }
 
+// ForgetRecent removes p by project identity without changing the other slots'
+// relative order. A locked list keeps its membership.
+func (c *Config) ForgetRecent(p RecentProject) bool {
+	if c.LockRecent || !containsRecent(c.RecentProjects, p) {
+		return false
+	}
+	c.RecentProjects = withoutRecent(c.RecentProjects, []RecentProject{p})
+	return true
+}
+
+func withoutRecent(list, forgotten []RecentProject) []RecentProject {
+	kept := make([]RecentProject, 0, len(list))
+	for _, p := range list {
+		if !containsRecent(forgotten, p) {
+			kept = append(kept, p)
+		}
+	}
+	return kept
+}
+
 func containsRecent(list []RecentProject, p RecentProject) bool {
 	for _, existing := range list {
 		if existing.SameProject(p) {
@@ -170,9 +190,14 @@ func RecentFromCheckout(name, path string) (RecentProject, bool) {
 // SaveRecentTo writes recent as the config file's recent_projects and leaves
 // every other key, and the user's comments, as they are. Opening a project
 // saves this list, so it must not rewrite a hand-edited file with defaults.
-func SaveRecentTo(path string, recent []RecentProject, locked bool) error {
+// Forgotten projects are excluded from both lists before merging, unless locked,
+// so the on-disk copy cannot restore an entry the user explicitly forgot.
+func SaveRecentTo(path string, recent []RecentProject, locked bool, forgotten ...RecentProject) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("creating config directory: %w", err)
+	}
+	if !locked && len(forgotten) > 0 {
+		recent = withoutRecent(recent, forgotten)
 	}
 
 	var doc yaml.Node
@@ -182,7 +207,11 @@ func SaveRecentTo(path string, recent []RecentProject, locked bool) error {
 		if err := yaml.Unmarshal(existing, &doc); err != nil {
 			return fmt.Errorf("parsing config: %w", err)
 		}
-		recent = mergeRecent(recent, recentOnDisk(existing), locked)
+		onDisk := recentOnDisk(existing)
+		if !locked && len(forgotten) > 0 {
+			onDisk = withoutRecent(onDisk, forgotten)
+		}
+		recent = mergeRecent(recent, onDisk, locked)
 	case os.IsNotExist(err):
 	default:
 		return fmt.Errorf("reading config: %w", err)
