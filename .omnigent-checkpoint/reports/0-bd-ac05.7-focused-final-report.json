@@ -1,0 +1,54 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./cmd/b9s",
+    "./internal/datasource",
+    "./internal/bdrun",
+    "-run",
+    "^(TestPrintOneMemory|TestLoadOneMemory|TestPrintAllMemories|TestRenderMemories|TestMemoriesExplains|TestMemoryLever|TestParseGraphPreview|TestProbeMemory)",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 0,
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.41",
+    "goos_goarch": [
+      "linux",
+      "amd64"
+    ]
+  },
+  "counts": {
+    "passed": 46,
+    "failed": 0,
+    "skipped": 1,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "counting": "Go named test outcomes, including parent tests and subtests. Unrun concerns only the selected tests, not intentional suite exclusions.",
+  "leaf_counts": {
+    "passed": 41,
+    "failed": 0,
+    "skipped": 1
+  },
+  "package_outcomes": [
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "outcome": "pass"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+      "outcome": "pass"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "outcome": "pass"
+    }
+  ],
+  "failures": [],
+  "source_report": "/tmp/bd-ac05.7-focused-final.jsonl"
+}
