@@ -201,7 +201,15 @@ export const row = (page: Page, id: string) => page.locator(`#treeRows .row[data
 
 /** swipe drags a row horizontally by a fraction of its width, with real pointer events. */
 export async function swipe(page: Page, id: string, fraction: number): Promise<void> {
-  const box = (await row(page, id).boundingBox())!;
+  const target = row(page, id);
+  const deadline = Date.now() + 5000;
+  let box = await target.boundingBox({ timeout: 5000 });
+  // A render can replace a resolved row while its geometry is being read.
+  while (!box && Date.now() < deadline) {
+    await page.waitForTimeout(20);
+    box = await target.boundingBox({ timeout: Math.max(1, deadline - Date.now()) });
+  }
+  if (!box) throw new Error(`row ${id} had no swipe geometry within 5000 ms`);
   const y = box.y + box.height / 2, x0 = box.x + box.width / 2 - (fraction > 0 ? box.width * 0.3 : -box.width * 0.3);
   const x1 = x0 + fraction * box.width;
   await page.mouse.move(x0, y);
