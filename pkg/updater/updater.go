@@ -545,6 +545,21 @@ func GetCurrentBinaryPath() (string, error) {
 	return filepath.EvalSymlinks(exe)
 }
 
+// GetSelfUpdateBinaryPath resolves the executable and rejects app bundles,
+// whose code signatures cover the bundled binary.
+func GetSelfUpdateBinaryPath() (string, error) {
+	binaryPath, err := GetCurrentBinaryPath()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine binary path: %w", err)
+	}
+	for dir := filepath.Dir(binaryPath); dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+		if strings.EqualFold(filepath.Ext(dir), ".app") {
+			return "", fmt.Errorf("cannot update b9s inside an app bundle without breaking its code signature; download the new DMG from https://github.com/vanderheijden86/b9s/releases/latest")
+		}
+	}
+	return binaryPath, nil
+}
+
 // GetBackupPath returns the path for the backup binary
 func GetBackupPath(binaryPath string) string {
 	return binaryPath + ".backup"
@@ -553,6 +568,10 @@ func GetBackupPath(binaryPath string) string {
 // PerformUpdate downloads and installs a new version of b9s
 // Returns an UpdateResult with details about the operation
 func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
+	binaryPath, err := GetSelfUpdateBinaryPath()
+	if err != nil {
+		return nil, err
+	}
 	result := &UpdateResult{
 		OldVersion: version.Version,
 		NewVersion: release.TagName,
@@ -577,12 +596,6 @@ func PerformUpdate(release *Release, skipConfirm bool) (*UpdateResult, error) {
 	attestationAsset, err := requireAttestationAsset(release)
 	if err != nil {
 		return nil, err
-	}
-
-	// Get current binary path
-	binaryPath, err := GetCurrentBinaryPath()
-	if err != nil {
-		return nil, fmt.Errorf("cannot determine binary path: %w", err)
 	}
 
 	// Check write permissions

@@ -4,11 +4,97 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestPerformUpdateExecutableLocation(t *testing.T) {
+	if expectedPath := os.Getenv("B9S_TEST_UPDATE_EXECUTABLE"); expectedPath != "" {
+		resolved, err := GetCurrentBinaryPath()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resolved != expectedPath {
+			t.Fatalf("resolved executable = %q, want %q", resolved, expectedPath)
+		}
+		_, err = PerformUpdate(&Release{TagName: "v99.0.0"}, true)
+		if os.Getenv("B9S_TEST_UPDATE_BUNDLE") == "1" {
+			if err == nil || !strings.Contains(err.Error(), "DMG") ||
+				!strings.Contains(err.Error(), "https://github.com/vanderheijden86/b9s/releases/latest") {
+				t.Fatalf("bundled updater must direct users to download the DMG, got %v", err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "no binary available") {
+			t.Fatalf("ordinary updater must continue to release asset checks, got %v", err)
+		}
+		return
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		name    string
+		path    string
+		symlink bool
+		bundled bool
+	}{
+		{"bundle", "B9s.app/Contents/Resources/bin/b9s", false, true},
+		{"linked_bundle", "B9s.app/Contents/Resources/bin/b9s", true, true},
+		{"uppercase_bundle", "B9s.APP/Contents/Resources/bin/b9s", false, true},
+		{"ordinary", "bin/b9s", false, false},
+		{"linked_ordinary", "bin/b9s", true, false},
+		{"app_substring", "B9s.app-cache/bin/b9s", false, false},
+		{"executable_suffix", "bin/b9s.app", false, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, filepath.FromSlash(tt.path))
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := copyFile(executable, target); err != nil {
+				t.Fatal(err)
+			}
+			expectedPath, err := filepath.EvalSymlinks(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			invokedPath := target
+			if tt.symlink {
+				invokedPath = filepath.Join(dir, "usr", "local", "bin", "b9s")
+				if err := os.MkdirAll(filepath.Dir(invokedPath), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, invokedPath); err != nil {
+					t.Fatal(err)
+				}
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, invokedPath, "-test.run=^TestPerformUpdateExecutableLocation$", "-test.timeout=8s")
+			cmd.Env = append(os.Environ(), "B9S_TEST_UPDATE_EXECUTABLE="+expectedPath, "B9S_TEST_UPDATE_BUNDLE=0")
+			if tt.bundled {
+				cmd.Env[len(cmd.Env)-1] = "B9S_TEST_UPDATE_BUNDLE=1"
+			}
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("updater subprocess: %v\n%s", err, output)
+			}
+			entries, err := os.ReadDir(filepath.Dir(target))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 1 || entries[0].Name() != filepath.Base(target) {
+				t.Fatalf("updater changed executable directory: %v", entries)
+			}
+		})
+	}
+}
 
 func TestCopyFile_PreservesContentAndMode(t *testing.T) {
 	tmpDir := t.TempDir()
