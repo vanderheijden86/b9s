@@ -1,0 +1,10 @@
+Dispatch 2 preflight, before edits
+Repository /home/omnigent/workspace/b9s
+Actual branch omnigent/bd-e5u3.20.15, preserved two assigned uncommitted files.
+HEAD 816e4988ebbf96d942727c2014a80050664f413d
+Explicit fetched base origin/omnigent/bd-e5u3.20.14 = 816e4988ebbf96d942727c2014a80050664f413d
+Required ancestor 816e4988ebbf96d942727c2014a80050664f413d
+Required ancestor against HEAD exit 0, against fetched base exit 0.
+Exact remote delivery ls-remote exit 2, absent. Existing local delivery branch preserved.
+Checkpoint inspect: eab12fe8fae97afe826889b0da07eb9044d7265e, mismatches empty. No restore over existing work.
+Tester failure remains unresolved pending reproduction and fix. No delivery commit/push/PR.
