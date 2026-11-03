@@ -1,0 +1,26 @@
+{
+  "command_exit": 1,
+  "counts": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_basis": "completed leaf test cases, parent aggregates excluded; unrun is 0 within the selected suite on normal completion",
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "result": "fail"
+    }
+  ],
+  "nonpasses": [
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "test": "TestPerformUpdateExecutableLocation/executable_suffix",
+      "result": "fail"
+    }
+  ],
+  "interrupted": [],
+  "flaky": 0
+}
