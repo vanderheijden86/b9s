@@ -202,11 +202,12 @@ func (s Status) IsTombstone() bool {
 type IssueType string
 
 const (
-	TypeBug     IssueType = "bug"
-	TypeFeature IssueType = "feature"
-	TypeTask    IssueType = "task"
-	TypeEpic    IssueType = "epic"
-	TypeChore   IssueType = "chore"
+	TypeBug       IssueType = "bug"
+	TypeFeature   IssueType = "feature"
+	TypeTask      IssueType = "task"
+	TypeEpic      IssueType = "epic"
+	TypeChore     IssueType = "chore"
+	TypeMilestone IssueType = "milestone"
 )
 
 // IsValid returns true if the issue type is non-empty.
@@ -271,6 +272,85 @@ func (d DependencyType) IsValid() bool {
 // created without an explicit type will block by default.
 func (d DependencyType) IsBlocking() bool {
 	return d == "" || d == DepBlocks
+}
+
+// ReleaseState is the derived lifecycle of a milestone (ADR 0026).
+type ReleaseState string
+
+const (
+	ReleasePlanned     ReleaseState = "planned"
+	ReleaseOverdue     ReleaseState = "overdue"
+	ReleaseReadyToShip ReleaseState = "ready_to_ship"
+	ReleaseReleased    ReleaseState = "released"
+)
+
+// IsValid reports whether the state belongs to the release lifecycle.
+func (s ReleaseState) IsValid() bool {
+	switch s {
+	case ReleasePlanned, ReleaseOverdue, ReleaseReadyToShip, ReleaseReleased:
+		return true
+	}
+	return false
+}
+
+// Release is a milestone snapshot with its blocking epic scope and derived state.
+type Release struct {
+	Issue Issue        `json:"issue"`
+	Epics []Issue      `json:"epics,omitempty"`
+	State ReleaseState `json:"state"`
+}
+
+// BuildReleases derives releases from an issue snapshot at the supplied time.
+// Milestones retain snapshot order, and epics retain dependency order.
+// Missing blocking targets prevent readiness because their type and status are
+// unknown. Shared epics remain in each release for callers to report conflicts.
+func BuildReleases(issues []Issue, now time.Time) []Release {
+	byID := make(map[string]Issue, len(issues))
+	for _, issue := range issues {
+		byID[issue.ID] = issue
+	}
+	var releases []Release
+	for _, issue := range issues {
+		if issue.IssueType != TypeMilestone {
+			continue
+		}
+		release := Release{Issue: issue}
+		allEpicsClosed := true
+		seen := make(map[string]bool)
+		for _, dep := range issue.Dependencies {
+			if dep == nil || dep.IssueID != issue.ID || !dep.Type.IsBlocking() {
+				continue
+			}
+			epic, found := byID[dep.DependsOnID]
+			if !found {
+				allEpicsClosed = false
+				continue
+			}
+			if epic.IssueType != TypeEpic || seen[epic.ID] {
+				continue
+			}
+			seen[epic.ID] = true
+			release.Epics = append(release.Epics, epic)
+			allEpicsClosed = allEpicsClosed && epic.Status.IsClosed()
+		}
+		release.State = deriveReleaseState(issue, allEpicsClosed, now)
+		releases = append(releases, release)
+	}
+	return releases
+}
+
+func deriveReleaseState(milestone Issue, allEpicsClosed bool, now time.Time) ReleaseState {
+	overdue := milestone.DueDate != nil && !milestone.DueDate.IsZero() && milestone.DueDate.Before(now)
+	switch {
+	case milestone.Status.IsClosed():
+		return ReleaseReleased
+	case allEpicsClosed:
+		return ReleaseReadyToShip
+	case overdue:
+		return ReleaseOverdue
+	default:
+		return ReleasePlanned
+	}
 }
 
 // Comment represents a comment on an issue.

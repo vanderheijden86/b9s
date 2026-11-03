@@ -2,10 +2,154 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestBuildReleases_State(t *testing.T) {
+	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	past, future, zero := now.Add(-time.Hour), now.Add(time.Hour), time.Time{}
+	tests := []struct {
+		name      string
+		status    Status
+		due       *time.Time
+		epicState []Status
+		want      ReleaseState
+	}{
+		{"planned without date", StatusOpen, nil, []Status{StatusOpen}, ReleasePlanned},
+		{"planned before due date", StatusOpen, &future, []Status{StatusOpen}, ReleasePlanned},
+		{"planned at due date", StatusOpen, &now, []Status{StatusOpen}, ReleasePlanned},
+		{"planned with zero date", StatusOpen, &zero, []Status{StatusOpen}, ReleasePlanned},
+		{"overdue", StatusOpen, &past, []Status{StatusOpen}, ReleaseOverdue},
+		{"ready to ship", StatusOpen, &future, []Status{StatusClosed, StatusClosed}, ReleaseReadyToShip},
+		{"ready takes precedence over overdue", StatusOpen, &past, []Status{StatusClosed}, ReleaseReadyToShip},
+		{"empty scope is ready", StatusOpen, nil, nil, ReleaseReadyToShip},
+		{"released with unfinished epic", StatusClosed, &past, []Status{StatusOpen}, ReleaseReleased},
+		{"released takes precedence over ready", StatusClosed, &past, []Status{StatusClosed}, ReleaseReleased},
+		{"partially closed scope", StatusOpen, nil, []Status{StatusClosed, StatusOpen}, ReleasePlanned},
+		{"blocked epic is unfinished", StatusOpen, nil, []Status{StatusBlocked}, ReleasePlanned},
+		{"tombstone epic is not closed", StatusOpen, nil, []Status{StatusTombstone}, ReleasePlanned},
+		{"in progress milestone is not released", StatusInProgress, &past, []Status{StatusOpen}, ReleaseOverdue},
+		{"deferred milestone is not released", StatusDeferred, nil, []Status{StatusOpen}, ReleasePlanned},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			milestone := Issue{ID: "release", Title: "v1", IssueType: TypeMilestone, Status: tt.status, DueDate: tt.due}
+			issues := []Issue{milestone}
+			for i, status := range tt.epicState {
+				id := fmt.Sprintf("epic-%d", i)
+				issues = append(issues, Issue{ID: id, IssueType: TypeEpic, Status: status})
+				issues[0].Dependencies = append(issues[0].Dependencies, &Dependency{
+					IssueID: milestone.ID, DependsOnID: id, Type: DepBlocks,
+				})
+			}
+			releases := BuildReleases(issues, now)
+			if len(releases) != 1 {
+				t.Fatalf("got %d releases, want 1", len(releases))
+			}
+			if releases[0].State != tt.want {
+				t.Errorf("state = %q, want %q", releases[0].State, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildReleases_EpicEdges(t *testing.T) {
+	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name     string
+		dep      *Dependency
+		target   Issue
+		wantEpic bool
+		want     ReleaseState
+	}{
+		{"blocks", &Dependency{IssueID: "release", DependsOnID: "target", Type: DepBlocks}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, true, ReleasePlanned},
+		{"legacy blocking edge", &Dependency{IssueID: "release", DependsOnID: "target"}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, true, ReleasePlanned},
+		{"related", &Dependency{IssueID: "release", DependsOnID: "target", Type: DepRelated}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, false, ReleaseReadyToShip},
+		{"parent child", &Dependency{IssueID: "release", DependsOnID: "target", Type: DepParentChild}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, false, ReleaseReadyToShip},
+		{"tracks", &Dependency{IssueID: "release", DependsOnID: "target", Type: "tracks"}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, false, ReleaseReadyToShip},
+		{"reverse edge", &Dependency{IssueID: "target", DependsOnID: "release", Type: DepBlocks}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, false, ReleaseReadyToShip},
+		{"foreign edge", &Dependency{IssueID: "other", DependsOnID: "target", Type: DepBlocks}, Issue{ID: "target", IssueType: TypeEpic, Status: StatusOpen}, false, ReleaseReadyToShip},
+		{"task target", &Dependency{IssueID: "release", DependsOnID: "target", Type: DepBlocks}, Issue{ID: "target", IssueType: TypeTask, Status: StatusOpen}, false, ReleaseReadyToShip},
+		{"missing target", &Dependency{IssueID: "release", DependsOnID: "missing", Type: DepBlocks}, Issue{}, false, ReleasePlanned},
+		{"nil edge", nil, Issue{}, false, ReleaseReadyToShip},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			milestone := Issue{ID: "release", IssueType: TypeMilestone, Status: StatusOpen, Dependencies: []*Dependency{tt.dep}}
+			releases := BuildReleases([]Issue{milestone, tt.target}, now)
+			if len(releases) != 1 {
+				t.Fatalf("got %d releases, want 1", len(releases))
+			}
+			release := releases[0]
+			if release.State != tt.want {
+				t.Errorf("state = %q, want %q", release.State, tt.want)
+			}
+			if tt.wantEpic {
+				if len(release.Epics) != 1 || !reflect.DeepEqual(release.Epics[0], tt.target) {
+					t.Errorf("epics = %#v, want [%#v]", release.Epics, tt.target)
+				}
+			} else if len(release.Epics) != 0 {
+				t.Errorf("epics = %#v, want none", release.Epics)
+			}
+		})
+	}
+}
+
+func TestBuildReleases_PreservesMilestones(t *testing.T) {
+	epic := Issue{ID: "epic", IssueType: TypeEpic, Status: StatusOpen}
+	first := Issue{ID: "v2", Title: "Release v2", Description: "notes", IssueType: TypeMilestone, Status: StatusOpen,
+		Dependencies: []*Dependency{
+			{IssueID: "v2", DependsOnID: epic.ID, Type: DepBlocks},
+			{IssueID: "v2", DependsOnID: epic.ID, Type: DepBlocks},
+		}}
+	second := Issue{ID: "v1", IssueType: TypeMilestone, Status: StatusOpen,
+		Dependencies: []*Dependency{{IssueID: "v1", DependsOnID: epic.ID, Type: DepBlocks}}}
+	issues := []Issue{first, epic, second, {ID: "task", IssueType: TypeTask}}
+	before := make([]Issue, len(issues))
+	for i := range issues {
+		before[i] = issues[i].Clone()
+	}
+	releases := BuildReleases(issues, time.Now())
+	if len(releases) != 2 {
+		t.Fatalf("got %d releases, want 2", len(releases))
+	}
+	for i, milestone := range []Issue{first, second} {
+		if !reflect.DeepEqual(releases[i].Issue, milestone) {
+			t.Errorf("milestone %d = %#v, want %#v", i, releases[i].Issue, milestone)
+		}
+		if len(releases[i].Epics) != 1 || releases[i].Epics[0].ID != epic.ID {
+			t.Errorf("epics %d = %#v, want one shared epic", i, releases[i].Epics)
+		}
+	}
+	if !reflect.DeepEqual(issues, before) {
+		t.Error("BuildReleases mutated its input")
+	}
+}
+
+func TestBuildReleases_NoMilestones(t *testing.T) {
+	for _, issues := range [][]Issue{nil, {{ID: "epic", IssueType: TypeEpic}}} {
+		if releases := BuildReleases(issues, time.Now()); len(releases) != 0 {
+			t.Errorf("got %#v, want no releases", releases)
+		}
+	}
+}
+
+func TestReleaseState_IsValid(t *testing.T) {
+	for _, state := range []ReleaseState{ReleasePlanned, ReleaseOverdue, ReleaseReadyToShip, ReleaseReleased} {
+		if !state.IsValid() {
+			t.Errorf("%q should be valid", state)
+		}
+	}
+	for _, state := range []ReleaseState{"", "unknown", "open"} {
+		if state.IsValid() {
+			t.Errorf("%q should be invalid", state)
+		}
+	}
+}
 
 func TestStatus_IsValid(t *testing.T) {
 	tests := []struct {
