@@ -1,0 +1,120 @@
+{"Time":"2026-11-03T21:48:37.029154983Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/model"}
+{"Time":"2026-11-03T21:48:37.031141776Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State"}
+{"Time":"2026-11-03T21:48:37.031158119Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State","Output":"=== RUN   TestBuildReleases_State\n"}
+{"Time":"2026-11-03T21:48:37.031203333Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_without_date"}
+{"Time":"2026-11-03T21:48:37.031208854Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_without_date","Output":"=== RUN   TestBuildReleases_State/planned_without_date\n"}
+{"Time":"2026-11-03T21:48:37.03121981Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_without_date","Output":"--- PASS: TestBuildReleases_State/planned_without_date (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031229668Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_without_date","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031236666Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_before_due_date"}
+{"Time":"2026-11-03T21:48:37.031239996Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_before_due_date","Output":"=== RUN   TestBuildReleases_State/planned_before_due_date\n"}
+{"Time":"2026-11-03T21:48:37.031244824Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_before_due_date","Output":"--- PASS: TestBuildReleases_State/planned_before_due_date (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031248313Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_before_due_date","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031257988Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_at_due_date"}
+{"Time":"2026-11-03T21:48:37.031260907Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_at_due_date","Output":"=== RUN   TestBuildReleases_State/planned_at_due_date\n"}
+{"Time":"2026-11-03T21:48:37.031264426Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_at_due_date","Output":"--- PASS: TestBuildReleases_State/planned_at_due_date (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.03127081Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_at_due_date","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031274054Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_with_zero_date"}
+{"Time":"2026-11-03T21:48:37.031276843Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_with_zero_date","Output":"=== RUN   TestBuildReleases_State/planned_with_zero_date\n"}
+{"Time":"2026-11-03T21:48:37.031282246Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_with_zero_date","Output":"--- PASS: TestBuildReleases_State/planned_with_zero_date (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.03128725Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/planned_with_zero_date","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031293299Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/overdue"}
+{"Time":"2026-11-03T21:48:37.031299492Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/overdue","Output":"=== RUN   TestBuildReleases_State/overdue\n"}
+{"Time":"2026-11-03T21:48:37.031328036Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/overdue","Output":"--- PASS: TestBuildReleases_State/overdue (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031332903Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/overdue","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031336466Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_to_ship"}
+{"Time":"2026-11-03T21:48:37.031339377Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_to_ship","Output":"=== RUN   TestBuildReleases_State/ready_to_ship\n"}
+{"Time":"2026-11-03T21:48:37.031344103Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_to_ship","Output":"--- PASS: TestBuildReleases_State/ready_to_ship (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031348712Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_to_ship","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031356244Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_takes_precedence_over_overdue"}
+{"Time":"2026-11-03T21:48:37.031359223Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_takes_precedence_over_overdue","Output":"=== RUN   TestBuildReleases_State/ready_takes_precedence_over_overdue\n"}
+{"Time":"2026-11-03T21:48:37.031367025Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_takes_precedence_over_overdue","Output":"--- PASS: TestBuildReleases_State/ready_takes_precedence_over_overdue (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031372594Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/ready_takes_precedence_over_overdue","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031380462Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/empty_scope_is_ready"}
+{"Time":"2026-11-03T21:48:37.031386263Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/empty_scope_is_ready","Output":"=== RUN   TestBuildReleases_State/empty_scope_is_ready\n"}
+{"Time":"2026-11-03T21:48:37.031395078Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/empty_scope_is_ready","Output":"--- PASS: TestBuildReleases_State/empty_scope_is_ready (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031400745Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/empty_scope_is_ready","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.03140823Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_with_unfinished_epic"}
+{"Time":"2026-11-03T21:48:37.031411152Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_with_unfinished_epic","Output":"=== RUN   TestBuildReleases_State/released_with_unfinished_epic\n"}
+{"Time":"2026-11-03T21:48:37.031416159Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_with_unfinished_epic","Output":"--- PASS: TestBuildReleases_State/released_with_unfinished_epic (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031419397Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_with_unfinished_epic","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031422545Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_takes_precedence_over_ready"}
+{"Time":"2026-11-03T21:48:37.031425315Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_takes_precedence_over_ready","Output":"=== RUN   TestBuildReleases_State/released_takes_precedence_over_ready\n"}
+{"Time":"2026-11-03T21:48:37.031435276Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_takes_precedence_over_ready","Output":"--- PASS: TestBuildReleases_State/released_takes_precedence_over_ready (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031439191Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/released_takes_precedence_over_ready","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031443918Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/partially_closed_scope"}
+{"Time":"2026-11-03T21:48:37.031446693Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/partially_closed_scope","Output":"=== RUN   TestBuildReleases_State/partially_closed_scope\n"}
+{"Time":"2026-11-03T21:48:37.031456118Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/partially_closed_scope","Output":"--- PASS: TestBuildReleases_State/partially_closed_scope (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031464271Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/partially_closed_scope","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031470733Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/blocked_epic_is_unfinished"}
+{"Time":"2026-11-03T21:48:37.03147583Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/blocked_epic_is_unfinished","Output":"=== RUN   TestBuildReleases_State/blocked_epic_is_unfinished\n"}
+{"Time":"2026-11-03T21:48:37.03148886Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/blocked_epic_is_unfinished","Output":"--- PASS: TestBuildReleases_State/blocked_epic_is_unfinished (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031518072Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/blocked_epic_is_unfinished","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.03152583Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/tombstone_epic_is_not_closed"}
+{"Time":"2026-11-03T21:48:37.031531146Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/tombstone_epic_is_not_closed","Output":"=== RUN   TestBuildReleases_State/tombstone_epic_is_not_closed\n"}
+{"Time":"2026-11-03T21:48:37.031537369Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/tombstone_epic_is_not_closed","Output":"--- PASS: TestBuildReleases_State/tombstone_epic_is_not_closed (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031540764Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/tombstone_epic_is_not_closed","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031544229Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/in_progress_milestone_is_not_released"}
+{"Time":"2026-11-03T21:48:37.031549327Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/in_progress_milestone_is_not_released","Output":"=== RUN   TestBuildReleases_State/in_progress_milestone_is_not_released\n"}
+{"Time":"2026-11-03T21:48:37.031557483Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/in_progress_milestone_is_not_released","Output":"--- PASS: TestBuildReleases_State/in_progress_milestone_is_not_released (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031561075Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/in_progress_milestone_is_not_released","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031564389Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/deferred_milestone_is_not_released"}
+{"Time":"2026-11-03T21:48:37.031571662Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/deferred_milestone_is_not_released","Output":"=== RUN   TestBuildReleases_State/deferred_milestone_is_not_released\n"}
+{"Time":"2026-11-03T21:48:37.031576813Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/deferred_milestone_is_not_released","Output":"--- PASS: TestBuildReleases_State/deferred_milestone_is_not_released (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031583117Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State/deferred_milestone_is_not_released","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031586681Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State","Output":"--- PASS: TestBuildReleases_State (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031590023Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_State","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031593184Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges"}
+{"Time":"2026-11-03T21:48:37.031596777Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges","Output":"=== RUN   TestBuildReleases_EpicEdges\n"}
+{"Time":"2026-11-03T21:48:37.031601004Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/blocks"}
+{"Time":"2026-11-03T21:48:37.031603823Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/blocks","Output":"=== RUN   TestBuildReleases_EpicEdges/blocks\n"}
+{"Time":"2026-11-03T21:48:37.031634099Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/blocks","Output":"--- PASS: TestBuildReleases_EpicEdges/blocks (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031645692Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/blocks","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031650026Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/legacy_blocking_edge"}
+{"Time":"2026-11-03T21:48:37.031654183Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/legacy_blocking_edge","Output":"=== RUN   TestBuildReleases_EpicEdges/legacy_blocking_edge\n"}
+{"Time":"2026-11-03T21:48:37.031660214Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/legacy_blocking_edge","Output":"--- PASS: TestBuildReleases_EpicEdges/legacy_blocking_edge (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031669158Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/legacy_blocking_edge","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031685576Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/related"}
+{"Time":"2026-11-03T21:48:37.031692351Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/related","Output":"=== RUN   TestBuildReleases_EpicEdges/related\n"}
+{"Time":"2026-11-03T21:48:37.031698294Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/related","Output":"--- PASS: TestBuildReleases_EpicEdges/related (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031705044Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/related","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031710583Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/parent_child"}
+{"Time":"2026-11-03T21:48:37.031713647Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/parent_child","Output":"=== RUN   TestBuildReleases_EpicEdges/parent_child\n"}
+{"Time":"2026-11-03T21:48:37.031733332Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/parent_child","Output":"--- PASS: TestBuildReleases_EpicEdges/parent_child (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031740099Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/parent_child","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031743691Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/tracks"}
+{"Time":"2026-11-03T21:48:37.031746571Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/tracks","Output":"=== RUN   TestBuildReleases_EpicEdges/tracks\n"}
+{"Time":"2026-11-03T21:48:37.031752491Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/tracks","Output":"--- PASS: TestBuildReleases_EpicEdges/tracks (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031758272Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/tracks","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031764411Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/reverse_edge"}
+{"Time":"2026-11-03T21:48:37.031769822Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/reverse_edge","Output":"=== RUN   TestBuildReleases_EpicEdges/reverse_edge\n"}
+{"Time":"2026-11-03T21:48:37.031776854Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/reverse_edge","Output":"--- PASS: TestBuildReleases_EpicEdges/reverse_edge (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031780325Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/reverse_edge","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031783704Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/foreign_edge"}
+{"Time":"2026-11-03T21:48:37.031786618Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/foreign_edge","Output":"=== RUN   TestBuildReleases_EpicEdges/foreign_edge\n"}
+{"Time":"2026-11-03T21:48:37.031791867Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/foreign_edge","Output":"--- PASS: TestBuildReleases_EpicEdges/foreign_edge (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031795588Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/foreign_edge","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031802287Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/task_target"}
+{"Time":"2026-11-03T21:48:37.031808052Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/task_target","Output":"=== RUN   TestBuildReleases_EpicEdges/task_target\n"}
+{"Time":"2026-11-03T21:48:37.031815736Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/task_target","Output":"--- PASS: TestBuildReleases_EpicEdges/task_target (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031823479Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/task_target","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031831248Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/missing_target"}
+{"Time":"2026-11-03T21:48:37.031836714Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/missing_target","Output":"=== RUN   TestBuildReleases_EpicEdges/missing_target\n"}
+{"Time":"2026-11-03T21:48:37.031851593Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/missing_target","Output":"--- PASS: TestBuildReleases_EpicEdges/missing_target (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031861223Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/missing_target","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031882062Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/nil_edge"}
+{"Time":"2026-11-03T21:48:37.031886137Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/nil_edge","Output":"=== RUN   TestBuildReleases_EpicEdges/nil_edge\n"}
+{"Time":"2026-11-03T21:48:37.031891182Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/nil_edge","Output":"--- PASS: TestBuildReleases_EpicEdges/nil_edge (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.0318955Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges/nil_edge","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031900296Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges","Output":"--- PASS: TestBuildReleases_EpicEdges (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031903743Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_EpicEdges","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.031908036Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_PreservesMilestones"}
+{"Time":"2026-11-03T21:48:37.031911017Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_PreservesMilestones","Output":"=== RUN   TestBuildReleases_PreservesMilestones\n"}
+{"Time":"2026-11-03T21:48:37.031962332Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_PreservesMilestones","Output":"--- PASS: TestBuildReleases_PreservesMilestones (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.031996756Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_PreservesMilestones","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.03200308Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_NoMilestones"}
+{"Time":"2026-11-03T21:48:37.032006189Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_NoMilestones","Output":"=== RUN   TestBuildReleases_NoMilestones\n"}
+{"Time":"2026-11-03T21:48:37.032012509Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_NoMilestones","Output":"--- PASS: TestBuildReleases_NoMilestones (0.00s)\n"}
+{"Time":"2026-11-03T21:48:37.032016116Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestBuildReleases_NoMilestones","Elapsed":0}
+{"Time":"2026-11-03T21:48:37.032019276Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Output":"PASS\n"}
+{"Time":"2026-11-03T21:48:37.032247668Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.003s\n"}
+{"Time":"2026-11-03T21:48:37.032267902Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Elapsed":0.003}
