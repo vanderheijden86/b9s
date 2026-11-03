@@ -1,0 +1,10 @@
+{"Time":"2026-11-03T21:51:23.757113038Z","Action":"start","Package":"github.com/vanderheijden86/b9s/tests/e2e"}
+{"Time":"2026-11-03T21:52:02.017584391Z","Action":"run","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestAttachmentsStockBDLocalBackendE2E"}
+{"Time":"2026-11-03T21:52:02.017668548Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestAttachmentsStockBDLocalBackendE2E","Output":"=== RUN   TestAttachmentsStockBDLocalBackendE2E\n"}
+{"Time":"2026-11-03T21:52:02.091687858Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestAttachmentsStockBDLocalBackendE2E","Output":"    attachments_e2e_test.go:84: stock bd: bd version 1.3.0-rc.1 (9c6a69ec1: HEAD@9c6a69ec1235)\n"}
+{"Time":"2026-11-03T21:52:21.604265716Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestAttachmentsStockBDLocalBackendE2E","Output":"    attachments_e2e_test.go:159: PTY attached, listed and opened terminal-note.txt. Stock bd persisted one SHA256 reference 0c149767d10daaacf12d58d014ea2f913c7055fec86df295c1d1188e42b07b1b. Download bytes match.\n"}
+{"Time":"2026-11-03T21:52:21.613527669Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestAttachmentsStockBDLocalBackendE2E","Output":"--- PASS: TestAttachmentsStockBDLocalBackendE2E (19.60s)\n"}
+{"Time":"2026-11-03T21:52:21.613570884Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestAttachmentsStockBDLocalBackendE2E","Elapsed":19.6}
+{"Time":"2026-11-03T21:52:21.613592885Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Output":"PASS\n"}
+{"Time":"2026-11-03T21:52:21.638821326Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Output":"ok  \tgithub.com/vanderheijden86/b9s/tests/e2e\t57.881s\n"}
+{"Time":"2026-11-03T21:52:21.638871104Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/e2e","Elapsed":57.882}
