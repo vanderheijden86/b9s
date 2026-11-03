@@ -114,6 +114,8 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		m.setQueryText(withTypeFilter(base, command.IssueType))
 	case CommandProjects:
 		return m, func() tea.Msg { return OpenProjectTableMsg{} }
+	case CommandForget:
+		return m.forgetRecentProject(command.Arg), nil
 	case CommandMouse:
 		return m.toggleMouseCapture()
 	case CommandLayout:
