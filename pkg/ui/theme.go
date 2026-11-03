@@ -111,6 +111,22 @@ func ThemeFg(hex string) lipgloss.TerminalColor {
 	return lipgloss.Color(hex)
 }
 
+// Adaptive foregrounds use the terminal's black or white on low-color
+// profiles, where down-converted skin accents can disappear into paper.
+func adaptiveThemeFg(c lipgloss.TerminalColor) lipgloss.TerminalColor {
+	if TermProfile < colorprofile.ANSI256 {
+		return lipgloss.AdaptiveColor{Light: "0", Dark: "7"}
+	}
+	return c
+}
+
+func adaptiveThemeBg(c lipgloss.TerminalColor) lipgloss.TerminalColor {
+	if TermProfile < colorprofile.TrueColor {
+		return lipgloss.NoColor{}
+	}
+	return c
+}
+
 type Theme struct {
 	Renderer *lipgloss.Renderer
 
@@ -209,11 +225,11 @@ func DefaultTheme(r *lipgloss.Renderer) Theme {
 	t.InfoBold = r.NewStyle().Foreground(ColorInfo).Bold(true)
 	t.SecondaryText = r.NewStyle().Foreground(t.Secondary)
 	t.PrimaryBold = r.NewStyle().Foreground(t.Primary).Bold(true)
-	t.PriorityUpArrow = r.NewStyle().Foreground(ThemeFg("#FF6B6B")).Bold(true)
-	t.PriorityDownArrow = r.NewStyle().Foreground(ThemeFg("#4ECDC4")).Bold(true)
-	t.TriageStar = r.NewStyle().Foreground(ThemeFg("#FFD700"))
-	t.TriageUnblocks = r.NewStyle().Foreground(ThemeFg("#50FA7B"))
-	t.TriageUnblocksAlt = r.NewStyle().Foreground(ThemeFg("#6272A4"))
+	t.PriorityUpArrow = r.NewStyle().Foreground(adaptiveThemeFg(priorityUp)).Bold(true)
+	t.PriorityDownArrow = r.NewStyle().Foreground(adaptiveThemeFg(priorityDown)).Bold(true)
+	t.TriageStar = r.NewStyle().Foreground(adaptiveThemeFg(triageStar))
+	t.TriageUnblocks = r.NewStyle().Foreground(adaptiveThemeFg(triageUnblocks))
+	t.TriageUnblocksAlt = r.NewStyle().Foreground(adaptiveThemeFg(triageUnblocksAlt))
 
 	return t
 }

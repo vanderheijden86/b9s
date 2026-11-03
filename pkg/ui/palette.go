@@ -11,6 +11,12 @@ import (
 // moves between slots without rebuilding a style.
 var lightSkin, darkSkin skin.Palette
 
+var (
+	pickerText, commandSuggestionColor, healthWarning, healthError          lipgloss.AdaptiveColor
+	priorityUp, priorityDown, triageStar, triageUnblocks, triageUnblocksAlt lipgloss.AdaptiveColor
+	heatBackgrounds, heatForegrounds                                        []lipgloss.AdaptiveColor
+)
+
 func init() {
 	applySkins(mustBuiltin("sepia"), mustBuiltin("dracula"))
 }
@@ -78,6 +84,15 @@ func applySkins(light, dark skin.Palette) {
 		{&ColorSuccess, func(p skin.Palette) skin.Color { return p.Success }},
 		{&ColorWarning, func(p skin.Palette) skin.Color { return p.Warning }},
 		{&ColorDanger, func(p skin.Palette) skin.Color { return p.Danger }},
+		{&pickerText, func(p skin.Palette) skin.Color { return p.PickerText }},
+		{&commandSuggestionColor, func(p skin.Palette) skin.Color { return p.CommandSuggestion }},
+		{&healthWarning, func(p skin.Palette) skin.Color { return p.HealthWarning }},
+		{&healthError, func(p skin.Palette) skin.Color { return p.HealthError }},
+		{&priorityUp, func(p skin.Palette) skin.Color { return p.PriorityUp }},
+		{&priorityDown, func(p skin.Palette) skin.Color { return p.PriorityDown }},
+		{&triageStar, func(p skin.Palette) skin.Color { return p.TriageStar }},
+		{&triageUnblocks, func(p skin.Palette) skin.Color { return p.TriageUnblocks }},
+		{&triageUnblocksAlt, func(p skin.Palette) skin.Color { return p.TriageUnblocksAlt }},
 
 		{&ColorStatusOpen, func(p skin.Palette) skin.Color { return p.Open }},
 		{&ColorStatusInProgress, func(p skin.Palette) skin.Color { return p.InProgress }},
@@ -127,6 +142,16 @@ func applySkins(light, dark skin.Palette) {
 	}
 	RepoColors = accentPairs()
 	epicPalette = accentPairs()
+	HeatmapGradientColors = make([]lipgloss.TerminalColor, len(light.HeatGradient))
+	for i := range HeatmapGradientColors {
+		HeatmapGradientColors[i] = lipgloss.AdaptiveColor{Light: string(light.HeatGradient[i]), Dark: string(dark.HeatGradient[i])}
+	}
+	heatBackgrounds = make([]lipgloss.AdaptiveColor, len(light.HeatBackgrounds))
+	heatForegrounds = make([]lipgloss.AdaptiveColor, len(light.HeatForegrounds))
+	for i := range heatBackgrounds {
+		heatBackgrounds[i] = lipgloss.AdaptiveColor{Light: string(light.HeatBackgrounds[i]), Dark: string(dark.HeatBackgrounds[i])}
+		heatForegrounds[i] = lipgloss.AdaptiveColor{Light: string(light.HeatForegrounds[i]), Dark: string(dark.HeatForegrounds[i])}
+	}
 
 	PanelStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

@@ -73,29 +73,16 @@ func GetHeatmapColor(score float64, t Theme) lipgloss.TerminalColor {
 
 // HeatmapGradientColors defines the color gradient for enhanced heatmap (bv-t4yg)
 // Ordered from cold (low count) to hot (high count).
-// Uses ThemeFg so 16-color terminals fall back to ANSI white.
+// Each entry pairs the light and dark skin slots.
 var HeatmapGradientColors []lipgloss.TerminalColor
-
-func init() {
-	HeatmapGradientColors = []lipgloss.TerminalColor{
-		ThemeFg("#1a1a2e"), // 0: dark blue/gray - empty
-		ThemeFg("#16213e"), // 1: navy - very few
-		ThemeFg("#0f4c75"), // 2: blue - few
-		ThemeFg("#3282b8"), // 3: light blue - some
-		ThemeFg("#bbe1fa"), // 4: pale blue - moderate (transition)
-		ThemeFg("#f7dc6f"), // 5: gold - above average
-		ThemeFg("#e94560"), // 6: coral - many
-		ThemeFg("#ff2e63"), // 7: hot pink/red - hot
-	}
-}
 
 // GetHeatGradientColor returns an interpolated color for heatmap intensity (0-1) (bv-t4yg)
 func GetHeatGradientColor(intensity float64, t Theme) lipgloss.TerminalColor {
 	if intensity <= 0 {
-		return HeatmapGradientColors[0]
+		return adaptiveThemeFg(HeatmapGradientColors[0])
 	}
 	if intensity >= 1 {
-		return HeatmapGradientColors[len(HeatmapGradientColors)-1]
+		return adaptiveThemeFg(HeatmapGradientColors[len(HeatmapGradientColors)-1])
 	}
 
 	// Map intensity to gradient index
@@ -104,30 +91,28 @@ func GetHeatGradientColor(intensity float64, t Theme) lipgloss.TerminalColor {
 		idx = len(HeatmapGradientColors) - 2
 	}
 
-	return HeatmapGradientColors[idx+1] // +1 because 0 is for empty cells
+	return adaptiveThemeFg(HeatmapGradientColors[idx+1]) // +1 because 0 is for empty cells
 }
 
 // GetHeatGradientColorBg returns a background-friendly color for heatmap cell (bv-t4yg)
 // Returns both the background color and appropriate foreground for contrast.
 // On 16-color terminals, backgrounds are transparent and foreground uses ANSI-safe colors.
 func GetHeatGradientColorBg(intensity float64) (bg lipgloss.TerminalColor, fg lipgloss.TerminalColor) {
-	if intensity <= 0 {
-		return ThemeBg("#1a1a2e"), ThemeFg("#6272a4") // Dark bg, muted fg
-	}
-
-	// Select background color based on intensity
+	index := 0
 	switch {
+	case intensity <= 0:
 	case intensity >= 0.8:
-		return ThemeBg("#ff2e63"), ThemeFg("#ffffff") // Hot pink, white text
+		index = 5
 	case intensity >= 0.6:
-		return ThemeBg("#e94560"), ThemeFg("#ffffff") // Coral, white text
+		index = 4
 	case intensity >= 0.4:
-		return ThemeBg("#f7dc6f"), ThemeFg("#1a1a2e") // Gold, dark text
+		index = 3
 	case intensity >= 0.2:
-		return ThemeBg("#3282b8"), ThemeFg("#ffffff") // Blue, white text
+		index = 2
 	default:
-		return ThemeBg("#16213e"), ThemeFg("#bbe1fa") // Navy, light text
+		index = 1
 	}
+	return adaptiveThemeBg(heatBackgrounds[index]), adaptiveThemeFg(heatForegrounds[index])
 }
 
 // GetRepoColor returns a consistent color for a repo prefix based on hash

@@ -4545,8 +4545,8 @@ func (m Model) renderDBHealthModal() string {
 
 	// Show failed Dolt connection attempt when falling back to JSONL/SQLite
 	if h.DoltAttempt != nil {
-		warnStyle := t.Renderer.NewStyle().Foreground(lipgloss.Color("#FF8800"))
-		errStyle := t.Renderer.NewStyle().Foreground(lipgloss.Color("#FF4444"))
+		warnStyle := t.Renderer.NewStyle().Foreground(healthWarning)
+		errStyle := t.Renderer.NewStyle().Foreground(healthError)
 		lines = append(lines, "")
 		lines = append(lines, "  "+warnStyle.Render("Dolt configured but not connected:"))
 		addLine("  Server:", h.DoltAttempt.Server)
@@ -7175,7 +7175,7 @@ func (m Model) renderLabelBar() string {
 	}
 
 	numStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.Color("#F3F3F3")).
+		Foreground(pickerText).
 		Bold(true)
 	activeStyle := t.Renderer.NewStyle().
 		Foreground(t.Primary).
@@ -7449,8 +7449,6 @@ func (m Model) renderUnifiedTitleBar(w int) string {
 		Render(queryStyle.Render(content) + suggestionStyle.Render(suggestion))
 }
 
-var commandSuggestionColor = lipgloss.Color("#6C7086")
-
 // renderAssigneeBar renders the top bar in assignee mode, showing assignees with counts
 // and number key assignments (bd-gs45.1).
 func (m Model) renderAssigneeBar() string {
@@ -7461,7 +7459,7 @@ func (m Model) renderAssigneeBar() string {
 	}
 
 	numStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.Color("#F3F3F3")).
+		Foreground(pickerText).
 		Bold(true)
 	activeStyle := t.Renderer.NewStyle().
 		Foreground(t.Primary).

@@ -478,7 +478,7 @@ func (m *ProjectPickerModel) renderProjectTable() []string {
 		Foreground(t.Secondary).
 		Bold(true)
 	numStyle := t.Renderer.NewStyle().
-		Foreground(lipgloss.Color("#F3F3F3")).
+		Foreground(pickerText).
 		Bold(true)
 	activeStyle := t.Renderer.NewStyle().
 		Foreground(t.Primary).
@@ -751,7 +751,7 @@ func (m *ProjectPickerModel) renderTitleBar(w int) string {
 		Bold(true)
 
 	countText := t.Renderer.NewStyle().
-		Foreground(lipgloss.Color("#F3F3F3")).
+		Foreground(pickerText).
 		Bold(true)
 
 	label := "b9s"
