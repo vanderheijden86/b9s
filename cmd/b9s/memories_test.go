@@ -97,37 +97,76 @@ func TestRenderMemoriesRejectsUnknownSelection(t *testing.T) {
 	}
 }
 
-func TestPrintOneMemoryReadsOnlyItsLinks(t *testing.T) {
+const selectedMemoryRecord = `{"preview":true,"result":{"id":"https://example.test/team/beads/b","type":"https://example.test/team/types/preview-memory-v2","version":"v2","properties":{"title":"Beta","body":"B body"},"owned":[{"id":"links/owned","type":"types/preview-related-v2","source":"https://example.test/team/beads/b","target":"https://example.test/team/beads/a","properties":{"note":"owned note"}},{"id":"links/shared","type":"types/preview-related-v2","source":"https://example.test/team/beads/b","target":"https://example.test/team/beads/a","properties":{"note":"shared note"}}]}}`
+
+const selectedMemoryLinks = `{"preview":true,"result":[{"id":"links/incoming","type":"types/preview-related-v2","source":"https://example.test/team/beads/work","target":"https://example.test/team/beads/b","properties":{"note":"incoming note"}},{"id":"links/shared","type":"types/preview-related-v2","source":"https://example.test/team/beads/b","target":"https://example.test/team/beads/a","properties":{"note":"shared note"}}]}`
+
+func memoryCommandFixture(t *testing.T, show, links string) (project, log string) {
+	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("fake bd script needs a POSIX shell")
 	}
-	project := t.TempDir()
-	os.MkdirAll(filepath.Join(project, ".beads"), 0o755)
-	os.WriteFile(filepath.Join(project, ".beads", "metadata.json"), []byte(`{"graph_mode":"link","graph_ready":true}`), 0o644)
+	project = t.TempDir()
+	if err := os.MkdirAll(filepath.Join(project, ".beads"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(project, ".beads", "metadata.json"), []byte(`{"graph_mode":"link","graph_ready":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	bin := t.TempDir()
-	log := filepath.Join(bin, "calls.log")
-	// The help branch answers b9s's Memory capability probe as a preview bd does.
+	log = filepath.Join(bin, "calls.log")
 	script := `#!/bin/sh
 case "$*" in *--help) echo "records-json"; exit 0 ;; esac
-echo "$*" >> '` + log + `'
+printf '%s\n' "$*" >> "$B9S_MEMORY_TEST_CALLS"
 case "$1" in
-list) echo '{"preview":true,"result":{"items":[{"id":"s/beads/a","type":"s/types/preview-memory-v2","properties":{"title":"Alpha","body":"A body"}},{"id":"s/beads/b","type":"s/types/preview-memory-v2","properties":{"title":"Beta","body":"B body"}}],"hasMore":false}}' ;;
-links) echo '{"preview":true,"result":[]}' ;;
+list|memories|graph) echo 'inventory forbidden' >&2; exit 1 ;;
+show)
+  case "$2" in b|beads/b|https://example.test/team/beads/b) ;; *) echo 'unrelated record forbidden' >&2; exit 1 ;; esac
+  ` + show + `
+  ;;
+links)
+  [ "$2" = https://example.test/team/beads/b ] || { echo 'unrelated links forbidden' >&2; exit 1; }
+  ` + links + `
+  ;;
+*) echo 'unexpected command' >&2; exit 1 ;;
 esac
 `
-	os.WriteFile(filepath.Join(bin, "bd"), []byte(script), 0o755)
+	if err := os.WriteFile(filepath.Join(bin, "bd"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("B9S_MEMORY_TEST_CALLS", log)
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	var stdout, stderr strings.Builder
-	if code := runMemories([]string{"--project", project, "--id", "b"}, &stdout, &stderr); code != 0 {
-		t.Fatalf("exit %d: %s", code, stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "B body") || strings.Contains(stdout.String(), "A body") {
-		t.Fatalf("output = %s", stdout.String())
-	}
-	calls, _ := os.ReadFile(log)
-	if strings.Count(string(calls), "links ") != 1 || !strings.Contains(string(calls), "links s/beads/b --json") {
-		t.Fatalf("calls = %q, want one links read for b", calls)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("B9S_MEMORY", "")
+	return project, log
+}
+
+func TestPrintOneMemoryWithoutInventory(t *testing.T) {
+	for _, id := range []string{"b", "beads/b", "https://example.test/team/beads/b"} {
+		t.Run(id, func(t *testing.T) {
+			project, log := memoryCommandFixture(t, "echo '"+selectedMemoryRecord+"'", "echo '"+selectedMemoryLinks+"'")
+			var stdout, stderr strings.Builder
+			if code := runMemories([]string{"--project", project, "--id", id}, &stdout, &stderr); code != 0 {
+				t.Fatalf("exit %d: %s", code, stderr.String())
+			}
+			for _, want := range []string{"Memory Beads (1)", "Beta", "B body", "version v2", "→", "←", "beads/a", "beads/work", "owned note", "incoming note"} {
+				if !strings.Contains(stdout.String(), want) {
+					t.Errorf("output lacks %q: %s", want, stdout.String())
+				}
+			}
+			if strings.Count(stdout.String(), "shared note") != 1 {
+				t.Errorf("shared Link must appear once: %s", stdout.String())
+			}
+			calls, err := os.ReadFile(log)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantCalls := "show " + id + " --json\nlinks https://example.test/team/beads/b --json\n"
+			if string(calls) != wantCalls {
+				t.Errorf("calls = %q, want %q", calls, wantCalls)
+			}
+		})
 	}
 }
 
