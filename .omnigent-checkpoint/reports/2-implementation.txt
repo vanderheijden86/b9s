@@ -1,0 +1,8 @@
+Dispatch 2 fix: explicit b9s.boardLanes=rail before navigation, plus non-phone toolbar lanes rail assertion.
+Root test error: non-phone size does not imply rail lane preference.
+All seven RED failure traces show initial phone then tablet class, and rows mode without rail.
+RED 12 unchanged tablet repetitions: 5 passed, 7 failed, no skipped/flaky/interrupted/unrun, exit 1.
+Focused GREEN same 12 tablet repetitions: 12 passed, zero failed/skipped/flaky/interrupted/unrun, exit 0.
+Fresh nine-project matrix: 27 passed, zero failed/skipped/flaky/interrupted/unrun, exit 0.
+All prior 44px touch/24px desktop, phone epic, selected-row, rich-fact and detail assertions preserved.
+Changed only web/tests/board-detail.spec.ts and docs/testing.md.
