@@ -1,0 +1,13 @@
+Repository: /home/omnigent/workspace/b9s
+Clean bootstrap: main 793407bd86c74ba9985c9870c39392974ec8380e
+Assigned base fetched explicitly: origin/omnigent/bd-e5u3.20.14
+Base SHA: 816e4988ebbf96d942727c2014a80050664f413d
+Remote delivery exact ls-remote exit: 2 (absent)
+Explicit remote delivery fetch exit: 128 (couldn't find remote ref)
+Local delivery branch absent. Created from assigned remote base.
+Actual branch: omnigent/bd-e5u3.20.15
+HEAD: 816e4988ebbf96d942727c2014a80050664f413d
+Required commit: 816e4988ebbf96d942727c2014a80050664f413d
+merge-base --is-ancestor required origin/omnigent/bd-e5u3.20.14: exit 0
+merge-base --is-ancestor required HEAD: exit 0
+Checkpoint inspect: no checkpoint exists.
