@@ -1,0 +1,73 @@
+Task: bd-6z37
+Implementation status: source change and focused regression GREEN. Overall required gates BLOCKED.
+Required blocker: bd-lbtz, missing make executable. No unrelated follow-up work.
+
+Git preflight:
+Repository /home/omnigent/workspace/b9s
+Actual branch omnigent/bd-6z37
+HEAD and fetched origin/main SHA 793407bd86c74ba9985c9870c39392974ec8380e
+Required commits none. Required ancestry checks none.
+git merge-base --is-ancestor origin/main HEAD exited 0.
+Delivery local branch was absent. Exact remote delivery probe exited 2 (absent).
+Created delivery from fetched origin/main, not bootstrap HEAD.
+Checkpoint inspect exited 2: no checkpoint exists. Initial save succeeded to separate unapproved checkpoint ref.
+No delivery commit, delivery push or PR.
+
+Changed files:
+install.sh: ensure_go minimum and source failure message use Go 1.25.
+pkg/updater/integration_test.go: table-driven Go version boundary tests and source fallback side-effect guard. Boundary and messages derive from go.mod. Shell subprocesses limited to 5s.
+docs/testing.md: focused installer regression command and isolation/deadlines.
+
+Environment:
+Go and make were absent initially. Standalone Go 1.25.5 downloaded into /tmp/bd-6z37-toolchain.
+Official SHA-256 checked: 9e9b755d63b36acf30c12a9a3fc379243714c1c6d3dd72861da637f336ebb35b.
+Go runtime: go version go1.25.5 linux/amd64. CGO_ENABLED=0 (no C compiler).
+Go commands below use GOMAXPROCS=4 GOFLAGS=-p=4, except mod download and formatting.
+No system packages downloaded. No production/acceptance database used.
+
+Exact check commands and observed results:
+1. timeout 180s go -C /home/omnigent/workspace/b9s mod download
+   Initial exit 127: go missing. Did not execute.
+2. timeout 180s /tmp/bd-6z37-toolchain/go/bin/go -C /home/omnigent/workspace/b9s mod download
+   Exit 0. Locked dependencies installed.
+3. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 180s /tmp/bd-6z37-toolchain/go/bin/go -C /home/omnigent/workspace/b9s test ./pkg/updater -run '^TestInstallerGoRequirement$' -count=1 -timeout=60s -json
+   RED exit 1: 7 subtests passed, 4 failed, 0 skipped. Parent failed.
+   All test/subtest events: 7 passed, 5 failed, 0 skipped.
+   Failures reproduce obsolete version acceptance, fetching/building/installing under unsupported Go, and obsolete source error.
+   Report /tmp/bd-6z37-installer-red.jsonl.
+4. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 90s /tmp/bd-6z37-toolchain/go/bin/go -C /home/omnigent/workspace/b9s test ./pkg/updater -run '^TestInstallerGoRequirement$' -count=1 -timeout=60s -json
+   GREEN exit 0: 11 subtests passed, 0 failed, 0 skipped. Parent passed.
+   All test/subtest events: 12 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun.
+   Report /tmp/bd-6z37-installer-green.jsonl.
+5. bash -n /home/omnigent/workspace/b9s/install.sh
+   Exit 0. Syntax check passed. No tests to count.
+6. PATH=/tmp/bd-6z37-toolchain/go/bin:$PATH GOMAXPROCS=4 GOFLAGS=-p=4 timeout 660s make -C /home/omnigent/workspace/b9s test-stable
+   Exit 127: timeout: failed to run command make: No such file or directory.
+   Required suite did not execute, test counts unknown. BLOCKER bd-lbtz.
+7. Supplemental direct stable recipe, run alone, with no baseline comparison:
+   PATH=/tmp/bd-6z37-toolchain/go/bin:$PATH GOMAXPROCS=4 GOFLAGS=-p=4 timeout 660s bash -c '
+   set -euo pipefail
+   packages=$(go -C /home/omnigent/workspace/b9s list ./... | grep -v /tests/e2e)
+   go -C /home/omnigent/workspace/b9s test -json -timeout 10m -skip "DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers" $packages
+   '
+   Exit 0: 2058 top-level passed, 0 failed, 18 skipped, 21 packages passed.
+   All test/subtest events: 3357 passed, 0 failed, 20 skipped.
+   Skips require opt-in S3, Dolt, Memory or stress fixtures. Details in /tmp/bd-6z37-stable-summary.json.
+   Raw local report /tmp/bd-6z37-stable-direct.jsonl.
+   This supplemental run does not pass the required make command.
+8. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 180s /tmp/bd-6z37-toolchain/go/bin/go -C /home/omnigent/workspace/b9s build ./...
+   Exit 0. Build passed. No test counts.
+9. GOMAXPROCS=4 GOFLAGS=-p=4 timeout 180s /tmp/bd-6z37-toolchain/go/bin/go -C /home/omnigent/workspace/b9s vet ./...
+   Exit 0. Vet passed. No test counts.
+10. /tmp/bd-6z37-toolchain/go/bin/gofmt -w /home/omnigent/workspace/b9s/pkg/updater/integration_test.go
+    Exit 0. Subsequent gofmt -l returned no filenames.
+11. git -C /home/omnigent/workspace/b9s diff --check
+    Exit 0.
+
+Risks and limits:
+Required make test-stable command is unresolved (bd-lbtz). Do not mark all required gates green.
+Version checks execute real installer functions with fake local tool commands, not actual multiple Go installations.
+Homebrew and official macOS package upgrade flows were not exercised.
+No UI changes, so browser/preview tests are outside this task's required checks.
+No ADR decision changed. README already specifies Go 1.25.
+Independent reviewer/tester verdict remains pending with Polly.

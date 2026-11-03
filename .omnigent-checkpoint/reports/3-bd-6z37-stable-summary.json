@@ -1,0 +1,107 @@
+{
+  "required_gate": "make test-stable remains unrun: make missing, exit 127, blocker bd-lbtz",
+  "supplemental_command": "PATH=/tmp/bd-6z37-toolchain/go/bin:$PATH GOMAXPROCS=4 GOFLAGS=-p=4 timeout 660s bash -c 'set -euo pipefail; packages=$(go -C /home/omnigent/workspace/b9s list ./... | grep -v /tests/e2e); go -C /home/omnigent/workspace/b9s test -json -timeout 10m -skip \"DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers\" $packages'",
+  "exit_code": 0,
+  "top_level_counts": {
+    "passed": 2058,
+    "failed": 0,
+    "skipped": 18
+  },
+  "all_test_event_counts": {
+    "pass": 3357,
+    "skip": 20
+  },
+  "skipped_top_level": [
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3StoreContract",
+      "reason": "s3_test.go:23: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3PutRejectsShortRead",
+      "reason": "s3_test.go:79: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3PutRejectsLongRead",
+      "reason": "s3_test.go:98: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_NewAndClose",
+      "reason": "dolt_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_LoadIssues",
+      "reason": "dolt_test.go:64: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_GetHeadHash",
+      "reason": "dolt_test.go:91: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_NewAndStop",
+      "reason": "dolt_watcher_test.go:28: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_StartIsIdempotent",
+      "reason": "dolt_watcher_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "reason": "dolt_watcher_test.go:71: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "reason": "dolt_watcher_test.go:100: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryPreviewGraphReadTiming",
+      "reason": "memory_graph_test.go:37: set B9S_MEMORY_PREVIEW_WORKSPACE to an isolated embedded graph preview"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchStages",
+      "reason": "memory_read_research_test.go:62: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchTransportParity",
+      "reason": "memory_read_research_test.go:165: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchConcurrentWriter",
+      "reason": "memory_read_research_test.go:398: set B9S_MEMORY_RESEARCH_MUTATE=1 to add one probe Memory and Link in the isolated copy"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "test": "TestProbeMemory_RealBinaries",
+      "reason": "capability_test.go:223: set B9S_TEST_STOCK_BD and/or B9S_TEST_PREVIEW_BD to probe real binaries"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_SustainedWrites",
+      "reason": "background_worker_test.go:1297: set PERF_TEST=1 to run 10+ minute stress tests"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_BurstWrites",
+      "reason": "background_worker_test.go:1414: set PERF_TEST=1 to run 10+ minute stress tests"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_MemoryPressure",
+      "reason": "background_worker_test.go:1514: set PERF_TEST=1 to run 10+ minute stress tests"
+    }
+  ],
+  "packages_passed": 21
+}

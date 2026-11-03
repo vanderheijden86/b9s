@@ -1,0 +1,2 @@
+bash -n /home/omnigent/workspace/b9s/install.sh
+exit_code=0
