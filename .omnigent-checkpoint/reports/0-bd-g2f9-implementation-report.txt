@@ -1,0 +1,97 @@
+Task bd-g2f9 | Role implementer
+2026-11-03 23:27 CET
+
+Status: scoped implementation complete, required verification BLOCKED by bd-leoo.
+No delivery commit, delivery push or PR. No source files created or deleted.
+No unrelated follow-up work. Beads task state and assignment unchanged.
+
+Git preflight and final context:
+Accepted report: /tmp/bd-g2f9-preflight-paT48K.txt
+Actual branch: omnigent/bd-g2f9
+HEAD: 233a25d38d94fe0e9e764c4fa0ee21f3225aeaf5
+Fetched base and PR target: origin/feat/sepia-light-theme = 233a25d38d94fe0e9e764c4fa0ee21f3225aeaf5
+Required commit: db0e77422fb5a4eebcb1d0ac4042ab4d286aea2a. Ancestry against fetched base and HEAD: each exit 0.
+Fetched base ancestry against HEAD: exit 0. Initial remote delivery probe exit 2 (absent), local delivery created from fetched assigned base.
+Worktree: scoped source changes below, no staged changes. Initial tracking setup error resolved with --no-track. Initial checkpoint absent.
+
+Implementation:
+- Model and project/label/assignee picker text, command suggestions, health warnings/errors and triage symbols use adaptive skin tokens.
+- Heatmap glyphs, backgrounds and foregrounds use skin palettes. Sepia heat glyphs and cell text meet 4.5:1 in rendered RGB tests.
+- Dracula retains all legacy defined RGB values, with direct ANSI rendering comparisons. Low-color dark foreground/background fallbacks stay white/transparent.
+- Low-color light triage/heatmap text uses terminal black. ANSI256 heatmap backgrounds stay transparent.
+- Custom skins derive omitted tokens from text/status colors and tints. Explicit heat lists require eight gradient colors and six background/foreground colors.
+- Existing source guard rejects fixed hex Color/ThemeFg/ThemeBg calls, complementing rendering and contrast tests.
+- Documentation lists overrides and fallback behavior. Existing ADR 0033 remains the governing design. No new architectural decision.
+
+Changed files:
+- docs/USER_GUIDE.md: documents skin overrides and terminal fallbacks
+- pkg/skin/builtin/dracula.yaml: stores exact legacy dark values
+- pkg/skin/skin.go: adds and derives tokens, validates heatmap list sizes
+- pkg/skin/skin_test.go: tests token/list overrides and incomplete-list rejection
+- pkg/ui/model.go: adapts label/assignee, suggestion and health text
+- pkg/ui/palette.go: pairs skin tokens and heatmap lists
+- pkg/ui/palette_test.go: contrast, actual rendering, custom skin, terminal-profile and dark-value regressions
+- pkg/ui/project_picker.go: adapts project numbers and title count
+- pkg/ui/theme.go: adapts triage symbols and low-color fallbacks
+- pkg/ui/visuals.go: reads adaptive heatmap colors at use time
+
+Verification (counts are top-level Go tests; subtests reported separately, never added to parent counts):
+red-triage:
+  timeout 180s go -C /home/omnigent/workspace/b9s test ./pkg/ui -run '^TestSepiaTriageSymbolsMeetAA$' -count=1 -timeout=60s -json
+  stdout: /tmp/bd-g2f9-red-triage.json
+  stderr: /tmp/bd-g2f9-red-triage.stderr
+  exit=1; top-level={'pass': 0, 'fail': 1, 'skip': 0}; subtests={'pass': 0, 'fail': 5, 'skip': 0}
+red-skin:
+  timeout 120s go -C /home/omnigent/workspace/b9s test ./pkg/skin -run '^(TestTUIOverrideTokens|TestHeatmapRejectsIncompleteOverrides)$' -count=1 -timeout=30s -json
+  stdout: /tmp/bd-g2f9-red-skin.json
+  stderr: /tmp/bd-g2f9-red-skin.stderr
+  exit=1; top-level={'pass': 0, 'fail': 2, 'skip': 0}; subtests={'pass': 0, 'fail': 3, 'skip': 0}
+red-render:
+  timeout 120s go -C /home/omnigent/workspace/b9s test ./pkg/ui -run '^(TestSepiaHeatmapMeetsAA|TestPickerTextFollowsTerminalPalette|TestDarkTriageAndHeatmapColorsStayUnchanged)$' -count=1 -timeout=60s -json
+  stdout: /tmp/bd-g2f9-red-render.json
+  stderr: /tmp/bd-g2f9-red-render.stderr
+  exit=1; top-level={'pass': 0, 'fail': 3, 'skip': 0}; subtests={'pass': 5, 'fail': 17, 'skip': 0}
+green-focused:
+  timeout 180s go -C /home/omnigent/workspace/b9s test ./pkg/ui ./pkg/skin -run '^(TestSepiaTriageSymbolsMeetAA|TestSepiaHeatmapMeetsAA|TestPickerTextFollowsTerminalPalette|TestDarkTriageAndHeatmapColorsStayUnchanged|TestHealthTextFollowsTerminalPalette|TestCommandSuggestionFollowsTerminalPalette|TestAdaptiveHeatmapTerminalProfiles|TestTUIAccentsFollowCustomSkin|TestAdaptiveColoursComeFromSkins|TestLightTextMeetsAAOnPaper|TestTUIOverrideTokens|TestHeatmapRejectsIncompleteOverrides|TestHeatmapOverrides)$' -count=1 -timeout=60s -json
+  stdout: /tmp/bd-g2f9-green-focused.json
+  stderr: /tmp/bd-g2f9-green-focused.stderr
+  exit=1; top-level={'pass': 12, 'fail': 1, 'skip': 0}; subtests={'pass': 36, 'fail': 2, 'skip': 0}
+green-focused-final:
+  timeout 180s go -C /home/omnigent/workspace/b9s test ./pkg/ui ./pkg/skin -run '^(TestSepiaTriageSymbolsMeetAA|TestSepiaHeatmapMeetsAA|TestPickerTextFollowsTerminalPalette|TestDarkTriageAndHeatmapColorsStayUnchanged|TestHealthTextFollowsTerminalPalette|TestCommandSuggestionFollowsTerminalPalette|TestAdaptiveHeatmapTerminalProfiles|TestTUIAccentsFollowCustomSkin|TestAdaptiveColoursComeFromSkins|TestLightTextMeetsAAOnPaper|TestTUIOverrideTokens|TestHeatmapRejectsIncompleteOverrides|TestHeatmapOverrides)$' -count=1 -timeout=60s -json
+  stdout: /tmp/bd-g2f9-green-focused-final.json
+  stderr: /tmp/bd-g2f9-green-focused-final.stderr
+  exit=0; top-level={'pass': 13, 'fail': 0, 'skip': 0}; subtests={'pass': 38, 'fail': 0, 'skip': 0}
+skin-suite:
+  timeout 90s go -C /home/omnigent/workspace/b9s test ./pkg/skin -count=1 -timeout=30s -json
+  stdout: /tmp/bd-g2f9-skin-suite.json
+  stderr: /tmp/bd-g2f9-skin-suite.stderr
+  exit=0; top-level={'pass': 13, 'fail': 0, 'skip': 0}; subtests={'pass': 3, 'fail': 0, 'skip': 0}
+terminal:
+  timeout 180s go -C /home/omnigent/workspace/b9s test ./tests/e2e -run '^(TestLightTUIRestoresTerminalPaper|TestSepiaClosedStatusHasNoBadgeBackground|TestThemeShortcutSwitchesAndPersists|TestSepiaBoardRendersQuietPaperInPTY)$' -count=1 -timeout=120s -json
+  stdout: /tmp/bd-g2f9-terminal.json
+  stderr: /tmp/bd-g2f9-terminal.stderr
+  exit=0; top-level={'pass': 4, 'fail': 0, 'skip': 0}; subtests={'pass': 0, 'fail': 0, 'skip': 0}
+
+RED observations: triage test reproduced 1.04:1 green unblocks contrast. Skin tests reproduced missing override/list support.
+RED rendering run also exposed a test-harness assumption: legacy hex values can round during lipgloss conversion and the old gradient cached the initial color profile. Dark assertions compare actual ANSI against the same renderer with legacy colors, rather than assuming exact round-trip RGB.
+First GREEN failed only the mid heatmap band at 4.22:1. Its light foreground changed to ink. Final focused command passed.
+No test hung or hit its deadline. No test was skipped or marked flaky in the completed focused runs. Tests used local JSONL fixtures, no shared Dolt writes.
+
+Other required checks (cwd /home/omnigent/workspace/b9s):
+- timeout 180s go -C /home/omnigent/workspace/b9s mod download: exit 0; /tmp/bd-g2f9-dependencies.txt
+- timeout 180s go build ./...: exit 0; /tmp/bd-g2f9-build.txt. Go build also typechecks this Go change. No test counts apply.
+- timeout 180s go vet ./...: exit 0; /tmp/bd-g2f9-vet.txt. Static check, no test counts apply.
+- timeout 60s make test-stable (alone): exit 2, No rule to make target test-stable; /tmp/bd-g2f9-stable.txt. Suite unrun, counts unknown.
+- git -C /home/omnigent/workspace/b9s diff --check: exit 0.
+- gofmt -w was run with explicit paths for the eight changed Go files.
+
+Every unresolved required-check failure:
+- bd-leoo: assigned integration branch lacks the required test-stable Makefile target. Filed discovered-from bd-g2f9 and deferred for Polly. This blocks a green required-suite verdict.
+No other unresolved required-check failure observed. No main/base comparison or baseline worktree used.
+
+Checkpoint and residual risks:
+- /tmp/bd-g2f9-focused-evidence.json contains the exact focused argv, Go/runtime fingerprint and measured counts.
+- /tmp/bd-g2f9-checkpoint-focused.json records a successfully pushed unapproved checkpoint with source tree 6b10725ffa98b57d5f6e5e9e07af216d5818d0d1. Delivery branch was not pushed.
+- Independent review and tester gates remain pending. The missing stable suite leaves broader regression coverage unmeasured.
+- Built-in Sepia contrast is tested. Custom skin contrast is user-controlled, as defined in ADR 0033. Existing dark colors are intentionally preserved, including legacy lower-contrast heatmap colors.
+- No browser suite was run because this change affects the terminal UI and skin loading. Focused PTY tests ran the actual built TUI.
