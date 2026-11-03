@@ -131,6 +131,18 @@ b9s:
   warning: "#FFB86C"
   danger: "#FF5555"
   border: "#44475A"
+  pickerText: "#F3F3F3"
+  commandSuggestion: "#6C7086"
+  healthWarning: "#FF8800"
+  healthError: "#FF4444"
+  priorityUp: "#FF6B6B"
+  priorityDown: "#4ECDC4"
+  triageStar: "#FFD700"
+  triageUnblocks: "#50FA7B"
+  triageUnblocksAlt: "#6272A4"
+  heatGradient: ["#1A1A2E", "#16213E", "#0F4C75", "#3282B8", "#BBE1FA", "#F7DC6F", "#E94560", "#FF2E63"]
+  heatBackgrounds: ["#1A1A2E", "#16213E", "#3282B8", "#F7DC6F", "#E94560", "#FF2E63"]
+  heatForegrounds: ["#6272A4", "#BBE1FA", "#FFFFFF", "#1A1A2E", "#FFFFFF", "#FFFFFF"]
   open: "#50FA7B"
   inProgress: "#8BE9FD"
   blocked: "#FF5555"
