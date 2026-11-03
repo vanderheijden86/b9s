@@ -1,0 +1,32 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./pkg/updater",
+    "-run",
+    "^TestPerformUpdateExecutableLocation$",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "counts": {
+    "passed": 4,
+    "failed": 3,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "counting": "leaf test cases, excludes parent test aggregate",
+  "results": {
+    "TestPerformUpdateExecutableLocation/bundle": "fail",
+    "TestPerformUpdateExecutableLocation/linked_bundle": "fail",
+    "TestPerformUpdateExecutableLocation/uppercase_bundle": "fail",
+    "TestPerformUpdateExecutableLocation/ordinary": "pass",
+    "TestPerformUpdateExecutableLocation/linked_ordinary": "pass",
+    "TestPerformUpdateExecutableLocation/app_substring": "pass",
+    "TestPerformUpdateExecutableLocation/executable_suffix": "pass"
+  }
+}
