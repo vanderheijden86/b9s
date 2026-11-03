@@ -57,9 +57,15 @@ sql() {
 sql 'SHOW DATABASES' > "$home/databases" \
   || { printf 'the database refused the credential for %s\n' "$B9S_DOLT_USER" >&2; exit 1; }
 
-# b9s web lists every checkout under projects/ (--projects-root). The config
-# file only keeps the recent projects the owner opens.
-: > "$home/.config/b9s/config.yaml"
+# b9s saves recent projects into this writable copy. The mounted settings
+# remain read-only, and credentials stay in the inherited environment.
+if [ -n "${B9S_WEB_CONFIG_FILE:-}" ]; then
+  [ -f "$B9S_WEB_CONFIG_FILE" ] && [ -r "$B9S_WEB_CONFIG_FILE" ] \
+    || { printf 'B9S_WEB_CONFIG_FILE is not a readable file: %s\n' "$B9S_WEB_CONFIG_FILE" >&2; exit 1; }
+  cat "$B9S_WEB_CONFIG_FILE" > "$home/.config/b9s/config.yaml"
+else
+  : > "$home/.config/b9s/config.yaml"
+fi
 first=''
 count=0
 while IFS= read -r database; do
