@@ -1,0 +1,220 @@
+PASS  artifact boundary clean exits 0
+PASS  artifact boundary version exits 0
+PASS  artifact boundary lock exits 0
+PASS  artifact boundary both exits 0
+PASS  artifact boundary harness exits 0
+PASS  artifact boundary source exits 2
+PASS  artifact boundary beads-data exits 2
+PASS  artifact boundary beads-config exits 2
+PASS  artifact boundary staged-version exits 2
+PASS  artifact boundary staged-lock exits 2
+PASS  artifact boundary lookalike exits 2
+PASS  artifact boundary mixed exits 2
+PASS  artifact boundary wrong-head exits 2
+PASS  artifact boundary head-mismatch exits 2
+PASS  preview build context excludes .beads
+PASS  preview build context excludes .beads.gate.lock
+PASS  preview build context excludes .codex-tmp
+PASS  preview-build is executable
+PASS  preview-deploy is executable
+PASS  preview-status is executable
+PASS  preview-verify is executable
+PASS  preview-destroy is executable
+PASS  preview image has a Dockerfile
+PASS  preview commands share a contract library
+PASS  preview has an executable read-only credential provisioner
+PASS  terminal UI waits in a tmux session for kubectl exec
+PASS  tmux uses the exec wrapper
+PASS  startup records the selected project
+PASS  image installs the exec wrapper
+PASS  preview serves the web board
+PASS  web board trusts the cluster-supplied viewer header
+PASS  preview requires a viewer header
+PASS  preview requires a viewer
+PASS  preview image carries no ttyd
+PASS  preview image carries no mobile.html
+PASS  preview image carries no mobile-key.cgi
+PASS  preview image carries no --no-token
+PASS  preview requires a read-only Dolt user
+PASS  preview requires a read-only Dolt password
+PASS  preview explicitly trusts its provisioned Dolt endpoint
+PASS  preview discovers only accessible databases
+PASS  preview verifies the Beads issues table
+PASS  preview starts in the all-projects view
+PASS  preview does not seed demo tickets
+PASS  network policy admits only the web and identity ports
+PASS  database traffic is limited to the MySQL port
+PASS  deployment reads the dedicated Dolt secret
+PASS  deployment names the cluster-supplied reader secret
+PASS  provisioner grants only SELECT
+PASS  provisioner enumerates Beads databases
+PASS  provisioner proves writes are refused
+PASS  provisioner never grants a write privilege
+PASS  preview manifest renders without cluster writes
+PASS  namespace is project-prefixed
+PASS  namespace is labelled for b9s
+PASS  namespace records its task
+PASS  deployer binds the shared workload role
+PASS  binding names the deployer namespace
+PASS  runner namespace may reach the preview
+PASS  deployment names the project reader secret
+PASS  binding names the b9s deployer
+PASS  image is immutable by full commit
+PASS  web board is exposed
+PASS  deployment passes the viewer header name
+PASS  deployment passes the viewer
+PASS  rendered preview has no browser terminal route
+PASS  identity endpoint is exposed
+PASS  preview has a clickable hostname
+PASS  unsafe task identifiers stop before cluster access
+PASS  unsafe task identifier reports the boundary
+PASS  invalid PREVIEW_VIEWER_HEADER stops before cluster access
+PASS  invalid PREVIEW_VIEWER_HEADER reports the boundary
+PASS  invalid PREVIEW_VIEWER stops before cluster access
+PASS  invalid PREVIEW_VIEWER reports the boundary
+PASS  preview Ingress chains several Middlewares in order
+PASS  preview Ingress admits only port-forward traffic
+PASS  an empty middleware override renders no Middleware
+PASS  unsafe middleware stops before cluster access
+PASS  unsafe middleware reports the boundary
+PASS  restricted first deployment succeeds
+PASS  restricted same-task deployment accepts a new SHA
+PASS  redeploy refreshes namespace commit label
+PASS  each deployment preflights namespace policy before workload apply
+PASS  redeploy applies the new workload SHA
+PASS  namespace policy denial fails deployment
+PASS  namespace policy denial prevents partial workload deployment
+PASS  namespace policy denial identifies the infrastructure prerequisite
+PASS  missing PREVIEW_HOST_SUFFIX stops before cluster access
+PASS  missing PREVIEW_LABEL_DOMAIN stops before cluster access
+PASS  missing PREVIEW_RUNNER_NAMESPACE stops before cluster access
+PASS  missing PREVIEW_WORKLOAD_ROLE stops before cluster access
+PASS  missing PREVIEW_DEPLOYER_SA stops before cluster access
+PASS  missing PREVIEW_READER_REF stops before cluster access
+PASS  missing PREVIEW_VIEWER_HEADER stops before cluster access
+PASS  missing PREVIEW_VIEWER stops before cluster access
+PASS  a deployer without namespace/name is refused
+PASS  verifier cluster exit 0
+PASS  verifier cluster prints final counts
+PASS  verifier cluster uses only the selected HTTP boundary with bounded requests
+PASS  verifier cluster reads the task terminal through Kubernetes
+PASS  verifier laptop-6 exit 0
+PASS  verifier laptop-6 prints final counts
+PASS  verifier laptop-6 uses only the selected HTTP boundary with bounded requests
+PASS  verifier laptop-6 reads the task terminal through Kubernetes
+PASS  verifier laptop-7 exit 0
+PASS  verifier laptop-7 prints final counts
+PASS  verifier laptop-7 uses only the selected HTTP boundary with bounded requests
+PASS  verifier laptop-7 reads the task terminal through Kubernetes
+PASS  verifier laptop-28 exit 0
+PASS  verifier laptop-28 prints final counts
+PASS  verifier laptop-28 uses only the selected HTTP boundary with bounded requests
+PASS  verifier laptop-28 reads the task terminal through Kubernetes
+PASS  verifier service-error-5 exit 1
+PASS  verifier service-error-5 prints final counts
+PASS  verifier service-error-5 uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-error-5 reports the failure
+PASS  verifier service-error-22 exit 1
+PASS  verifier service-error-22 prints final counts
+PASS  verifier service-error-22 uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-error-22 reports the failure
+PASS  verifier service-error-35 exit 1
+PASS  verifier service-error-35 prints final counts
+PASS  verifier service-error-35 uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-error-35 reports the failure
+PASS  verifier service-error-52 exit 1
+PASS  verifier service-error-52 prints final counts
+PASS  verifier service-error-52 uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-error-52 reports the failure
+PASS  verifier service-error-56 exit 1
+PASS  verifier service-error-56 prints final counts
+PASS  verifier service-error-56 uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-error-56 reports the failure
+PASS  verifier ingress-unreachable exit 1
+PASS  verifier ingress-unreachable prints final counts
+PASS  verifier ingress-unreachable uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-unreachable reports the failure
+PASS  verifier service-bad-commit exit 1
+PASS  verifier service-bad-commit prints final counts
+PASS  verifier service-bad-commit uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-bad-commit reads the task terminal through Kubernetes
+PASS  verifier service-bad-commit reports the failure
+PASS  verifier service-bad-task exit 1
+PASS  verifier service-bad-task prints final counts
+PASS  verifier service-bad-task uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-bad-task reads the task terminal through Kubernetes
+PASS  verifier service-bad-task reports the failure
+PASS  verifier service-bad-namespace exit 1
+PASS  verifier service-bad-namespace prints final counts
+PASS  verifier service-bad-namespace uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-bad-namespace reads the task terminal through Kubernetes
+PASS  verifier service-bad-namespace reports the failure
+PASS  verifier service-malformed exit 1
+PASS  verifier service-malformed prints final counts
+PASS  verifier service-malformed uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-malformed reports the failure
+PASS  verifier service-array exit 1
+PASS  verifier service-array prints final counts
+PASS  verifier service-array uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-array reports the failure
+PASS  verifier service-missing exit 1
+PASS  verifier service-missing prints final counts
+PASS  verifier service-missing uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-missing reports the failure
+PASS  verifier service-nonstring exit 1
+PASS  verifier service-nonstring prints final counts
+PASS  verifier service-nonstring uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-nonstring reports the failure
+PASS  verifier service-web-failure exit 1
+PASS  verifier service-web-failure prints final counts
+PASS  verifier service-web-failure uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-web-failure reads the task terminal through Kubernetes
+PASS  verifier service-web-failure reports the failure
+PASS  verifier service-web-commit exit 1
+PASS  verifier service-web-commit prints final counts
+PASS  verifier service-web-commit uses only the selected HTTP boundary with bounded requests
+PASS  verifier service-web-commit reads the task terminal through Kubernetes
+PASS  verifier service-web-commit reports the failure
+PASS  verifier ingress-bad-commit exit 1
+PASS  verifier ingress-bad-commit prints final counts
+PASS  verifier ingress-bad-commit uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-bad-commit reads the task terminal through Kubernetes
+PASS  verifier ingress-bad-commit reports the failure
+PASS  verifier ingress-bad-task exit 1
+PASS  verifier ingress-bad-task prints final counts
+PASS  verifier ingress-bad-task uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-bad-task reads the task terminal through Kubernetes
+PASS  verifier ingress-bad-task reports the failure
+PASS  verifier ingress-bad-namespace exit 1
+PASS  verifier ingress-bad-namespace prints final counts
+PASS  verifier ingress-bad-namespace uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-bad-namespace reads the task terminal through Kubernetes
+PASS  verifier ingress-bad-namespace reports the failure
+PASS  verifier ingress-malformed exit 1
+PASS  verifier ingress-malformed prints final counts
+PASS  verifier ingress-malformed uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-malformed reports the failure
+PASS  verifier ingress-array exit 1
+PASS  verifier ingress-array prints final counts
+PASS  verifier ingress-array uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-array reports the failure
+PASS  verifier ingress-missing exit 1
+PASS  verifier ingress-missing prints final counts
+PASS  verifier ingress-missing uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-missing reports the failure
+PASS  verifier ingress-nonstring exit 1
+PASS  verifier ingress-nonstring prints final counts
+PASS  verifier ingress-nonstring uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-nonstring reports the failure
+PASS  verifier ingress-web-failure exit 1
+PASS  verifier ingress-web-failure prints final counts
+PASS  verifier ingress-web-failure uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-web-failure reads the task terminal through Kubernetes
+PASS  verifier ingress-web-failure reports the failure
+PASS  verifier ingress-web-commit exit 1
+PASS  verifier ingress-web-commit prints final counts
+PASS  verifier ingress-web-commit uses only the selected HTTP boundary with bounded requests
+PASS  verifier ingress-web-commit reads the task terminal through Kubernetes
+PASS  verifier ingress-web-commit reports the failure
+=== preview-contract DONE pass=218 fail=0 ===
+exit=0
