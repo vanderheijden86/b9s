@@ -1,0 +1,12 @@
+beads-connect exit 0: bd connected to b9s as bd_b9s.
+Initial branch main, clean; bootstrap HEAD 793407bd86c74ba9985c9870c39392974ec8380e.
+Fetched assigned base with timeout 60s git fetch origin refs/heads/omnigent/bd-6e8h.12:refs/remotes/origin/omnigent/bd-6e8h.12, exit 0.
+Assigned base and PR target omnigent/bd-6e8h.12.
+Fetched base SHA 44a92da087e2877691a824e6ad94d10313d67a5f.
+Exact delivery remote probe timeout 60s git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-6e8h.7 exited 2: absent. No remote branch to fetch.
+No existing local delivery branch or uncommitted changes.
+Created omnigent/bd-6e8h.7 from origin/omnigent/bd-6e8h.12.
+Actual branch omnigent/bd-6e8h.7, HEAD 44a92da087e2877691a824e6ad94d10313d67a5f.
+Required commit 44a92da087e2877691a824e6ad94d10313d67a5f ancestor of fetched base: exit 0.
+Required commit ancestor of HEAD: exit 0.
+Checkpoint inspect found 43fb24242069e8985d26652ed8495d4f540e2e35, with source_head/base_ref/base_sha mismatch. Blind restore forbidden. Review saved patch before manual application. Existing checkpoint preserved.

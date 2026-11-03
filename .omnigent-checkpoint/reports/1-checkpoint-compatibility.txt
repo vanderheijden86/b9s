@@ -1,0 +1,10 @@
+Checkpoint inspected: 43fb24242069e8985d26652ed8495d4f540e2e35.
+Saved source HEAD/base: 793407bd86c74ba9985c9870c39392974ec8380e (origin/main).
+Current HEAD/base: 44a92da087e2877691a824e6ad94d10313d67a5f (origin/omnigent/bd-6e8h.12).
+Helper mismatches: source_head, base_ref, base_sha.
+Did not invoke blind restore. Reviewed complete source diff (checkpoint.patch) excluding checkpoint reports, plus PR47 delta. Patch adds forget logic, tests, command/help wiring and documentation. PR47 introduces resolved checkout identity and TouchRecent deduplication. Saved feature patch does not overwrite either implementation.
+git apply --check checkpoint.patch on assigned base exited 0.
+Applied command_prompt_test.go alone first. Bounded focused behavioral RED exit 1, 0 passed, 1 failed, 0 skipped: unknown command forget.
+Then manually applied reviewed patch excluding already applied command_prompt_test.go.
+Existing unapproved checkpoint remains preserved in Git. Further checkpoint saves use fast-forward helper behavior.
+No old-base test evidence reused. Fresh checks required on combined tree.
