@@ -1,0 +1,223 @@
+{
+  "checks": [
+    {
+      "command": [
+        "timeout",
+        "120s",
+        "npm",
+        "--prefix",
+        "/home/omnigent/workspace/b9s/web",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/typecheck.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "120s",
+        "npm",
+        "--prefix",
+        "/home/omnigent/workspace/b9s/web",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/web-build.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "180s",
+        "go",
+        "build",
+        "./..."
+      ],
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/go-build.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "180s",
+        "go",
+        "vet",
+        "./..."
+      ],
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/go-vet.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "30s",
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/diff-check.log",
+      "test_counts": "not applicable (static/build check)"
+    }
+  ],
+  "stable": {
+    "command": [
+      "timeout",
+      "660s",
+      "make",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "test-stable"
+    ],
+    "environment": {
+      "GOFLAGS": "-v"
+    },
+    "exit_code": 0,
+    "counts_including_subtests": {
+      "passed": 3345,
+      "failed": 0,
+      "skipped": 20
+    },
+    "counts_top_level": {
+      "passed": 2057,
+      "failed": 0,
+      "skipped": 18
+    },
+    "package_results": [
+      "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t0.352s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.304s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.032s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t8.886s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.163s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.025s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t0.904s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.056s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.014s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.007s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t17.616s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.012s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.009s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.008s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t38.391s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.190s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.019s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.009s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.402s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t1.594s",
+      "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.042s"
+    ],
+    "skip_results": [
+      "--- SKIP: TestProbeMemory_RealBinaries (0.00s)",
+      "--- SKIP: TestS3StoreContract (0.00s)",
+      "--- SKIP: TestS3PutRejectsShortRead (0.00s)",
+      "--- SKIP: TestS3PutRejectsLongRead (0.00s)",
+      "--- SKIP: TestDoltReader_NewAndClose (0.00s)",
+      "--- SKIP: TestDoltReader_LoadIssues (0.00s)",
+      "--- SKIP: TestDoltReader_GetHeadHash (0.00s)",
+      "--- SKIP: TestDoltWatcher_NewAndStop (0.00s)",
+      "--- SKIP: TestDoltWatcher_StartIsIdempotent (0.00s)",
+      "--- SKIP: TestDoltWatcher_DetectsNoChangeOnPoll (0.00s)",
+      "--- SKIP: TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB (0.00s)",
+      "--- SKIP: TestMemoryPreviewGraphReadTiming (0.00s)",
+      "--- SKIP: TestMemoryReadResearchStages (0.00s)",
+      "--- SKIP: TestMemoryReadResearchTransportParity (0.00s)",
+      "--- SKIP: TestMemoryReadResearchConcurrentWriter (0.00s)",
+      "    --- SKIP: TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)",
+      "    --- SKIP: TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl (0.00s)",
+      "--- SKIP: TestStress_SustainedWrites (0.00s)",
+      "--- SKIP: TestStress_BurstWrites (0.00s)",
+      "--- SKIP: TestStress_MemoryPressure (0.00s)"
+    ]
+  },
+  "browser_runtime": {
+    "architecture": "x86_64",
+    "browser_sandbox": "pod-boundary",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "graphics_threads": 2,
+    "kernel": "6.8.0-147-generic",
+    "native_runtime_sha256": "a32868da82a4a7bf3f0a736c570c8d28d79faba858fde32c43b6c2f9faa6b9a6",
+    "node": "v22.23.4",
+    "playwright": "1.63.0"
+  },
+  "density": [
+    {
+      "project": "pixel",
+      "rowHeight": 44,
+      "rowsPer240px": 5,
+      "touchTarget": true,
+      "phoneLayout": true
+    },
+    {
+      "project": "iphone",
+      "rowHeight": 44,
+      "rowsPer240px": 5,
+      "touchTarget": true,
+      "phoneLayout": true
+    },
+    {
+      "project": "phone-360",
+      "rowHeight": 44,
+      "rowsPer240px": 5,
+      "touchTarget": true,
+      "phoneLayout": true
+    },
+    {
+      "project": "phone-412",
+      "rowHeight": 44,
+      "rowsPer240px": 5,
+      "touchTarget": true,
+      "phoneLayout": true
+    },
+    {
+      "project": "tablet-768",
+      "rowHeight": 44,
+      "rowsPer240px": 5,
+      "touchTarget": true,
+      "phoneLayout": false
+    },
+    {
+      "project": "tablet-1024",
+      "rowHeight": 44,
+      "rowsPer240px": 5,
+      "touchTarget": true,
+      "phoneLayout": false
+    },
+    {
+      "project": "desktop-1440",
+      "rowHeight": 24,
+      "rowsPer240px": 10,
+      "touchTarget": false,
+      "phoneLayout": false
+    },
+    {
+      "project": "desktop-1920",
+      "rowHeight": 24,
+      "rowsPer240px": 10,
+      "touchTarget": false,
+      "phoneLayout": false
+    },
+    {
+      "project": "wide-2560",
+      "rowHeight": 24,
+      "rowsPer240px": 10,
+      "touchTarget": false,
+      "phoneLayout": false
+    }
+  ],
+  "required_blockers": [],
+  "unrelated_issue_ids": [
+    "bd-969k"
+  ]
+}
