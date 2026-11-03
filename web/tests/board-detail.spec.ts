@@ -1,6 +1,10 @@
 import type { Page } from "@playwright/test";
 import { expect, open, test } from "./harness";
 
+test.beforeEach(async ({ page }) => {
+  page.on("pageerror", error => { throw error; });
+});
+
 async function tokenColor(page: Page, token: string): Promise<string> {
   return page.evaluate(t => {
     const el = document.createElement("span");
@@ -63,12 +67,12 @@ test("board cards, epic lanes and rich detail use the calm look in this size cla
   const text = await tokenColor(page, "--text");
   const textSoft = await tokenColor(page, "--text-soft");
   const dangerColor = await tokenColor(page, "--danger");
-  const raised = await tokenColor(page, "--surface-raised");
 
   await page.locator('#bar [data-view="board"]').click();
   const card = page.locator('[data-card="d-task"]');
   await expect(card).toBeVisible();
-  await expect(card).toHaveCSS("background-color", raised);
+  await expect(card).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(card).toHaveCSS("border-top-width", "0px");
   await expect(card.locator(".tags .tp")).toHaveCSS("color", muted);
   await expect.poll(() => card.locator(".st").evaluate(el => getComputedStyle(el).backgroundColor)).toBe(dangerColor);
 

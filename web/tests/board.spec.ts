@@ -106,10 +106,12 @@ test.describe("epic lanes inside a box", () => {
     });
   }
 
-  test("a card nested below a task names its parent on a third line", async ({ page, project }) => {
+  test("a nested card keeps its parent in details without a breadcrumb line", async ({ page, project }) => {
     await open(page, project);
     await page.locator('#bar [data-view="board"]').click();
-    await expect(page.locator('#bcol [data-card="t-deep"] .l3')).toContainText("↳ mid Gestures for status");
+    await expect(page.locator('#bcol [data-card="t-deep"] .l3')).toHaveCount(0);
     await expect(page.locator('#bcol [data-card="t-b1"] .l3')).toHaveCount(0);
+    await page.locator('#bcol [data-card="t-deep"]').click();
+    await expect(page.locator('.detail [data-nav="t-mid"]')).toContainText("Gestures for status");
   });
 });

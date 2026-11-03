@@ -2,7 +2,8 @@
 type: ADR
 id: "0022"
 title: "Make the phone board's epic rail an index, with sticky lane headers"
-status: active
+status: superseded
+superseded_by: "0065"
 date: 2026-09-26
 ---
 
