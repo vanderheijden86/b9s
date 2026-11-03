@@ -1,0 +1,12 @@
+{
+  "exit_code": 0,
+  "all_test_events": {
+    "pass": 12
+  },
+  "subtests": {
+    "pass": 11
+  },
+  "completed_packages": [
+    "github.com/vanderheijden86/b9s/pkg/updater"
+  ]
+}
