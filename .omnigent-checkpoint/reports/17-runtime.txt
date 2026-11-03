@@ -1,0 +1,8 @@
+go version go1.25.5 linux/amd64
+linux
+amd64
+1
+
+-O2 -g
+script from util-linux 2.41.5
+Linux 6.8.0-147-generic x86_64
