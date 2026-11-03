@@ -552,12 +552,19 @@ func GetSelfUpdateBinaryPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot determine binary path: %w", err)
 	}
-	for dir := filepath.Dir(binaryPath); dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
-		if strings.EqualFold(filepath.Ext(dir), ".app") {
-			return "", fmt.Errorf("cannot update b9s inside an app bundle without breaking its code signature; download the new DMG from https://github.com/vanderheijden86/b9s/releases/latest")
-		}
+	if isInsideAppBundle(binaryPath) {
+		return "", fmt.Errorf("cannot update b9s inside an app bundle without breaking its code signature; download the new DMG from https://github.com/vanderheijden86/b9s/releases/latest")
 	}
 	return binaryPath, nil
+}
+
+func isInsideAppBundle(binaryPath string) bool {
+	for dir := filepath.Dir(binaryPath); dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+		if strings.EqualFold(filepath.Ext(dir), ".app") {
+			return true
+		}
+	}
+	return false
 }
 
 // GetBackupPath returns the path for the backup binary

@@ -13,6 +13,31 @@ import (
 	"time"
 )
 
+func TestIsInsideAppBundle(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		path    string
+		bundled bool
+	}{
+		{"bundle", "B9s.app/Contents/Resources/bin/b9s", true},
+		{"uppercase_bundle", "B9s.APP/Contents/Resources/bin/b9s", true},
+		{"immediate_bundle", "B9s.app/b9s", true},
+		{"nested_bundle", "Outer.app/Contents/Inner.app/bin/b9s", true},
+		{"ordinary", "bin/b9s", false},
+		{"app_substring", "B9s.app-cache/bin/b9s", false},
+		{"executable_suffix", "bin/b9s.app", false},
+		{"uppercase_executable_suffix", "bin/b9s.APP", false},
+		{"filename_suffix_in_bundle", "B9s.app/Contents/bin/b9s.app", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(string(filepath.Separator), "opt", filepath.FromSlash(tt.path))
+			if got := isInsideAppBundle(path); got != tt.bundled {
+				t.Fatalf("isInsideAppBundle(%q) = %v, want %v", path, got, tt.bundled)
+			}
+		})
+	}
+}
+
 func TestPerformUpdateExecutableLocation(t *testing.T) {
 	if expectedPath := os.Getenv("B9S_TEST_UPDATE_EXECUTABLE"); expectedPath != "" {
 		resolved, err := GetCurrentBinaryPath()
@@ -50,9 +75,12 @@ func TestPerformUpdateExecutableLocation(t *testing.T) {
 		{"ordinary", "bin/b9s", false, false},
 		{"linked_ordinary", "bin/b9s", true, false},
 		{"app_substring", "B9s.app-cache/bin/b9s", false, false},
-		{"executable_suffix", "bin/b9s.app", false, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			// macOS can kill an executable named *.app before Go starts.
+			if strings.EqualFold(filepath.Ext(tt.path), ".app") {
+				t.Fatal("subprocess executable must not end in .app; cover filename classification in TestIsInsideAppBundle")
+			}
 			dir := t.TempDir()
 			target := filepath.Join(dir, filepath.FromSlash(tt.path))
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
