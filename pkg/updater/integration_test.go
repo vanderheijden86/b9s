@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ============================================================================
@@ -441,6 +443,141 @@ func TestInstallersUseCurrentIdentityAndRequireChecksums(t *testing.T) {
 	if !strings.Contains(string(installPowerShell), `$BIN_NAME = "b9s"`) {
 		t.Fatal("install.ps1 still installs the previous binary name")
 	}
+}
+
+func TestInstallerGoRequirement(t *testing.T) {
+	mod, err := os.ReadFile(filepath.Join("..", "..", "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`(?m)^go (\d+)\.(\d+)\.\d+$`).FindStringSubmatch(string(mod))
+	if match == nil {
+		t.Fatal("go.mod must declare a Go version")
+	}
+	minimum := match[1] + "." + match[2]
+	var major, minor int
+	if _, err := fmt.Sscanf(minimum, "%d.%d", &major, &minor); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		version string
+		accept  bool
+	}{
+		{"old_advertised_minimum", "1.21.0", false},
+		{"below_module_minimum", fmt.Sprintf("%d.%d.9", major, minor-1), false},
+		{"module_minimum", minimum + ".0", true},
+		{"minimum_without_patch", minimum, true},
+		{"later_patch", minimum + ".5", true},
+		{"later_minor", fmt.Sprintf("%d.%d.0", major, minor+1), true},
+		{"later_major", fmt.Sprintf("%d.0.0", major+1), true},
+		{"missing", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := runInstallerShell(t, tc.version, "ensure_go")
+			if tc.accept {
+				if err != nil {
+					t.Fatalf("Go %s must be accepted: %v\n%s", tc.version, err, out)
+				}
+				if out != tc.version {
+					t.Fatalf("accepted version = %q, want %q", out, tc.version)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("unsupported Go %q was accepted, require Go %s or later", tc.version, minimum)
+			}
+			if tc.version != "" && !strings.Contains(out, "Go "+minimum+" or later is required.") {
+				t.Fatalf("version warning must name go.mod minimum Go %s:\n%s", minimum, out)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name    string
+		version string
+		accept  bool
+	}{
+		{"unsupported", fmt.Sprintf("%d.%d.9", major, minor-1), false},
+		{"missing", "", false},
+		{"supported", minimum + ".0", true},
+	} {
+		t.Run("source_fallback_"+tc.name, func(t *testing.T) {
+			out, err := runInstallerShell(t, tc.version, "try_go_install")
+			if tc.accept {
+				if err != nil {
+					t.Fatalf("supported source fallback failed: %v\n%s", err, out)
+				}
+				for _, marker := range []string{"FETCH_CALLED", "BUILD_CALLED", "INSTALL_CALLED"} {
+					if !strings.Contains(out, marker) {
+						t.Errorf("source fallback did not reach %s:\n%s", marker, out)
+					}
+				}
+				return
+			}
+			if err == nil {
+				t.Errorf("unsupported source fallback succeeded:\n%s", out)
+			}
+			for _, marker := range []string{"FETCH_CALLED", "BUILD_CALLED", "INSTALL_CALLED"} {
+				if strings.Contains(out, marker) {
+					t.Errorf("unsupported source fallback reached %s:\n%s", marker, out)
+				}
+			}
+			want := "Go " + minimum + " or later is required for building from source."
+			if !strings.Contains(out, want) {
+				t.Errorf("source fallback error must contain %q:\n%s", want, out)
+			}
+		})
+	}
+}
+
+func runInstallerShell(t *testing.T, version, action string) (string, error) {
+	t.Helper()
+	installer, err := filepath.Abs(filepath.Join("..", "..", "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := t.TempDir()
+	if err := os.Mkdir(filepath.Join(workspace, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Shell functions isolate tool discovery and side effects from the host.
+	script := `
+source "$1"
+go() {
+    case "$1" in
+        version) printf 'go version go%s linux/amd64\n' "$TEST_GO_VERSION" ;;
+        build) printf 'BUILD_CALLED\n' ;;
+        *) return 1 ;;
+    esac
+}
+command() {
+    if [[ "$1" == "-v" && "$2" == "go" && -z "$TEST_GO_VERSION" ]]; then
+        return 1
+    fi
+    builtin command "$@"
+}
+brew() { return 1; }
+uname() { printf 'Linux\n'; }
+is_tty() { return 1; }
+make_tmp_dir() { printf '%s\n' "$TEST_WORKSPACE"; }
+git() { printf 'FETCH_CALLED\n' >&3; }
+ensure_install_dir() { :; }
+mv() { printf 'INSTALL_CALLED\n'; }
+INSTALL_DIR="$TEST_WORKSPACE"
+exec 3>&1
+"$2"
+`
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "bash", "-c", script, "installer-test", installer, action)
+	cmd.Env = append(os.Environ(), "TEST_GO_VERSION="+version, "TEST_WORKSPACE="+workspace)
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		t.Fatalf("installer shell exceeded deadline: %v\n%s", ctx.Err(), out)
+	}
+	return string(out), err
 }
 
 // TestDownloadFile_404_ReturnsError verifies HTTP error handling
