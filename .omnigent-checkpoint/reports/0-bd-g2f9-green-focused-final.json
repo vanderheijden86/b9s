@@ -1,0 +1,212 @@
+{"Time":"2026-11-03T22:23:43.725251671Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/ui"}
+{"Time":"2026-11-03T22:23:43.725432999Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/skin"}
+{"Time":"2026-11-03T22:23:43.728619027Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestTUIOverrideTokens"}
+{"Time":"2026-11-03T22:23:43.728650824Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestTUIOverrideTokens","Output":"=== RUN   TestTUIOverrideTokens\n"}
+{"Time":"2026-11-03T22:23:43.730516144Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestTUIOverrideTokens","Output":"--- PASS: TestTUIOverrideTokens (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.730546514Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestTUIOverrideTokens","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.730557371Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides"}
+{"Time":"2026-11-03T22:23:43.730562659Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides","Output":"=== RUN   TestHeatmapRejectsIncompleteOverrides\n"}
+{"Time":"2026-11-03T22:23:43.730572653Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatGradient"}
+{"Time":"2026-11-03T22:23:43.730578947Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatGradient","Output":"=== RUN   TestHeatmapRejectsIncompleteOverrides/heatGradient\n"}
+{"Time":"2026-11-03T22:23:43.730586196Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatGradient","Output":"--- PASS: TestHeatmapRejectsIncompleteOverrides/heatGradient (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.730592384Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatGradient","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.730598457Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatBackgrounds"}
+{"Time":"2026-11-03T22:23:43.730603183Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatBackgrounds","Output":"=== RUN   TestHeatmapRejectsIncompleteOverrides/heatBackgrounds\n"}
+{"Time":"2026-11-03T22:23:43.730609291Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatBackgrounds","Output":"--- PASS: TestHeatmapRejectsIncompleteOverrides/heatBackgrounds (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.730616244Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatBackgrounds","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.73062195Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatForegrounds"}
+{"Time":"2026-11-03T22:23:43.730626912Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatForegrounds","Output":"=== RUN   TestHeatmapRejectsIncompleteOverrides/heatForegrounds\n"}
+{"Time":"2026-11-03T22:23:43.73077571Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatForegrounds","Output":"--- PASS: TestHeatmapRejectsIncompleteOverrides/heatForegrounds (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.730794373Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides/heatForegrounds","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.730803363Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides","Output":"--- PASS: TestHeatmapRejectsIncompleteOverrides (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.730811586Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapRejectsIncompleteOverrides","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.73083205Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapOverrides"}
+{"Time":"2026-11-03T22:23:43.730839419Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapOverrides","Output":"=== RUN   TestHeatmapOverrides\n"}
+{"Time":"2026-11-03T22:23:43.731169303Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapOverrides","Output":"--- PASS: TestHeatmapOverrides (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.731183787Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Test":"TestHeatmapOverrides","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.731219552Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Output":"PASS\n"}
+{"Time":"2026-11-03T22:23:43.732258974Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/skin","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/skin\t0.007s\n"}
+{"Time":"2026-11-03T22:23:43.73228291Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/skin","Elapsed":0.007}
+{"Time":"2026-11-03T22:23:43.771394368Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA"}
+{"Time":"2026-11-03T22:23:43.771425983Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA\n"}
+{"Time":"2026-11-03T22:23:43.771896756Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate"}
+{"Time":"2026-11-03T22:23:43.771914368Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/alternate\n"}
+{"Time":"2026-11-03T22:23:43.771925284Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Output":"--- PASS: TestSepiaTriageSymbolsMeetAA/alternate (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.771932112Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.771939309Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up"}
+{"Time":"2026-11-03T22:23:43.771943978Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/up\n"}
+{"Time":"2026-11-03T22:23:43.77195005Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Output":"--- PASS: TestSepiaTriageSymbolsMeetAA/up (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.771955488Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.771961362Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down"}
+{"Time":"2026-11-03T22:23:43.771965954Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/down\n"}
+{"Time":"2026-11-03T22:23:43.772003709Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Output":"--- PASS: TestSepiaTriageSymbolsMeetAA/down (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.772039941Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.772077292Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star"}
+{"Time":"2026-11-03T22:23:43.772084858Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/star\n"}
+{"Time":"2026-11-03T22:23:43.772183483Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Output":"--- PASS: TestSepiaTriageSymbolsMeetAA/star (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.772385894Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.772397793Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks"}
+{"Time":"2026-11-03T22:23:43.77240285Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/unblocks\n"}
+{"Time":"2026-11-03T22:23:43.772411216Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Output":"--- PASS: TestSepiaTriageSymbolsMeetAA/unblocks (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.77241688Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.7724226Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA","Output":"--- PASS: TestSepiaTriageSymbolsMeetAA (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.772427896Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.772433462Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA"}
+{"Time":"2026-11-03T22:23:43.77243812Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA","Output":"=== RUN   TestSepiaHeatmapMeetsAA\n"}
+{"Time":"2026-11-03T22:23:43.772508503Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0"}
+{"Time":"2026-11-03T22:23:43.772520706Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0\n"}
+{"Time":"2026-11-03T22:23:43.772676733Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.772987351Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.773004653Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.01"}
+{"Time":"2026-11-03T22:23:43.773010824Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.01","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.01\n"}
+{"Time":"2026-11-03T22:23:43.773018425Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.01","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.01 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.773024449Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.01","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.773029726Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.15"}
+{"Time":"2026-11-03T22:23:43.773034753Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.15","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.15\n"}
+{"Time":"2026-11-03T22:23:43.773040555Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.15","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.15 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.773045776Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.15","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.773085482Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.2"}
+{"Time":"2026-11-03T22:23:43.773102315Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.2","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.2\n"}
+{"Time":"2026-11-03T22:23:43.773232701Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.2","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.2 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.773278633Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.2","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.77332156Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.3"}
+{"Time":"2026-11-03T22:23:43.773330403Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.3","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.3\n"}
+{"Time":"2026-11-03T22:23:43.77529353Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.3","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.3 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.77531698Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.3","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775323973Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.4"}
+{"Time":"2026-11-03T22:23:43.775328628Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.4","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.4\n"}
+{"Time":"2026-11-03T22:23:43.775334499Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.4","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.4 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.775339639Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.4","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775344806Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.5"}
+{"Time":"2026-11-03T22:23:43.775349183Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.5","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.5\n"}
+{"Time":"2026-11-03T22:23:43.775354733Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.5","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.5 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.775359759Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.5","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775364592Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.6"}
+{"Time":"2026-11-03T22:23:43.775368957Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.6","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.6\n"}
+{"Time":"2026-11-03T22:23:43.77537481Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.6","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.6 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.775380175Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.6","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775385281Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.7"}
+{"Time":"2026-11-03T22:23:43.775389727Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.7","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.7\n"}
+{"Time":"2026-11-03T22:23:43.775395623Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.7","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.7 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.775402069Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.7","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775413894Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.8"}
+{"Time":"2026-11-03T22:23:43.77541903Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.8","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.8\n"}
+{"Time":"2026-11-03T22:23:43.775424794Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.8","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.8 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.77542997Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.8","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775435034Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.9"}
+{"Time":"2026-11-03T22:23:43.775439549Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.9","Output":"=== RUN   TestSepiaHeatmapMeetsAA/0.9\n"}
+{"Time":"2026-11-03T22:23:43.775445142Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.9","Output":"--- PASS: TestSepiaHeatmapMeetsAA/0.9 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.775450278Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/0.9","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775455375Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/1"}
+{"Time":"2026-11-03T22:23:43.775459874Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/1","Output":"=== RUN   TestSepiaHeatmapMeetsAA/1\n"}
+{"Time":"2026-11-03T22:23:43.775465376Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/1","Output":"--- PASS: TestSepiaHeatmapMeetsAA/1 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.77547058Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA/1","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775476904Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA","Output":"--- PASS: TestSepiaHeatmapMeetsAA (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.775482328Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaHeatmapMeetsAA","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.775487357Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette"}
+{"Time":"2026-11-03T22:23:43.775491945Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette","Output":"=== RUN   TestPickerTextFollowsTerminalPalette\n"}
+{"Time":"2026-11-03T22:23:43.775507453Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false"}
+{"Time":"2026-11-03T22:23:43.775512545Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/false\n"}
+{"Time":"2026-11-03T22:23:43.776404842Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/project"}
+{"Time":"2026-11-03T22:23:43.776416076Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/project","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/false/project\n"}
+{"Time":"2026-11-03T22:23:43.776503089Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/project","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/false/project (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.776548822Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/project","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.776611708Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/title"}
+{"Time":"2026-11-03T22:23:43.776620746Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/title","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/false/title\n"}
+{"Time":"2026-11-03T22:23:43.776687014Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/title","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/false/title (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.776723564Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/title","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.776768908Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/label"}
+{"Time":"2026-11-03T22:23:43.776777313Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/label","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/false/label\n"}
+{"Time":"2026-11-03T22:23:43.776843522Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/label","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/false/label (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.776886252Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/label","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.776924921Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/assignee"}
+{"Time":"2026-11-03T22:23:43.776933341Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/assignee","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/false/assignee\n"}
+{"Time":"2026-11-03T22:23:43.777004045Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/assignee","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/false/assignee (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.777041701Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false/assignee","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.777077209Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/false (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.777117903Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/false","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.777155193Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true"}
+{"Time":"2026-11-03T22:23:43.777162499Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/true\n"}
+{"Time":"2026-11-03T22:23:43.779044923Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/project"}
+{"Time":"2026-11-03T22:23:43.779063828Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/project","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/true/project\n"}
+{"Time":"2026-11-03T22:23:43.779282098Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/project","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/true/project (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.779331465Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/project","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.779382801Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/title"}
+{"Time":"2026-11-03T22:23:43.779391427Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/title","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/true/title\n"}
+{"Time":"2026-11-03T22:23:43.779461681Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/title","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/true/title (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.779505784Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/title","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.779550537Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/label"}
+{"Time":"2026-11-03T22:23:43.779558564Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/label","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/true/label\n"}
+{"Time":"2026-11-03T22:23:43.77962126Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/label","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/true/label (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.779653576Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/label","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.779689122Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/assignee"}
+{"Time":"2026-11-03T22:23:43.7797022Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/assignee","Output":"=== RUN   TestPickerTextFollowsTerminalPalette/true/assignee\n"}
+{"Time":"2026-11-03T22:23:43.779769158Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/assignee","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/true/assignee (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.779802179Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true/assignee","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.779839324Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true","Output":"--- PASS: TestPickerTextFollowsTerminalPalette/true (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.779870829Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette/true","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.779901564Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette","Output":"--- PASS: TestPickerTextFollowsTerminalPalette (0.01s)\n"}
+{"Time":"2026-11-03T22:23:43.779937767Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestPickerTextFollowsTerminalPalette","Elapsed":0.01}
+{"Time":"2026-11-03T22:23:43.779976747Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDarkTriageAndHeatmapColorsStayUnchanged"}
+{"Time":"2026-11-03T22:23:43.779984563Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDarkTriageAndHeatmapColorsStayUnchanged","Output":"=== RUN   TestDarkTriageAndHeatmapColorsStayUnchanged\n"}
+{"Time":"2026-11-03T22:23:43.780419128Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDarkTriageAndHeatmapColorsStayUnchanged","Output":"--- PASS: TestDarkTriageAndHeatmapColorsStayUnchanged (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.7804551Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDarkTriageAndHeatmapColorsStayUnchanged","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.780509095Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette"}
+{"Time":"2026-11-03T22:23:43.780521894Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette","Output":"=== RUN   TestHealthTextFollowsTerminalPalette\n"}
+{"Time":"2026-11-03T22:23:43.780580909Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/false"}
+{"Time":"2026-11-03T22:23:43.780589799Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/false","Output":"=== RUN   TestHealthTextFollowsTerminalPalette/false\n"}
+{"Time":"2026-11-03T22:23:43.781919877Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/false","Output":"--- PASS: TestHealthTextFollowsTerminalPalette/false (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.782003988Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/false","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.785265014Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/true"}
+{"Time":"2026-11-03T22:23:43.785293112Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/true","Output":"=== RUN   TestHealthTextFollowsTerminalPalette/true\n"}
+{"Time":"2026-11-03T22:23:43.785307032Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/true","Output":"--- PASS: TestHealthTextFollowsTerminalPalette/true (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.785320454Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette/true","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.785328471Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette","Output":"--- PASS: TestHealthTextFollowsTerminalPalette (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.785335886Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestHealthTextFollowsTerminalPalette","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.785342044Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette"}
+{"Time":"2026-11-03T22:23:43.785347117Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette","Output":"=== RUN   TestCommandSuggestionFollowsTerminalPalette\n"}
+{"Time":"2026-11-03T22:23:43.785364807Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/false"}
+{"Time":"2026-11-03T22:23:43.785378448Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/false","Output":"=== RUN   TestCommandSuggestionFollowsTerminalPalette/false\n"}
+{"Time":"2026-11-03T22:23:43.786783567Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/false","Output":"--- PASS: TestCommandSuggestionFollowsTerminalPalette/false (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.786859084Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/false","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.786973146Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/true"}
+{"Time":"2026-11-03T22:23:43.786984149Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/true","Output":"=== RUN   TestCommandSuggestionFollowsTerminalPalette/true\n"}
+{"Time":"2026-11-03T22:23:43.787355608Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/true","Output":"--- PASS: TestCommandSuggestionFollowsTerminalPalette/true (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.787429275Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette/true","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789356677Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette","Output":"--- PASS: TestCommandSuggestionFollowsTerminalPalette (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789377618Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestCommandSuggestionFollowsTerminalPalette","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789386456Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles"}
+{"Time":"2026-11-03T22:23:43.789392546Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles","Output":"=== RUN   TestAdaptiveHeatmapTerminalProfiles\n"}
+{"Time":"2026-11-03T22:23:43.789405081Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI"}
+{"Time":"2026-11-03T22:23:43.789410558Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI","Output":"=== RUN   TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI\n"}
+{"Time":"2026-11-03T22:23:43.789418481Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI","Output":"--- PASS: TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789424537Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789430745Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI256"}
+{"Time":"2026-11-03T22:23:43.789435565Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI256","Output":"=== RUN   TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI256\n"}
+{"Time":"2026-11-03T22:23:43.789442287Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI256","Output":"--- PASS: TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI256 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789448777Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=false/profile=ANSI256","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789454642Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI"}
+{"Time":"2026-11-03T22:23:43.789459189Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI","Output":"=== RUN   TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI\n"}
+{"Time":"2026-11-03T22:23:43.789465234Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI","Output":"--- PASS: TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789480688Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789517553Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI256"}
+{"Time":"2026-11-03T22:23:43.789529773Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI256","Output":"=== RUN   TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI256\n"}
+{"Time":"2026-11-03T22:23:43.789548214Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI256","Output":"--- PASS: TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI256 (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789556236Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles/dark=true/profile=ANSI256","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789562969Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles","Output":"--- PASS: TestAdaptiveHeatmapTerminalProfiles (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789568592Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveHeatmapTerminalProfiles","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789574155Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTUIAccentsFollowCustomSkin"}
+{"Time":"2026-11-03T22:23:43.789579027Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTUIAccentsFollowCustomSkin","Output":"=== RUN   TestTUIAccentsFollowCustomSkin\n"}
+{"Time":"2026-11-03T22:23:43.789585314Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTUIAccentsFollowCustomSkin","Output":"--- PASS: TestTUIAccentsFollowCustomSkin (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.789591437Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTUIAccentsFollowCustomSkin","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.789602769Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveColoursComeFromSkins"}
+{"Time":"2026-11-03T22:23:43.789608407Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveColoursComeFromSkins","Output":"=== RUN   TestAdaptiveColoursComeFromSkins\n"}
+{"Time":"2026-11-03T22:23:43.868371506Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveColoursComeFromSkins","Output":"--- PASS: TestAdaptiveColoursComeFromSkins (0.08s)\n"}
+{"Time":"2026-11-03T22:23:43.868403228Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestAdaptiveColoursComeFromSkins","Elapsed":0.08}
+{"Time":"2026-11-03T22:23:43.868409612Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestLightTextMeetsAAOnPaper"}
+{"Time":"2026-11-03T22:23:43.868412753Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestLightTextMeetsAAOnPaper","Output":"=== RUN   TestLightTextMeetsAAOnPaper\n"}
+{"Time":"2026-11-03T22:23:43.868460676Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestLightTextMeetsAAOnPaper","Output":"--- PASS: TestLightTextMeetsAAOnPaper (0.00s)\n"}
+{"Time":"2026-11-03T22:23:43.86851221Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestLightTextMeetsAAOnPaper","Elapsed":0}
+{"Time":"2026-11-03T22:23:43.868803508Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"PASS\n"}
+{"Time":"2026-11-03T22:23:43.872528456Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t0.147s\n"}
+{"Time":"2026-11-03T22:23:43.872562034Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Elapsed":0.147}
