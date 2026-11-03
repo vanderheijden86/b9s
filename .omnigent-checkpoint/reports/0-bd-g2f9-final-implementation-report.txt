@@ -1,0 +1,72 @@
+Task bd-g2f9 | Role implementer
+2026-11-03 23:41 CET
+
+Status: scoped adaptive-color implementation complete. Required full-suite verification BLOCKED by existing bd-9d0c.
+bd-leoo is CLOSED and is not a blocker. Its resolution selects the assigned branch documented full suite under ADR0034. The historical missing make test-stable alias is not a required product prerequisite.
+No source edits this continuation. No delivery commit, delivery push, PR, main import, baseline comparison, skip/fixme change or deadline increase.
+
+Accepted Git preflight:
+Branch omnigent/bd-g2f9. HEAD and fetched base origin/feat/sepia-light-theme both 233a25d38d94fe0e9e764c4fa0ee21f3225aeaf5. PR target feat/sepia-light-theme.
+Required db0e77422fb5a4eebcb1d0ac4042ab4d286aea2a ancestry against base and HEAD exit 0. Base ancestry against HEAD exit 0.
+Initial remote delivery probe exit 2 (absent), delivery created from fetched assigned base. Preflight report /tmp/bd-g2f9-preflight-paT48K.txt.
+
+Implementation and dark preservation:
+Model/picker numbers, command suggestions, health warnings/errors, triage arrows/stars/unblocks and heatmap glyphs/cells use adaptive skin tokens.
+Sepia foregrounds meet the tested 4.5:1 threshold against paper/cell surfaces. The mid heatmap band uses ink after a measured 4.22:1 failure.
+Built-in Dracula stores the exact legacy color values in its YAML. ANSI rendering tests compare every triage/heatmap color and model/picker text with legacy styles.
+Custom skins derive omitted colors from text/status tokens and tints. Explicit heat lists have length guards. Low-color heat backgrounds stay transparent. Light ANSI triage/heat text uses black, dark uses legacy white.
+
+Changed files (all existing, none created/deleted):
+- docs/USER_GUIDE.md
+- pkg/skin/builtin/dracula.yaml
+- pkg/skin/skin.go
+- pkg/skin/skin_test.go
+- pkg/ui/model.go
+- pkg/ui/palette.go
+- pkg/ui/palette_test.go
+- pkg/ui/project_picker.go
+- pkg/ui/theme.go
+- pkg/ui/visuals.go
+
+Exact verification commands and outcomes (cwd /home/omnigent/workspace/b9s):
+Full required: timeout 1500s go test ./... -skip DoltIntegration -count=1 -timeout=1200s -json
+Exit 1. Top-level Go test functions: 1862 passed, 2 failed, 15 skipped. Subtests separately: 1258 passed, 0 failed, 2 skipped. No unfinished selected tests. No deadline exceeded.
+E2E package within that run: 90 passed, 0 failed, 2 skipped top-level tests. Measured elapsed 472.760 seconds.
+Skip reasons: unavailable S3/Dolt services, opt-in stress checks, two optional JSONL fixture files. Existing skips retained, no new exclusions.
+Raw report /tmp/bd-g2f9-full-suite.json; stderr /tmp/bd-g2f9-full-suite.stderr; actual exit /tmp/bd-g2f9-full-suite.exit; summary /tmp/bd-g2f9-full-suite-summary.json; evidence /tmp/bd-g2f9-full-suite-evidence.json.
+
+Build: timeout 180s go build ./...; exit 0. Report /tmp/bd-g2f9-build.txt.
+Vet: timeout 180s go vet ./...; exit 0. Report /tmp/bd-g2f9-vet.txt.
+Build/vet are saved completed runs on the same unchanged source tree and Go environment. They are compiler/static checks, so test counts do not apply.
+Dependencies refreshed: timeout 180s go -C /home/omnigent/workspace/b9s mod download; exit 0. Report /tmp/bd-g2f9-round3-dependencies.txt.
+Focused GREEN saved completed run: timeout 180s go -C /home/omnigent/workspace/b9s test ./pkg/ui ./pkg/skin -run '^(TestSepiaTriageSymbolsMeetAA|TestSepiaHeatmapMeetsAA|TestPickerTextFollowsTerminalPalette|TestDarkTriageAndHeatmapColorsStayUnchanged|TestHealthTextFollowsTerminalPalette|TestCommandSuggestionFollowsTerminalPalette|TestAdaptiveHeatmapTerminalProfiles|TestTUIAccentsFollowCustomSkin|TestAdaptiveColoursComeFromSkins|TestLightTextMeetsAAOnPaper|TestTUIOverrideTokens|TestHeatmapRejectsIncompleteOverrides|TestHeatmapOverrides)$' -count=1 -timeout=60s -json
+Exit 0. Top-level 13 passed, 0 failed, 0 skipped. Subtests 38 passed, 0 failed, 0 skipped. Report /tmp/bd-g2f9-green-focused-final.json.
+Checkpoint compare succeeded against the unchanged full source tree and runtime before this full run. Post-run comparison evidence /tmp/bd-g2f9-round3-final-compare.json.
+The full required run also executed these regression tests, including TestDarkTriageAndHeatmapColorsStayUnchanged, successfully.
+
+Focused RED evidence:
+timeout 180s go -C /home/omnigent/workspace/b9s test ./pkg/ui -run '^TestSepiaTriageSymbolsMeetAA$' -count=1 -timeout=60s -json
+Exit 1. 0 passed, 1 failed, 0 skipped top-level tests. Five failing subtests. Green unblocks glyph measured 1.04:1. Report /tmp/bd-g2f9-red-triage.json.
+timeout 120s go -C /home/omnigent/workspace/b9s test ./pkg/skin -run '^(TestTUIOverrideTokens|TestHeatmapRejectsIncompleteOverrides)$' -count=1 -timeout=30s -json
+Exit 1. 0 passed, 2 failed, 0 skipped top-level tests. Missing skin tokens and list rejection reproduced before implementing those features. Report /tmp/bd-g2f9-red-skin.json.
+Other historical RED render and first GREEN attempt reports remain at /tmp/bd-g2f9-red-render.json and /tmp/bd-g2f9-green-focused.json. Initial dark assertions assumed lossless RGB round-trips and were corrected to compare actual ANSI with the same renderer.
+
+Every unresolved required-check failure:
+- github.com/vanderheijden86/b9s/internal/datasource: TestEmbeddedBD_ReadsAndWatchesARealStore -> existing issue bd-9d0c.
+=== RUN   TestEmbeddedBD_ReadsAndWatchesARealStore
+    embedded_bd_test.go:56: bd [init --prefix emb --quiet --non-interactive --skip-agents --skip-hooks]: exit status 3
+        bd: a lane role does not write lane state (bd init). The dispatcher owns status, assignee, claims, closing, dispatch-* labels and dependencies; report it to Polly instead.
+--- FAIL: TestEmbeddedBD_ReadsAndWatchesARealStore (0.01s)
+- github.com/vanderheijden86/b9s/pkg/web: TestBDContract_EveryWriteB9sMakes -> existing issue bd-9d0c.
+=== RUN   TestBDContract_EveryWriteB9sMakes
+    bd_contract_test.go:37: bd init: exit status 3
+        bd: a lane role does not write lane state (bd init). The dispatcher owns status, assignee, claims, closing, dispatch-* labels and dependencies; report it to Polly instead.
+--- FAIL: TestBDContract_EveryWriteB9sMakes (0.00s)
+Both tests call bd init in isolated temporary fixture projects. The lane bd guard exits 3 before fixture creation. Source inspection confirms the tests strip BEADS/BD environment variables and require embedded metadata before subsequent writes.
+No color implementation defect was observed. No guard bypass, protected lane-state write, test skip, suppression or narrowed replacement suite was attempted.
+Existing deferred bd-9d0c tracks this fixture-runner limitation. Attributed reproduction and final measured counts were added there and on bd-g2f9. No duplicate issue filed. No unrelated follow-up work.
+
+Residual risks:
+Required verification remains red until both fixture checks can execute through an approved isolated-fixture mechanism. All full-suite failures are retained as blockers.
+Custom skin contrast remains user-controlled under ADR0033. Legacy dark colors, including their original heatmap contrast, are intentionally preserved.
+Independent review/tester gates remain pending. No browser suite ran because the scoped change is terminal UI and skin loading. The full Go suite includes real PTY execution.
