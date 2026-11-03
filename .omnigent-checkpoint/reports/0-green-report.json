@@ -1,0 +1,20 @@
+{
+  "command_exit": 0,
+  "counts": {
+    "passed": 122,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_basis": "completed leaf test cases, parent aggregates excluded; unrun is 0 within the selected suite on normal completion",
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "result": "pass"
+    }
+  ],
+  "nonpasses": [],
+  "interrupted": [],
+  "flaky": 0
+}
