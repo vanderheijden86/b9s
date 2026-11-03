@@ -1,0 +1,33 @@
+{
+  "checkpoint": "661e9fa859cffc8cd4daa35e491c8ef35705ccb8",
+  "source_tree": "4ba73a7b03c8f1c10229232dc195914fbfdd491e",
+  "files_checked": 6302,
+  "mismatches": [],
+  "sha256": {
+    "scripts/web/entrypoint.sh": "176e609226c52519b384d0c35187ee9e80ceea196a8abee9ebd9039bab28dfd9",
+    "scripts/web/entrypoint_test.go": "51202aaa053653642ba6ae4702fb11ba693d10fa0e3a0fc9150232ee52d1dcac",
+    "scripts/web/README.md": "27c8e2e37de2e6c34abe4c4264d9f8d8d67dd16daa716e54a1c7630d0aae9034",
+    "tests/e2e/attachments_e2e_test.go": "bb74a98be605a25da38dfa10b653e042c49bcb95ce06fb181194dc113d555d9f",
+    "docs/testing.md": "10ee1dedf7755f1778763437eae874d041c3106622ecbad44316b2464a1cbc26"
+  },
+  "external_image_digest": "sha256:c1a58adeee18fc63d9104dda7c08cd60e34123d8eff903d5fa47886a251c066c",
+  "external_reported_counts": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0
+  },
+  "external_exit": 0,
+  "external_evidence_source": "bd-oiul attributed owner-agent comment, 2026-11-03 23:12 CET. Original external script/log unavailable in this Pod. Accepted per dispatch after exact source comparison.",
+  "external_limits": [
+    "authenticated-header boundary, not OAuth login",
+    "no real S3"
+  ],
+  "preserved_prior_runner_failures": {
+    "issue": "bd-oiul",
+    "class": "flaky-env",
+    "image_build_exit": 127,
+    "image_proxy_exit": 127,
+    "case_counts": "unknown; no image acceptance cases executed in prior runner",
+    "source": "bd-t8j5.11 tester comments and bd-oiul original description. Original runner reports are absent in fresh Pod."
+  }
+}

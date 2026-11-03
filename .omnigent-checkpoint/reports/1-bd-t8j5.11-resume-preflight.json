@@ -1,0 +1,13 @@
+{
+  "branch": "omnigent/bd-t8j5.11",
+  "HEAD": "793407bd86c74ba9985c9870c39392974ec8380e",
+  "fetched_base": "793407bd86c74ba9985c9870c39392974ec8380e",
+  "status": "",
+  "required_commits": [],
+  "ancestry": "No required commits. origin/main is ancestor of HEAD: True",
+  "remote_delivery_probe_exit": 2,
+  "local_delivery_before_preflight": "absent",
+  "checkpoint": "661e9fa859cffc8cd4daa35e491c8ef35705ccb8",
+  "checkpoint_mismatches": [],
+  "provenance": "Checkpoint source HEAD and base match fetched origin/main. Not restored yet."
+}
