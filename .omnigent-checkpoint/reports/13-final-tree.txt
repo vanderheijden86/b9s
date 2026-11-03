@@ -1,0 +1,26 @@
+diff_check_exit=0
+gofmt_list_exit=0
+ docs/ARCHITECTURE.md                  |   9 ++
+ docs/USER_GUIDE.md                    |  12 +++
+ pkg/config/recent.go                  |  33 ++++++-
+ pkg/config/recent_test.go             |  74 ++++++++++++++++
+ pkg/ui/command_prompt.go              |   2 +
+ pkg/ui/command_prompt_test.go         | 161 ++++++++++++++++++++++++++++++++++
+ pkg/ui/commands.go                    |  17 +++-
+ pkg/ui/model.go                       |   1 +
+ pkg/ui/project_table.go               |  44 ++++++++++
+ tests/e2e/recent_projects_e2e_test.go |  67 ++++++++++++++
+ 10 files changed, 415 insertions(+), 5 deletions(-)
+## omnigent/bd-6e8h.7...origin/main
+ M docs/ARCHITECTURE.md
+ M docs/USER_GUIDE.md
+ M pkg/config/recent.go
+ M pkg/config/recent_test.go
+ M pkg/ui/command_prompt.go
+ M pkg/ui/command_prompt_test.go
+ M pkg/ui/commands.go
+ M pkg/ui/model.go
+ M pkg/ui/project_table.go
+ M tests/e2e/recent_projects_e2e_test.go
+793407bd86c74ba9985c9870c39392974ec8380e
+793407bd86c74ba9985c9870c39392974ec8380e

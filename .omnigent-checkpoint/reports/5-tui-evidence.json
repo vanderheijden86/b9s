@@ -1,0 +1,37 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestForgetRecentProjectE2E$",
+    "-count=1",
+    "-timeout",
+    "90s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "linux/amd64",
+    "CGO_ENABLED": "1",
+    "TERM": "screen-256color",
+    "B9S_TEST_MODE": "1",
+    "B9S_TUI_AUTOCLOSE_MS": "3500",
+    "per_pty_deadline_seconds": 15
+  },
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "subtests": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "exit_code": 0
+}

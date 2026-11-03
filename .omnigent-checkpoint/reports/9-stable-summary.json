@@ -1,0 +1,36 @@
+{
+  "top_level": {
+    "pass": 2069,
+    "skip": 18
+  },
+  "subtests": {
+    "pass": 1295,
+    "skip": 2
+  },
+  "packages": {
+    "passed": 21
+  },
+  "skipped_tests": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "exit_code": 0
+}

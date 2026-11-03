@@ -1,0 +1,6 @@
+## omnigent/bd-6e8h.7...origin/main
+793407bd86c74ba9985c9870c39392974ec8380e
+793407bd86c74ba9985c9870c39392974ec8380e
+Remote delivery probe exit: 2 (absent). Local delivery absent, created from fetched origin/main.
+Required commits: none. Ancestry checks: not applicable.
+Checkpoint inspect: absent.
