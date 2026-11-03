@@ -1,0 +1,46 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "counts_including_subtests": {
+    "passed": 3345,
+    "failed": 0,
+    "skipped": 20
+  },
+  "top_level_counts": {
+    "passed": 2057,
+    "failed": 0,
+    "skipped": 18
+  },
+  "packages_passed": 21,
+  "skips": [
+    "TestProbeMemory_RealBinaries (0.00s)",
+    "TestS3StoreContract (0.00s)",
+    "TestS3PutRejectsShortRead (0.00s)",
+    "TestS3PutRejectsLongRead (0.00s)",
+    "TestDoltReader_NewAndClose (0.00s)",
+    "TestDoltReader_LoadIssues (0.00s)",
+    "TestDoltReader_GetHeadHash (0.00s)",
+    "TestDoltWatcher_NewAndStop (0.00s)",
+    "TestDoltWatcher_StartIsIdempotent (0.00s)",
+    "TestDoltWatcher_DetectsNoChangeOnPoll (0.00s)",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB (0.00s)",
+    "TestMemoryPreviewGraphReadTiming (0.00s)",
+    "TestMemoryReadResearchStages (0.00s)",
+    "TestMemoryReadResearchTransportParity (0.00s)",
+    "TestMemoryReadResearchConcurrentWriter (0.00s)",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl (0.00s)",
+    "TestStress_SustainedWrites (0.00s)",
+    "TestStress_BurstWrites (0.00s)",
+    "TestStress_MemoryPressure (0.00s)"
+  ]
+}

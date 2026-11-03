@@ -1,0 +1,811 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/omnigent/workspace/b9s/web/node_modules/.bin/playwright",
+      "test",
+      "tests/board-detail.spec.ts",
+      "--project",
+      "phone-360",
+      "--project",
+      "tablet-1024",
+      "--project",
+      "desktop-1440",
+      "--project",
+      "wide-2560",
+      "--workers=1",
+      "--reporter=list,json",
+      "--output=/tmp/bd-e5u3.20.14/pw-focused-1"
+    ],
+    "configFile": "/home/omnigent/workspace/b9s/web/playwright.config.ts",
+    "rootDir": "/home/omnigent/workspace/b9s/web/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/home/omnigent/workspace/b9s/web/tests/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tokens",
+        "name": "tokens",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/tokens\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel",
+        "name": "pixel",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone",
+        "name": "iphone",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-safari",
+        "name": "desktop-safari",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-firefox",
+        "name": "desktop-firefox",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "ipad",
+        "name": "ipad",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-360",
+        "name": "phone-360",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-412",
+        "name": "phone-412",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-768",
+        "name": "tablet-768",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-1024",
+        "name": "tablet-1024",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1440",
+        "name": "desktop-1440",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1920",
+        "name": "desktop-1920",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "wide-2560",
+        "name": "wide-2560",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel-perf",
+        "name": "pixel-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone-perf",
+        "name": "iphone-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-perf",
+        "name": "tablet-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-e5u3.20.14/pw-focused-1",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-perf",
+        "name": "desktop-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "board-detail.spec.ts",
+      "file": "board-detail.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "board cards, epic lanes and rich detail use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "phone-360",
+              "projectName": "phone-360",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1770,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:31.585Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-d514e33ef4360e96c3b7",
+          "file": "board-detail.spec.ts",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "search, sheets, projects and Memory use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "phone-360",
+              "projectName": "phone-360",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1841,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:34.576Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-bd9780b99e8c1fadf947",
+          "file": "board-detail.spec.ts",
+          "line": 151,
+          "column": 1
+        },
+        {
+          "title": "board cards, epic lanes and rich detail use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "tablet-1024",
+              "projectName": "tablet-1024",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2200,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:37.038Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-0eb4edcd714d9e82d45a",
+          "file": "board-detail.spec.ts",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "search, sheets, projects and Memory use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "tablet-1024",
+              "projectName": "tablet-1024",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3529,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:41.302Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-ead7b1cbe5429cce35f5",
+          "file": "board-detail.spec.ts",
+          "line": 151,
+          "column": 1
+        },
+        {
+          "title": "board cards, epic lanes and rich detail use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop-1440",
+              "projectName": "desktop-1440",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1890,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:46.124Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-ebc21497440d86b7e949",
+          "file": "board-detail.spec.ts",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "search, sheets, projects and Memory use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop-1440",
+              "projectName": "desktop-1440",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2279,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:49.470Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-6f2bb5dbd7f58003e897",
+          "file": "board-detail.spec.ts",
+          "line": 151,
+          "column": 1
+        },
+        {
+          "title": "board cards, epic lanes and rich detail use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "wide-2560",
+              "projectName": "wide-2560",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2396,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:52.768Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-3f3df1a209a5634a40c1",
+          "file": "board-detail.spec.ts",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "search, sheets, projects and Memory use the calm look in this size class",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "wide-2560",
+              "projectName": "wide-2560",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2281,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-03T21:09:56.613Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "73abe35d82c4beed64be-cadca9f795c9384906a6",
+          "file": "board-detail.spec.ts",
+          "line": 151,
+          "column": 1
+        }
+      ],
+      "suites": [
+        {
+          "title": "title-focused board rows",
+          "file": "board-detail.spec.ts",
+          "line": 97,
+          "column": 6,
+          "specs": [
+            {
+              "title": "density, selected rows and epic context survive opening issue details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "phone-360",
+                  "projectName": "phone-360",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1006,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-03T21:09:33.534Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "row-density",
+                          "contentType": "application/json",
+                          "body": "eyJyb3dIZWlnaHQiOjQ0LCJyb3dzUGVyMjQwcHgiOjUsInRvdWNoVGFyZ2V0Ijp0cnVlfQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "73abe35d82c4beed64be-f548705b54086121c84e",
+              "file": "board-detail.spec.ts",
+              "line": 112,
+              "column": 3
+            },
+            {
+              "title": "density, selected rows and epic context survive opening issue details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "tablet-1024",
+                  "projectName": "tablet-1024",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1690,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-03T21:09:39.594Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "row-density",
+                          "contentType": "application/json",
+                          "body": "eyJyb3dIZWlnaHQiOjQ0LCJyb3dzUGVyMjQwcHgiOjUsInRvdWNoVGFyZ2V0Ijp0cnVlfQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "73abe35d82c4beed64be-b0c3e59ba263429c877d",
+              "file": "board-detail.spec.ts",
+              "line": 112,
+              "column": 3
+            },
+            {
+              "title": "density, selected rows and epic context survive opening issue details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop-1440",
+                  "projectName": "desktop-1440",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1285,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-03T21:09:48.160Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "row-density",
+                          "contentType": "application/json",
+                          "body": "eyJyb3dIZWlnaHQiOjI0LCJyb3dzUGVyMjQwcHgiOjEwLCJ0b3VjaFRhcmdldCI6ZmFsc2V9"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "73abe35d82c4beed64be-fe1cbe72bc6005722c3e",
+              "file": "board-detail.spec.ts",
+              "line": 112,
+              "column": 3
+            },
+            {
+              "title": "density, selected rows and epic context survive opening issue details",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "wide-2560",
+                  "projectName": "wide-2560",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1230,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-03T21:09:55.364Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "row-density",
+                          "contentType": "application/json",
+                          "body": "eyJyb3dIZWlnaHQiOjI0LCJyb3dzUGVyMjQwcHgiOjEwLCJ0b3VjaFRhcmdldCI6ZmFsc2V9"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "73abe35d82c4beed64be-54eeda7b9234b5e16298",
+              "file": "board-detail.spec.ts",
+              "line": 112,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-03T21:08:10.651Z",
+    "duration": 108371.582,
+    "expected": 12,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
