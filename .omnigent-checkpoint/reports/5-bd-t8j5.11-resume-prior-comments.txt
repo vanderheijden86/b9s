@@ -1,0 +1,333 @@
+Warning: dolt_server_port in metadata.json is deprecated (can cause cross-project data leakage).
+  The port file (.beads/dolt-server.port) is now the primary source.
+  Remove dolt_server_port from .beads/metadata.json to silence this warning.
+
+Comments on bd-t8j5.11:
+
+[Codex] at 2026-11-03 21:40
+  
+    Agent: Codex | Session ID: 01a1a35a-7920-7d10-aa2e-c2c3b2976356 | Session   
+    name: unavailable | Role: implementer                                       
+    2026-11-03 22:40 CET: Beads connected. Git preflight passed. Created        
+    delivery branch from fetched origin/main after exact remote probe exited 2. 
+    No required commits. Evidence: /tmp/bd-t8j5.11-preflight.txt. Reading       
+    attachment plan, ADRs, and test harness before implementation. Delivery     
+    remains unapproved.                                                         
+
+[Codex] at 2026-11-03 21:43
+  
+    Agent: Codex | Session ID: 01a1a35a-7920-7d10-aa2e-c2c3b2976356 | Session   
+    name: unavailable | Role: implementer                                       
+    2026-11-03 22:43 CET: Dependencies installed with go mod download (exit 0). 
+    Current image directly execs b9s web behind login proxy. RED startup        
+    regression: 1 subtest passed, 2 failed, 0 skipped (parent failed): mounted  
+    settings absent and missing mount ignored. Credentials already inherit.     
+    Adding optional B9S_WEB_CONFIG_FILE to seed generated config. No blob-      
+    serving endpoint exists, so the task note's response-header requirement is  
+    conditional and outside this change. Docker is unavailable. Will test the   
+    actual entrypoint in a filesystem sandbox and stock bd PTY against isolated 
+    embedded Dolt/local blobs.                                                  
+
+[unknown] at 2026-11-03 21:44
+  
+    === lane usage attempt=1 failure=no_verdict tokens=36978 cost_usd=0.1880304 
+    models=gpt-5.6-sol ===                                                      
+
+[unknown] at 2026-11-03 21:44
+  
+    LANE-RETRO                                                                  
+    {"attempt":1,"project":"b9s","outcome":"FAILED","reason":"no_verdict","repor
+    ted":false,"rounds":null,"findings":[],"usage":{"tokens":36978,"cost_usd":0.
+    1880304,"models":["gpt-5.6-sol"]}}                                          
+
+[Codex] at 2026-11-03 21:46
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:46 CET: Attempt 2 preflight passed. Branch omnigent/bd-       
+    t8j5.11, HEAD and fetched origin/main                                       
+    793407bd86c74ba9985c9870c39392974ec8380e. Exact delivery remote probe exit  
+    2, local branch absent, clean tree. No required ancestry checks. Checkpoint 
+    absent. Prior attempt files absent. Evidence /tmp/bd-t8j5.11-preflight-     
+    attempt2.txt. No delivery approval.                                         
+
+[Codex] at 2026-11-03 21:50
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:50 CET: Locked dependencies installed. Startup RED reproduced:
+    1 passed/2 failed/0 skipped leaf subtests, parent failed. Evidence /tmp/bd- 
+    t8j5.11-startup-red2.jsonl (exit 1). Earlier test syntax error fixed before 
+    RED. Docker absent and bwrap namespace creation denied. Startup harness     
+    remaps only container paths and stubs SQL/httpd/b9s. Adding mounted config  
+    seed. PTY will use released bd at /usr/local/libexec/beads/bd, isolated     
+    embedded Dolt and local blobs. No shared Dolt writes.                       
+
+[Codex] at 2026-11-03 21:52
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:52 CET: Startup GREEN: 3 leaf passed/0 failed/0 skipped,      
+    parent passed, exit 0 (/tmp/bd-t8j5.11-startup-green.jsonl). Real stock-bd  
+    PTY: 1 passed/0 failed/0 skipped, exit 0 (/tmp/bd-t8j5.11-pty-first.jsonl). 
+    bd 1.3.0-rc.1 9c6a69ec1. I form attached, R opened in test mode, persisted  
+    comment/list/get and matching SHA256 bytes checked. Tightening detail       
+    assertion before final checks. Checkpoint push succeeded to separate        
+    unapproved ref. No blob HTTP endpoint exists, so response-header task note  
+    does not apply.                                                             
+
+[Codex] at 2026-11-03 21:54
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:54 CET: Final PTY with explicit ATTACHMENTS detail heading and
+    author passed: 1 passed/0 failed/0 skipped, exit 0. Report /tmp/bd-t8j5.11- 
+    pty-final.jsonl includes terminal text. Earlier checkpoint evidence         
+    comparison correctly rejected changed test tree, so reran. No evidence      
+    reused. Starting required build, vet, then make test-stable alone. Guards:  
+    startup regression plus fail-fast unreadable mount. Documentation changed in
+    scripts/web/README.md and docs/testing.md.                                  
+
+[Codex] at 2026-11-03 21:56
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:56 CET: Required go build ./... and go vet ./... both exited  
+    0. Shell syntax and git diff --check passed. make test-stable is running    
+    alone, GOFLAGS=-v for counts, package deadline 10m and outer deadline 720s. 
+    Counts unknown until completion. Final PTY evidence saved to unapproved     
+    checkpoint. No delivery commit or push.                                     
+
+[Codex] at 2026-11-03 21:58
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:58 CET: make test-stable exited 0, run alone with GOFLAGS=-v  
+    and outer 720s deadline. Measured leaf counts: 3171 passed, 0 failed, 20    
+    skipped, 0 interrupted, 0 unrun. Top-level: 2058 passed, 18 skipped. 22     
+    packages passed. Skips require optional S3/Dolt/Memory/stress settings or   
+    absent fixture files. No retries or observed flaky outcomes. Reports        
+    /tmp/bd-t8j5.11-stable.txt and /tmp/bd-t8j5.11-stable-counts.json. All      
+    required checks passed. Preparing explicit implementation PASS report and   
+    final unapproved checkpoint.                                                
+
+[Codex] at 2026-11-03 21:59
+  
+    Agent: Codex | Session ID: c2aaa8e7f34e406bab608cbc9a2871bc | Session name: 
+    implementer-codex:bd-t8j5.11-implementation | Role: implementer             
+    2026-11-03 22:59 CET: IMPLEMENTATION VERDICT: PASS. Changed                 
+    scripts/web/entrypoint.sh, scripts/web/entrypoint_test.go (new),            
+    scripts/web/README.md, tests/e2e/attachments_e2e_test.go (new),             
+    docs/testing.md. Build/vet exited 0. Final startup 3 passed/0 failed/0      
+    skipped leaf tests. Final real PTY 1 passed/0 failed/0 skipped. Stable 3171 
+    passed/0 failed/20 skipped leaf tests, exit 0. No unresolved required       
+    failures or unrelated findings. Full exact commands, Git preflight, limits  
+    and evidence: /tmp/bd-t8j5.11-implementation-report.md. Combined report     
+    /tmp/bd-t8j5.11-verification.txt. Final checkpoint push succeeded to        
+    omnigent-checkpoints/bd-t8j5.11. Docker/proxy/S3 runtime not exercised.     
+    Delivery remains unapproved, no delivery commit/push/PR. Ready for          
+    independent review and testing.                                             
+
+[Codex] at 2026-11-03 22:01
+  
+    Agent: Codex | Session ID: 01a1a36e-33ee-7a23-9533-d1bae5cf622d | Session   
+    name: unavailable | Role: reviewer                                          
+    2026-11-03 23:01 CET: Started independent review of actual working tree     
+    against origin/main, plan Task 9, startup settings and stock-bd PTY         
+    evidence. No code changes.                                                  
+
+[Codex] at 2026-11-03 22:02
+  
+    Agent: Codex | Session ID: 01a1a36e-33ee-7a23-9533-d1bae5cf622d | Session   
+    name: unavailable | Role: reviewer                                          
+    2026-11-03 23:02 CET: Preflight passed. Assigned delivery branch and        
+    origin/main ancestry checked directly. Five changed files preserved. Plan   
+    Task 9 explicitly requests B9S_TEST_MODE for PTY open. Code downloads,      
+    checks content and prepares opener before test-mode suppression. Reviewing  
+    remaining config and test contracts. Evidence /tmp/bd-t8j5.11-reviewer-     
+    preflight.txt.                                                              
+
+[Codex] at 2026-11-03 22:03
+  
+    Agent: Codex | Session ID: 01a1a36e-33ee-7a23-9533-d1bae5cf622d | Session   
+    name: unavailable | Role: reviewer                                          
+    2026-11-03 23:03 CET: Independent bounded checks passed without retries.    
+    Startup: 3 passed/0 failed/0 skipped leaves. Stock-bd PTY: 1 passed/0       
+    failed/0 skipped. Test mode suppresses only opener after actual             
+    download/hash/size/content checks. Reports /tmp/bd-t8j5.11-reviewer-        
+    startup.jsonl and /tmp/bd-t8j5.11-reviewer-pty.jsonl. Docker absent.        
+    Finishing scope and residual-risk report.                                   
+
+[Codex] at 2026-11-03 22:04
+  
+    Agent: Codex | Session ID: 01a1a36e-33ee-7a23-9533-d1bae5cf622d | Session   
+    name: unavailable | Role: reviewer                                          
+    2026-11-03 23:04 CET: REVIEW VERDICT: APPROVED. Blocking findings: none.    
+    Non-blocking findings: none. No unresolved required failures or issues      
+    filed. Actual branch/base checked. Independent startup 3/0/0 and stock-bd   
+    PTY 1/0/0, both exit 0. Test mode preserves real download/hash/size/content 
+    checks. Residual risks: Docker/Alpine/proxy/S3 not exercised, PTY bd rc.1   
+    differs from image v1.3.0, external opener suppressed, fixed key timing.    
+    Evidence /tmp/bd-t8j5.11-reviewer-report.md. No code edits or delivery      
+    actions.                                                                    
+
+[Codex] at 2026-11-03 22:05
+  
+    Agent: Codex | Session ID: 01a1a371-700c-7af2-ac24-994437a2f60b | Session   
+    name: unavailable | Role: tester                                            
+    2026-11-03 23:05 CET: Started independent delivery-tree checks. Required:   
+    build, vet, stable alone, exact startup tests, stock-bd local PTY, and Task 
+    9 image/proxy acceptance. No code edits or baseline runs.                   
+
+[Codex] at 2026-11-03 22:06
+  
+    Agent: Codex | Session ID: 01a1a371-700c-7af2-ac24-994437a2f60b | Session   
+    name: unavailable | Role: tester                                            
+    2026-11-03 23:06 CET: Preflight and dependencies passed. Go module cache    
+    checks against go.sum, exit 0. Required build/vet/startup/PTY checks are    
+    running sequentially with deadlines. Evidence /tmp/bd-t8j5.11-tester-       
+    preflight.json and /tmp/bd-t8j5.11-tester-dependencies.json. Docker absent. 
+    Stock bd is v1.3.0-rc.1, image pins v1.3.0.                                 
+
+[Codex] at 2026-11-03 22:07
+  
+    Agent: Codex | Session ID: 01a1a371-700c-7af2-ac24-994437a2f60b | Session   
+    name: unavailable | Role: tester                                            
+    2026-11-03 23:07 CET: Build exit 0 (2.572s), vet exit 0 (1.934s). Exact     
+    startup: 3 passed/0 failed/0 skipped (0.780s). Exact stock-bd local PTY: 1  
+    passed/0 failed/0 skipped (19.242s). Independent reports /tmp/bd-t8j5.11-   
+    tester-{build,vet,startup,pty}-result.json. Starting uncached make test-    
+    stable alone, package timeout 10m and outer 720s. Counts unknown until exit.
+
+[Codex] at 2026-11-03 22:08
+  
+    Agent: Codex | Session ID: 01a1a371-700c-7af2-ac24-994437a2f60b | Session   
+    name: unavailable | Role: tester                                            
+    2026-11-03 23:08 CET: Stable alone exited 0 (46.866s), 22 packages, 3171    
+    passed/0 failed/20 optional skipped/0 interrupted/0 unrun leaves. No        
+    retries. Image build and image/proxy harness both exited 127 because Docker 
+    is absent. No acceptance cases executed and counts unknown. Required Task 9 
+    runtime evidence is blocked. Evidence /tmp/bd-t8j5.11-tester-stable-        
+    result.json and image-{build,proxy}-result.json.                            
+
+[Codex] at 2026-11-03 22:09
+  
+    Agent: Codex | Session ID: 01a1a108-527a-7841-ba2c-2e26c80f5fe1 | Session   
+    name: run-omnigent-big-h                                                    
+    2026-11-03 23:09 CET: Operator has a working local Docker server for        
+    independent image validation. Missing Docker in the runner is an environment
+    limitation, not evidence the product passed or failed. I am preparing       
+    isolated runtime checks from the saved checkpoint, with no shared database  
+    writes. Keep all required image acceptance gaps explicit until measured     
+    evidence is available.                                                      
+
+[Codex] at 2026-11-03 22:10
+  
+    Agent: Codex | Session ID: 01a1a371-700c-7af2-ac24-994437a2f60b | Session   
+    name: unavailable | Role: tester                                            
+    2026-11-03 23:10 CET: TESTS_FAILED. Build exit 0 (2.572s), vet exit 0       
+    (1.934s). Startup 3 passed/0 failed/0 skipped (0.780s). PTY 1/0/0 (19.242s).
+    Stable alone, uncached: 3171 passed/0 failed/20 optional skipped/0          
+    interrupted/0 unrun (46.866s), exit 0, 22 packages. Required image build and
+    image/proxy acceptance each exit 127 because Docker is absent. Cases never  
+    executed, all case counts unknown. Both required blockers: bd-oiul (filed   
+    and deferred, discovered-from this task). No unrelated follow-ups. Stock bd 
+    v1.3.0-rc.1 differs from image v1.3.0. Delivery tree unchanged. Full exact  
+    commands, durations, counts, skip reasons, fingerprints, and evidence:      
+    /tmp/bd-t8j5.11-tester-report.md.                                           
+    FINDING: flaky-env | scripts/web/Dockerfile | Required image build cannot   
+    execute: Docker missing, exit 127. Issue bd-oiul.                           
+    FINDING: flaky-env | scripts/web/test-web.sh | Required image/proxy         
+    acceptance cannot execute: Docker missing, exit 127. Issue bd-oiul.         
+
+[unknown] at 2026-11-03 22:11
+  
+    Blocked by missing Docker, tracked in bd-oiul.                              
+                                                                                
+    • Review: APPROVED.                                                         
+    • go build ./..., go vet ./..., and make test-stable passed.                
+    • Tests: 3 startup, 1 PTY, and 3,171 stable passed. Twenty optional skips.  
+    • Image build and proxy checks exited 127. No delivery commit or PR.        
+                                                                                
+    === lane BLOCKER issue=bd-oiul blocks=yes ===                               
+    === lane RETRO review_rounds=1 test_rounds=1 preview_rounds=0 dispatches=3  
+    ===                                                                         
+    === lane FINDING step=tests round=1 class=flaky-env fixed_in=none ===       
+    === lane FINDING step=tests round=1 class=flaky-env fixed_in=none ===       
+    === lane OUTCOME=BLOCKED by=bd-oiul ===                                     
+                                                                                
+    === lane usage tokens=395593 cost_usd=6.478816800000001 models=gpt-5.6-sol  
+    ===                                                                         
+
+[unknown] at 2026-11-03 22:11
+  
+    LANE-RETRO                                                                  
+    {"attempt":2,"project":"b9s","outcome":"BLOCKED","reason":null,"reported":tr
+    ue,"rounds":{"review":1,"tests":1,"preview":0,"dispatches":3},"findings":[{"
+    step":"tests","round":1,"class":"flaky-                                     
+    env","fixed_in":null},{"step":"tests","round":1,"class":"flaky-             
+    env","fixed_in":null}],"usage":{"tokens":395593,"cost_usd":6.478816800000001
+    ,"models":["gpt-5.6-sol"]}}                                                 
+
+[Codex] at 2026-11-03 22:12
+  
+    Agent: Codex | Session ID: 01a1a108-527a-7841-ba2c-2e26c80f5fe1 | Session   
+    name: run-omnigent-big-h                                                    
+    2026-11-03 23:12 CET: External required image gate now passed on the exact  
+    saved checkpoint: 24 runtime assertions, 0 failures/skips, exit 0. Image    
+    sha256:c1a58adeee18fc63d9104dda7c08cd60e34123d8eff903d5fa47886a251c066c     
+    served checkpoint 661e9fa859cffc8cd4daa35e491c8ef35705ccb8. Full method,    
+    hashes, limits and assertion inventory are on bd-oiul. Existing 21 web-image
+    assertions plus three attachment propagation assertions ran against isolated
+    fixture databases with actual image stock bd v1.3.0. This supplies image    
+    evidence absent in the runner, not a waiver. On resume, compare the         
+    checkpoint source with delivery files before accepting external evidence.   
+    Preserve the runner exit127 report. bd-oiul stays deferred for durable lane 
+    runtime support but is no longer a required blocker for this measured       
+    checkpoint.                                                                 
+
+[Codex] at 2026-11-03 22:13
+  
+    Agent: Codex | Session ID: 01a1a108-527a-7841-ba2c-2e26c80f5fe1 | Session   
+    name: run-omnigent-big-h                                                    
+    2026-11-03 23:13 CET: Source SHA256 values from the tested checkpoint for   
+    resumption checks: scripts/web/entrypoint.sh                                
+    176e609226c52519b384d0c35187ee9e80ceea196a8abee9ebd9039bab28dfd9;           
+    scripts/web/entrypoint_test.go                                              
+    51202aaa053653642ba6ae4702fb11ba693d10fa0e3a0fc9150232ee52d1dcac;           
+    scripts/web/README.md                                                       
+    27c8e2e37de2e6c34abe4c4264d9f8d8d67dd16daa716e54a1c7630d0aae9034;           
+    tests/e2e/attachments_e2e_test.go                                           
+    bb74a98be605a25da38dfa10b653e042c49bcb95ce06fb181194dc113d555d9f;           
+    docs/testing.md                                                             
+    10ee1dedf7755f1778763437eae874d041c3106622ecbad44316b2464a1cbc26. External  
+    image checks exercise the authenticated-header boundary, not OAuth login or 
+    a real S3 service. Those limits match the task's local-backend scope.       
+
+[Codex] at 2026-11-03 22:35
+  
+    Agent: Codex | Session ID: 01a1a38c-f195-78c2-84a9-12a5e278a3c4 | Session   
+    name: unavailable | Role: implementer                                       
+    2026-11-03 23:35 CET: Preflight passed before edits. Branch omnigent/bd-    
+    t8j5.11 created from fetched origin/main. HEAD/base                         
+    793407bd86c74ba9985c9870c39392974ec8380e. Clean tree. Exact remote delivery 
+    probe exit 2. No required commits. Checkpoint                               
+    661e9fa859cffc8cd4daa35e491c8ef35705ccb8 matches base/source/branch with no 
+    mismatches. Evidence /tmp/bd-t8j5.11-resume-preflight.json. Will restore and
+    compare all source against external image evidence. No delivery approval.   
+
+[Codex] at 2026-11-03 22:37
+  
+    Agent: Codex | Session ID: 01a1a38c-f195-78c2-84a9-12a5e278a3c4 | Session   
+    name: unavailable | Role: implementer                                       
+    2026-11-03 23:37 CET: Restored matching checkpoint. All 6302 source files   
+    and all five supplied SHA256 hashes match exactly. No new implementation    
+    needed. External image evidence on bd-oiul applies: actual runtime image    
+    built, 24 assertions passed/0 failed/0 skipped, exit 0, stock bd v1.3.0.    
+    Authenticated-header boundary only, no OAuth or real S3. Preserved prior    
+    runner image build/proxy exit127 findings (flaky-env, bd-oiul) in /tmp/bd-  
+    t8j5.11-resume-source-match.json. Original runner result files are absent in
+    this fresh Pod. bd-oiul is deferred runtime follow-up, not a required       
+    blocker for this unchanged checkpoint. go mod download exit0. Starting fresh
+    bounded checks.                                                             
+

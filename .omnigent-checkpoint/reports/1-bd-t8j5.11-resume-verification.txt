@@ -1,0 +1,338 @@
+
+REPORT /tmp/bd-t8j5.11-resume-preflight.json
+{
+  "branch": "omnigent/bd-t8j5.11",
+  "HEAD": "793407bd86c74ba9985c9870c39392974ec8380e",
+  "fetched_base": "793407bd86c74ba9985c9870c39392974ec8380e",
+  "status": "",
+  "required_commits": [],
+  "ancestry": "No required commits. origin/main is ancestor of HEAD: True",
+  "remote_delivery_probe_exit": 2,
+  "local_delivery_before_preflight": "absent",
+  "checkpoint": "661e9fa859cffc8cd4daa35e491c8ef35705ccb8",
+  "checkpoint_mismatches": [],
+  "provenance": "Checkpoint source HEAD and base match fetched origin/main. Not restored yet."
+}
+
+REPORT /tmp/bd-t8j5.11-resume-dependencies.txt
+exit_code=0
+
+
+REPORT /tmp/bd-t8j5.11-resume-source-match.json
+{
+  "checkpoint": "661e9fa859cffc8cd4daa35e491c8ef35705ccb8",
+  "source_tree": "4ba73a7b03c8f1c10229232dc195914fbfdd491e",
+  "files_checked": 6302,
+  "mismatches": [],
+  "sha256": {
+    "scripts/web/entrypoint.sh": "176e609226c52519b384d0c35187ee9e80ceea196a8abee9ebd9039bab28dfd9",
+    "scripts/web/entrypoint_test.go": "51202aaa053653642ba6ae4702fb11ba693d10fa0e3a0fc9150232ee52d1dcac",
+    "scripts/web/README.md": "27c8e2e37de2e6c34abe4c4264d9f8d8d67dd16daa716e54a1c7630d0aae9034",
+    "tests/e2e/attachments_e2e_test.go": "bb74a98be605a25da38dfa10b653e042c49bcb95ce06fb181194dc113d555d9f",
+    "docs/testing.md": "10ee1dedf7755f1778763437eae874d041c3106622ecbad44316b2464a1cbc26"
+  },
+  "external_image_digest": "sha256:c1a58adeee18fc63d9104dda7c08cd60e34123d8eff903d5fa47886a251c066c",
+  "external_reported_counts": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0
+  },
+  "external_exit": 0,
+  "external_evidence_source": "bd-oiul attributed owner-agent comment, 2026-11-03 23:12 CET. Original external script/log unavailable in this Pod. Accepted per dispatch after exact source comparison.",
+  "external_limits": [
+    "authenticated-header boundary, not OAuth login",
+    "no real S3"
+  ],
+  "preserved_prior_runner_failures": {
+    "issue": "bd-oiul",
+    "class": "flaky-env",
+    "image_build_exit": 127,
+    "image_proxy_exit": 127,
+    "case_counts": "unknown; no image acceptance cases executed in prior runner",
+    "source": "bd-t8j5.11 tester comments and bd-oiul original description. Original runner reports are absent in fresh Pod."
+  }
+}
+
+REPORT /tmp/bd-t8j5.11-resume-runtime.json
+{
+  "go": "go version go1.25.5 linux/amd64",
+  "runtime": "Linux-6.8.0-147-generic-x86_64-with-glibc2.41",
+  "bd": "bd version 1.3.0-rc.1 (9c6a69ec1: HEAD@9c6a69ec1235)",
+  "bd_sha256": "33eef85573dc10c0f846dad743f9a30503f52e4fb60d6f9eb4ab5be83bb2c501",
+  "docker_path": null,
+  "shell": "/usr/bin/sh",
+  "script": "/usr/bin/script"
+}
+
+REPORT /tmp/bd-t8j5.11-resume-build-result.json
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "build",
+    "./..."
+  ],
+  "exit_code": 0,
+  "seconds": 67.548,
+  "test_counts": "not applicable",
+  "log": "/tmp/bd-t8j5.11-resume-build.txt"
+}
+
+REPORT /tmp/bd-t8j5.11-resume-vet-result.json
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "vet",
+    "./..."
+  ],
+  "exit_code": 0,
+  "seconds": 17.519,
+  "test_counts": "not applicable",
+  "log": "/tmp/bd-t8j5.11-resume-vet.txt"
+}
+
+REPORT /tmp/bd-t8j5.11-resume-startup-result.json
+{
+  "command": [
+    "timeout",
+    "90s",
+    "go",
+    "test",
+    "./scripts/web",
+    "-run",
+    "^TestWebEntrypointAttachmentSettings$",
+    "-count=1",
+    "-timeout=30s",
+    "-json"
+  ],
+  "environment_overrides": {},
+  "exit_code": 0,
+  "seconds": 6.865,
+  "counts": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "leaf_outcomes": {
+    "github.com/vanderheijden86/b9s/scripts/web/TestWebEntrypointAttachmentSettings/environment": "pass",
+    "github.com/vanderheijden86/b9s/scripts/web/TestWebEntrypointAttachmentSettings/mounted_config": "pass",
+    "github.com/vanderheijden86/b9s/scripts/web/TestWebEntrypointAttachmentSettings/missing_config": "pass"
+  },
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/scripts/web",
+      "action": "pass"
+    }
+  ],
+  "log": "/tmp/bd-t8j5.11-resume-startup.jsonl",
+  "no_retries": true
+}
+
+REPORT /tmp/bd-t8j5.11-resume-pty-result.json
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestAttachmentsStockBDLocalBackendE2E$",
+    "-count=1",
+    "-timeout=120s",
+    "-json"
+  ],
+  "environment_overrides": {
+    "B9S_TEST_STOCK_BD": "/usr/local/libexec/beads/bd"
+  },
+  "exit_code": 0,
+  "seconds": 20.417,
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "leaf_outcomes": {
+    "github.com/vanderheijden86/b9s/tests/e2e/TestAttachmentsStockBDLocalBackendE2E": "pass"
+  },
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/e2e",
+      "action": "pass"
+    }
+  ],
+  "log": "/tmp/bd-t8j5.11-resume-pty.jsonl",
+  "no_retries": true
+}
+
+REPORT /tmp/bd-t8j5.11-resume-stable-result.json
+{
+  "command": [
+    "timeout",
+    "720s",
+    "make",
+    "test-stable"
+  ],
+  "environment_overrides": {
+    "GOFLAGS": "-v"
+  },
+  "exit_code": 0,
+  "seconds": 76.163,
+  "counts": {
+    "passed": 3171,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf tests, parent containers excluded",
+  "top_level_counts": {
+    "pass": 2058,
+    "fail": 0,
+    "skip": 18
+  },
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attach",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attachref",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/control",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/config",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/debug",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/identity",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/model",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil/proptest",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/util/topk",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/version",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/watcher",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/web",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/scripts/web",
+      "passed": true,
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/docs",
+      "passed": true,
+      "cached": false
+    }
+  ],
+  "skipped_tests": [
+    "github.com/vanderheijden86/b9s/internal/bdrun/TestProbeMemory_RealBinaries",
+    "github.com/vanderheijden86/b9s/internal/blobstore/TestS3StoreContract",
+    "github.com/vanderheijden86/b9s/internal/blobstore/TestS3PutRejectsShortRead",
+    "github.com/vanderheijden86/b9s/internal/blobstore/TestS3PutRejectsLongRead",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltReader_NewAndClose",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltReader_LoadIssues",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltReader_GetHeadHash",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_NewAndStop",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_StartIsIdempotent",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_DetectsNoChangeOnPoll",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryPreviewGraphReadTiming",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryReadResearchStages",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryReadResearchTransportParity",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryReadResearchConcurrentWriter",
+    "github.com/vanderheijden86/b9s/pkg/loader/TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/loader/TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_SustainedWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_BurstWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_MemoryPressure"
+  ],
+  "log": "/tmp/bd-t8j5.11-resume-stable.txt",
+  "no_retries": true,
+  "parser_pending": []
+}

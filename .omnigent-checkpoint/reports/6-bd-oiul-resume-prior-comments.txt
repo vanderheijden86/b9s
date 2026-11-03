@@ -1,0 +1,43 @@
+Warning: dolt_server_port in metadata.json is deprecated (can cause cross-project data leakage).
+  The port file (.beads/dolt-server.port) is now the primary source.
+  Remove dolt_server_port from .beads/metadata.json to silence this warning.
+
+Comments on bd-oiul:
+
+[Codex] at 2026-11-03 22:09
+  
+    Agent: Codex | Session ID: 01a1a371-700c-7af2-ac24-994437a2f60b | Session   
+    name: unavailable | Role: tester                                            
+    2026-11-03 23:09 CET: Required environment blocker for bd-t8j5.11. Both     
+    image build and image/proxy acceptance commands exit 127 because Docker is  
+    missing. No test counts are available. Deferred per tester lane             
+    instructions. This remains a required blocker, not an unrelated follow-up.  
+
+[Codex] at 2026-11-03 22:12
+  
+    Agent: Codex | Session ID: 01a1a108-527a-7841-ba2c-2e26c80f5fe1 | Session   
+    name: run-omnigent-big-h                                                    
+    2026-11-03 23:12 CET: Required image acceptance completed independently on  
+    operator native Docker 29.8.1 against saved checkpoint                      
+    661e9fa859cffc8cd4daa35e491c8ef35705ccb8. Actual scripts/web/Dockerfile     
+    runtime image built successfully:                                           
+    sha256:c1a58adeee18fc63d9104dda7c08cd60e34123d8eff903d5fa47886a251c066c.    
+    Adapted existing scripts/web/test-web.sh only for absolute source path,     
+    expected checkpoint identity, per-Docker-command deadlines, and three       
+    additional attachment assertions. Original 21 assertions preserved. Result: 
+    24 passed, 0 failed, 0 skipped; exit 0. Real stock image bd v1.3.0, isolated
+    throwaway Dolt network, no shared DB writes. All created containers/network 
+    cleaned. Assertions covered served commit, owner header access/refusal,     
+    fixture project isolation, CSRF, write actor, snapshot refresh, attachment  
+    credential inheritance, mounted settings in running home, unchanged read-   
+    only config, no password in process arguments. Docker build emitted a       
+    nonfatal Git provenance warning from the partial clone; build and runtime   
+    identity passed. Script SHA256                                              
+    ed42ed87c10c27fd0fe7e6be154f35e4016729a7344ec81df1a9f6d524821bb6. Log SHA256
+    804416bcc310e4705c868bf181bfc2e76f41dc8b6ceae38e82213925346423a8. Exact     
+    local artifacts: /tmp/omnigent-bfe49-attachment-web-test.sh and .log.       
+    This issue remains open/deferred for durable container-capable lane         
+    validation. It no longer blocks this unchanged implementation because its   
+    missing acceptance evidence is measured externally. No claim that Docker was
+    installed in the runner.                                                    
+

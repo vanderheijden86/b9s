@@ -1,0 +1,20 @@
+{"Time":"2026-11-03T22:39:29.38464199Z","Action":"start","Package":"github.com/vanderheijden86/b9s/scripts/web"}
+{"Time":"2026-11-03T22:39:29.387822911Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings"}
+{"Time":"2026-11-03T22:39:29.387844698Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings","Output":"=== RUN   TestWebEntrypointAttachmentSettings\n"}
+{"Time":"2026-11-03T22:39:29.387876675Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment"}
+{"Time":"2026-11-03T22:39:29.387880661Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment","Output":"=== RUN   TestWebEntrypointAttachmentSettings/environment\n"}
+{"Time":"2026-11-03T22:39:29.400072458Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment","Output":"--- PASS: TestWebEntrypointAttachmentSettings/environment (0.01s)\n"}
+{"Time":"2026-11-03T22:39:29.400102477Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment","Elapsed":0.01}
+{"Time":"2026-11-03T22:39:29.400131021Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config"}
+{"Time":"2026-11-03T22:39:29.400138231Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Output":"=== RUN   TestWebEntrypointAttachmentSettings/mounted_config\n"}
+{"Time":"2026-11-03T22:39:29.413344185Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Output":"--- PASS: TestWebEntrypointAttachmentSettings/mounted_config (0.01s)\n"}
+{"Time":"2026-11-03T22:39:29.413371266Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Elapsed":0.01}
+{"Time":"2026-11-03T22:39:29.413377857Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config"}
+{"Time":"2026-11-03T22:39:29.413381213Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Output":"=== RUN   TestWebEntrypointAttachmentSettings/missing_config\n"}
+{"Time":"2026-11-03T22:39:29.420589288Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Output":"--- PASS: TestWebEntrypointAttachmentSettings/missing_config (0.01s)\n"}
+{"Time":"2026-11-03T22:39:29.42062356Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Elapsed":0.01}
+{"Time":"2026-11-03T22:39:29.420635412Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings","Output":"--- PASS: TestWebEntrypointAttachmentSettings (0.03s)\n"}
+{"Time":"2026-11-03T22:39:29.420648296Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings","Elapsed":0.03}
+{"Time":"2026-11-03T22:39:29.420652597Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Output":"PASS\n"}
+{"Time":"2026-11-03T22:39:29.421510798Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Output":"ok  \tgithub.com/vanderheijden86/b9s/scripts/web\t0.037s\n"}
+{"Time":"2026-11-03T22:39:29.421531299Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/web","Elapsed":0.037}
