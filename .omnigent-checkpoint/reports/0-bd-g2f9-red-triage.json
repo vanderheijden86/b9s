@@ -1,0 +1,33 @@
+{"Time":"2026-11-03T22:19:13.483027824Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/ui"}
+{"Time":"2026-11-03T22:19:13.539655279Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA"}
+{"Time":"2026-11-03T22:19:13.539791384Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA\n"}
+{"Time":"2026-11-03T22:19:13.541524558Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up"}
+{"Time":"2026-11-03T22:19:13.541653432Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/up\n"}
+{"Time":"2026-11-03T22:19:13.541672558Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Output":"    palette_test.go:54: #FF6B6B on paper: 2.10:1, want \u003e= 4.5:1\n"}
+{"Time":"2026-11-03T22:19:13.541687033Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Output":"--- FAIL: TestSepiaTriageSymbolsMeetAA/up (0.00s)\n"}
+{"Time":"2026-11-03T22:19:13.541698538Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/up","Elapsed":0}
+{"Time":"2026-11-03T22:19:13.541708202Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down"}
+{"Time":"2026-11-03T22:19:13.541866581Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/down\n"}
+{"Time":"2026-11-03T22:19:13.542193687Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Output":"    palette_test.go:54: #4ECDC3 on paper: 1.46:1, want \u003e= 4.5:1\n"}
+{"Time":"2026-11-03T22:19:13.542312214Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Output":"--- FAIL: TestSepiaTriageSymbolsMeetAA/down (0.00s)\n"}
+{"Time":"2026-11-03T22:19:13.542733531Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/down","Elapsed":0}
+{"Time":"2026-11-03T22:19:13.54275125Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star"}
+{"Time":"2026-11-03T22:19:13.542774532Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/star\n"}
+{"Time":"2026-11-03T22:19:13.543104355Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Output":"    palette_test.go:54: #FFD700 on paper: 1.06:1, want \u003e= 4.5:1\n"}
+{"Time":"2026-11-03T22:19:13.543153622Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Output":"--- FAIL: TestSepiaTriageSymbolsMeetAA/star (0.00s)\n"}
+{"Time":"2026-11-03T22:19:13.543216475Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/star","Elapsed":0}
+{"Time":"2026-11-03T22:19:13.54327775Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks"}
+{"Time":"2026-11-03T22:19:13.543288807Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/unblocks\n"}
+{"Time":"2026-11-03T22:19:13.543435827Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Output":"    palette_test.go:54: #50FA7B on paper: 1.04:1, want \u003e= 4.5:1\n"}
+{"Time":"2026-11-03T22:19:13.54351279Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Output":"--- FAIL: TestSepiaTriageSymbolsMeetAA/unblocks (0.00s)\n"}
+{"Time":"2026-11-03T22:19:13.543592623Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/unblocks","Elapsed":0}
+{"Time":"2026-11-03T22:19:13.543653021Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate"}
+{"Time":"2026-11-03T22:19:13.543663595Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Output":"=== RUN   TestSepiaTriageSymbolsMeetAA/alternate\n"}
+{"Time":"2026-11-03T22:19:13.543782971Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Output":"    palette_test.go:54: #6171A3 on paper: 3.61:1, want \u003e= 4.5:1\n"}
+{"Time":"2026-11-03T22:19:13.543841578Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Output":"--- FAIL: TestSepiaTriageSymbolsMeetAA/alternate (0.00s)\n"}
+{"Time":"2026-11-03T22:19:13.54390049Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA/alternate","Elapsed":0}
+{"Time":"2026-11-03T22:19:13.543974495Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA","Output":"--- FAIL: TestSepiaTriageSymbolsMeetAA (0.00s)\n"}
+{"Time":"2026-11-03T22:19:13.544019723Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSepiaTriageSymbolsMeetAA","Elapsed":0}
+{"Time":"2026-11-03T22:19:13.544300842Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"FAIL\n"}
+{"Time":"2026-11-03T22:19:13.548562275Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"FAIL\tgithub.com/vanderheijden86/b9s/pkg/ui\t0.065s\n"}
+{"Time":"2026-11-03T22:19:13.54860425Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Elapsed":0.066}
