@@ -1,0 +1,47 @@
+{
+  "process_exit_code": 2,
+  "statistics": {
+    "startTime": "2026-11-03T23:29:28.884Z",
+    "duration": 205105.598,
+    "expected": 429,
+    "skipped": 4,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "failures": [
+    {
+      "spec": "the board stacks the columns as boxes and moves a card by drag onto another box",
+      "file": "board.spec.ts",
+      "line": 10,
+      "project": "iphone",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "duration": 4193,
+          "error": {
+            "message": "Unhandled Promise Rejection: TypeError: Load failed",
+            "stack": "Unhandled Promise Rejection: TypeError: Load failed\n    at Ls (http://127.0.0.1:35225/app.js:77:31804)",
+            "location": {
+              "file": "http://127.0.0.1:35225/app.js",
+              "column": 31804,
+              "line": 77
+            }
+          },
+          "errors": [
+            {
+              "location": {
+                "file": "http://127.0.0.1:35225/app.js",
+                "column": 31804,
+                "line": 77
+              },
+              "message": "Unhandled Promise Rejection: TypeError: Load failed\n    at Ls (http://127.0.0.1:35225/app.js:77:31804)"
+            }
+          ],
+          "retry": 0
+        }
+      ]
+    }
+  ],
+  "global_errors": []
+}
