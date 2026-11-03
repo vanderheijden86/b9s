@@ -1,0 +1,217 @@
+{
+  "static_checks": [
+    {
+      "command": [
+        "timeout",
+        "120s",
+        "npm",
+        "--prefix",
+        "/home/omnigent/workspace/b9s/web",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/home/omnigent/workspace/b9s",
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/dispatch2/typecheck.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "120s",
+        "npm",
+        "--prefix",
+        "/home/omnigent/workspace/b9s/web",
+        "run",
+        "build"
+      ],
+      "cwd": "/home/omnigent/workspace/b9s",
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/dispatch2/web-build.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "180s",
+        "go",
+        "build",
+        "./..."
+      ],
+      "cwd": "/home/omnigent/workspace/b9s",
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/dispatch2/go-build.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "180s",
+        "go",
+        "vet",
+        "./..."
+      ],
+      "cwd": "/home/omnigent/workspace/b9s",
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/dispatch2/go-vet.log",
+      "test_counts": "not applicable (static/build check)"
+    },
+    {
+      "command": [
+        "timeout",
+        "30s",
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/omnigent/workspace/b9s",
+      "exit_code": 0,
+      "log_file": "/tmp/bd-e5u3.20.15/dispatch2/diff-check.log",
+      "test_counts": "not applicable (static/build check)"
+    }
+  ],
+  "stable": {
+    "command": [
+      "timeout",
+      "660s",
+      "make",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "test-stable"
+    ],
+    "environment": {
+      "GOFLAGS": "-v -count=1"
+    },
+    "exit_code": 0,
+    "counts_including_subtests": {
+      "passed": 3345,
+      "failed": 0,
+      "skipped": 20
+    },
+    "counts_top_level": {
+      "passed": 2057,
+      "failed": 0,
+      "skipped": 18
+    },
+    "package_results": [
+      "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t0.348s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.277s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.020s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t8.897s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.134s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.008s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t0.884s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.062s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.004s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.006s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t17.475s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.019s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.012s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.011s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t37.028s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.127s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.008s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.004s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.371s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t1.619s",
+      "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.033s"
+    ],
+    "skip_results": [
+      "--- SKIP: TestProbeMemory_RealBinaries (0.00s)",
+      "--- SKIP: TestS3StoreContract (0.00s)",
+      "--- SKIP: TestS3PutRejectsShortRead (0.00s)",
+      "--- SKIP: TestS3PutRejectsLongRead (0.00s)",
+      "--- SKIP: TestDoltReader_NewAndClose (0.00s)",
+      "--- SKIP: TestDoltReader_LoadIssues (0.00s)",
+      "--- SKIP: TestDoltReader_GetHeadHash (0.00s)",
+      "--- SKIP: TestDoltWatcher_NewAndStop (0.00s)",
+      "--- SKIP: TestDoltWatcher_StartIsIdempotent (0.00s)",
+      "--- SKIP: TestDoltWatcher_DetectsNoChangeOnPoll (0.00s)",
+      "--- SKIP: TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB (0.00s)",
+      "--- SKIP: TestMemoryPreviewGraphReadTiming (0.00s)",
+      "--- SKIP: TestMemoryReadResearchStages (0.00s)",
+      "--- SKIP: TestMemoryReadResearchTransportParity (0.00s)",
+      "--- SKIP: TestMemoryReadResearchConcurrentWriter (0.00s)",
+      "    --- SKIP: TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)",
+      "    --- SKIP: TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl (0.00s)",
+      "--- SKIP: TestStress_SustainedWrites (0.00s)",
+      "--- SKIP: TestStress_BurstWrites (0.00s)",
+      "--- SKIP: TestStress_MemoryPressure (0.00s)"
+    ],
+    "flaky": "unknown",
+    "unrun": "unknown"
+  },
+  "browser_results": {
+    "red": {
+      "exit_code": 1,
+      "stats": {
+        "startTime": "2026-11-03T23:24:16.769Z",
+        "duration": 66338.753,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 7,
+        "flaky": 0
+      },
+      "report": "/tmp/bd-e5u3.20.15/dispatch2/red.json"
+    },
+    "focused-green": {
+      "exit_code": 0,
+      "stats": {
+        "startTime": "2026-11-03T23:26:28.916Z",
+        "duration": 35597.282999999996,
+        "expected": 12,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "report": "/tmp/bd-e5u3.20.15/dispatch2/focused-green.json"
+    },
+    "green": {
+      "exit_code": 0,
+      "stats": {
+        "startTime": "2026-11-03T23:27:42.254Z",
+        "duration": 54718.047,
+        "expected": 27,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "report": "/tmp/bd-e5u3.20.15/dispatch2/green.json"
+    },
+    "web-gate": {
+      "exit_code": 2,
+      "stats": {
+        "startTime": "2026-11-03T23:29:28.884Z",
+        "duration": 205105.598,
+        "expected": 429,
+        "skipped": 4,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "report": "/tmp/bd-e5u3.20.15/dispatch2/web-gate.json"
+    }
+  },
+  "required_blocker_issue_ids": [
+    "bd-jo57"
+  ],
+  "unrelated_nonblocking_issue_ids": [
+    "bd-969k"
+  ],
+  "runtime": {
+    "architecture": "x86_64",
+    "browser_sandbox": "pod-boundary",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "graphics_threads": 2,
+    "kernel": "6.8.0-147-generic",
+    "native_runtime_sha256": "a32868da82a4a7bf3f0a736c570c8d28d79faba858fde32c43b6c2f9faa6b9a6",
+    "node": "v22.23.4",
+    "playwright": "1.63.0"
+  }
+}

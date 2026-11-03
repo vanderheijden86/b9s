@@ -1,0 +1,576 @@
+[
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 4853.42,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 4868.114,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5035.362,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5183.896,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5220.468,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5243.562,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5282.44,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5300.321,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5304.036,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5308.438,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 5311.905,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  },
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768-repeat11/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 61444.724,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61461.72,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61662.825,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61749.672,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61787.999,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61804.41,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61809.701,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61852,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61855.482,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61859.766,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 61863.187,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  },
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768-repeat2/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 14763.202,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 14776.964,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 14977.098,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15068.495,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15101.089,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15123.938,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15134.083,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15179.502,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15184.544,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15190.138,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 15195.264,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  },
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768-repeat3/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 21760.59,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 21781.92,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 21963.993,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22099.374,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22133.063,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22158.364,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22164.062,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22209.791,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22213.249,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22217.46,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 22221.412,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  },
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768-repeat5/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 31705.302,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 31717.665,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 31864.998,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 31969.091,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32007.579,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32026.13,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32032.282,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32066.862,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32070.099,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32073.881,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 32077.44,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  },
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768-repeat7/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 41459.55,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41476.057,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41625.51,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41726.291,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41758.099,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41772.608,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41777.63,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41792.791,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41816.396,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41820.53,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 41826.263,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  },
+  {
+    "trace": "/tmp/bd-e5u3.20.15/dispatch2/red-artifacts/board-detail-title-focused-4c17d-rvive-opening-issue-details-tablet-768-repeat9/trace.zip",
+    "snapshots": [
+      {
+        "timestamp": 51637.744,
+        "phone_class": true,
+        "tablet_class": false,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 51655.126,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 51835.505,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 51953.569,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52004.351,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": true,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52018.813,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52024.994,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52059.67,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52062.908,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52066.642,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      },
+      {
+        "timestamp": 52070.71,
+        "phone_class": false,
+        "tablet_class": true,
+        "rows_mode": false,
+        "rail_mode": false
+      }
+    ]
+  }
+]
