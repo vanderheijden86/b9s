@@ -182,3 +182,64 @@ func TestUnknownColourNameIsAnError(t *testing.T) {
 		t.Fatalf("err = %v, want one naming the bad colour", err)
 	}
 }
+
+func TestTUIOverrideTokens(t *testing.T) {
+	p, err := Parse("custom", []byte(`b9s:
+  pickerText: "#123456"
+  commandSuggestion: "#234567"
+  healthWarning: "#345678"
+  healthError: "#456789"
+  priorityUp: "#56789a"
+  priorityDown: "#6789ab"
+  triageStar: "#789abc"
+  triageUnblocks: "#89abcd"
+  triageUnblocksAlt: "#9abcde"
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for token, want := range map[string]Color{
+		"pickerText": "#123456", "commandSuggestion": "#234567",
+		"healthWarning": "#345678", "healthError": "#456789",
+		"priorityUp": "#56789A", "priorityDown": "#6789AB",
+		"triageStar": "#789ABC", "triageUnblocks": "#89ABCD", "triageUnblocksAlt": "#9ABCDE",
+	} {
+		if got := p.Tokens()[token]; got != want {
+			t.Errorf("%s = %q, want %q", token, got, want)
+		}
+	}
+}
+
+func TestHeatmapRejectsIncompleteOverrides(t *testing.T) {
+	for _, key := range []string{"heatGradient", "heatBackgrounds", "heatForegrounds"} {
+		t.Run(key, func(t *testing.T) {
+			_, err := Parse("incomplete", []byte("b9s:\n  "+key+": [red]\n"))
+			if err == nil || !strings.Contains(err.Error(), key) {
+				t.Fatalf("error = %v, want invalid %s length", err, key)
+			}
+		})
+	}
+}
+
+func TestHeatmapOverrides(t *testing.T) {
+	p, err := Parse("custom", []byte(`b9s:
+  heatGradient: [red, red, red, red, red, red, red, red]
+  heatBackgrounds: [blue, blue, blue, blue, blue, blue]
+  heatForegrounds: [white, white, white, white, white, white]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		colors []Color
+		want   Color
+	}{
+		{p.HeatGradient, "#FF0000"}, {p.HeatBackgrounds, "#0000FF"}, {p.HeatForegrounds, "#FFFFFF"},
+	} {
+		for i, got := range tt.colors {
+			if got != tt.want {
+				t.Errorf("heat token %d = %s, want %s", i, got, tt.want)
+			}
+		}
+	}
+}

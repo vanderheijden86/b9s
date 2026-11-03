@@ -108,6 +108,20 @@ type Palette struct {
 	Danger    Color `yaml:"danger"`
 	Border    Color `yaml:"border"`
 
+	PickerText        Color `yaml:"pickerText"`
+	CommandSuggestion Color `yaml:"commandSuggestion"`
+	HealthWarning     Color `yaml:"healthWarning"`
+	HealthError       Color `yaml:"healthError"`
+	PriorityUp        Color `yaml:"priorityUp"`
+	PriorityDown      Color `yaml:"priorityDown"`
+	TriageStar        Color `yaml:"triageStar"`
+	TriageUnblocks    Color `yaml:"triageUnblocks"`
+	TriageUnblocksAlt Color `yaml:"triageUnblocksAlt"`
+
+	HeatGradient    []Color `yaml:"heatGradient"`
+	HeatBackgrounds []Color `yaml:"heatBackgrounds"`
+	HeatForegrounds []Color `yaml:"heatForegrounds"`
+
 	Open       Color `yaml:"open"`
 	InProgress Color `yaml:"inProgress"`
 	Blocked    Color `yaml:"blocked"`
@@ -298,6 +312,19 @@ func Parse(name string, src []byte) (Palette, error) {
 	if len(p.Accents) != AccentCount {
 		return Palette{}, fmt.Errorf("b9s.accents has %d colours, want %d", len(p.Accents), AccentCount)
 	}
+	for _, list := range []struct {
+		key    string
+		colors []Color
+		count  int
+	}{
+		{"heatGradient", p.HeatGradient, 8},
+		{"heatBackgrounds", p.HeatBackgrounds, 6},
+		{"heatForegrounds", p.HeatForegrounds, 6},
+	} {
+		if len(list.colors) != list.count {
+			return Palette{}, fmt.Errorf("b9s.%s has %d colours, want %d", list.key, len(list.colors), list.count)
+		}
+	}
 	return p, nil
 }
 
@@ -356,6 +383,15 @@ func overlay(p *Palette, o Palette) {
 	if len(o.Accents) > 0 {
 		p.Accents = o.Accents
 	}
+	if len(o.HeatGradient) > 0 {
+		p.HeatGradient = o.HeatGradient
+	}
+	if len(o.HeatBackgrounds) > 0 {
+		p.HeatBackgrounds = o.HeatBackgrounds
+	}
+	if len(o.HeatForegrounds) > 0 {
+		p.HeatForegrounds = o.HeatForegrounds
+	}
 }
 
 // derive fills the tokens no k9s slot carries from the ones that are set.
@@ -388,6 +424,15 @@ func derive(p *Palette) {
 	fill(&p.BoardSelection, p.Selection)
 	fill(&p.HeaderText, ground)
 	fill(&p.Match, Blend(p.Review, ground, 0.3))
+	fill(&p.PickerText, text)
+	fill(&p.CommandSuggestion, p.Subtext)
+	fill(&p.HealthWarning, p.Warning)
+	fill(&p.HealthError, p.Danger)
+	fill(&p.PriorityUp, p.Danger)
+	fill(&p.PriorityDown, p.Hooked)
+	fill(&p.TriageStar, p.Warning)
+	fill(&p.TriageUnblocks, p.Success)
+	fill(&p.TriageUnblocksAlt, p.Muted)
 	for _, t := range []struct {
 		tint *Color
 		of   Color
@@ -413,6 +458,22 @@ func derive(p *Palette) {
 	for i, a := range p.Accents {
 		if a == "" {
 			p.Accents[i] = text
+		}
+	}
+	if len(p.HeatGradient) == 0 {
+		p.HeatGradient = []Color{p.Muted, p.Secondary, p.Info, p.Primary, p.Success, p.Warning, p.Danger, p.Danger}
+	}
+	if len(p.HeatBackgrounds) == 0 {
+		p.HeatBackgrounds = []Color{p.BgDeep, p.PinnedTint, p.InProgressTint, p.PrioMediumTint, p.PrioHighTint, p.BlockedTint}
+	}
+	if len(p.HeatForegrounds) == 0 {
+		p.HeatForegrounds = []Color{p.Muted, p.Info, p.Info, p.Warning, p.Danger, p.Danger}
+	}
+	for _, colors := range [][]Color{p.HeatGradient, p.HeatForegrounds, p.HeatBackgrounds} {
+		for i, c := range colors {
+			if c == "" {
+				colors[i] = text
+			}
 		}
 	}
 }
