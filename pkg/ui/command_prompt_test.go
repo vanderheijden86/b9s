@@ -1,13 +1,217 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func forgetCommandModel(t *testing.T) Model {
+	t.Helper()
+	m, checkout := projectTableModel(t)
+	m.appConfig.RecentProjects = append(m.appConfig.RecentProjects,
+		config.RecentProject{Name: "offline", Database: "offline", Host: "127.0.0.1:1"},
+		config.RecentProject{Name: "other", Database: "other", Host: "127.0.0.1:1"},
+	)
+	return m.WithConfig(m.appConfig, "b9s", checkout)
+}
+
+func submitCommand(t *testing.T, m Model, text string) Model {
+	t.Helper()
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyRunes, Runes: []rune(":")},
+		{Type: tea.KeyRunes, Runes: []rune(text)},
+		{Type: tea.KeyEnter},
+	} {
+		updated, _ := m.Update(key)
+		m = updated.(Model)
+	}
+	return m
+}
+
+func TestForgetRecentProjectRemovesOfflineEntryAndPreservesComments(t *testing.T) {
+	m := forgetCommandModel(t)
+	if err := os.MkdirAll(filepath.Dir(config.ConfigPath()), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := `# personal settings
+ui:
+  default_view: tree # keep this preference
+`
+	if err := os.WriteFile(config.ConfigPath(), []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := config.SaveRecentTo(config.ConfigPath(), m.appConfig.RecentProjects, false); err != nil {
+		t.Fatal(err)
+	}
+
+	m = submitCommand(t, m, "forget 2")
+
+	if len(m.appConfig.RecentProjects) != 2 {
+		t.Fatalf("recent projects = %+v, status = %q, want offline forgotten", m.appConfig.RecentProjects, m.statusMsg)
+	}
+	for _, p := range m.allProjects {
+		if p.Name == "offline" {
+			t.Fatal("forgotten project still participates in header count refresh")
+		}
+	}
+	if got := m.projectPicker.ProjectByFavoriteNum(2); got == nil || got.Name != "other" {
+		t.Fatalf("key 2 = %+v, want other after forgetting offline", got)
+	}
+	saved, err := config.LoadFrom(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(saved.RecentProjects, m.appConfig.RecentProjects) {
+		t.Fatalf("saved recent projects = %+v, want %+v", saved.RecentProjects, m.appConfig.RecentProjects)
+	}
+	data, err := os.ReadFile(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# personal settings", "default_view: tree # keep this preference"} {
+		if !strings.Contains(string(data), want) {
+			t.Errorf("saved config lacks %q:\n%s", want, data)
+		}
+	}
+	if m.statusIsError || !strings.Contains(m.statusMsg, "offline") {
+		t.Errorf("status = %q, error = %v, want named success", m.statusMsg, m.statusIsError)
+	}
+}
+
+func TestForgetRecentProjectRespectsLock(t *testing.T) {
+	m := forgetCommandModel(t)
+	m.appConfig.LockRecent = true
+	if err := config.SaveRecentTo(config.ConfigPath(), m.appConfig.RecentProjects, true); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m = submitCommand(t, m, "forget 2")
+
+	after, err := os.ReadFile(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) || len(m.appConfig.RecentProjects) != 3 {
+		t.Fatal("forget changed a locked recent list")
+	}
+	if !m.statusIsError || !strings.Contains(m.statusMsg, "lock_recent") {
+		t.Fatalf("status = %q, want lock_recent explanation", m.statusMsg)
+	}
+}
+
+func TestForgetRecentProjectKeepsActiveProject(t *testing.T) {
+	m := forgetCommandModel(t)
+
+	m = submitCommand(t, m, "forget 1")
+
+	if len(m.appConfig.RecentProjects) != 3 || !m.statusIsError || !strings.Contains(m.statusMsg, "Switch") {
+		t.Fatalf("recent = %+v, status = %q, want switch-first explanation", m.appConfig.RecentProjects, m.statusMsg)
+	}
+}
+
+func TestForgetRecentProjectKeepsActiveAlias(t *testing.T) {
+	for _, kind := range []string{"symlink", "unclean path"} {
+		t.Run(kind, func(t *testing.T) {
+			m := forgetCommandModel(t)
+			active := m.activeRecent()
+			alias := active
+			alias.Name = "active-alias"
+			alias.Path = filepath.Dir(active.Path) + "/./" + filepath.Base(active.Path)
+			if kind == "symlink" {
+				alias.Path = filepath.Join(t.TempDir(), "checkout-alias")
+				if err := os.Symlink(active.Path, alias.Path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			m.appConfig.RecentProjects[0] = alias
+			// A stale row must be guarded by identity even before header normalization.
+			m.allProjects[0] = config.Project{
+				Name: alias.Name, Path: alias.Path, Host: alias.Host, Database: alias.Database,
+			}
+			if err := config.SaveRecentTo(config.ConfigPath(), m.appConfig.RecentProjects, false); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(config.ConfigPath())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			m = submitCommand(t, m, "forget 1")
+
+			after, err := os.ReadFile(config.ConfigPath())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(after) != string(before) || len(m.appConfig.RecentProjects) != 3 {
+				t.Fatal("forget changed the active project's alias or saved config")
+			}
+			if !m.statusIsError || !strings.Contains(m.statusMsg, "Switch") {
+				t.Fatalf("status = %q, want switch-first explanation for active alias", m.statusMsg)
+			}
+		})
+	}
+}
+
+func TestForgetRecentProjectUsesVisibleHeaderNumbers(t *testing.T) {
+	m := forgetCommandModel(t)
+	hidden := m.allProjects[1]
+	m.projectReach = map[string]datasource.Reachability{projectKey(hidden): datasource.ReachDenied}
+	m.projectPicker = NewProjectPicker(m.buildProjectEntries(), m.theme)
+
+	m = submitCommand(t, m, "forget 2")
+
+	if got := m.appConfig.RecentProjects; len(got) != 2 || got[1].Name != "offline" {
+		t.Fatalf("recent = %+v, want hidden offline retained and visible other forgotten", got)
+	}
+}
+
+func TestForgetRecentProjectSaveFailureKeepsHeaderAndConfig(t *testing.T) {
+	m := forgetCommandModel(t)
+	if err := os.MkdirAll(filepath.Dir(config.ConfigPath()), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	invalid := "ui: ["
+	if err := os.WriteFile(config.ConfigPath(), []byte(invalid), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	m = submitCommand(t, m, "forget 2")
+
+	data, err := os.ReadFile(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != invalid || len(m.appConfig.RecentProjects) != 3 || len(m.allProjects) != 3 {
+		t.Fatal("failed save changed recent projects or damaged config")
+	}
+	if !m.statusIsError || !strings.Contains(m.statusMsg, "save") {
+		t.Fatalf("status = %q, want save error", m.statusMsg)
+	}
+}
+
+func TestForgetRecentProjectRejectsInvalidNumbers(t *testing.T) {
+	for _, text := range []string{"forget", "forget 0", "forget 10", "forget -1", "forget two", "forget 2 3", "forget 9"} {
+		t.Run(text, func(t *testing.T) {
+			m := submitCommand(t, forgetCommandModel(t), text)
+			if len(m.appConfig.RecentProjects) != 3 || !m.statusIsError {
+				t.Fatalf("%s: recent = %+v, status = %q, want error without changes", text, m.appConfig.RecentProjects, m.statusMsg)
+			}
+		})
+	}
+}
 
 func pressKey(m Model, key tea.KeyType) Model {
 	updated, _ := m.Update(tea.KeyMsg{Type: key})
