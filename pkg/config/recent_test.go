@@ -36,6 +36,80 @@ func TestTouchRecent_PrependsNewProject(t *testing.T) {
 	}
 }
 
+func TestForgetRecent_MatchesIdentityAndKeepsOtherProjectsInOrder(t *testing.T) {
+	target := recent("a")
+	otherHost := target
+	otherHost.Host = "127.0.0.1:3307"
+	cfg := Config{RecentProjects: []RecentProject{target, recent("b"), otherHost}}
+	before := cfg.RecentProjects
+	renamed := target
+	renamed.Name = "renamed"
+
+	if !cfg.ForgetRecent(renamed) {
+		t.Fatal("ForgetRecent did not report removal by server identity")
+	}
+	if want := []RecentProject{recent("b"), otherHost}; !reflect.DeepEqual(cfg.RecentProjects, want) {
+		t.Fatalf("recent = %+v, want %+v", cfg.RecentProjects, want)
+	}
+	if before[0] != target {
+		t.Fatal("ForgetRecent changed a retained copy of the list")
+	}
+}
+
+func TestForgetRecent_RespectsLock(t *testing.T) {
+	cfg := Config{RecentProjects: []RecentProject{recent("a")}, LockRecent: true}
+	if cfg.ForgetRecent(recent("a")) || len(cfg.RecentProjects) != 1 {
+		t.Fatal("ForgetRecent changed locked list")
+	}
+}
+
+func TestForgetRecent_MatchesCheckoutPath(t *testing.T) {
+	cfg := Config{RecentProjects: []RecentProject{{Name: "local", Path: "/work/local"}}}
+	if !cfg.ForgetRecent(RecentProject{Path: "/work/local"}) || len(cfg.RecentProjects) != 0 {
+		t.Fatalf("recent = %+v, want checkout forgotten", cfg.RecentProjects)
+	}
+}
+
+func TestForgetRecent_IgnoresUnknownProject(t *testing.T) {
+	cfg := Config{RecentProjects: []RecentProject{recent("a")}}
+	if cfg.ForgetRecent(recent("unknown")) || len(cfg.RecentProjects) != 1 {
+		t.Fatal("ForgetRecent changed the list for an unknown project")
+	}
+}
+
+func TestSaveRecentTo_ForgetsOnlyTargetWhileMergingAnotherWindow(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := SaveRecentTo(cfgPath, []RecentProject{recent("a"), recent("b"), recent("from-other-window")}, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SaveRecentTo(cfgPath, []RecentProject{recent("b")}, false, recent("a")); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadFrom(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := recentNames(cfg.RecentProjects), []string{"b", "from-other-window"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("recent = %v, want %v", got, want)
+	}
+}
+
+func TestSaveRecentTo_LockPreventsForget(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
+	projects := []RecentProject{recent("a")}
+	if err := SaveRecentTo(cfgPath, projects, true, recent("a")); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadFrom(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(cfg.RecentProjects, projects) {
+		t.Fatalf("recent = %+v, want locked project retained", cfg.RecentProjects)
+	}
+}
+
 func TestTouchRecent_KeepsSlotOfExistingProject(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.RecentProjects = []RecentProject{recent("a"), recent("b"), recent("c")}

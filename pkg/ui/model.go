@@ -4896,6 +4896,7 @@ func (m *Model) renderHelpOverlay() string {
 		{"Ctrl+S", "Search this help"},
 		{":", "Command prompt"},
 		{":mouse", "Mouse: select text / scroll"},
+		{":forget N", "Forget recent project N"},
 		{"Ctrl+e", "Toggle header"},
 		{";", "Shortcuts bar"},
 		{"!", "Alerts panel"},
