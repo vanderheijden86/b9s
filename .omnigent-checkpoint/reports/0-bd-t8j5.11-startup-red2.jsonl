@@ -1,0 +1,22 @@
+{"Time":"2026-11-03T21:49:21.932265538Z","Action":"start","Package":"github.com/vanderheijden86/b9s/scripts/web"}
+{"Time":"2026-11-03T21:49:21.935291713Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings"}
+{"Time":"2026-11-03T21:49:21.935309743Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings","Output":"=== RUN   TestWebEntrypointAttachmentSettings\n"}
+{"Time":"2026-11-03T21:49:21.93535101Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment"}
+{"Time":"2026-11-03T21:49:21.935358424Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment","Output":"=== RUN   TestWebEntrypointAttachmentSettings/environment\n"}
+{"Time":"2026-11-03T21:49:21.947716309Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment","Output":"--- PASS: TestWebEntrypointAttachmentSettings/environment (0.01s)\n"}
+{"Time":"2026-11-03T21:49:21.947742468Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/environment","Elapsed":0.01}
+{"Time":"2026-11-03T21:49:21.947758819Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config"}
+{"Time":"2026-11-03T21:49:21.947762355Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Output":"=== RUN   TestWebEntrypointAttachmentSettings/mounted_config\n"}
+{"Time":"2026-11-03T21:49:21.959372855Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Output":"    entrypoint_test.go:127: mounted settings did not reach generated config: \n"}
+{"Time":"2026-11-03T21:49:21.960116216Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Output":"--- FAIL: TestWebEntrypointAttachmentSettings/mounted_config (0.01s)\n"}
+{"Time":"2026-11-03T21:49:21.960129623Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/mounted_config","Elapsed":0.01}
+{"Time":"2026-11-03T21:49:21.960135692Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config"}
+{"Time":"2026-11-03T21:49:21.960139043Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Output":"=== RUN   TestWebEntrypointAttachmentSettings/missing_config\n"}
+{"Time":"2026-11-03T21:49:21.97098428Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Output":"    entrypoint_test.go:95: startup accepted a missing B9S_WEB_CONFIG_FILE\n"}
+{"Time":"2026-11-03T21:49:21.971755546Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Output":"--- FAIL: TestWebEntrypointAttachmentSettings/missing_config (0.01s)\n"}
+{"Time":"2026-11-03T21:49:21.971772206Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings/missing_config","Elapsed":0.01}
+{"Time":"2026-11-03T21:49:21.971786598Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings","Output":"--- FAIL: TestWebEntrypointAttachmentSettings (0.04s)\n"}
+{"Time":"2026-11-03T21:49:21.971795326Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/web","Test":"TestWebEntrypointAttachmentSettings","Elapsed":0.04}
+{"Time":"2026-11-03T21:49:21.971800911Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Output":"FAIL\n"}
+{"Time":"2026-11-03T21:49:21.972391187Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/web","Output":"FAIL\tgithub.com/vanderheijden86/b9s/scripts/web\t0.040s\n"}
+{"Time":"2026-11-03T21:49:21.97240596Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/web","Elapsed":0.04}
