@@ -1,0 +1,44 @@
+{
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "subtests": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "packages": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "exit_code": 0,
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestForgetRecentProjectE2E$",
+    "-count=1",
+    "-timeout",
+    "90s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "linux/amd64",
+    "CGO_ENABLED": "1",
+    "CGO_CFLAGS": "-O2 -g",
+    "GOFLAGS": ""
+  }
+}

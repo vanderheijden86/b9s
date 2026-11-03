@@ -1,0 +1,45 @@
+{
+  "counts": {
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "subtests": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "packages": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "exit_code": 0,
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./pkg/config",
+    "./pkg/ui",
+    "-run",
+    "TestForgetRecent|TestSaveRecentTo|TestEveryCommandNameResolves|TestRecentProject_SameProject|TestTouchRecent|TestHeaderProjects",
+    "-count=1",
+    "-timeout",
+    "60s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "linux/amd64",
+    "CGO_ENABLED": "1",
+    "CGO_CFLAGS": "-O2 -g",
+    "GOFLAGS": ""
+  }
+}

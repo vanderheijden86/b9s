@@ -1,0 +1,43 @@
+=== RUN   TestForgetRecentProjectE2E/lock_recent=true
+    recent_projects_e2e_test.go:164: Final TUI frame:
+                            O   P   R                                                                  o Open     P Projects   Types         __________  ________       
+        <1> alpha           1   0   1                                                                  C Closed   L Labels     F1 ♦ Epic     \______   \/   __   \______
+        <2> offline                 ✗                                                                  r Ready    A Assignees  F2 ▲ Feature   |    |  _/\____    /  ___/
+        <3> beta            1   0   1                                                                  a All      H Hide/Show  F3 ✔ Task      |    |   \   /    /\___ \ 
+        <0> All                                                                                        b Board    [] Scroll    F4 ● Bug       |______  /  /____//____  >
+                                                                                                       / Search   esc Back        ○ Chore            \/              \/ 
+                     Issue [Created ▼]                                                                                              PRI  DISPATCH          CREATED  ID  
+          ✔ OPEN     alpha work                                                                                                     P2                         now  1   
+                                                                                                                                                                        
+         ERR: Recent projects are locked (lock_recent: true)                                                                                                            
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+--- PASS: TestForgetRecentProjectE2E/lock_recent=true (6.51s)

@@ -1,0 +1,4 @@
+git diff --check exit_code=0
+gofmt exit_code=0
+native E2E file unchanged from checkpoint: empty diff
+44a92da087e2877691a824e6ad94d10313d67a5f
