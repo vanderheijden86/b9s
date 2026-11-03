@@ -1,0 +1,460 @@
+{
+  "task": "bd-ac05.7",
+  "role": "implementer",
+  "result": "Implementation and required checks green. Ready for independent reviewer and tester. Delivery remains unauthorized.",
+  "recorded_at": "2026-11-03T23:27:25.585575+01:00",
+  "repository": "/home/omnigent/workspace/b9s",
+  "branch": "omnigent/bd-ac05.7",
+  "head": "793407bd86c74ba9985c9870c39392974ec8380e",
+  "fetched_base_sha": "793407bd86c74ba9985c9870c39392974ec8380e",
+  "pr_target": "main",
+  "preflight": {
+    "task": "bd-ac05.7",
+    "role": "implementer",
+    "stage": "preflight",
+    "recorded_at": "2026-11-03T23:14:54.397308+01:00",
+    "repo": "/home/omnigent/workspace/b9s",
+    "scope": "Preparation only. Await Polly before implementation.",
+    "beads_connect": {
+      "runs": 1,
+      "exit_code": 0,
+      "result": "connected to b9s as bd_b9s"
+    },
+    "git": {
+      "initial_branch": "main",
+      "initial_head": "793407bd86c74ba9985c9870c39392974ec8380e",
+      "base_fetch_command": [
+        "timeout",
+        "60s",
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "fetch",
+        "origin",
+        "refs/heads/main:refs/remotes/origin/main"
+      ],
+      "base_fetch_exit_code": 0,
+      "fetched_base": "origin/main",
+      "fetched_base_sha": "793407bd86c74ba9985c9870c39392974ec8380e",
+      "remote_delivery_probe_command": [
+        "timeout",
+        "60s",
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "ls-remote",
+        "--exit-code",
+        "--heads",
+        "origin",
+        "refs/heads/omnigent/bd-ac05.7"
+      ],
+      "remote_delivery_probe_exit_code": 2,
+      "remote_delivery_exists": false,
+      "local_delivery_existed_before_preparation": false,
+      "branch_preparation_command": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "switch",
+        "--create",
+        "omnigent/bd-ac05.7",
+        "origin/main"
+      ],
+      "branch_preparation_exit_code": 0,
+      "actual_branch": "omnigent/bd-ac05.7",
+      "head": "793407bd86c74ba9985c9870c39392974ec8380e",
+      "upstream": "origin/main",
+      "base_is_ancestor_of_head": true,
+      "base_ancestry_command_exit_code": 0,
+      "required_commits": [],
+      "required_commit_ancestry_against_base_and_head": "Not applicable. No required commits.",
+      "pr_target": "main",
+      "worktree_clean_before_and_after": true
+    },
+    "checkpoint": {
+      "command": [
+        "lane-checkpoint",
+        "inspect",
+        "--repo",
+        "/home/omnigent/workspace/b9s",
+        "--task",
+        "bd-ac05.7",
+        "--base",
+        "origin/main"
+      ],
+      "exit_code": 2,
+      "result": "no checkpoint exists for this task",
+      "restored": false
+    },
+    "guidance_read": [
+      "~/.config/agents/AGENTS.md",
+      "AGENTS.md",
+      "/usr/local/share/omnigent/lane-runtime.md",
+      "docs/ARCHITECTURE.md",
+      "docs/testing.md",
+      "docs/adr/0037-browse-memory-preview-in-a-lazy-tui.md",
+      "docs/adr/0044-keep-terminal-memory-wires-and-detect-capabilities.md",
+      "docs/adr/0045-probe-bd-help-before-memory-reads.md",
+      "docs/adr/0046-memory-lever-keeps-graph-workspace-issues.md",
+      "docs/adr/0051-read-the-memory-graph-on-request-with-progress.md"
+    ],
+    "task_context": {
+      "parent": "bd-ac05",
+      "prerequisite_dependencies": [],
+      "recent_comments_before_work": [],
+      "observed_code": "loadMemoryGraph calls Inventory before filtering selected ID. Existing selected-ID fixture allows inventory. Memory and Links exact-read adapter methods exist."
+    },
+    "source_files_changed": [],
+    "dependencies_installed": false,
+    "tests": {
+      "executed": false,
+      "reason": "Preparation-only dispatch. No implementation or validation suite authorized in this turn."
+    },
+    "delivery": {
+      "commits": 0,
+      "pushes": 0,
+      "pull_requests_created": 0
+    },
+    "required_check_failures": [],
+    "follow_up_issues_filed": []
+  },
+  "changes": {
+    "cmd/b9s/memories.go": "Read selected ID via existing Memory then canonical Links. Validate ID and Memory type. Merge owned and incident Links by ID without mutating the owned record. Derive the existing two-minute timeout from a parent context. Preserve Inventory for full-list output.",
+    "cmd/b9s/memories_test.go": "Inventory-refusing exact-read regression for short/local/canonical IDs, body and directed Links, deduplication, untouched owned record, exact query log, missing and non-Memory failures, malformed/refused replies, show/links deadlines, capability gates and full-list print/nonterminal behavior.",
+    "docs/USER_GUIDE.md": "Document exact selected reads, supported ID forms, incident/owned Links, endpoint IDs, error behavior and deadline."
+  },
+  "source_sha256": {
+    "cmd/b9s/memories.go": "5b34179d31d091793b73d251b6e49a159d627bc81df08cce0b53faa6ed47d7fa",
+    "cmd/b9s/memories_test.go": "c69fb4442775872548f7d40dc761f8ef4d8a8139a86532e897d0301ffca35a86",
+    "docs/USER_GUIDE.md": "b5d265ff51cf29f8259158f2e94cd2c3813ed9c9c5dfb3f237ece6711b009cd7"
+  },
+  "dependencies": {
+    "command": [
+      "timeout",
+      "180s",
+      "go",
+      "mod",
+      "download"
+    ],
+    "exit_code": 0,
+    "report": "/tmp/bd-ac05.7-dependencies.txt",
+    "dependency_files_changed": false
+  },
+  "red": {
+    "command": [
+      "timeout",
+      "180s",
+      "go",
+      "test",
+      "./cmd/b9s",
+      "-run",
+      "^TestPrintOneMemoryWithoutInventory$",
+      "-count=1",
+      "-timeout=60s",
+      "-json"
+    ],
+    "exit_code": 1,
+    "environment": {
+      "go": "go version go1.25.5 linux/amd64",
+      "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.41",
+      "goos_goarch": [
+        "linux",
+        "amd64"
+      ]
+    },
+    "counts": {
+      "passed": 0,
+      "failed": 4,
+      "skipped": 0,
+      "interrupted": 0,
+      "unrun": 0
+    },
+    "counting": "Go named test outcomes, including parent tests and subtests. Unrun concerns only the selected tests, not intentional suite exclusions.",
+    "leaf_counts": {
+      "passed": 0,
+      "failed": 3,
+      "skipped": 0
+    },
+    "package_outcomes": [
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "outcome": "fail"
+      }
+    ],
+    "failures": [
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "test": "TestPrintOneMemoryWithoutInventory/b"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "test": "TestPrintOneMemoryWithoutInventory/beads/b"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "test": "TestPrintOneMemoryWithoutInventory/https://example.test/team/beads/b"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "test": "TestPrintOneMemoryWithoutInventory"
+      }
+    ],
+    "source_report": "/tmp/bd-ac05.7-red.jsonl"
+  },
+  "initial_focused_green": {
+    "command": [
+      "timeout",
+      "180s",
+      "go",
+      "test",
+      "./cmd/b9s",
+      "./internal/datasource",
+      "./internal/bdrun",
+      "-run",
+      "^(TestPrintOneMemory|TestLoadOneMemory|TestPrintAllMemories|TestRenderMemories|TestMemoriesExplains|TestMemoryLever|TestParseGraphPreview|TestProbeMemory)",
+      "-count=1",
+      "-timeout=60s",
+      "-json"
+    ],
+    "exit_code": 0,
+    "environment": {
+      "go": "go version go1.25.5 linux/amd64",
+      "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.41",
+      "goos_goarch": [
+        "linux",
+        "amd64"
+      ]
+    },
+    "counts": {
+      "passed": 45,
+      "failed": 0,
+      "skipped": 1,
+      "interrupted": 0,
+      "unrun": 0
+    },
+    "counting": "Go named test outcomes, including parent tests and subtests. Unrun concerns only the selected tests, not intentional suite exclusions.",
+    "leaf_counts": {
+      "passed": 40,
+      "failed": 0,
+      "skipped": 1
+    },
+    "package_outcomes": [
+      {
+        "package": "github.com/vanderheijden86/b9s/internal/datasource",
+        "outcome": "pass"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "outcome": "pass"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+        "outcome": "pass"
+      }
+    ],
+    "failures": [],
+    "source_report": "/tmp/bd-ac05.7-focused.jsonl"
+  },
+  "final_focused_green": {
+    "command": [
+      "timeout",
+      "180s",
+      "go",
+      "test",
+      "./cmd/b9s",
+      "./internal/datasource",
+      "./internal/bdrun",
+      "-run",
+      "^(TestPrintOneMemory|TestLoadOneMemory|TestPrintAllMemories|TestRenderMemories|TestMemoriesExplains|TestMemoryLever|TestParseGraphPreview|TestProbeMemory)",
+      "-count=1",
+      "-timeout=60s",
+      "-json"
+    ],
+    "exit_code": 0,
+    "environment": {
+      "go": "go version go1.25.5 linux/amd64",
+      "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.41",
+      "goos_goarch": [
+        "linux",
+        "amd64"
+      ]
+    },
+    "counts": {
+      "passed": 46,
+      "failed": 0,
+      "skipped": 1,
+      "interrupted": 0,
+      "unrun": 0
+    },
+    "counting": "Go named test outcomes, including parent tests and subtests. Unrun concerns only the selected tests, not intentional suite exclusions.",
+    "leaf_counts": {
+      "passed": 41,
+      "failed": 0,
+      "skipped": 1
+    },
+    "package_outcomes": [
+      {
+        "package": "github.com/vanderheijden86/b9s/internal/datasource",
+        "outcome": "pass"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+        "outcome": "pass"
+      },
+      {
+        "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+        "outcome": "pass"
+      }
+    ],
+    "failures": [],
+    "source_report": "/tmp/bd-ac05.7-focused-final.jsonl"
+  },
+  "stable": {
+    "command": [
+      "timeout",
+      "720s",
+      "env",
+      "GOFLAGS=-v -count=1",
+      "make",
+      "test-stable"
+    ],
+    "expanded_test_command": "go test -timeout 10m -skip 'DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers' $(go list ./... | grep -v /tests/e2e)",
+    "exit_code": 0,
+    "environment": {
+      "go": "go version go1.25.5 linux/amd64",
+      "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.41",
+      "GOFLAGS": "-v -count=1"
+    },
+    "counts": {
+      "passed": 3372,
+      "failed": 0,
+      "skipped": 20,
+      "interrupted": 0,
+      "unrun": 0
+    },
+    "counting": "Go named test outcomes, including parent tests and subtests. Unrun concerns only the selected tests, not intentional suite exclusions.",
+    "failed_tests": [],
+    "skipped_tests": [
+      "TestProbeMemory_RealBinaries",
+      "TestS3StoreContract",
+      "TestS3PutRejectsShortRead",
+      "TestS3PutRejectsLongRead",
+      "TestDoltReader_NewAndClose",
+      "TestDoltReader_LoadIssues",
+      "TestDoltReader_GetHeadHash",
+      "TestDoltWatcher_NewAndStop",
+      "TestDoltWatcher_StartIsIdempotent",
+      "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "TestMemoryPreviewGraphReadTiming",
+      "TestMemoryReadResearchStages",
+      "TestMemoryReadResearchTransportParity",
+      "TestMemoryReadResearchConcurrentWriter",
+      "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "TestStress_SustainedWrites",
+      "TestStress_BurstWrites",
+      "TestStress_MemoryPressure"
+    ],
+    "package_passes": [
+      "github.com/vanderheijden86/b9s/cmd/b9s",
+      "github.com/vanderheijden86/b9s/internal/attach",
+      "github.com/vanderheijden86/b9s/internal/attachref",
+      "github.com/vanderheijden86/b9s/internal/bdrun",
+      "github.com/vanderheijden86/b9s/internal/blobstore",
+      "github.com/vanderheijden86/b9s/internal/control",
+      "github.com/vanderheijden86/b9s/internal/datasource",
+      "github.com/vanderheijden86/b9s/pkg/config",
+      "github.com/vanderheijden86/b9s/pkg/debug",
+      "github.com/vanderheijden86/b9s/pkg/identity",
+      "github.com/vanderheijden86/b9s/pkg/loader",
+      "github.com/vanderheijden86/b9s/pkg/model",
+      "github.com/vanderheijden86/b9s/pkg/testutil",
+      "github.com/vanderheijden86/b9s/pkg/testutil/proptest",
+      "github.com/vanderheijden86/b9s/pkg/ui",
+      "github.com/vanderheijden86/b9s/pkg/updater",
+      "github.com/vanderheijden86/b9s/pkg/util/topk",
+      "github.com/vanderheijden86/b9s/pkg/version",
+      "github.com/vanderheijden86/b9s/pkg/watcher",
+      "github.com/vanderheijden86/b9s/pkg/web",
+      "github.com/vanderheijden86/b9s/tests/docs"
+    ],
+    "package_failures": [],
+    "packages_without_tests": [],
+    "intentional_exclusions": "tests/e2e and the committed Makefile STABLE_SKIP pattern. No base comparison.",
+    "source_report": "/tmp/bd-ac05.7-stable.log"
+  },
+  "build": {
+    "command": [
+      "timeout",
+      "180s",
+      "go",
+      "build",
+      "./..."
+    ],
+    "exit_code": 0,
+    "report": "/tmp/bd-ac05.7-build.txt",
+    "typecheck": "Go compilation includes type checking."
+  },
+  "vet": {
+    "command": [
+      "timeout",
+      "180s",
+      "go",
+      "vet",
+      "./..."
+    ],
+    "exit_code": 0,
+    "report": "/tmp/bd-ac05.7-vet.txt"
+  },
+  "format_and_diff": [
+    {
+      "command": [
+        "gofmt",
+        "-l",
+        "/home/omnigent/workspace/b9s/cmd/b9s/memories.go",
+        "/home/omnigent/workspace/b9s/cmd/b9s/memories_test.go"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "counting": "Counts include Go parent tests and subtests. Leaf counts are also supplied for focused runs. Property-test iterations are not counted as separate Go tests. Build, vet and formatting have command exit codes, not test counts.",
+  "red_green_evidence": "Before production edits all 3 selected-ID subcases failed on bd list: inventory forbidden. After implementation all 3 pass. Final focused and stable runs were fresh and exited 0.",
+  "guard": "The fake bd refuses inventory and unrelated record queries. Exact command logs and directed Link assertions prevent a selected-ID inventory dependency from returning.",
+  "review": "Implementation self-review found only the 3 scoped files changed. Independent reviewer and tester approval pending.",
+  "residual_risks": [
+    "Fixtures exercise the existing preview-v2 dialect. No real Preview 3 binary or workspace was tested, and no Preview 3 compatibility is claimed.",
+    "Selected output uses linked endpoint IDs, since no other record is queried for its title. This is documented."
+  ],
+  "required_check_failures": [],
+  "follow_up_issues_filed": [],
+  "evidence_reuse": {
+    "saved_results_reused": false,
+    "checkpoint_compare_exits": [
+      2,
+      2
+    ],
+    "explanation": "Earlier failed/stale/incomplete evidence was rejected. Every reported GREEN check was executed in this turn."
+  },
+  "delivery": {
+    "commits": 0,
+    "delivery_pushes": 0,
+    "pull_requests_created": 0,
+    "checkpoint_ref": "refs/heads/omnigent-checkpoints/bd-ac05.7",
+    "checkpoint_approved": false
+  }
+}
