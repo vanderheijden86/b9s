@@ -1,0 +1,2 @@
+lane-checkpoint: saved evidence is stale, failed, skipped or incomplete
+{"compatible": false, "complete": false, "approved": false}
