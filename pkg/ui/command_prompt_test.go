@@ -1,13 +1,86 @@
 package ui
 
 import (
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func forgetCommandModel(t *testing.T) Model {
+	t.Helper()
+	m, checkout := projectTableModel(t)
+	m.appConfig.RecentProjects = append(m.appConfig.RecentProjects,
+		config.RecentProject{Name: "offline", Database: "offline", Host: "127.0.0.1:1"},
+		config.RecentProject{Name: "other", Database: "other", Host: "127.0.0.1:1"},
+	)
+	return m.WithConfig(m.appConfig, "b9s", checkout)
+}
+
+func submitCommand(t *testing.T, m Model, text string) Model {
+	t.Helper()
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyRunes, Runes: []rune(":")},
+		{Type: tea.KeyRunes, Runes: []rune(text)},
+		{Type: tea.KeyEnter},
+	} {
+		updated, _ := m.Update(key)
+		m = updated.(Model)
+	}
+	return m
+}
+
+func TestForgetRecentProjectRemovesOfflineEntryAndPreservesComments(t *testing.T) {
+	m := forgetCommandModel(t)
+	original := `# personal settings
+ui:
+  default_view: tree # keep this preference
+`
+	if err := os.WriteFile(config.ConfigPath(), []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := config.SaveRecentTo(config.ConfigPath(), m.appConfig.RecentProjects, false); err != nil {
+		t.Fatal(err)
+	}
+
+	m = submitCommand(t, m, "forget 2")
+
+	if len(m.appConfig.RecentProjects) != 2 {
+		t.Fatalf("recent projects = %+v, status = %q, want offline forgotten", m.appConfig.RecentProjects, m.statusMsg)
+	}
+	for _, p := range m.allProjects {
+		if p.Name == "offline" {
+			t.Fatal("forgotten project still participates in header count refresh")
+		}
+	}
+	if got := m.projectPicker.ProjectByFavoriteNum(2); got == nil || got.Name != "other" {
+		t.Fatalf("key 2 = %+v, want other after forgetting offline", got)
+	}
+	saved, err := config.LoadFrom(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(saved.RecentProjects, m.appConfig.RecentProjects) {
+		t.Fatalf("saved recent projects = %+v, want %+v", saved.RecentProjects, m.appConfig.RecentProjects)
+	}
+	data, err := os.ReadFile(config.ConfigPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# personal settings", "default_view: tree # keep this preference"} {
+		if !strings.Contains(string(data), want) {
+			t.Errorf("saved config lacks %q:\n%s", want, data)
+		}
+	}
+	if m.statusIsError || !strings.Contains(m.statusMsg, "offline") {
+		t.Errorf("status = %q, error = %v, want named success", m.statusMsg, m.statusIsError)
+	}
+}
 
 func pressKey(m Model, key tea.KeyType) Model {
 	updated, _ := m.Update(tea.KeyMsg{Type: key})
