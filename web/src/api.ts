@@ -21,8 +21,8 @@ async function parse<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin", cache: "no-store" });
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(path, { credentials: "same-origin", cache: "no-store", signal });
   return parse<T>(res);
 }
 
@@ -41,7 +41,7 @@ export async function session(): Promise<Session> {
   return s;
 }
 
-export const snapshot = () => get<Snapshot>("api/snapshot");
+export const snapshot = (signal?: AbortSignal) => get<Snapshot>("api/snapshot", signal);
 export const issue = (id: string) => get<Issue>("api/issue?id=" + encodeURIComponent(id));
 export const query = (q: string) => get<QueryResult>("api/query?q=" + encodeURIComponent(q));
 export const health = () => get<Health>("api/health");
@@ -77,29 +77,42 @@ export interface LiveHandlers {
  * no backoff and no signal the page can show, so this closes it on error and
  * reconnects after 1, 2, 4 … 30 seconds.
  */
-export function live(h: LiveHandlers): { retryNow(): void } {
+export function live(h: LiveHandlers, signal: AbortSignal): { retryNow(): void; retryLater(): void } {
   let es: EventSource | null = null;
   let delay = 1000;
   let timer = 0;
+  const retryLater = () => {
+    if (signal.aborted) return;
+    clearTimeout(timer);
+    es?.close(); es = null;
+    h.onState("stale", delay);
+    timer = window.setTimeout(connect, delay);
+    delay = Math.min(delay * 2, 30000);
+  };
   const connect = () => {
+    if (signal.aborted) return;
     clearTimeout(timer);
     if (es) es.close();
-    es = new EventSource("api/events");
-    const on = (type: string) => es!.addEventListener(type, ev => {
+    const source = new EventSource("api/events");
+    es = source;
+    const on = (type: string) => source.addEventListener(type, ev => {
+      if (es !== source) return;
       let v = 0;
       try { v = JSON.parse((ev as MessageEvent).data).version || 0; } catch { /* keep 0 */ }
       if (type === "hello") { delay = 1000; h.onState("live", 0); }
       h.onEvent(type, v);
     });
     ["hello", "changed", "project", "health", "assets"].forEach(on);
-    es.onerror = () => {
-      es?.close(); es = null;
-      h.onState("stale", delay);
-      timer = window.setTimeout(connect, delay);
-      delay = Math.min(delay * 2, 30000);
-    };
+    source.onerror = () => { if (es === source) retryLater(); };
   };
+  const visible = () => { if (!document.hidden && !es) connect(); };
+  signal.addEventListener("abort", () => {
+    clearTimeout(timer);
+    es?.close(); es = null;
+    document.removeEventListener("visibilitychange", visible);
+  }, { once: true });
+  if (signal.aborted) return { retryNow: () => {}, retryLater };
   connect();
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && !es) connect(); });
-  return { retryNow: () => { delay = 1000; connect(); } };
+  document.addEventListener("visibilitychange", visible);
+  return { retryNow: () => { delay = 1000; connect(); }, retryLater };
 }
