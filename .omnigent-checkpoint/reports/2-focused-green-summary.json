@@ -1,0 +1,23 @@
+{
+  "name": "focused-green",
+  "exit_code": 0,
+  "counting": "leaf tests, parents excluded; focused results overlap stable suite",
+  "counts": {
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "all_results": {
+    "pass": 46
+  },
+  "skipped": [],
+  "failed": [],
+  "package_failures": [],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64",
+    "image_digest": "unavailable"
+  }
+}

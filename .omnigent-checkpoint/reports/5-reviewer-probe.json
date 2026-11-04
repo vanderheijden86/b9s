@@ -1,0 +1,8 @@
+{
+  "after_touch_count_want_1": 1,
+  "alias": "/tmp/bd-4qh8-review-symlink-3405849032/link/../checkout",
+  "resolved": "/tmp/bd-4qh8-review-symlink-3405849032/real/checkout",
+  "same_actual_want_true": true,
+  "same_unrelated_want_false": false,
+  "unrelated": "/tmp/bd-4qh8-review-symlink-3405849032/checkout"
+}
