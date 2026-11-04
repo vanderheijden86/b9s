@@ -3,9 +3,11 @@ package datasource
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 
@@ -81,10 +83,17 @@ func (f *OpenFailure) Try() []string {
 			"Create a Beads project here: bd init",
 		}
 	case OpenServerDown:
-		return []string{
+		steps := []string{
 			fmt.Sprintf("Check that %s is the Dolt server's address and that this computer can reach it", f.Server),
 			"Test the connection with bd: bd list",
 		}
+		host, _, err := net.SplitHostPort(f.Server)
+		ip := net.ParseIP(host)
+		if err == nil && (strings.EqualFold(host, "localhost") || (ip != nil && ip.IsLoopback())) &&
+			errors.Is(f.Err, os.ErrDeadlineExceeded) {
+			steps = append(steps, fmt.Sprintf("An SSH tunnel on %s may be stale. If you use one, restart it (osenco example: launchctl kickstart -k gui/$UID/com.osenco.dolt-tunnel)", f.Server))
+		}
+		return steps
 	case OpenDenied:
 		return []string{
 			fmt.Sprintf("Check BEADS_DOLT_PASSWORD for user %s", f.User),
