@@ -3,6 +3,7 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -264,4 +265,47 @@ func (m *Model) rememberRecentProject(project config.Project) {
 	m.projectPicker = NewProjectPicker(m.buildProjectEntries(), m.theme)
 	m.projectPicker.SetSourceInfo(m.sourceInfo)
 	m.projectPicker.SetSize(m.width, m.height)
+}
+
+func (m Model) forgetRecentProject(number string) Model {
+	m.statusIsError = true
+	slot, err := strconv.Atoi(number)
+	if err != nil || len(number) != 1 || slot < 1 || slot > config.MaxRecentProjects {
+		m.statusMsg = "Usage: forget <header number 1-9>"
+		return m
+	}
+	if m.appConfig.LockRecent {
+		m.statusMsg = "Recent projects are locked (lock_recent: true)"
+		return m
+	}
+	projects := m.visibleProjects()
+	if slot > len(projects) {
+		m.statusMsg = fmt.Sprintf("No recent project on header key %d", slot)
+		return m
+	}
+	project := projects[slot-1]
+	recent := config.RecentProject{Name: project.Name, Database: project.Database, Host: project.Host, Path: project.Path}
+	active := m.activeRecent()
+	if recent.SameProject(active) || (project.Name == m.activeProjectName && project.ResolvedPath() == m.activeProjectPath) {
+		m.statusMsg = "Switch to another project before forgetting the active project"
+		return m
+	}
+	next := m.appConfig
+	if !next.ForgetRecent(recent) {
+		m.statusMsg = "Project is not in the recent list"
+		return m
+	}
+	if err := config.SaveRecentTo(config.ConfigPath(), next.RecentProjects, next.LockRecent, recent); err != nil {
+		m.statusMsg = fmt.Sprintf("Could not save recent projects: %v", err)
+		return m
+	}
+	m.appConfig = next
+	m.allProjects = headerProjects(next.RecentProjects, active)
+	m.projectPicker = NewProjectPicker(m.buildProjectEntries(), m.theme)
+	m.projectPicker.SetSourceInfo(m.sourceInfo)
+	m.projectPicker.SetSize(m.width, m.height)
+	m.projectPicker.SetAllProjectsMode(m.allProjectsMode)
+	m.statusMsg = fmt.Sprintf("Forgot recent project %s", project.Name)
+	m.statusIsError = false
+	return m
 }

@@ -573,6 +573,7 @@ Opening a graph workspace with plain `b9s` loads its Issues from the workspace's
 | `:chore` | `:chores` | Show only chores |
 | `:issues` | `:all` | Show every type again |
 | `:project` | `:projects`, `:proj` | List the databases on the Dolt server |
+| `:forget <number>` | | Forget the recent project on header key `1`-`9` |
 | `:mouse` | | Hand the mouse to the terminal, or take it back |
 | `:layout` | | Stack the detail pane below the tree, or put it back to the right |
 | `:wrap` | | Wrap long titles onto extra lines, or truncate them again, as `v` does |
@@ -607,6 +608,17 @@ Each b9s registers in `~/.local/state/b9s/instances` (or `$XDG_STATE_HOME/b9s/in
 The header lists the project b9s started in and up to nine projects you opened recently, on the keys `1`-`9`. A project b9s has not seen yet is added as `1`, and a project already in the list keeps its number, so switching never renumbers the header. A local project is identified by its resolved checkout path and host. Opening the same checkout after its database changes updates its entry in place. Symlink aliases share that entry. Projects without a checkout use their Dolt host and database, so an entry opened through `:project` can share a row with a checkout on the same database. `0` combines the issues of every Dolt project in the list into one read-only view. b9s does not scan folders for projects. A recent project whose server or tunnel is down stays in the header and shows `✗` in place of its issue counts. A recent project whose database refuses the startup project's Dolt user stays out of the header for that session. It stays in `recent_projects` and comes back when b9s starts as a user with access to that database. The counts come from the checkout's configured source, never from a JSONL export beside a Dolt checkout. See [ADR 0008](adr/0008-list-recent-projects-instead-of-discovered-folders.md) and [ADR 0015](adr/0015-hide-recent-projects-the-startup-user-cannot-read.md).
 
 `:project` lists the Beads databases that the startup project's Dolt user can read. Move with `j` and `k` and press `Enter` to open one. A database without a local checkout opens read-only, because writes run `bd` inside a checkout. See [ADR 0007](adr/0007-read-shared-beads-through-one-select-only-catalog-account.md).
+
+To forget a recent project, type `:forget 2` with its current header number.
+This removes the entry from `recent_projects` and the header, then renumbers
+the remaining rows. It does not change the project's files or database.
+The command works while that project's server is unreachable, so later header
+count refreshes do not wait for it. A count refresh already running can still
+finish. Switch to another project before forgetting the active project.
+`lock_recent: true` prevents forgetting. The save preserves other settings and
+their YAML comments, and keeps entries another window added. Another open
+window can save its own copy of the forgotten entry again. Opening the project
+again also adds it to the recent list.
 
 b9s loads a project before it replaces the one on screen. While it loads, the status line shows `Opening <name>…` and `Esc` cancels. If the project cannot be opened, you stay where you were and a popup names the reason:
 
