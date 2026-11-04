@@ -1,0 +1,16 @@
+{
+  "exit_code": 0,
+  "counts": {
+    "passed": 303,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level": {
+    "passed": 53
+  },
+  "packages": {
+    "passed": 1
+  }
+}
