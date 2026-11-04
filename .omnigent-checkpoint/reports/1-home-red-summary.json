@@ -1,0 +1,27 @@
+{
+  "name": "home-red",
+  "exit_code": 1,
+  "counting": "leaf tests, parents excluded; focused results overlap stable suite",
+  "counts": {
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "all_results": {
+    "fail": 1
+  },
+  "skipped": [],
+  "failed": [
+    "github.com/vanderheijden86/b9s/pkg/config:TestLoadFrom_PreservesSymlinkParentInHomePath"
+  ],
+  "package_failures": [
+    "github.com/vanderheijden86/b9s/pkg/config"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64",
+    "image_digest": "unavailable"
+  }
+}

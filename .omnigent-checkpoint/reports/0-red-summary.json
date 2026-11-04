@@ -1,0 +1,30 @@
+{
+  "name": "red",
+  "exit_code": 1,
+  "counting": "leaf tests, parents excluded; focused results overlap stable suite",
+  "counts": {
+    "passed": 0,
+    "failed": 4,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "all_results": {
+    "fail": 5
+  },
+  "skipped": [],
+  "failed": [
+    "github.com/vanderheijden86/b9s/pkg/config:TestSameProject_ResolvesSymlinkBeforeParent/absolute",
+    "github.com/vanderheijden86/b9s/pkg/config:TestSameProject_ResolvesSymlinkBeforeParent/relative",
+    "github.com/vanderheijden86/b9s/pkg/config:TestSameProject_ResolvesSymlinkBeforeParent/home",
+    "github.com/vanderheijden86/b9s/pkg/config:TestTouchRecent_UpdatesCheckoutThroughSymlinkParent"
+  ],
+  "package_failures": [
+    "github.com/vanderheijden86/b9s/pkg/config"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64",
+    "image_digest": "unavailable"
+  }
+}
