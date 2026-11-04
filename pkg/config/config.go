@@ -387,5 +387,10 @@ func expandHome(path string) string {
 	if err != nil {
 		return path
 	}
-	return filepath.Join(home, path[1:])
+	// Expansion must preserve components because symlinks change what ".." names.
+	suffix := strings.TrimLeft(path[1:], string(filepath.Separator))
+	if suffix == "" {
+		return home
+	}
+	return strings.TrimRight(home, string(filepath.Separator)) + string(filepath.Separator) + suffix
 }
