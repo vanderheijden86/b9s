@@ -14,7 +14,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -29,6 +31,113 @@ import (
 )
 
 const defaultWebListen = "127.0.0.1:7979"
+
+type webDoltDiscovery struct {
+	mu       sync.Mutex
+	root     string
+	source   datasource.DataSource
+	list     func(context.Context, datasource.DataSource) ([]string, error)
+	readable map[string]bool
+}
+
+func (d *webDoltDiscovery) projects(projects []config.Project) []config.Project {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	names, err := d.list(ctx, d.source)
+	if err == nil {
+		readable := make(map[string]bool, len(names))
+		for _, name := range names {
+			if !datasource.IsProjectDatabaseName(name) {
+				continue
+			}
+			if checkoutErr := d.ensureCheckout(name); checkoutErr != nil {
+				debug.Log("web: preparing discovery checkout for %s failed: %v", name, checkoutErr)
+				continue
+			}
+			readable[name] = true
+		}
+		d.readable = readable
+	}
+	if err != nil {
+		if datasource.ClassifyConnError(err) == datasource.ReachDenied {
+			d.readable = map[string]bool{}
+		}
+		debug.Log("web: discovering Dolt projects failed: %v", err)
+	}
+	candidates := withCheckoutsUnder(projects, d.root)
+	result := make([]config.Project, 0, len(candidates))
+	for _, p := range candidates {
+		database := d.managedDatabase(p)
+		if database != "" && d.readable != nil && !d.readable[database] {
+			continue
+		}
+		result = append(result, p)
+	}
+	return result
+}
+
+func (d *webDoltDiscovery) managedDatabase(p config.Project) string {
+	if p.ResolvedPath() == "" {
+		if p.Host == d.source.Path {
+			return p.Database
+		}
+		return ""
+	}
+	if filepath.Dir(filepath.Clean(p.ResolvedPath())) != filepath.Clean(d.root) {
+		return ""
+	}
+	sources, _ := datasource.DiscoverSources(datasource.DiscoveryOptions{
+		BeadsDir: filepath.Join(p.ResolvedPath(), ".beads"), SkipWorktreeSources: true,
+	})
+	for _, source := range sources {
+		if source.Type == datasource.SourceTypeDolt && source.Path == d.source.Path && source.User == d.source.User {
+			return source.Database
+		}
+	}
+	return ""
+}
+
+func (d *webDoltDiscovery) ensureCheckout(database string) error {
+	dir := filepath.Join(d.root, database)
+	metadata := filepath.Join(dir, ".beads", "metadata.json")
+	if _, err := os.Stat(dir); err == nil {
+		if d.managedDatabase(config.Project{Path: dir}) == database {
+			return nil
+		}
+		return fmt.Errorf("discovery checkout %s already belongs to another project", dir)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking discovery checkout: %w", err)
+	}
+	host, portText, err := net.SplitHostPort(d.source.Path)
+	if err != nil {
+		return fmt.Errorf("reading discovery endpoint: %w", err)
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		return fmt.Errorf("reading discovery port: %w", err)
+	}
+	data, err := json.Marshal(struct {
+		Database string `json:"database"`
+		Backend  string `json:"backend"`
+		Mode     string `json:"dolt_mode"`
+		Host     string `json:"dolt_server_host"`
+		Port     int    `json:"dolt_server_port"`
+		User     string `json:"dolt_server_user"`
+		Name     string `json:"dolt_database"`
+	}{"dolt", "dolt", "server", host, port, d.source.User, database})
+	if err != nil {
+		return fmt.Errorf("encoding discovery metadata: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(metadata), 0o700); err != nil {
+		return fmt.Errorf("creating discovery checkout: %w", err)
+	}
+	if err := os.WriteFile(metadata, data, 0o600); err != nil {
+		return fmt.Errorf("writing discovery metadata: %w", err)
+	}
+	return nil
+}
 
 // webSecretPath holds the secret the pairing token derives from. It lives
 // beside config.yaml so a paired phone stays paired across restarts.
@@ -47,6 +156,7 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	trustHeader := fs.String("trust-header", "", "Behind a login proxy: pair requests whose `header` names --owner, instead of a pairing link")
 	owner := fs.String("owner", "", "The `email` --trust-header must carry")
 	projectsRoot := fs.String("projects-root", "", "List every Beads checkout directly under `dir` in the project sheet, after the recent ones")
+	discoverDolt := fs.Bool("discover-dolt", false, "Refresh readable Dolt databases on project-list requests, creating checkouts under --projects-root")
 	filter := fs.String("filter", "", "Start the browser with this issue query applied")
 	public := fs.Bool("public", false, "Serve this project to anyone, with no pairing, on any address. For a disposable demo only: visitors can write")
 	banner := fs.String("banner", "", "Show this `text` in a thin strip above the board")
@@ -89,6 +199,10 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	}
 	if (*trustHeader == "") != (*owner == "") {
 		fmt.Fprintln(stderr, "b9s web: --trust-header and --owner go together")
+		return 2
+	}
+	if *discoverDolt && *projectsRoot == "" {
+		fmt.Fprintln(stderr, "b9s web: --discover-dolt requires --projects-root")
 		return 2
 	}
 	if *trustHeader != "" && *noToken {
@@ -137,6 +251,19 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 	if choice.Opened.DoltFailure != nil && choice.Opened.DoltFailure.User != "" {
 		startupUser = choice.Opened.DoltFailure.User
 	}
+	var discovery *webDoltDiscovery
+	if *discoverDolt {
+		if choice.Opened.Source.Type != datasource.SourceTypeDolt {
+			fmt.Fprintln(stderr, "b9s web: --discover-dolt requires a Dolt server startup project")
+			return 2
+		}
+		root, err := filepath.Abs(*projectsRoot)
+		if err != nil {
+			fmt.Fprintf(stderr, "b9s web: projects root: %v\n", err)
+			return 1
+		}
+		discovery = &webDoltDiscovery{root: root, source: choice.Opened.Source, list: datasource.ReadableProjectDatabases}
+	}
 
 	store := web.NewStore(appCfg.RefreshPollInterval())
 	defer store.Close()
@@ -166,7 +293,11 @@ func runWeb(args []string, stdout, stderr io.Writer) int {
 			if err != nil {
 				cfg = appCfg
 			}
-			return withCheckoutsUnder(ui.HeaderProjects(cfg.RecentProjects, recentFromTarget(store.Target())), *projectsRoot)
+			projects := ui.HeaderProjects(cfg.RecentProjects, recentFromTarget(store.Target()))
+			if discovery != nil {
+				return discovery.projects(projects)
+			}
+			return withCheckoutsUnder(projects, *projectsRoot)
 		},
 		Opened: func(p config.Project) {
 			if cfgErr == nil && !*public {
@@ -238,7 +369,7 @@ func checkPublicFlags(fs *flag.FlagSet, public bool, bannerLink string) error {
 	var conflict error
 	fs.Visit(func(f *flag.Flag) {
 		switch f.Name {
-		case "no-token", "new-token", "trust-header", "owner", "projects-root", "dev-assets":
+		case "no-token", "new-token", "trust-header", "owner", "projects-root", "discover-dolt", "dev-assets":
 			if conflict == nil {
 				conflict = fmt.Errorf("--public cannot be combined with --%s", f.Name)
 			}

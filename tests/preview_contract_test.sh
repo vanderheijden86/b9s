@@ -114,6 +114,8 @@ contains "tmux uses the exec wrapper" '/usr/local/bin/preview-tui' "$entrypoint"
 contains "startup records the selected project" '> /tmp/b9s-preview-project' "$entrypoint"
 contains "image installs the exec wrapper" 'COPY scripts/preview/preview-tui /usr/local/bin/preview-tui' "$(<"$PREVIEW/Dockerfile")"
 contains "preview serves the web board" "exec /usr/local/bin/b9s web --listen 0.0.0.0:7681" "$entrypoint"
+contains "preview web discovers readable databases at runtime under its project root" \
+  '--projects-root /data/projects --discover-dolt' "${entrypoint##*exec /usr/local/bin/b9s web }"
 contains "web board trusts the cluster-supplied viewer header" '--trust-header "$PREVIEW_VIEWER_HEADER" --owner "$PREVIEW_VIEWER"' "$entrypoint"
 contains "preview requires a viewer header" 'PREVIEW_VIEWER_HEADER:?required' "$entrypoint"
 contains "preview requires a viewer" 'PREVIEW_VIEWER:?required' "$entrypoint"

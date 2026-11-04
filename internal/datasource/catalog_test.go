@@ -2,14 +2,118 @@ package datasource
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
+
+func TestReadableProjectDatabasesRefreshesCatalog(t *testing.T) {
+	names := []string{"alpha"}
+	db := sql.OpenDB(catalogTestConnector{query: func(query string) (driver.Rows, error) {
+		if query == "SHOW DATABASES" {
+			return &catalogTestRows{names: append([]string(nil), names...)}, nil
+		}
+		return &catalogTestRows{}, nil
+	}})
+	defer db.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	for _, want := range [][]string{{"alpha"}, {"alpha", "beta"}, {"beta"}, {}} {
+		names = want
+		got, err := readableProjectDatabases(ctx, db)
+		if err != nil || strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Fatalf("catalog = %v, %v, want %v", got, err, want)
+		}
+	}
+}
+
+func TestReadableProjectDatabasesExcludesNonBeads(t *testing.T) {
+	var queries []string
+	db := sql.OpenDB(catalogTestConnector{query: func(query string) (driver.Rows, error) {
+		queries = append(queries, query)
+		if query == "SHOW DATABASES" {
+			return &catalogTestRows{names: []string{"mysql", "../escape", "bad`name", "plain", "denied", "gone", "beads"}}, nil
+		}
+		switch query {
+		case "SELECT 1 FROM `plain`.issues LIMIT 0":
+			return nil, &mysql.MySQLError{Number: 1146}
+		case "SELECT 1 FROM `denied`.issues LIMIT 0":
+			return nil, &mysql.MySQLError{Number: 1044}
+		case "SELECT 1 FROM `gone`.issues LIMIT 0":
+			return nil, &mysql.MySQLError{Number: 1049}
+		case "SELECT 1 FROM `beads`.issues LIMIT 0":
+			return &catalogTestRows{}, nil
+		default:
+			t.Fatalf("unsafe or system database probe: %s", query)
+			return nil, errors.New("unexpected query")
+		}
+	}})
+	defer db.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	got, err := readableProjectDatabases(ctx, db)
+	if err != nil || strings.Join(got, ",") != "beads" || len(queries) != 5 {
+		t.Fatalf("catalog = %v, %v, queries=%v", got, err, queries)
+	}
+}
+
+func TestReadableProjectDatabasesReportsTransientFailures(t *testing.T) {
+	for _, failureAt := range []string{"SHOW DATABASES", "SELECT 1 FROM `beads`.issues LIMIT 0"} {
+		t.Run(failureAt, func(t *testing.T) {
+			db := sql.OpenDB(catalogTestConnector{query: func(query string) (driver.Rows, error) {
+				if query == failureAt {
+					return nil, context.DeadlineExceeded
+				}
+				return &catalogTestRows{names: []string{"beads"}}, nil
+			}})
+			defer db.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if _, err := readableProjectDatabases(ctx, db); !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("transient error = %v, want deadline error", err)
+			}
+		})
+	}
+}
+
+type catalogTestConnector struct {
+	query func(string) (driver.Rows, error)
+}
+
+func (c catalogTestConnector) Connect(context.Context) (driver.Conn, error) { return c, nil }
+func (c catalogTestConnector) Driver() driver.Driver                        { return c }
+func (c catalogTestConnector) Open(string) (driver.Conn, error)             { return c, nil }
+func (c catalogTestConnector) Prepare(string) (driver.Stmt, error) {
+	return nil, errors.New("prepare not supported")
+}
+func (c catalogTestConnector) Close() error              { return nil }
+func (c catalogTestConnector) Begin() (driver.Tx, error) { return nil, errors.New("read only") }
+func (c catalogTestConnector) QueryContext(ctx context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return c.query(query)
+}
+
+type catalogTestRows struct{ names []string }
+
+func (r *catalogTestRows) Columns() []string { return []string{"Database"} }
+func (r *catalogTestRows) Close() error      { return nil }
+func (r *catalogTestRows) Next(dest []driver.Value) error {
+	if len(r.names) == 0 {
+		return io.EOF
+	}
+	dest[0], r.names = r.names[0], r.names[1:]
+	return nil
+}
 
 func TestClassifyConnError(t *testing.T) {
 	tests := []struct {
