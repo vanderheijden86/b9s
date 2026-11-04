@@ -1,0 +1,23 @@
+{
+  "command": [
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "environment": {
+    "GOFLAGS": "-v",
+    "outer_timeout_seconds": 900
+  },
+  "exit_code": 0,
+  "counts_including_subtests": {
+    "passed": 3366,
+    "failed": 0,
+    "skipped": 20
+  },
+  "top_level_counts": {
+    "passed": 2072,
+    "failed": 0,
+    "skipped": 18
+  }
+}

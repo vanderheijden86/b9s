@@ -1,0 +1,47 @@
+{
+  "command": [
+    "lane-browser",
+    "run",
+    "--project",
+    "/home/omnigent/workspace/b9s/web",
+    "--seconds",
+    "900",
+    "--",
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "web-gate"
+  ],
+  "environment": {
+    "architecture": "x86_64",
+    "browser_sandbox": "pod-boundary",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "graphics_threads": 2,
+    "kernel": "6.8.0-147-generic",
+    "native_runtime_sha256": "a32868da82a4a7bf3f0a736c570c8d28d79faba858fde32c43b6c2f9faa6b9a6",
+    "node": "v22.23.4",
+    "playwright": "1.63.0",
+    "go": "go1.25.5 linux/amd64",
+    "npm": "10.9.9",
+    "PW_TEST_REPORTER": "json",
+    "PLAYWRIGHT_JSON_OUTPUT_FILE": "/tmp/bd-jo57/web-gate.json",
+    "B9S_KEEP_TEST_FIXTURES": "1"
+  },
+  "counts": {
+    "passed": 434,
+    "failed": 0,
+    "skipped": 4,
+    "flaky": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "exit_code": 0,
+  "report": "/tmp/bd-jo57/web-gate.json",
+  "global_reporter_errors": [],
+  "exclusions_review": "All four skips are unchanged pre-existing device/viewport exclusions in memory.spec.ts, desktop.spec.ts and wide.spec.ts. No required test skipped."
+}
