@@ -1,5 +1,22 @@
 import { expect, open, test } from "./harness";
 
+test.beforeEach(async ({ page }) => {
+  page.on("pageerror", error => { throw error; });
+});
+
+const lifetimeTest = test.extend({
+  project: async ({ project, browser }, use) => {
+    await use(project);
+    expect(browser.contexts(), "browser contexts must close before the fixture server stops").toHaveLength(0);
+    expect(project.proc.exitCode).toBeNull();
+    expect(project.proc.signalCode).toBeNull();
+  },
+});
+
+lifetimeTest("the fixture server outlives browser contexts", async ({ page, project }) => {
+  await open(page, project);
+});
+
 // The phone board stacks every column as a box under the chip row, as mockup
 // A's phone board does (docs/adr/0052). shell.spec.ts measures the stack and
 // the fold at 360 and 412 px; these specs cover what happens inside a box.
@@ -106,10 +123,12 @@ test.describe("epic lanes inside a box", () => {
     });
   }
 
-  test("a card nested below a task names its parent on a third line", async ({ page, project }) => {
+  test("a nested card keeps its parent in details without a breadcrumb line", async ({ page, project }) => {
     await open(page, project);
     await page.locator('#bar [data-view="board"]').click();
-    await expect(page.locator('#bcol [data-card="t-deep"] .l3')).toContainText("↳ mid Gestures for status");
+    await expect(page.locator('#bcol [data-card="t-deep"] .l3')).toHaveCount(0);
     await expect(page.locator('#bcol [data-card="t-b1"] .l3')).toHaveCount(0);
+    await page.locator('#bcol [data-card="t-deep"]').click();
+    await expect(page.locator('.detail [data-nav="t-mid"]')).toContainText("Gestures for status");
   });
 });

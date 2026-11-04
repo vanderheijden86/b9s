@@ -5,6 +5,10 @@
 import { expect, open, SAMPLE, settled, test, type Project } from "./harness";
 import type { Locator, Page } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  page.on("pageerror", error => { throw error; });
+});
+
 const col = (page: Page, k: string) => page.locator(`#wboard .wcell[data-dcol="${k}"]`);
 const card = (page: Page, id: string) => page.locator(`#wboard [data-card="${id}"]`);
 
@@ -505,16 +509,20 @@ test.describe("a board taller than the window, with a lane that holds more cards
   });
 });
 
-test("a card is one line with its tags on the right, and opens under the cursor", async ({ page, project }) => {
+test("ordinary cards keep only urgent priority beside the title under the cursor", async ({ page, project }) => {
   await board(page, project);
-  await expect(card(page, "t-3").locator(".tags")).toHaveText("blocked 1");
-  await expect(card(page, "t-1").locator(".tags")).toHaveText("blocks 1P1");
+  await expect(card(page, "t-3").locator(".tags")).toHaveCount(0);
+  await expect(card(page, "t-1").locator(".tags")).toHaveText("P1");
   await expect(card(page, "t-2").locator(".tags")).toHaveCount(0);
   await expect(card(page, "t-2").locator(".l2")).toHaveCount(0);
   const h = (await card(page, "t-2").boundingBox())!.height;
-  expect(h).toBeLessThanOrEqual(32);
+  expect(h).toBeLessThanOrEqual(44);
+  await expect(card(page, "t-2")).toHaveCSS("border-top-width", "0px");
   await card(page, "t-2").click();
-  await expect(card(page, "t-2").locator(".l2")).toHaveCount(1);
+  await expect(card(page, "t-2")).toHaveClass(/sel/);
+  await expect(card(page, "t-2").locator(".l2, .l3")).toHaveCount(0);
+  expect((await card(page, "t-2").boundingBox())!.height).toBe(h);
+  await expect(page.locator('.detail[data-id="t-2"]')).toContainText("ui");
 });
 
 test.describe("hierarchy in a cell", () => {
