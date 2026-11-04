@@ -21,6 +21,10 @@ func projectTableModel(t *testing.T) (Model, string) {
 	if err := os.Mkdir(filepath.Join(checkout, ".beads"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	metadata := `{"backend":"dolt","dolt_mode":"server","dolt_server_host":"127.0.0.1","dolt_server_port":3306,"dolt_server_user":"bd_b9s","dolt_database":"b9s"}`
+	if err := os.WriteFile(filepath.Join(checkout, ".beads", "metadata.json"), []byte(metadata), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	cfg := config.Config{RecentProjects: []config.RecentProject{
 		{Name: "b9s", Database: "b9s", Host: "127.0.0.1:3306", Path: checkout},
 	}}
