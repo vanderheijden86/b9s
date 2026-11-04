@@ -1,0 +1,440 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/omnigent/workspace/b9s/web/node_modules/.bin/playwright",
+      "test",
+      "tests/live.spec.ts",
+      "--grep",
+      "leaving the page",
+      "--project",
+      "iphone",
+      "--workers=1"
+    ],
+    "configFile": "/home/omnigent/workspace/b9s/web/playwright.config.ts",
+    "rootDir": "/home/omnigent/workspace/b9s/web/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/home/omnigent/workspace/b9s/web/tests/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tokens",
+        "name": "tokens",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/tokens\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel",
+        "name": "pixel",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone",
+        "name": "iphone",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-safari",
+        "name": "desktop-safari",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-firefox",
+        "name": "desktop-firefox",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "ipad",
+        "name": "ipad",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-360",
+        "name": "phone-360",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-412",
+        "name": "phone-412",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-768",
+        "name": "tablet-768",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-1024",
+        "name": "tablet-1024",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1440",
+        "name": "desktop-1440",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1920",
+        "name": "desktop-1920",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "wide-2560",
+        "name": "wide-2560",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel-perf",
+        "name": "pixel-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone-perf",
+        "name": "iphone-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-perf",
+        "name": "tablet-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-perf",
+        "name": "desktop-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "live.spec.ts",
+      "file": "live.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "leaving the page cancels an in-flight live snapshot",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "iphone",
+              "projectName": "iphone",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6095,
+                  "error": {
+                    "message": "TimeoutError: page.waitForEvent: Timeout 5000ms exceeded while waiting for event \"requestfailed\"\n=========================== logs ===========================\nwaiting for event \"requestfailed\"\n============================================================",
+                    "stack": "TimeoutError: page.waitForEvent: Timeout 5000ms exceeded while waiting for event \"requestfailed\"\n=========================== logs ===========================\nwaiting for event \"requestfailed\"\n============================================================\n    at /home/omnigent/workspace/b9s/web/tests/live.spec.ts:45:26",
+                    "location": {
+                      "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                      "column": 26,
+                      "line": 45
+                    },
+                    "snippet": "  43 |   await snapshot;\n  44 |\n> 45 |   const cancelled = page.waitForEvent(\"requestfailed\", { predicate: request => request.url().endsWith(\"/api/snapshot\"), timeout: 5000 });\n     |                          ^\n  46 |   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent(\"pagehide\", { persisted: true })));\n  47 |   await cancelled;\n  48 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                        "column": 26,
+                        "line": 45
+                      },
+                      "message": "TimeoutError: page.waitForEvent: Timeout 5000ms exceeded while waiting for event \"requestfailed\"\n=========================== logs ===========================\nwaiting for event \"requestfailed\"\n============================================================\n\n  43 |   await snapshot;\n  44 |\n> 45 |   const cancelled = page.waitForEvent(\"requestfailed\", { predicate: request => request.url().endsWith(\"/api/snapshot\"), timeout: 5000 });\n     |                          ^\n  46 |   await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent(\"pagehide\", { persisted: true })));\n  47 |   await cancelled;\n  48 |\n    at /home/omnigent/workspace/b9s/web/tests/live.spec.ts:45:26"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-04T19:59:37.433Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "bd-calls",
+                      "contentType": "text/plain",
+                      "body": "KG5vbmUp"
+                    },
+                    {
+                      "name": "b9s-web-log",
+                      "contentType": "text/plain",
+                      "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLUdKMTBVVQoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6MzkwMzMvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/omnigent/workspace/b9s/web/test-results/live-leaving-the-page-cancels-an-in-flight-live-snapshot-iphone/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/omnigent/workspace/b9s/web/test-results/live-leaving-the-page-cancels-an-in-flight-live-snapshot-iphone/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                    "column": 26,
+                    "line": 45
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "b37044e47a10d94689f2-d02eb779ebb0a01086d2",
+          "file": "live.spec.ts",
+          "line": 36,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-04T19:59:36.059Z",
+    "duration": 7937.902,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

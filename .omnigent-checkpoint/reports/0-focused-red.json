@@ -1,0 +1,509 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/omnigent/workspace/b9s/web/node_modules/.bin/playwright",
+      "test",
+      "tests/live.spec.ts",
+      "--grep",
+      "failed live snapshot|fixture server outlives",
+      "--project",
+      "iphone",
+      "--workers=1"
+    ],
+    "configFile": "/home/omnigent/workspace/b9s/web/playwright.config.ts",
+    "rootDir": "/home/omnigent/workspace/b9s/web/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/home/omnigent/workspace/b9s/web/tests/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tokens",
+        "name": "tokens",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/tokens\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel",
+        "name": "pixel",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone",
+        "name": "iphone",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-safari",
+        "name": "desktop-safari",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-firefox",
+        "name": "desktop-firefox",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "ipad",
+        "name": "ipad",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-360",
+        "name": "phone-360",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-412",
+        "name": "phone-412",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-768",
+        "name": "tablet-768",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-1024",
+        "name": "tablet-1024",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1440",
+        "name": "desktop-1440",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1920",
+        "name": "desktop-1920",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "wide-2560",
+        "name": "wide-2560",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel-perf",
+        "name": "pixel-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone-perf",
+        "name": "iphone-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-perf",
+        "name": "tablet-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-perf",
+        "name": "desktop-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "live.spec.ts",
+      "file": "live.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "a failed live snapshot keeps the last snapshot visible until reconnect",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "iphone",
+              "projectName": "iphone",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5794,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#stale')\nExpected: visible\nReceived: hidden\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#stale') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#stale')\u001b[22m\n\u001b[2m    14 × locator resolved to <div hidden=\"\" id=\"stale\" class=\"stale\" role=\"status\"></div>\u001b[22m\n\u001b[2m       - unexpected value \"hidden\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#stale')\nExpected: visible\nReceived: hidden\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#stale') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#stale')\u001b[22m\n\u001b[2m    14 × locator resolved to <div hidden=\"\" id=\"stale\" class=\"stale\" role=\"status\"></div>\u001b[22m\n\u001b[2m       - unexpected value \"hidden\"\u001b[22m\n\n    at /home/omnigent/workspace/b9s/web/tests/live.spec.ts:19:40",
+                    "location": {
+                      "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                      "column": 40,
+                      "line": 19
+                    },
+                    "snippet": "  17 |   project.writeIssues([...SAMPLE, { id: \"t-9\", title: \"[9] Written while disconnected\", priority: 1 }]);\n  18 |\n> 19 |   await expect(page.locator(\"#stale\")).toBeVisible();\n     |                                        ^\n  20 |   await expect(page.locator(\"#toast\")).toContainText(\"Reload failed:\");\n  21 |   await expect(row(page, \"t-1\")).toBeVisible();\n  22 |   await page.unroute(\"**/api/snapshot\");"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                        "column": 40,
+                        "line": 19
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#stale')\nExpected: visible\nReceived: hidden\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#stale') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#stale')\u001b[22m\n\u001b[2m    14 × locator resolved to <div hidden=\"\" id=\"stale\" class=\"stale\" role=\"status\"></div>\u001b[22m\n\u001b[2m       - unexpected value \"hidden\"\u001b[22m\n\n\n  17 |   project.writeIssues([...SAMPLE, { id: \"t-9\", title: \"[9] Written while disconnected\", priority: 1 }]);\n  18 |\n> 19 |   await expect(page.locator(\"#stale\")).toBeVisible();\n     |                                        ^\n  20 |   await expect(page.locator(\"#toast\")).toContainText(\"Reload failed:\");\n  21 |   await expect(row(page, \"t-1\")).toBeVisible();\n  22 |   await page.unroute(\"**/api/snapshot\");\n    at /home/omnigent/workspace/b9s/web/tests/live.spec.ts:19:40"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-04T19:58:29.093Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "bd-calls",
+                      "contentType": "text/plain",
+                      "body": "KG5vbmUp"
+                    },
+                    {
+                      "name": "b9s-web-log",
+                      "contentType": "text/plain",
+                      "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLXlQazRrOQoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6Mzk2MTUvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/omnigent/workspace/b9s/web/test-results/live-a-failed-live-snapsho-659dc-hot-visible-until-reconnect-iphone/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/omnigent/workspace/b9s/web/test-results/live-a-failed-live-snapsho-659dc-hot-visible-until-reconnect-iphone/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                    "column": 40,
+                    "line": 19
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "b37044e47a10d94689f2-a49c61ef875fa68d431b",
+          "file": "live.spec.ts",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "the fixture server outlives the browser context",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "iphone",
+              "projectName": "iphone",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 646,
+                  "error": {
+                    "message": "Error: the browser context must close before its server stops\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m",
+                    "stack": "Error: the browser context must close before its server stops\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n    at _BrowserContext.<anonymous> (/home/omnigent/workspace/b9s/web/tests/live.spec.ts:32:96)",
+                    "location": {
+                      "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                      "column": 96,
+                      "line": 32
+                    },
+                    "snippet": "  30 |   await open(page, project);\n  31 |   context.on(\"close\", () => {\n> 32 |     expect.soft(project.proc.killed, \"the browser context must close before its server stops\").toBe(false);\n     |                                                                                                ^\n  33 |   });\n  34 | });\n  35 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                        "column": 96,
+                        "line": 32
+                      },
+                      "message": "Error: the browser context must close before its server stops\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\n  30 |   await open(page, project);\n  31 |   context.on(\"close\", () => {\n> 32 |     expect.soft(project.proc.killed, \"the browser context must close before its server stops\").toBe(false);\n     |                                                                                                ^\n  33 |   });\n  34 | });\n  35 |\n    at _BrowserContext.<anonymous> (/home/omnigent/workspace/b9s/web/tests/live.spec.ts:32:96)"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-04T19:58:35.863Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/omnigent/workspace/b9s/web/test-results/live-the-fixture-server-outlives-the-browser-context-iphone/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/omnigent/workspace/b9s/web/test-results/live-the-fixture-server-outlives-the-browser-context-iphone/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/omnigent/workspace/b9s/web/tests/live.spec.ts",
+                    "column": 96,
+                    "line": 32
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "b37044e47a10d94689f2-a2c9c2cd80875b3356dd",
+          "file": "live.spec.ts",
+          "line": 29,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-04T19:57:31.813Z",
+    "duration": 65057.376000000004,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}
