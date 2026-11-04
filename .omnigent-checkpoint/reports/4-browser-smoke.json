@@ -1,0 +1,21 @@
+{
+  "passed": 3,
+  "failed": 0,
+  "results": [
+    {
+      "browser": "chromium",
+      "status": "passed",
+      "textWidth": 107.703125
+    },
+    {
+      "browser": "firefox",
+      "status": "passed",
+      "textWidth": 107.76667022705078
+    },
+    {
+      "browser": "webkit",
+      "status": "passed",
+      "textWidth": 107.703125
+    }
+  ]
+}

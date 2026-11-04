@@ -1,0 +1,15 @@
+Lockfile only changed DOMPurify version, resolved URL and integrity: 3.4.16 -> 3.4.17.
+Shipped browser asset unchanged; SHA256 581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8
+Durable audit snapshot equals completed run: audit-before.json
+Durable audit snapshot equals completed run: audit-after.json
+Changed tracked files:
+pkg/web/dist/source.sha256
+web/package-lock.json
+
+New files:
+docs/security/bd-969k-audit-after.json
+docs/security/bd-969k-audit-before.json
+docs/security/web-dependency-audit.md
+
+Final whitespace check exit 0. No deletion, source logic, ADR, override, package constraint or major dependency change.
+This is implementer self-review, not the independent review gate.
