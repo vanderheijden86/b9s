@@ -1,0 +1,112 @@
+
+> test:guards
+> node --test --test-timeout=20000 tests/poll-guard.mjs
+
+TAP version 13
+# Subtest: original
+ok 1 - original
+  ---
+  duration_ms: 97.425659
+  type: 'test'
+  ...
+# Subtest: multiline
+ok 2 - multiline
+  ---
+  duration_ms: 10.374127
+  type: 'test'
+  ...
+# Subtest: nestedAssertion
+ok 3 - nestedAssertion
+  ---
+  duration_ms: 7.943735
+  type: 'test'
+  ...
+# Subtest: splitAssertion
+ok 4 - splitAssertion
+  ---
+  duration_ms: 9.291672
+  type: 'test'
+  ...
+# Subtest: locatorEvaluation
+ok 5 - locatorEvaluation
+  ---
+  duration_ms: 7.525905
+  type: 'test'
+  ...
+# Subtest: evaluationOutsidePoll
+ok 6 - evaluationOutsidePoll
+  ---
+  duration_ms: 11.346293
+  type: 'test'
+  ...
+# Subtest: quotedAndCommentedDelimiters
+ok 7 - quotedAndCommentedDelimiters
+  ---
+  duration_ms: 4.94166
+  type: 'test'
+  ...
+# Subtest: evaluationTextOnly
+ok 8 - evaluationTextOnly
+  ---
+  duration_ms: 3.215712
+  type: 'test'
+  ...
+# Subtest: evaluationAfterSplitPoll
+ok 9 - evaluationAfterSplitPoll
+  ---
+  duration_ms: 7.568567
+  type: 'test'
+  ...
+# Subtest: templateInterpolation
+ok 10 - templateInterpolation
+  ---
+  duration_ms: 6.549485
+  type: 'test'
+  ...
+# Subtest: regexDelimiter
+ok 11 - regexDelimiter
+  ---
+  duration_ms: 5.725333
+  type: 'test'
+  ...
+# Subtest: nestedTemplateInterpolation
+ok 12 - nestedTemplateInterpolation
+  ---
+  duration_ms: 5.090005
+  type: 'test'
+  ...
+# Subtest: regexCharacterClass
+ok 13 - regexCharacterClass
+  ---
+  duration_ms: 4.993179
+  type: 'test'
+  ...
+# Subtest: templateTextOnly
+ok 14 - templateTextOnly
+  ---
+  duration_ms: 3.347049
+  type: 'test'
+  ...
+# Subtest: invalid syntax fails the guard
+ok 15 - invalid syntax fails the guard
+  ---
+  duration_ms: 4.446551
+  type: 'test'
+  ...
+# Subtest: browser sources avoid page.evaluate inside expect.poll
+ok 16 - browser sources avoid page.evaluate inside expect.poll
+  ---
+  duration_ms: 746.308571
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1195.036505
+
+exit_code=0
