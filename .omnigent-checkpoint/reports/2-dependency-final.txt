@@ -1,0 +1,4 @@
+Closed dependency bd-jo57 delivered on origin/omnigent/bd-jo57 at e9db50a812b9c8f9fe1255f203a867384adb109b
+dependency_fix_ancestor_assigned_base_exit=1
+dependency_fix_ancestor_HEAD_exit=1
+No dependency fix was copied, merged, or cherry-picked. Current web gate exited 0,430 passed,0 failed,4 declared exclusions.

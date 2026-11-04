@@ -1,0 +1,254 @@
+{
+  "browser": {
+    "red": {
+      "exit_code": 1,
+      "stats": {
+        "startTime": "2026-11-04T20:38:42.752Z",
+        "duration": 62179.024,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "global_errors": []
+    },
+    "green": {
+      "exit_code": 0,
+      "stats": {
+        "startTime": "2026-11-04T20:40:56.333Z",
+        "duration": 57254.842000000004,
+        "expected": 27,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "global_errors": []
+    },
+    "tablet-regression": {
+      "exit_code": 0,
+      "stats": {
+        "startTime": "2026-11-04T20:42:06.677Z",
+        "duration": 36563.879,
+        "expected": 12,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "global_errors": []
+    },
+    "web-gate": {
+      "exit_code": 0,
+      "stats": {
+        "startTime": "2026-11-04T20:43:21.263Z",
+        "duration": 245113.39500000002,
+        "expected": 430,
+        "skipped": 4,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "global_errors": []
+    }
+  },
+  "stable": {
+    "command": [
+      "timeout",
+      "660s",
+      "make",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "test-stable"
+    ],
+    "environment": {
+      "GOFLAGS": "-v -count=1"
+    },
+    "exit_code": 0,
+    "including_subtests": {
+      "PASS": 3345,
+      "SKIP": 20
+    },
+    "top_level": {
+      "PASS": 2057,
+      "SKIP": 18
+    },
+    "unfinished_observed_runs": [],
+    "failed_tests": [],
+    "skipped_tests": [
+      "TestProbeMemory_RealBinaries",
+      "TestS3StoreContract",
+      "TestS3PutRejectsShortRead",
+      "TestS3PutRejectsLongRead",
+      "TestDoltReader_NewAndClose",
+      "TestDoltReader_LoadIssues",
+      "TestDoltReader_GetHeadHash",
+      "TestDoltWatcher_NewAndStop",
+      "TestDoltWatcher_StartIsIdempotent",
+      "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "TestMemoryPreviewGraphReadTiming",
+      "TestMemoryReadResearchStages",
+      "TestMemoryReadResearchTransportParity",
+      "TestMemoryReadResearchConcurrentWriter",
+      "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "TestStress_SustainedWrites",
+      "TestStress_BurstWrites",
+      "TestStress_MemoryPressure"
+    ],
+    "packages": [
+      "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t0.334s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.294s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.014s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t8.940s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.479s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.008s",
+      "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t1.214s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.052s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.006s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.005s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t18.027s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.011s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.010s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.009s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t41.190s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.158s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.007s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.004s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.380s",
+      "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t1.604s",
+      "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.050s"
+    ],
+    "flaky": "unknown, no repeated-run inventory",
+    "unrun": "unknown, no full test inventory"
+  },
+  "static_checks": [
+    {
+      "check": "web-typecheck",
+      "command": [
+        "timeout",
+        "180s",
+        "npm",
+        "--prefix",
+        "/home/omnigent/workspace/b9s/web",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bd-e5u3.20.15-fresh/web-typecheck.log",
+      "case_counts": "not applicable, compiler/static check"
+    },
+    {
+      "check": "web-build",
+      "command": [
+        "timeout",
+        "180s",
+        "npm",
+        "--prefix",
+        "/home/omnigent/workspace/b9s/web",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bd-e5u3.20.15-fresh/web-build.log",
+      "case_counts": "not applicable, compiler/static check"
+    },
+    {
+      "check": "go-build",
+      "command": [
+        "timeout",
+        "240s",
+        "go",
+        "build",
+        "./..."
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bd-e5u3.20.15-fresh/go-build.log",
+      "case_counts": "not applicable, compiler/static check"
+    },
+    {
+      "check": "go-vet",
+      "command": [
+        "timeout",
+        "240s",
+        "go",
+        "vet",
+        "./..."
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bd-e5u3.20.15-fresh/go-vet.log",
+      "case_counts": "not applicable, compiler/static check"
+    },
+    {
+      "check": "diff-check",
+      "command": [
+        "timeout",
+        "30s",
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bd-e5u3.20.15-fresh/diff-check.log",
+      "case_counts": "not applicable, compiler/static check"
+    }
+  ],
+  "node_guards": {
+    "red": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "green": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "tablet-regression": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    "web-gate": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "docs_guards_within_stable": {
+    "TestReadmeStaysAFrontPage": true,
+    "TestReadmeHasNoEmDashes": true,
+    "TestRelativeLinksResolve": true
+  },
+  "smoke": {
+    "passed": 3,
+    "failed": 0,
+    "results": [
+      {
+        "browser": "chromium",
+        "status": "passed",
+        "textWidth": 107.703125
+      },
+      {
+        "browser": "firefox",
+        "status": "passed",
+        "textWidth": 107.76667022705078
+      },
+      {
+        "browser": "webkit",
+        "status": "passed",
+        "textWidth": 107.703125
+      }
+    ]
+  },
+  "required_check_failures": [],
+  "required_prerequisite_integration_gap": {
+    "issue": "bd-jo57",
+    "status": "closed, delivered separately",
+    "base_ancestor_exit": 1,
+    "HEAD_ancestor_exit": 1
+  },
+  "unrelated_followup": [
+    "bd-969k"
+  ]
+}

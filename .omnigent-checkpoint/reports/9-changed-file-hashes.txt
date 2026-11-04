@@ -1,0 +1,2 @@
+97cdbe4ffaf90e21f9dbede4a3e73b7c0f12fdc84ddfe42834606e3e16d0c425  /home/omnigent/workspace/b9s/web/tests/board-detail.spec.ts
+20bd69b406ba30f2a48375c8f24c16bc996c9c5248776b4470762ee70f836abe  /home/omnigent/workspace/b9s/docs/testing.md
