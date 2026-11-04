@@ -1,0 +1,14 @@
+Task: bd-hsqf. Role: implementer. Repository: /home/omnigent/workspace/b9s.
+Initial checkout: clean main at 3945b45ab6f3932b0195f3482d6cd0d2025d5ecb.
+Fetched base: origin/main at 3945b45ab6f3932b0195f3482d6cd0d2025d5ecb, ref verified.
+Delivery: omnigent/bd-hsqf, newly created from origin/main, HEAD 3945b45ab6f3932b0195f3482d6cd0d2025d5ecb.
+Local delivery branch absent before creation. Exact remote probe: timeout 60s git ls-remote --exit-code --heads origin omnigent/bd-hsqf exited 2, absent.
+Required commits: none. Required-commit ancestry checks: not applicable.
+Additional ancestry checks: origin/main is ancestor of HEAD (exit 0). PR source parent c62c9bd39e89fa20f751982e6c75aef3e8fc1f2f is ancestor of origin/main and HEAD (both exit 0).
+Source: open PR https://github.com/vanderheijden86/b9s/pull/35, target main, head omnigent/bd-olpr at 03a5dbed3625286a8a4bcdff468204c33fb23521.
+PR contains one commit: fix(web): recover stale CSRF sessions after server restart, Refs: bd-olpr. Parent/common base c62c9bd39e89fa20f751982e6c75aef3e8fc1f2f.
+Source branch fetched explicitly into origin/omnigent/bd-olpr. Initial single-branch fetch populated FETCH_HEAD only, so an explicit refspec was required. No missing source work.
+Source changes: exact CSRF 403 triggers session refresh and one POST replay, preserved idempotency key, shared network retry cap, API regressions, bounded restart harness, real restart browser test, documentation and embedded bundle.
+Checkpoint inspect: exit 2, no checkpoint exists for this task. Fresh implementation permitted.
+Instructions read: baseline AGENTS, project AGENTS, lane-runtime, docs/testing, docs/ARCHITECTURE, ADR 0019, 0020, 0021, 0059.
+No source edits, commits or pushes made during preflight.
