@@ -301,44 +301,19 @@ const lanesShown = () => S.board.lanes !== "off" && S.board.group !== "type";
 /** railShown says whether the board draws the epic rail, whose lanes step through their heights (LaneHeight) rather than fold. */
 export const railShown = (): boolean => split() && S.board.lanes === "rail" && lanesShown();
 
-/**
- * parentLineHTML names a card's direct parent when its lane header names only
- * the epic above it, so a grandchild does not read as a child of the epic.
- */
-function parentLineHTML(i: Item): string {
-  const p = i.parent ? get(i.parent) : undefined;
-  if (!p || !lanesShown() || p.id === laneOf(i)) return "";
-  if (S.cursor !== i.id && i.parent && cellIds.has(i.parent)) return "";
-  return `<div class="l3">↳ <span class="e">${esc(shortId(p.id))}</span> ${esc(p.t)}</div>`;
-}
-
-/**
- * cardTagsHTML are a card's right-aligned tags in the terminal's order
- * (docs/adr/0030): the open blocker, the dispatcher lane, the downstream
- * count, and P0 or P1. Lower priorities and the age wait for the open card.
- */
+/** Urgent priorities stay visible while secondary metadata lives in issue details (ADR 0065). */
 function cardTagsHTML(i: Item): string {
-  const tags: string[] = [];
-  const ob = i.closed_like ? [] : openBlockers(i);
-  if (ob.length) tags.push(`<span class="tb">blocked ${esc(shortId(ob[0]))}</span>`);
-  const stage = i.labels.find(l => l.startsWith("lane-stage="));
-  if (stage) tags.push(`<span class="tl">lane: ${esc(stage.slice(11).trim())}</span>`);
-  const bl = blocksOf(i).filter(x => !x.closed_like).length;
-  if (bl) tags.push(`<span class="tk">blocks ${bl}</span>`);
-  if (i.priority <= 1) tags.push(`<span class="tp">P${i.priority}</span>`);
-  return tags.length ? `<span class="tags">${tags.join("")}</span>` : "";
+  return i.priority <= 1 ? `<span class="tags"><span class="tp">P${i.priority}</span></span>` : "";
 }
 
 /**
- * cardHTML draws a card as one line: type icon, ID, title and tags. The card
- * under the cursor opens into a box with the wrapped title, the meta line and
- * the parent. depth indents a card below its parent in the same cell.
+ * depth preserves hierarchy within a cell without repeating parent breadcrumbs.
+ * Selection wraps the title while issue details carry the complete metadata.
  */
 function cardHTML(i: Item, depth = 0): string {
   const st = stOf(eff(i));
   const sel = S.cursor === i.id;
-  const open = sel ? `${l2HTML(i, { proj: true, status: S.board.group !== "status" })}` : "";
-  return `<div class="card ${sel ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="button" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--d:${depth}"><div class="l1">${statusDotHTML(eff(i))}<span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span>${cardTagsHTML(i)}</div>${open}${parentLineHTML(i)}</div>`;
+  return `<div class="card ${sel ? "sel" : ""} ${S.flash.has(i.id) ? "flash" : ""}" data-card="${esc(i.id)}" tabindex="0" role="button" aria-label="${esc(shortId(i.id) + " " + i.t + ", " + st.w)}" style="--d:${depth}"><div class="l1">${statusDotHTML(eff(i))}<span class="id">${esc(shortId(i.id))}</span><span class="t">${esc(i.t)}</span>${cardTagsHTML(i)}</div></div>`;
 }
 
 /**
@@ -379,14 +354,8 @@ export function treeOrder(arr: Item[]): [Item, number][] {
   return out;
 }
 
-/** cellIds are the cards of the cell being drawn, so a card indented under its parent skips the parent line. */
-let cellIds = new Set<string>();
-
 function cellCards(arr: Item[]): string {
-  cellIds = new Set(arr.map(i => i.id));
-  const html = treeOrder(arr).map(([i, d]) => cardHTML(i, d)).join("");
-  cellIds = new Set();
-  return html;
+  return treeOrder(arr).map(([i, d]) => cardHTML(i, d)).join("");
 }
 
 /** laneKeys orders epic lanes the way both boards do: biggest first, loose cards last. */
