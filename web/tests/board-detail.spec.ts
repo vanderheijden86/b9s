@@ -1,5 +1,10 @@
 import type { Page } from "@playwright/test";
 import { expect, open, test } from "./harness";
+import { sizeClassOf } from "../src/util";
+
+test.beforeEach(async ({ page }) => {
+  page.on("pageerror", error => { throw error; });
+});
 
 async function tokenColor(page: Page, token: string): Promise<string> {
   return page.evaluate(t => {
@@ -63,12 +68,12 @@ test("board cards, epic lanes and rich detail use the calm look in this size cla
   const text = await tokenColor(page, "--text");
   const textSoft = await tokenColor(page, "--text-soft");
   const dangerColor = await tokenColor(page, "--danger");
-  const raised = await tokenColor(page, "--surface-raised");
 
   await page.locator('#bar [data-view="board"]').click();
   const card = page.locator('[data-card="d-task"]');
   await expect(card).toBeVisible();
-  await expect(card).toHaveCSS("background-color", raised);
+  await expect(card).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(card).toHaveCSS("border-top-width", "0px");
   await expect(card.locator(".tags .tp")).toHaveCSS("color", muted);
   await expect.poll(() => card.locator(".st").evaluate(el => getComputedStyle(el).backgroundColor)).toBe(dangerColor);
 
@@ -88,6 +93,62 @@ test("board cards, epic lanes and rich detail use the calm look in this size cla
   await expect(detail.locator(".cm .who b").first()).toHaveCSS("color", textSoft);
   await expect(detail.locator(".pill").filter({ hasText: /open/ })).toHaveCSS("color", muted);
   await expect.poll(() => detail.locator(".pill.status .sdot").evaluate(el => getComputedStyle(el).backgroundColor)).toBe(dangerColor);
+});
+
+test.describe("title-focused board rows", () => {
+  test.use({
+    fixture: {
+      issues: [
+        { id: "c-epic", title: "Epic: Compact checkout", type: "epic", description: "Ship checkout. More context.", labels: ["checkout"], assignee: "alice" },
+        { id: "c-parent", title: "Checkout service", type: "feature", parent: "c-epic", status: "in_progress", priority: 1 },
+        ...Array.from({ length: 16 }, (_, n) => ({
+          id: `c-${n}`, title: `Checkout task ${n}`, parent: "c-parent",
+          status: n < 8 ? "open" : "in_progress", priority: 2,
+          labels: ["ui", "lane-stage=tests"], assignee: "bob", description: "Complete issue context.",
+        })),
+      ],
+    },
+  });
+
+  test("density, selected rows and epic context survive opening issue details", async ({ page, project }, info) => {
+    await open(page, project);
+    await page.locator('#bar [data-view="board"]').click();
+    const row = page.locator('[data-card="c-0"]');
+    await expect(row).toBeVisible();
+    await expect(row.locator(".l2, .l3, .tags")).toHaveCount(0);
+    await expect(row).toHaveCSS("border-top-width", "0px");
+    const sizeClass = sizeClassOf(page.viewportSize()!.width);
+    await expect(page.locator("#app")).toHaveClass(new RegExp(`(^| )${sizeClass}( |$)`));
+    const touch = sizeClass === "phone" || sizeClass === "tablet";
+    const rowHeight = (await row.boundingBox())!.height;
+    if (touch) expect(rowHeight).toBeGreaterThanOrEqual(44);
+    else expect(rowHeight).toBeLessThanOrEqual(26);
+    const epic = page.locator('[data-epic="c-epic"]');
+    if (sizeClass !== "phone") {
+      await expect(epic.locator(".es")).toHaveText("Ship checkout.");
+      await expect(epic.locator(".en")).toHaveText("0/17 · P1 1");
+      await expect(epic.locator(".ec")).toHaveText("wip 9·ready 8");
+      await expect(epic.locator(".em")).toContainText("#checkout");
+      await expect(epic.locator(".em")).toContainText("@alice");
+    }
+    await info.attach("compact-board", { body: await page.screenshot(), contentType: "image/png" });
+    await row.click();
+    await expect(row).toHaveClass(/sel/);
+    await expect(row.locator(".l2, .l3, .tags")).toHaveCount(0);
+    const detail = page.locator('.detail[data-id="c-0"]');
+    await expect(detail).toContainText("Complete issue context.");
+    await expect(detail).toContainText("bob");
+    await expect(detail).toContainText("lane-stage=tests");
+    const parent = detail.locator('[data-nav="c-parent"]');
+    await expect(parent).toContainText("Checkout service");
+    await info.attach("selected-board", { body: await page.screenshot(), contentType: "image/png" });
+    await parent.click();
+    await expect(page.locator(".detail")).toHaveAttribute("data-id", "c-parent");
+    await info.attach("row-density", {
+      body: JSON.stringify({ rowHeight, rowsPer240px: Math.floor(240 / rowHeight), touchTarget: touch }),
+      contentType: "application/json",
+    });
+  });
 });
 
 test("search, sheets, projects and Memory use the calm look in this size class", async ({ page, project }) => {
