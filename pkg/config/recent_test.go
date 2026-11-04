@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func recent(name string) RecentProject {
@@ -46,6 +47,164 @@ func TestTouchRecent_KeepsSlotOfExistingProject(t *testing.T) {
 	}
 	if got, want := recentNames(cfg.RecentProjects), []string{"a", "b", "c"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("recent = %v, want %v", got, want)
+	}
+}
+
+func TestTouchRecent_UpdatesCheckoutDatabase(t *testing.T) {
+	path := writeDoltProject(t, t.TempDir(), "checkout", "current")
+	current, ok := RecentFromCheckout("checkout", path)
+	if !ok {
+		t.Fatal("RecentFromCheckout did not discover the checkout")
+	}
+	stale := current
+	stale.Database = "stale"
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{recent("first"), stale, recent("last")}
+
+	if !cfg.TouchRecent(current) {
+		t.Fatal("TouchRecent must report the database change")
+	}
+	want := []RecentProject{recent("first"), current, recent("last")}
+	if !reflect.DeepEqual(cfg.RecentProjects, want) {
+		t.Fatalf("recent = %+v, want %+v", cfg.RecentProjects, want)
+	}
+	if cfg.TouchRecent(current) {
+		t.Error("touching the current entry must report no change")
+	}
+}
+
+func TestTouchRecent_CollapsesStaleCheckoutEntries(t *testing.T) {
+	current := RecentProject{Name: "checkout", Path: t.TempDir(), Host: "localhost:3306", Database: "current"}
+	stale := current
+	stale.Database = "stale"
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{recent("first"), stale, recent("last"), current}
+
+	cfg.TouchRecent(current)
+
+	want := []RecentProject{recent("first"), current, recent("last")}
+	if !reflect.DeepEqual(cfg.RecentProjects, want) {
+		t.Errorf("recent = %+v, want %+v", cfg.RecentProjects, want)
+	}
+}
+
+func TestTouchRecent_UpdatesCheckoutBehindCatalogEntry(t *testing.T) {
+	current := RecentProject{Name: "checkout", Path: t.TempDir(), Host: "localhost:3306", Database: "current"}
+	stale := current
+	stale.Database = "stale"
+	catalog := current
+	catalog.Path = ""
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{catalog, recent("other"), stale}
+
+	if !cfg.TouchRecent(current) {
+		t.Fatal("TouchRecent must refresh the checkout even when its catalog entry comes first")
+	}
+	want := []RecentProject{current, recent("other")}
+	if !reflect.DeepEqual(cfg.RecentProjects, want) {
+		t.Errorf("recent = %+v, want %+v", cfg.RecentProjects, want)
+	}
+}
+
+func TestTouchRecent_UpdatesSymlinkedCheckoutDatabase(t *testing.T) {
+	root := t.TempDir()
+	path := writeDoltProject(t, root, "checkout", "current")
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(path, alias); err != nil {
+		t.Fatal(err)
+	}
+	current := RecentProject{Name: "checkout", Path: path, Host: "localhost:3306", Database: "current"}
+	stale := current
+	stale.Path, stale.Database = alias, "stale"
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{stale}
+
+	cfg.TouchRecent(current)
+
+	if !reflect.DeepEqual(cfg.RecentProjects, []RecentProject{current}) {
+		t.Errorf("recent = %+v, want only %+v", cfg.RecentProjects, current)
+	}
+}
+
+func TestRecentProject_SameProjectIdentity(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", root)
+	t.Chdir(root)
+	local := RecentProject{Path: filepath.Join(root, "checkout"), Host: "localhost:3306", Database: "db"}
+	cases := []struct {
+		name  string
+		other RecentProject
+		same  bool
+	}{
+		{"changed database", RecentProject{Path: local.Path, Host: local.Host, Database: "new"}, true},
+		{"different host", RecentProject{Path: local.Path, Host: "remote:3306", Database: local.Database}, false},
+		{"different path", RecentProject{Path: filepath.Join(root, "other"), Host: local.Host, Database: local.Database}, false},
+		{"pathless same database", RecentProject{Host: local.Host, Database: local.Database}, true},
+		{"pathless different database", RecentProject{Host: local.Host, Database: "other"}, false},
+		{"pathless different host", RecentProject{Host: "remote:3306", Database: local.Database}, false},
+		{"missing path cleaned", RecentProject{Path: local.Path + "/../checkout", Host: local.Host}, true},
+		{"home expanded", RecentProject{Path: "~/checkout", Host: local.Host}, true},
+		{"relative path", RecentProject{Path: "checkout", Host: local.Host}, true},
+		{"empty identity", RecentProject{}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := local.SameProject(tc.other); got != tc.same {
+				t.Errorf("SameProject = %v, want %v", got, tc.same)
+			}
+			if got := tc.other.SameProject(local); got != tc.same {
+				t.Errorf("reverse SameProject = %v, want %v", got, tc.same)
+			}
+		})
+	}
+}
+
+func TestTouchRecent_LockedListKeepsCheckoutDatabase(t *testing.T) {
+	stale := RecentProject{Path: t.TempDir(), Host: "localhost:3306", Database: "stale"}
+	current := stale
+	current.Database = "current"
+	cfg := DefaultConfig()
+	cfg.LockRecent = true
+	cfg.RecentProjects = []RecentProject{stale}
+	if cfg.TouchRecent(current) || !reflect.DeepEqual(cfg.RecentProjects, []RecentProject{stale}) {
+		t.Errorf("locked list changed: %+v", cfg.RecentProjects)
+	}
+}
+
+func TestTouchRecent_PreservesCheckoutOpenedAt(t *testing.T) {
+	stale := RecentProject{Path: t.TempDir(), Host: "localhost:3306", Database: "stale", OpenedAt: time.Unix(100, 0)}
+	current := stale
+	current.Database, current.OpenedAt = "current", time.Time{}
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{stale}
+	cfg.TouchRecent(current)
+	if len(cfg.RecentProjects) != 1 || !cfg.RecentProjects[0].OpenedAt.Equal(stale.OpenedAt) {
+		t.Errorf("recent = %+v, want the existing opened_at", cfg.RecentProjects)
+	}
+}
+
+func TestSaveRecentTo_KeepsCurrentCheckoutDatabase(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	stale := RecentProject{Name: "checkout", Path: t.TempDir(), Host: "localhost:3306", Database: "stale"}
+	if err := SaveRecentTo(configPath, []RecentProject{stale}, false); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadFrom(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := stale
+	current.Database = "current"
+	cfg.TouchRecent(current)
+	if err := SaveRecentTo(configPath, cfg.RecentProjects, false); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := LoadFrom(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(saved.RecentProjects, []RecentProject{current}) {
+		t.Errorf("saved recent = %+v, want only %+v", saved.RecentProjects, current)
 	}
 }
 
@@ -221,7 +380,7 @@ func TestSameProject_ResolvesCheckoutSymlinks(t *testing.T) {
 	if err := os.Symlink(checkout, link); err != nil {
 		t.Fatal(err)
 	}
-	saved := RecentProject{Name: "saved", Path: link}
+	saved := RecentProject{Name: "saved", Path: link, Host: "127.0.0.1:3306"}
 	startup := RecentProject{Name: "startup", Path: checkout, Database: "project", Host: "127.0.0.1:3306"}
 
 	if !saved.SameProject(startup) || !startup.SameProject(saved) {
@@ -260,13 +419,17 @@ func TestTouchRecent_KeepsSlotForSymlinkedCheckout(t *testing.T) {
 	}
 	cfg := DefaultConfig()
 	cfg.RecentProjects = []RecentProject{recent("other"), {Name: "project", Path: link}}
-	want := append([]RecentProject(nil), cfg.RecentProjects...)
+	current := RecentProject{Name: "project", Path: checkout}
+	want := []RecentProject{recent("other"), current}
 
-	if cfg.TouchRecent(RecentProject{Name: "project", Path: checkout}) {
-		t.Fatal("a symlinked checkout must keep its existing recent slot")
+	if !cfg.TouchRecent(current) {
+		t.Fatal("a symlinked checkout must refresh its metadata")
 	}
 	if !reflect.DeepEqual(cfg.RecentProjects, want) {
-		t.Fatalf("recent = %+v, want unchanged %+v", cfg.RecentProjects, want)
+		t.Fatalf("recent = %+v, want the same slot %+v", cfg.RecentProjects, want)
+	}
+	if cfg.TouchRecent(current) {
+		t.Fatal("touching the current entry must report no change")
 	}
 }
 
@@ -322,12 +485,13 @@ favorites:
 
 func TestTouchRecent_MatchesByPathWhenOnlyOneEntryHasDatabase(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.RecentProjects = []RecentProject{{Name: "a", Path: "/work/a"}}
+	cfg.RecentProjects = []RecentProject{{Name: "a", Path: "/work/a", Host: "127.0.0.1:3306"}}
 
-	changed := cfg.TouchRecent(RecentProject{Name: "a", Database: "a", Host: "127.0.0.1:3306", Path: "/work/a"})
+	current := RecentProject{Name: "a", Database: "a", Host: "127.0.0.1:3306", Path: "/work/a"}
+	changed := cfg.TouchRecent(current)
 
-	if changed {
-		t.Errorf("expected the same checkout to keep its slot, recent = %+v", cfg.RecentProjects)
+	if !changed || !reflect.DeepEqual(cfg.RecentProjects, []RecentProject{current}) {
+		t.Errorf("expected the same checkout to refresh its database in place, recent = %+v", cfg.RecentProjects)
 	}
 }
 
