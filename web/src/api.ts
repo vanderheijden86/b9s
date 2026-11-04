@@ -26,13 +26,27 @@ async function get<T>(path: string): Promise<T> {
   return parse<T>(res);
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, {
+async function post<T>(path: string, body: unknown, retryNetwork = false): Promise<T> {
+  const send = async (): Promise<T> => parse<T>(await fetch(path, {
     method: "POST", credentials: "same-origin", cache: "no-store",
     headers: { "Content-Type": "application/json", "X-B9s-CSRF": csrf },
     body: JSON.stringify(body),
-  });
-  return parse<T>(res);
+  }));
+  try {
+    return await send();
+  } catch (e) {
+    // The CSRF middleware rejects before any operation runs. Other 403s
+    // can mean permission failures and must never trigger a replay.
+    if (e instanceof ApiError) {
+      if (e.status !== 403 || e.message !== "missing or wrong X-B9s-CSRF header") throw e;
+      await session();
+    } else if (!retryNetwork) {
+      throw e;
+    }
+  }
+  // Writes may also retry an ambiguous network failure with the same key.
+  // Both recovery paths share this one replay, so a second failure stops.
+  return send();
 }
 
 export async function session(): Promise<Session> {
@@ -57,13 +71,9 @@ export const reload = () => post<Health>("api/reload", {});
 export async function write(req: WriteRequest): Promise<WriteResult> {
   const body: WriteRequest = { ...req, key: req.key || uid() };
   try {
-    return await post<WriteResult>("api/write", body);
+    return await post<WriteResult>("api/write", body, true);
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, ids: req.ids || [], created: "", error: e.message, output: "", version: 0 };
-    // A network error may hide a write that ran: retry once with the same key.
-    try { return await post<WriteResult>("api/write", body); } catch (e2) {
-      return { ok: false, ids: req.ids || [], created: "", error: e2 instanceof Error ? e2.message : String(e2), output: "", version: 0 };
-    }
+    return { ok: false, ids: req.ids || [], created: "", error: e instanceof Error ? e.message : String(e), output: "", version: 0 };
   }
 }
 
