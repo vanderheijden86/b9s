@@ -143,7 +143,7 @@
   .bcards { padding: 10px 10px 4px; }
   .bcards .empty { padding: 12px 8px 16px; }
   .bmore { width: 100%; min-height: 44px; margin: 4px 0 6px; border: 1px solid var(--line-soft); border-radius: 6px; color: var(--muted); font-weight: 600; }
-  .card { position: relative; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface-raised); padding: 6px 8px 6px calc(8px + min(var(--d, 0), 4) * 14px); margin-bottom: 6px; }
+  .card { position: relative; border: 0; border-radius: 0; background: transparent; padding: 3px 8px 3px calc(8px + min(var(--d, 0), 4) * 14px); margin: 0; }
   .card .l1 { align-items: center; }
   .card .l1 .t { font-weight: 600; }
   .card .st { width: 7px; height: 7px; align-self: center; }
@@ -152,11 +152,12 @@
   .card .tags { flex: none; display: flex; gap: 8px; margin-left: auto; font-size: 0.885rem; }
   .card .tags .tb, .card .tags .tl, .card .tags .tk { color: var(--muted); }
   .card .tp, .wepic .tp, .lane .tp { color: var(--muted); font-weight: 600; }
-  .card .l2 { padding: 3px 0 0 13px; }
-  .card.sel { background: var(--selected); border-color: var(--line); box-shadow: inset 3px 0 var(--hi); padding-top: 7px; padding-bottom: 7px; margin: 4px 0 7px; }
+  .card.sel { background: var(--selected); box-shadow: inset 3px 0 var(--hi); }
   .card.sel .l1 { white-space: normal; align-items: flex-start; }
   .card.sel .l1 .t { white-space: normal; overflow-wrap: anywhere; }
   .card.sel .tags { flex-wrap: wrap; }
+  .app:is(.phone, .tablet) .card { min-height: 44px; display: flex; align-items: center; }
+  .app:is(.phone, .tablet) .card .l1 { width: 100%; }
   .card.ghost { position: absolute; z-index: 90; pointer-events: none; opacity: .92; box-shadow: var(--lifted-shadow); transform: rotate(-2deg); width: 300px; }
   .card.lifted { opacity: .3; }
   .lane { width: 100%; text-align: left; display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.923rem; padding: 8px 8px 7px; white-space: nowrap; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface-2); margin: 8px 0 5px; }
@@ -166,8 +167,6 @@
   .lane .ei { color: var(--text-soft); }
   .lane .bar { flex: none; align-self: center; width: 44px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
   .lane .bar i { display: block; height: 100%; background: var(--text-soft); }
-  .card .l3 { padding-left: calc(1.1em + 6px); font-size: 0.885rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card .l3 .e { color: var(--text-soft); }
   /* Inside a box each lane is a group, so its header sticks to the top of the board until the next lane pushes it off; the negative top lifts it over the board's 12 px padding. */
   .bcards .lane { position: sticky; top: -12px; z-index: 2; width: calc(100% + 20px); margin: 0 -10px 8px; padding: 8px 10px 7px; background: var(--surface-1); border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; align-items: center; }
   /* the wide board: every column side by side, epic lanes as rows across them */
