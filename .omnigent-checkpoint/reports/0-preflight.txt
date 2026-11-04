@@ -1,0 +1,6 @@
+## omnigent/bd-e5u3.20.15
+816e4988ebbf96d942727c2014a80050664f413d
+816e4988ebbf96d942727c2014a80050664f413d
+required_ancestor_base_exit=0
+required_ancestor_HEAD_exit=0
+delivery_remote_absent: exact ls-remote exited 2; local delivery absent; clean bootstrap main preserved

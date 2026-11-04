@@ -1,0 +1,65 @@
+[
+  {
+    "project": "pixel",
+    "rowHeight": 44,
+    "rowsPer240px": 5,
+    "touchTarget": true,
+    "phoneLayout": true
+  },
+  {
+    "project": "iphone",
+    "rowHeight": 44,
+    "rowsPer240px": 5,
+    "touchTarget": true,
+    "phoneLayout": true
+  },
+  {
+    "project": "phone-360",
+    "rowHeight": 44,
+    "rowsPer240px": 5,
+    "touchTarget": true,
+    "phoneLayout": true
+  },
+  {
+    "project": "phone-412",
+    "rowHeight": 44,
+    "rowsPer240px": 5,
+    "touchTarget": true,
+    "phoneLayout": true
+  },
+  {
+    "project": "tablet-768",
+    "rowHeight": 44,
+    "rowsPer240px": 5,
+    "touchTarget": true,
+    "phoneLayout": false
+  },
+  {
+    "project": "tablet-1024",
+    "rowHeight": 44,
+    "rowsPer240px": 5,
+    "touchTarget": true,
+    "phoneLayout": false
+  },
+  {
+    "project": "desktop-1440",
+    "rowHeight": 24,
+    "rowsPer240px": 10,
+    "touchTarget": false,
+    "phoneLayout": false
+  },
+  {
+    "project": "desktop-1920",
+    "rowHeight": 24,
+    "rowsPer240px": 10,
+    "touchTarget": false,
+    "phoneLayout": false
+  },
+  {
+    "project": "wide-2560",
+    "rowHeight": 24,
+    "rowsPer240px": 10,
+    "touchTarget": false,
+    "phoneLayout": false
+  }
+]
