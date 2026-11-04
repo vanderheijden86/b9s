@@ -1,0 +1,12 @@
+PR #35 transplant applied without delivery commits.
+Preserved source exactly: web/src/api.ts, web/package.json, web/tests/api.test.mjs, web/tests/pairing.spec.ts.
+Harness retains PR restart support and current main's bounded swipe-geometry guard.
+Architecture conflict resolved by inserting session-recovery documentation beside existing Auth and keeping hosted project discovery.
+Embedded app.js and source.sha256 regenerated with current main sources and committed package-lock, rather than copying stale generated output.
+API RED: 5 passed, 7 failed, 0 skipped, exit 1, before API source transplant.
+API GREEN: 12 passed, 0 failed, 0 skipped, exit 0, after source transplant.
+TypeScript: timeout --kill-after=5s 60s npm --prefix /home/omnigent/workspace/b9s/web run typecheck, exit 0.
+Web bundle: timeout --kill-after=5s 60s npm --prefix /home/omnigent/workspace/b9s/web run build, exit 0.
+git diff --check: exit 0.
+No new product behavior, workflow state or guard beyond the source PR. Existing regression tests preserve its contract.
+New file: web/tests/api.test.mjs, all other changed files tracked. No files deleted.
