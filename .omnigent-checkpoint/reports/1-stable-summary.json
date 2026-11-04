@@ -1,0 +1,144 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "cwd": "/home/omnigent/workspace/b9s",
+  "environment": {
+    "GOFLAGS": "-v -count=1",
+    "CGO_CFLAGS": "-DSQLITE_ENABLE_FTS5",
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64",
+    "image_digest": "unavailable"
+  },
+  "exit_code": 0,
+  "counting": "Leaf tests only. Parent test results are excluded. Counts describe selected suite only, not Makefile-excluded tests.",
+  "counts": {
+    "passed": 3276,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "all_results": {
+    "pass": 3465,
+    "skip": 20
+  },
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attach",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attachref",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/control",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/config",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/debug",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/identity",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/model",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil/proptest",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/util/topk",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/version",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/watcher",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/web",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/scripts/web",
+      "status": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/docs",
+      "status": "ok"
+    }
+  ],
+  "skipped": [
+    "github.com/vanderheijden86/b9s/internal/bdrun:TestProbeMemory_RealBinaries",
+    "github.com/vanderheijden86/b9s/internal/blobstore:TestS3StoreContract",
+    "github.com/vanderheijden86/b9s/internal/blobstore:TestS3PutRejectsShortRead",
+    "github.com/vanderheijden86/b9s/internal/blobstore:TestS3PutRejectsLongRead",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltReader_NewAndClose",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltReader_LoadIssues",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltReader_GetHeadHash",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltWatcher_NewAndStop",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltWatcher_StartIsIdempotent",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltWatcher_DetectsNoChangeOnPoll",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestMemoryPreviewGraphReadTiming",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestMemoryReadResearchStages",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestMemoryReadResearchTransportParity",
+    "github.com/vanderheijden86/b9s/internal/datasource:TestMemoryReadResearchConcurrentWriter",
+    "github.com/vanderheijden86/b9s/pkg/loader:TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/loader:TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestStress_SustainedWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestStress_BurstWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestStress_MemoryPressure"
+  ],
+  "failed": [],
+  "unassigned_results": [],
+  "unassigned_running": []
+}
