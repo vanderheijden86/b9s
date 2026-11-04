@@ -5,8 +5,9 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
+    "test:api": "node --test --test-timeout=20000 tests/api.test.mjs",
     "test:guards": "node --test --test-timeout=20000 tests/poll-guard.mjs",
-    "test:e2e": "npm run test:guards && playwright test"
+    "test:e2e": "npm run test:api && npm run test:guards && playwright test"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
