@@ -55,19 +55,11 @@ function bindVisualViewport(): void {
   window.visualViewport?.addEventListener("scroll", schedule);
 }
 
-/**
- * A change that arrives mid-gesture waits: a re-render would replace the
- * row under the finger. The next poll after the gesture applies it.
- */
-let pending = false;
-async function applyChange(): Promise<void> {
-  if (busy()) {
-    if (!pending) { pending = true; const wait = () => (busy() ? setTimeout(wait, 200) : (pending = false, void applyChange())); setTimeout(wait, 200); }
-    return;
-  }
+async function applyChange(signal: AbortSignal): Promise<void> {
   const list = document.getElementById("treeList");
   const top = list ? list.scrollTop : 0;
-  const changed = await refresh();
+  const changed = await refresh(signal);
+  if (signal.aborted) return;
   if (list) list.scrollTop = top;
   pulse();
   if (!changed.size) return;
@@ -82,11 +74,27 @@ async function applyChange(): Promise<void> {
 }
 
 function startLive(): void {
+  const controller = new AbortController();
+  const { signal } = controller;
+  let pendingTimer = 0;
+  const requestChange = () => {
+    if (signal.aborted) return;
+    // Replacing the row under a finger would interrupt its gesture.
+    if (busy()) {
+      if (!pendingTimer) pendingTimer = window.setTimeout(() => { pendingTimer = 0; requestChange(); }, 200);
+      return;
+    }
+    void applyChange(signal).catch(error => {
+      if (signal.aborted) return;
+      toast("Reload failed: " + (error instanceof Error ? error.message : String(error)));
+      stream.retryLater();
+    });
+  };
   const stream = api.live({
     onEvent(type, version) {
-      if (type === "hello" && version !== D.version) void applyChange();
-      if (type === "changed" && version > D.version) void applyChange();
-      if (type === "project") void applyChange();
+      if (type === "hello" && version !== D.version) requestChange();
+      if (type === "changed" && version > D.version) requestChange();
+      if (type === "project") requestChange();
       // Only b9s web --dev-assets sends it. The URL hash keeps view and selection.
       if (type === "assets") location.reload();
       if (type === "health") api.health().then(h => { D.health = h; render(); }, () => { /* the next snapshot carries it */ });
@@ -97,9 +105,15 @@ function startLive(): void {
       renderStale();
       render();
     },
-  });
+  }, signal);
+  window.addEventListener("pagehide", () => {
+    clearTimeout(pendingTimer);
+    controller.abort();
+  }, { once: true });
   setRetryLive(() => { stream.retryNow(); toast("Reconnecting…"); });
 }
+
+window.addEventListener("pageshow", event => { if (event.persisted) startLive(); });
 
 async function boot(): Promise<void> {
   applyTextSize();
