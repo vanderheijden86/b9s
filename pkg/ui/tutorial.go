@@ -967,12 +967,6 @@ func defaultTutorialPages() []TutorialPage {
 			Content: workflowBugTriageContent,
 		},
 		{
-			ID:      "workflow-sprint-planning",
-			Title:   "Sprint Planning Session",
-			Section: "Workflows",
-			Content: workflowSprintPlanningContent,
-		},
-		{
 			ID:      "workflow-onboarding",
 			Title:   "Onboarding New Members",
 			Section: "Workflows",
@@ -1333,7 +1327,7 @@ Every issue has a **priority** and a **status**. Together, they answer:
 | Level | Meaning | Response Time |
 |-------|---------|---------------|
 | **P0** | Critical/emergency | Drop everything |
-| **P1** | High priority | This sprint/week |
+| **P1** | High priority | This week |
 | **P2** | Medium priority | This cycle/month |
 | **P3** | Low priority | When you have time |
 | **P4** | Backlog | Someday/maybe |
@@ -1642,7 +1636,7 @@ Press **b** to switch to the Kanban-style board.
 
 ### When to Use Board View
 
-- **Sprint planning**: Visualize work distribution
+- **Weekly planning**: Visualize work distribution
 - **Standups**: Quick status overview
 - **Bottleneck detection**: Spot column imbalances
 
@@ -1694,7 +1688,7 @@ Press **m** to toggle heatmap mode, which colors the list by:
 ### When to Use Insights
 
 - **Weekly review**: Find neglected issues
-- **Sprint planning**: Data-driven prioritization
+- **Weekly planning**: Data-driven prioritization
 - **Bottleneck hunting**: Identify blocking patterns
 
 > Press **→** to continue.`
@@ -1816,10 +1810,10 @@ Time travel understands git references:
 | ` + "`v1.2.0`" + ` | Tagged release |
 | ` + "`@{2.weeks.ago}`" + ` | Two weeks back |
 
-### Example: Sprint Retrospective
+### Example: Weekly Retrospective
 
 ` + "```" + `
-1. Press T and enter "HEAD~50" (start of sprint)
+1. Press T and enter "HEAD~50" (start of week)
 2. See: 45 open issues, 12 blocked
 3. Press Esc to return to present
 4. Now: 22 open, 3 blocked
@@ -1844,7 +1838,7 @@ When in time-travel mode, press **d** to see changes:
 
 ### Use Cases
 
-- **Sprint review**: "What did we accomplish?"
+- **Weekly review**: "What did we accomplish?"
 - **Debugging**: "When did this issue get blocked?"
 - **Onboarding**: "What was the project like 6 months ago?"
 - **Post-mortem**: "Show me the state when the bug was introduced"
@@ -1952,7 +1946,7 @@ The output is **self-contained HTML** that works offline:
 
 **Cloudflare Pages** (manual):
 
-` + "```bash\nbv --export-pages ./dashboard --pages-title \"Sprint Status\"\n# Upload ./dashboard to Cloudflare Pages\n```" + `
+` + "```bash\nbv --export-pages ./dashboard --pages-title \"Project Status\"\n# Upload ./dashboard to Cloudflare Pages\n```" + `
 
 **Local sharing**:
 
@@ -2042,10 +2036,7 @@ Press **R** (capital R) to open recipes:
 ┌─────────────────────────────────────────────────────┐
 │ RECIPES                                             │
 ├─────────────────────────────────────────────────────┤
-│ ▶ Sprint Ready                                      │
-│   Open + Ready + Priority ≤ P2                      │
-│                                                     │
-│   This Week's Focus                                 │
+│ ▶ This Week's Focus                                 │
 │   In Progress OR (Open + P0-P1)                     │
 │                                                     │
 │   Blocked Review                                    │
@@ -2060,7 +2051,6 @@ Press **R** (capital R) to open recipes:
 
 | Recipe | What It Shows |
 |--------|---------------|
-| **Sprint Ready** | Actionable work for this sprint |
 | **Quick Wins** | Low-effort items (small scope) |
 | **Blocked Review** | Stuck items needing attention |
 | **High Impact** | Top PageRank scores (graph centrality) |
@@ -2096,7 +2086,7 @@ Since recipes live in ` + "`.beads/`" + `, they're version controlled:
 
 ### Robot Mode
 
-` + "```bash\nbv --recipe \"Sprint Ready\" --robot-triage\n```" + `
+` + "```bash\nbv --recipe \"Quick Wins\" --robot-triage\n```" + `
 
 Apply any recipe as a pre-filter for robot commands.
 
@@ -2282,79 +2272,6 @@ Option B: Leave unassigned
 
 > Press **→** to continue.`
 
-// workflowSprintPlanningContent is the Sprint Planning workflow tutorial page.
-const workflowSprintPlanningContent = `## Workflow: Sprint Planning Session
-
-Use bv's analytics to make data-driven sprint decisions.
-
-### Step 1: Review Project Health
-
-Open the Insights panel with **i**:
-
-` + "```" + `
-┌─────────────────────────────────────────────────────┐
-│ PROJECT HEALTH                                      │
-├─────────────────────────────────────────────────────┤
-│ Open: 45   In Progress: 8   Blocked: 12            │
-│                                                     │
-│ Top Blockers (unblock most work):                   │
-│   bv-auth  → would unblock 5 items                  │
-│   bv-api   → would unblock 3 items                  │
-│                                                     │
-│ Priority Distribution:                              │
-│   P0: 2   P1: 8   P2: 25   P3+: 18                  │
-└─────────────────────────────────────────────────────┘
-` + "```" + `
-
-### Step 2: Identify Dependencies
-
-Run ` + "`bv --robot-graph`" + ` to inspect the dependency structure:
-
-- **Tall chains** = sequential work (can't parallelize)
-- **Wide clusters** = parallel opportunities
-- **Bottlenecks** = single nodes blocking many
-
-### Step 3: Filter to Ready Work
-
-Press **r** to show only unblocked issues:
-
-` + "```" + `
-┌─────────────────────────────────────────────────────┐
-│ READY ISSUES (18 actionable)                        │
-├─────────────────────────────────────────────────────┤
-│ ▶ [P1] bv-abc1  Fix auth timeout                    │
-│   [P1] bv-def2  API rate limiting                   │
-│   [P2] bv-ghi3  Dashboard redesign                  │
-│   ...                                               │
-└─────────────────────────────────────────────────────┘
-` + "```" + `
-
-### Step 4: Discuss and Assign
-
-For each sprint candidate:
-1. Review in detail view (Enter)
-2. Discuss scope and estimates
-3. Add sprint label: **L** → "sprint-42"
-4. Optionally assign: update with --assignee
-
-### Step 5: Export Sprint Plan
-
-Press **x** to export the filtered list to markdown:
-
-` + "```markdown\n# Sprint 42 Plan\n\n## P1 - Must Complete\n- [ ] bv-abc1: Fix auth timeout\n- [ ] bv-def2: API rate limiting\n\n## P2 - Should Complete  \n- [ ] bv-ghi3: Dashboard redesign\n...\n```" + `
-
-Share in Slack, email, or sprint planning doc.
-
-### Step 6: Time-Travel at Sprint End
-
-After the sprint, compare progress:
-
-` + "```bash\n# Press t, enter: HEAD~50 (start of sprint)\n# Or use robot mode:\nbv --robot-diff --diff-since HEAD~50\n```" + `
-
-See exactly how many issues closed, what unblocked, velocity achieved.
-
-> Press **→** to continue.`
-
 // workflowOnboardingContent is the Onboarding workflow tutorial page.
 const workflowOnboardingContent = `## Workflow: Onboarding a New Team Member
 
@@ -2431,7 +2348,7 @@ Non-technical stakeholders can't use the terminal. The solution: static pages.
 
 ### Step 1: Generate the Dashboard
 
-` + "```bash\nbv --pages                    # Interactive wizard\n# Or direct export:\nbv --export-pages ./dashboard --pages-title \"Sprint 42 Status\"\n```" + `
+` + "```bash\nbv --pages                    # Interactive wizard\n# Or direct export:\nbv --export-pages ./dashboard --pages-title \"Project Status\"\n```" + `
 
 This creates a **self-contained HTML bundle**:
 - Triage recommendations

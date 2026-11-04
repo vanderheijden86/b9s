@@ -521,34 +521,6 @@ func TestBurndownPoint_JSON(t *testing.T) {
 	}
 }
 
-// Additional Sprint/Forecast type tests (bv-nnsc)
-
-func TestSprint_Struct(t *testing.T) {
-	now := time.Now()
-	later := now.AddDate(0, 0, 14)
-
-	sprint := Sprint{
-		ID:             "sprint-1",
-		Name:           "Test Sprint",
-		StartDate:      now,
-		EndDate:        later,
-		BeadIDs:        []string{"bv-1", "bv-2", "bv-3"},
-		VelocityTarget: 25.5,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-	}
-
-	if sprint.ID != "sprint-1" {
-		t.Errorf("Sprint ID mismatch: got %s", sprint.ID)
-	}
-	if len(sprint.BeadIDs) != 3 {
-		t.Errorf("BeadIDs length mismatch: got %d, want 3", len(sprint.BeadIDs))
-	}
-	if sprint.VelocityTarget != 25.5 {
-		t.Errorf("VelocityTarget mismatch: got %f", sprint.VelocityTarget)
-	}
-}
-
 func TestForecast_Struct(t *testing.T) {
 	now := time.Now()
 	eta := now.AddDate(0, 0, 5)
