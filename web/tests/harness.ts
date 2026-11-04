@@ -50,6 +50,7 @@ export const SAMPLE: FixtureIssue[] = [
 
 export interface Project {
   dir: string; url: string; proc: ChildProcess; log: () => string;
+  restart(renewSecret?: boolean): Promise<void>;
   /** pairLink is the "This machine" link from the banner; empty with --no-token. */
   pairLink(): string;
   issues(): Record<string, unknown>[];
@@ -75,7 +76,7 @@ async function waitFor(proc: ChildProcess, url: string, deadlineMs: number, log:
   while (Date.now() < deadline) {
     if (proc.exitCode !== null || proc.signalCode !== null) return false;
     if (log().includes("b9s web is serving")) {
-      try { const r = await fetch(url + "api/health"); if (r.ok || r.status === 401) return true; } catch { /* not up yet */ }
+      try { const r = await fetch(url + "api/health", { signal: AbortSignal.timeout(1000) }); if (r.ok || r.status === 401) return true; } catch { /* not up yet */ }
     }
     await new Promise(r => setTimeout(r, 100));
   }
@@ -94,12 +95,8 @@ export async function startProject(list: FixtureIssue[], env: Record<string, str
   fs.writeFileSync(path.join(bin, "bd"), `#!/bin/sh\nexec "${process.execPath}" "${FAKE_BD}" "$@"\n`, { mode: 0o755 });
   let out = "", url = "", proc: ChildProcess | undefined;
   const log = () => out;
-  // The probed port is free only until the probe closes, so a parallel test
-  // can bind it first. Each attempt takes a fresh port.
-  for (let attempt = 0; attempt < 5 && !proc; attempt++) {
-    const port = await nextPort();
-    out = "";
-    const p = spawn(BIN, ["web", ...(paired ? [] : ["--no-token"]), "--listen", `127.0.0.1:${port}`, ...args], {
+  const launch = (port: number, renewSecret = false): ChildProcess => {
+    const p = spawn(BIN, ["web", ...(paired ? [] : ["--no-token"]), "--listen", `127.0.0.1:${port}`, ...args, ...(renewSecret ? ["--new-token"] : [])], {
       cwd: dir,
       env: {
         ...process.env, ...env,
@@ -110,12 +107,34 @@ export async function startProject(list: FixtureIssue[], env: Record<string, str
     });
     p.stdout!.on("data", d => { out += d; });
     p.stderr!.on("data", d => { out += d; });
+    return p;
+  };
+  // The probed port is free only until the probe closes, so a parallel test
+  // can bind it first. Each attempt takes a fresh port.
+  for (let attempt = 0; attempt < 5 && !proc; attempt++) {
+    const port = await nextPort();
+    out = "";
+    const p = launch(port);
     url = `http://127.0.0.1:${port}/`;
     if (await waitFor(p, url, 15000, log)) proc = p;
   }
   if (!proc) throw new Error(`b9s web could not bind a port in 5 attempts:\n${out}`);
   return {
-    dir, url, proc, log,
+    dir, url, get proc() { return proc!; }, log,
+    restart: async (renewSecret = false) => {
+      const previous = proc!;
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          previous.kill("SIGKILL");
+          reject(new Error("b9s web did not stop within 5000 ms"));
+        }, 5000);
+        previous.once("exit", () => { clearTimeout(timer); resolve(); });
+        previous.kill("SIGTERM");
+      });
+      out = "";
+      proc = launch(Number(new URL(url).port), renewSecret);
+      if (!await waitFor(proc, url, 15000, log)) throw new Error(`b9s web exited during restart:\n${out}`);
+    },
     pairLink: () => (out.match(/This machine\s+(\S+\/pair\?t=\S+)/) || ["", ""])[1],
     issues: () => fs.readFileSync(path.join(beads, "issues.jsonl"), "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l)),
     calls: () => { try { return fs.readFileSync(path.join(beads, "bd-calls.log"), "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l)); } catch { return []; } },
