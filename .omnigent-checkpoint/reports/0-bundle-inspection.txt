@@ -1,0 +1,134 @@
+pkg/web/dist/mermaid.min.js 581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8
+web/node_modules/mermaid/dist/mermaid.min.js 581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8
+Embedded dependency ../../../node_modules/.pnpm/katex@0.16.47/node_modules/katex/dist/katex.mjs [ 'version = "0.16.47"' ]
+Mermaid bundled callsites ../src/diagrams/common/common.ts
+
+function setupDompurifyHooks() {
+  const TEMPORARY_ATTRIBUTE = 'data-temp-href-target';
+
+  DOMPurify.addHook('beforeSanitizeAttributes', (node) => {
+    if (node.tagName === 'A' && node.hasAttribute('target')) {
+      node.setAttribute(TEMPORARY_ATTRIBUTE, node.getAttribute('target') ?? '');
+    }
+  });
+
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A' && node.hasAttribute(TEMPORARY_ATTRIBUTE)) {
+      node.setAttribute('target', node.getAttribute(TEMPORARY_ATTRIBUTE) ?? '');
+      node.removeAttribute(TEMPORARY_ATTRIBUTE);
+      node.setAttribute(TEMPORARY_ATTRIBUTE, node.getAttribute('target') ?? '');
+    }
+  });
+
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A' && node.hasAttribute(TEMPORARY_ATTRIBUTE)) {
+      node.setAttribute('target', node.getAttribute(TEMPORARY_ATTRIBUTE) ?? '');
+      node.removeAttribute(TEMPORARY_ATTRIBUTE);
+      if (node.getAttribute('target') === '_blank') {
+        node.setAttribute('rel', 'noopener');
+      }
+    }
+  });
+}
+ */
+export const removeScript = (txt: string): string => {
+  setupDompurifyHooksIfNotSetup();
+
+  const sanitizedText = DOMPurify.sanitize(txt);
+
+  return sanitizedText;
+};
+
+const sanitizeMore = (text: string, config: MermaidConfig) => {
+  if (getEffectiveHtmlLabels(config)) {
+    const level = config.securityLevel;
+    if (level === 'antiscript' || level === 'strict' || level === 'sandbox') {
+      text = removeScript(text);
+  if (!text) {
+    return text;
+  }
+  if (config.dompurifyConfig) {
+    text = DOMPurify.sanitize(sanitizeMore(text, config), config.dompurifyConfig).toString();
+  } else {
+    text = DOMPurify.sanitize(sanitizeMore(text, config), {
+      FORBID_TAGS: ['style'],
+    }).toString();
+  }
+  return text;
+};
+
+export const sanitizeTextOrArray = (
+  }
+  if (config.dompurifyConfig) {
+    text = DOMPurify.sanitize(sanitizeMore(text, config), config.dompurifyConfig).toString();
+  } else {
+    text = DOMPurify.sanitize(sanitizeMore(text, config), {
+      FORBID_TAGS: ['style'],
+    }).toString();
+  }
+  return text;
+};
+
+export const sanitizeTextOrArray = (
+  a: string | string[] | string[][],
+  config: MermaidConfig
+Mermaid bundled callsites ../src/diagrams/flowchart/flowDb.ts
+        tooltipElem
+          .text(el.attr('title'))
+          .style('left', window.scrollX + rect.left + (rect.right - rect.left) / 2 + 'px')
+          .style('top', window.scrollY + rect.bottom + 'px');
+        tooltipElem.html(DOMPurify.sanitize(title));
+        el.classed('hover', true);
+      })
+      .on('mouseout', (e: MouseEvent) => {
+        tooltipElem.transition().duration(500).style('opacity', 0);
+        const el = select(e.currentTarget as Element);
+        el.classed('hover', false);
+      });
+  }
+
+Mermaid bundled callsites ../src/diagrams/class/classDb.ts
+
+        const rect = (event.currentTarget as Element).getBoundingClientRect();
+        tooltipElem.transition().duration(200).style('opacity', '.9');
+        tooltipElem
+          .html(DOMPurify.sanitize(title))
+          .style('left', `${window.scrollX + rect.left + rect.width / 2}px`)
+          .style('top', `${window.scrollY + rect.bottom + 4}px`);
+
+        el.classed('hover', true);
+      })
+      .on('mouseout', (event: MouseEvent) => {
+        tooltipElem.transition().duration(500).style('opacity', 0);
+        select(event.currentTarget as HTMLElement).classed('hover', false);
+      });
+Mermaid bundled callsites ../src/diagrams/state/stateDb.ts
+        tooltipElem.transition().duration(200).style('opacity', '.9');
+        tooltipElem
+          .style('left', window.scrollX + rect.left + (rect.right - rect.left) / 2 + 'px')
+          .style('top', window.scrollY + rect.bottom + 'px');
+        tooltipElem.html(DOMPurify.sanitize(title));
+        el.classed('hover', true);
+      })
+      .on('mouseout', (e: MouseEvent) => {
+        tooltipElem.transition().duration(500).style('opacity', 0);
+        const el = select(e.currentTarget as Element);
+        el.classed('hover', false);
+      });
+  }
+
+Mermaid bundled callsites ../src/mermaidAPI.ts
+      const svgEl = root.select<SVGSVGElement>(enclosingDivID_selector + ' svg').node()!;
+      code = putIntoIFrame(code, svgEl);
+    } else if (!isLooseSecurityLevel) {
+      // Sanitize the svgCode using DOMPurify
+      code = DOMPurify.sanitize(code, {
+        ADD_TAGS: DOMPURIFY_TAGS,
+        ADD_ATTR: DOMPURIFY_ATTR,
+        HTML_INTEGRATION_POINTS: { foreignobject: true },
+      });
+    }
+
+    attachFunctions();
+    return code;
+  };
