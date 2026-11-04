@@ -17,9 +17,9 @@ const MaxRecentProjects = 9
 
 const recentProjectsKey = "recent_projects"
 
-// RecentProject is a project the user has viewed. A Dolt server project is
-// identified by its server address and database; a JSONL or SQLite project
-// has neither and is identified by its checkout path.
+// RecentProject is a project the user has viewed. A local project is identified
+// by its resolved checkout path and host. A project without a checkout is
+// identified by its server address and database.
 type RecentProject struct {
 	Name     string `yaml:"name"`
 	Database string `yaml:"database,omitempty"`
@@ -30,21 +30,27 @@ type RecentProject struct {
 	OpenedAt time.Time `yaml:"opened_at,omitempty"`
 }
 
-// SameProject compares server identity only when both entries carry one. An
-// entry written by hand may lack the database of a Dolt checkout, and must
-// still match that checkout by path rather than gain a duplicate.
-// Checkout paths resolve symlinks, with lexical cleaning when resolution fails.
+// SameProject uses checkout identity when both entries have paths. Catalog
+// entries without a checkout match by server and database.
 func (p RecentProject) SameProject(other RecentProject) bool {
+	if p.Path != "" && other.Path != "" {
+		return p.Host == other.Host && canonicalCheckoutPath(p.Path) == canonicalCheckoutPath(other.Path)
+	}
 	if p.Database != "" && other.Database != "" {
 		return p.Host == other.Host && p.Database == other.Database
 	}
-	return p.Path != "" && other.Path != "" && canonicalCheckoutPath(p.Path) == canonicalCheckoutPath(other.Path)
+	return false
 }
 
 func canonicalCheckoutPath(path string) string {
+	path = expandHome(path)
+	if absolute, err := filepath.Abs(path); err == nil {
+		path = absolute
+	}
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		return resolved
 	}
+	// Unavailable checkouts still need a stable identity in the saved list.
 	return filepath.Clean(path)
 }
 
@@ -53,10 +59,31 @@ func canonicalCheckoutPath(path string) string {
 // These are k9s's namespace-favourite rules: a project already in the list
 // keeps its slot, so number keys stay stable while switching between recent
 // projects; a new project is prepended and the oldest entry beyond
-// MaxRecentProjects is dropped.
+// MaxRecentProjects is dropped. A local checkout refreshes its metadata in
+// that slot and absorbs stale entries for the same checkout and host.
 func (c *Config) TouchRecent(p RecentProject) bool {
-	if c.LockRecent || containsRecent(c.RecentProjects, p) {
+	if c.LockRecent {
 		return false
+	}
+	if i := indexRecent(c.RecentProjects, p); i >= 0 {
+		existing := c.RecentProjects[i]
+		if p.Path == "" {
+			return false
+		}
+		if p.OpenedAt.IsZero() {
+			p.OpenedAt = existing.OpenedAt
+		}
+		changed := existing != p
+		c.RecentProjects[i] = p
+		for j := i + 1; j < len(c.RecentProjects); {
+			if c.RecentProjects[j].SameProject(p) {
+				c.RecentProjects = append(c.RecentProjects[:j], c.RecentProjects[j+1:]...)
+				changed = true
+			} else {
+				j++
+			}
+		}
+		return changed
 	}
 	c.RecentProjects = trimRecent(append([]RecentProject{p}, c.RecentProjects...))
 	return true
@@ -144,8 +171,7 @@ func (c *Config) migrateFavorites(legacy legacyConfig) {
 }
 
 // RecentFromCheckout describes the Beads project checked out at path. A Dolt
-// server backend takes precedence, because the database, not the folder, is
-// what another checkout of the same project would share.
+// server backend takes precedence over local exports when naming its source.
 func RecentFromCheckout(name, path string) (RecentProject, bool) {
 	// An empty path would resolve .beads against the working directory and
 	// describe whichever project b9s was started in.
