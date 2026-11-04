@@ -10,6 +10,24 @@ test.describe("writing through bd", () => {
     expect(project.calls()).toContainEqual(["update", "t-2", "--status=in_progress"]);
   });
 
+  test("swipe waits for a replacement row to have geometry", async ({ page, project }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await open(page, project);
+    // A render can detach the measured row before the pointer gesture starts.
+    await row(page, "t-2").evaluate(el => {
+      const replacement = el.cloneNode(true) as HTMLElement;
+      replacement.style.display = "none";
+      el.replaceWith(replacement);
+      setTimeout(() => { replacement.style.display = ""; }, 250);
+    });
+    await swipe(page, "t-2", 0.35);
+    await expect.poll(() => statusOf(project, "t-2")).toBe("in_progress");
+    await expect(row(page, "t-2").locator(".stw")).toHaveText("in progress");
+    expect(project.calls()).toContainEqual(["update", "t-2", "--status=in_progress"]);
+    expect(errors).toEqual([]);
+  });
+
   test("short swipe left closes, and undo restores the status", async ({ page, project }) => {
     await open(page, project);
     await swipe(page, "t-5", -0.35);
