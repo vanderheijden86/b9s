@@ -121,6 +121,65 @@ func TestHeaderProjects_StartupMatchesRecentEntryWithoutPathByDatabase(t *testin
 	}
 }
 
+func TestHeaderProjects_ResolvesCheckoutSymlinks(t *testing.T) {
+	checkout, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "checkout")
+	if err := os.Symlink(checkout, link); err != nil {
+		t.Fatal(err)
+	}
+	recent := []config.RecentProject{{Name: "saved", Path: link}}
+	startup := config.RecentProject{Name: "startup", Path: checkout}
+
+	got := ui.HeaderProjects(recent, startup)
+
+	want := []config.Project{{Name: startup.Name, Path: startup.Path}}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Fatalf("header = %+v, want one active checkout row %+v", got, want)
+	}
+}
+
+func TestHeaderProjects_CleansMissingCheckoutPaths(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	recent := []config.RecentProject{{Name: "saved", Path: missing + string(filepath.Separator) + "."}}
+	startup := config.RecentProject{Name: "startup", Path: missing}
+
+	got := ui.HeaderProjects(recent, startup)
+
+	if len(got) != 1 || got[0].Name != startup.Name || got[0].Path != startup.Path {
+		t.Fatalf("header = %+v, want one startup row for missing checkout %q", got, missing)
+	}
+}
+
+func TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout(t *testing.T) {
+	_, projects := createSampleProjects(t)
+	api, web := projects[0], projects[1]
+	checkout, err := filepath.EvalSymlinks(api.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api.Path = checkout
+	link := filepath.Join(t.TempDir(), "checkout")
+	if err := os.Symlink(checkout, link); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{RecentProjects: []config.RecentProject{
+		{Name: "saved", Path: link},
+		{Name: web.Name, Path: web.Path},
+	}}
+
+	m := headerModel(t, cfg, api)
+
+	if got := m.ProjectPickerFilteredCount(); got != 2 {
+		t.Fatalf("header has %d projects, want 2 without a duplicate checkout", got)
+	}
+	if got := switchTargetForKey(t, m, "2"); got != web.Name {
+		t.Errorf("key 2 switches to %q, want %q", got, web.Name)
+	}
+}
+
 func TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath(t *testing.T) {
 	checkout := filepath.Join(t.TempDir(), "b9s")
 	if err := os.MkdirAll(filepath.Join(checkout, ".beads"), 0o755); err != nil {

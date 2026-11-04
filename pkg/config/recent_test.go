@@ -212,6 +212,64 @@ func TestTouchRecent_IdentifiesCheckoutWithoutDatabaseByPath(t *testing.T) {
 	}
 }
 
+func TestSameProject_ResolvesCheckoutSymlinks(t *testing.T) {
+	checkout, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "checkout")
+	if err := os.Symlink(checkout, link); err != nil {
+		t.Fatal(err)
+	}
+	saved := RecentProject{Name: "saved", Path: link}
+	startup := RecentProject{Name: "startup", Path: checkout, Database: "project", Host: "127.0.0.1:3306"}
+
+	if !saved.SameProject(startup) || !startup.SameProject(saved) {
+		t.Fatalf("symlink %q and resolved checkout %q must identify the same project", link, checkout)
+	}
+}
+
+func TestSameProject_CleansMissingCheckoutPaths(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	saved := RecentProject{Path: missing + string(filepath.Separator) + "."}
+	startup := RecentProject{Path: missing}
+
+	if !saved.SameProject(startup) || !startup.SameProject(saved) {
+		t.Fatalf("missing checkout paths %q and %q must match after cleaning", saved.Path, startup.Path)
+	}
+}
+
+func TestSameProject_DistinguishesMissingCheckoutPaths(t *testing.T) {
+	root := t.TempDir()
+	first := RecentProject{Path: filepath.Join(root, "first")}
+	second := RecentProject{Path: filepath.Join(root, "second")}
+
+	if first.SameProject(second) {
+		t.Fatal("different missing checkout paths must remain distinct")
+	}
+	if (RecentProject{}).SameProject(RecentProject{Path: "."}) {
+		t.Fatal("an empty checkout path must not identify the working directory")
+	}
+}
+
+func TestTouchRecent_KeepsSlotForSymlinkedCheckout(t *testing.T) {
+	checkout := writeJSONLProject(t, t.TempDir(), "project")
+	link := filepath.Join(t.TempDir(), "checkout")
+	if err := os.Symlink(checkout, link); err != nil {
+		t.Fatal(err)
+	}
+	cfg := DefaultConfig()
+	cfg.RecentProjects = []RecentProject{recent("other"), {Name: "project", Path: link}}
+	want := append([]RecentProject(nil), cfg.RecentProjects...)
+
+	if cfg.TouchRecent(RecentProject{Name: "project", Path: checkout}) {
+		t.Fatal("a symlinked checkout must keep its existing recent slot")
+	}
+	if !reflect.DeepEqual(cfg.RecentProjects, want) {
+		t.Fatalf("recent = %+v, want unchanged %+v", cfg.RecentProjects, want)
+	}
+}
+
 func TestRecentFromCheckout_DoltProjectUsesServerIdentity(t *testing.T) {
 	path := writeDoltProject(t, t.TempDir(), "alpha", "alpha_db")
 
