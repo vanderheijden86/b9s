@@ -1,0 +1,40 @@
+{
+  "exit_code": 0,
+  "including_subtests": {
+    "passed": 3447,
+    "failed": 0,
+    "skipped": 20
+  },
+  "top_level": {
+    "passed": 2085,
+    "failed": 0,
+    "skipped": 18
+  },
+  "passing_packages": 22,
+  "flaky": "unknown",
+  "interrupted": "unknown",
+  "unrun": "unknown",
+  "skipped_tests": [
+    "--- SKIP: TestProbeMemory_RealBinaries (0.00s)",
+    "--- SKIP: TestS3StoreContract (0.00s)",
+    "--- SKIP: TestS3PutRejectsShortRead (0.00s)",
+    "--- SKIP: TestS3PutRejectsLongRead (0.00s)",
+    "--- SKIP: TestDoltReader_NewAndClose (0.00s)",
+    "--- SKIP: TestDoltReader_LoadIssues (0.00s)",
+    "--- SKIP: TestDoltReader_GetHeadHash (0.00s)",
+    "--- SKIP: TestDoltWatcher_NewAndStop (0.00s)",
+    "--- SKIP: TestDoltWatcher_StartIsIdempotent (0.00s)",
+    "--- SKIP: TestDoltWatcher_DetectsNoChangeOnPoll (0.00s)",
+    "--- SKIP: TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB (0.00s)",
+    "--- SKIP: TestMemoryPreviewGraphReadTiming (0.00s)",
+    "--- SKIP: TestMemoryReadResearchStages (0.00s)",
+    "--- SKIP: TestMemoryReadResearchTransportParity (0.00s)",
+    "--- SKIP: TestMemoryReadResearchConcurrentWriter (0.00s)",
+    "    --- SKIP: TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)",
+    "    --- SKIP: TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl (0.00s)",
+    "--- SKIP: TestStress_SustainedWrites (0.00s)",
+    "--- SKIP: TestStress_BurstWrites (0.00s)",
+    "--- SKIP: TestStress_MemoryPressure (0.00s)"
+  ],
+  "failed_tests": []
+}

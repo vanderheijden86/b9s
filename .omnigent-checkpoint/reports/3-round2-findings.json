@@ -1,0 +1,42 @@
+{
+  "findings": [
+    {
+      "issue": "bd-q4ge",
+      "project": "iphone",
+      "title": "the board stacks the columns as boxes and moves a card by drag onto another box",
+      "file": "board.spec.ts",
+      "line": 23,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "errors": []
+        }
+      ]
+    },
+    {
+      "issue": "bd-q4ge",
+      "project": "ipad",
+      "title": "a mouse drags a card into another column",
+      "file": "wide.spec.ts",
+      "line": 62,
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "errors": []
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "startTime": "2026-11-04T22:30:50.112Z",
+    "duration": 206781.567,
+    "expected": 435,
+    "skipped": 4,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "reporter_errors": [],
+  "exit_code": 0
+}
