@@ -411,6 +411,16 @@ b9s memories --project /path/to/new/graph-workspace --id policy
 b9s memories --project /path/to/new/graph-workspace --print
 ```
 
+`--id` prints one Memory by short ID (`policy`), local ID (`beads/policy`),
+or canonical ID. It reads that exact record and its current incident Links,
+including incoming citations and owned outgoing Links, without listing the
+workspace or traversing the graph. This works even when the full inventory
+exceeds the CLI limit. Linked endpoints appear by ID because b9s does not
+read other records for their titles. A missing ID, a non-Memory record or
+an incompatible response fails with a diagnostic. Reads have a two-minute
+deadline. Without `--id`, printed output still reads the complete inventory
+and each Memory's incident Links.
+
 A released `bd` lacks the graph commands, and b9s says so instead of showing its usage error. To run the preview without changing `PATH`, use `scripts/memory-preview`. It reads the workspace from `B9S_PREVIEW_WORKSPACE` (default `~/Documents/b9s-memory-poc`) and the preview `bd` from `<workspace>/.memory-preview/bin/bd`:
 
 ```bash
