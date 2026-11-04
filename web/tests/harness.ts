@@ -140,6 +140,10 @@ const cpuThrottle = Number(process.env.B9S_E2E_CPU_THROTTLE) || 0;
 
 // The fixture list is wrapped in an object: Playwright reads a bare array option as a [value, options] tuple.
 export const test = base.extend<{ project: Project; fixture: { issues: FixtureIssue[] }; bdEnv: Record<string, string>; paired: boolean }>({
+  // Pending refreshes need the server until Playwright has closed the browser contexts.
+  contextOptions: async ({ contextOptions, project: _project }, use) => {
+    await use(contextOptions);
+  },
   page: async ({ page, browserName }, use) => {
     if (cpuThrottle > 1 && browserName === "chromium") {
       await (await page.context().newCDPSession(page)).send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
