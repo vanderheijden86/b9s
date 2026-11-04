@@ -1555,7 +1555,6 @@ Press **Enter** on any issue to see its full details.
 
 | Key | Action |
 |-----|--------|
-| **O** | Open/edit in external editor |
 | **c** | Copy full ticket Markdown to clipboard |
 | **j/k** | Scroll content up/down |
 | **Esc** | Return to list |

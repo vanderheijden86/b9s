@@ -382,7 +382,6 @@ func structuredTutorialPages() []StructuredTutorialPage {
 				Spacer{Lines: 1},
 				Section{Title: "Detail View Actions"},
 				KeyTable{Bindings: []KeyBinding{
-					{Key: "O", Desc: "Open in external editor"},
 					{Key: "C", Desc: "Copy issue ID to clipboard"},
 					{Key: "j / k", Desc: "Scroll content"},
 					{Key: "Home / End", Desc: "Jump to top / bottom"},
