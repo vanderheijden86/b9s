@@ -1,0 +1,44 @@
+{
+  "command": [
+    "env",
+    "GOFLAGS=-v -count=1",
+    "timeout",
+    "--kill-after=10s",
+    "660s",
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "top_level_results": {
+    "PASS": 2085,
+    "SKIP": 18
+  },
+  "all_named_results_including_parents_and_subtests": {
+    "PASS": 3447,
+    "SKIP": 20
+  },
+  "packages_passed": 22,
+  "runtime_skips": [
+    "TestProbeMemory_RealBinaries (0.00s)",
+    "TestS3StoreContract (0.00s)",
+    "TestS3PutRejectsShortRead (0.00s)",
+    "TestS3PutRejectsLongRead (0.00s)",
+    "TestDoltReader_NewAndClose (0.00s)",
+    "TestDoltReader_LoadIssues (0.00s)",
+    "TestDoltReader_GetHeadHash (0.00s)",
+    "TestDoltWatcher_NewAndStop (0.00s)",
+    "TestDoltWatcher_StartIsIdempotent (0.00s)",
+    "TestDoltWatcher_DetectsNoChangeOnPoll (0.00s)",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB (0.00s)",
+    "TestMemoryPreviewGraphReadTiming (0.00s)",
+    "TestMemoryReadResearchStages (0.00s)",
+    "TestMemoryReadResearchTransportParity (0.00s)",
+    "TestMemoryReadResearchConcurrentWriter (0.00s)",
+    "TestStress_SustainedWrites (0.00s)",
+    "TestStress_BurstWrites (0.00s)",
+    "TestStress_MemoryPressure (0.00s)"
+  ],
+  "note": "Makefile STABLE_SKIP exclusions and tests/e2e excluded by project policy. No baseline comparison. Full verbose output in test-stable.log."
+}

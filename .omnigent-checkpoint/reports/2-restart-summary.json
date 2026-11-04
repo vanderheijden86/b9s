@@ -1,0 +1,30 @@
+[
+  {
+    "project": "pairing-an-open-page-write-cdf23--restarts-with-a-new-secret-iphone",
+    "process_changed": true,
+    "write_statuses": [
+      403,
+      200
+    ],
+    "csrf_changed": true,
+    "same_body": true,
+    "session_reads": 1,
+    "bd_calls": 1,
+    "page_errors": [],
+    "proof_file": "/tmp/bd-hsqf-evidence/playwright-output/pairing-an-open-page-write-cdf23--restarts-with-a-new-secret-iphone/restart-proof.json"
+  },
+  {
+    "project": "pairing-an-open-page-write-cdf23--restarts-with-a-new-secret-pixel",
+    "process_changed": true,
+    "write_statuses": [
+      403,
+      200
+    ],
+    "csrf_changed": true,
+    "same_body": true,
+    "session_reads": 1,
+    "bd_calls": 1,
+    "page_errors": [],
+    "proof_file": "/tmp/bd-hsqf-evidence/playwright-output/pairing-an-open-page-write-cdf23--restarts-with-a-new-secret-pixel/restart-proof.json"
+  }
+]
