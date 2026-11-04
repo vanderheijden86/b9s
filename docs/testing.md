@@ -91,6 +91,17 @@ The tests in `tests/e2e` build the binary once, then run it under the Unix `scri
 
 The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.jsonl` are the common ones. A test that needs a Dolt server uses the same rules as the integration tests.
 
+`TestAttachmentsStockBDLocalBackendE2E` creates an isolated embedded project with
+stock `bd`, attaches a file through the TUI's `I` form, checks the detail and
+`R` picker, and opens it with `B9S_TEST_MODE`. It checks the persisted reference,
+the CLI list and the downloaded bytes against the original. It never uses the
+shared server or a fork build. Set `B9S_TEST_STOCK_BD` to select a release binary:
+
+```bash
+B9S_TEST_STOCK_BD=/path/to/stock/bd \
+  go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -v
+```
+
 The mobile and preview shell scripts in `tests/` are not Go tests. They check a deployed preview through the URL a reviewer uses and take the base URL, task ID and commit SHA as arguments, so a run against the wrong build fails instead of passing on a sibling.
 
 ## Memory preview terminal checks
