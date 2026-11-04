@@ -50,7 +50,7 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 |---------|------|
 | `cmd/b9s` | Flag parsing, configuration loading, startup project choice, data source discovery and the Bubble Tea program |
 | `pkg/ui` | The whole terminal UI: the root `Model`, the tree, detail pane, board, graph, command prompt, pickers, forms, tutorial and the `IssueWriter` that runs `bd` |
-| `pkg/model` | Domain types: `Issue`, `Dependency`, `Status`, `Priority` and their parsing |
+| `pkg/model` | Domain types: `Issue`, `Release`, `Dependency`, `Status`, `Priority` and their parsing |
 | `internal/datasource` | Source discovery and readers for Dolt, SQLite and JSONL, plus the Dolt watcher, the project catalog and the open-failure reasons |
 | `internal/bdrun` | Finding and running `bd`: the deadline, the process-group kill, and the timeout and cancel errors |
 | `internal/attach` | Attaching and detaching files: upload to the blob store, then a reference comment through `bd` (ADR 0024). `GC` deletes blobs that no comment references once they are older than the grace period, and checks each one again just before it deletes it |
@@ -67,6 +67,8 @@ Every `bd` run goes through `internal/bdrun`, with a literal argv and no shell. 
 | `pkg/web` | `b9s web`: the HTTP API, the server-sent event stream, pairing and sessions, the write endpoint, and the embedded browser bundle in `dist` |
 | `web` | The browser app in TypeScript, built with esbuild into `pkg/web/dist`, and its Playwright tests |
 | `tests/e2e` | End-to-end tests that run the built binary in a pseudo-terminal |
+
+`model.BuildReleases` derives milestone snapshots and their blocking epics from an issue snapshot at a supplied time ([ADR 0026](adr/0026-model-releases-as-milestone-issues.md)). Closing the milestone yields `released`. Otherwise, every epic closed yields `ready_to_ship`, a past due date yields `overdue`, and the rest are `planned`. Empty scope is ready. A missing blocking target prevents readiness until its type and status are known. Shared epics stay in each release so callers can report conflicting assignments.
 
 `pkg/ui` is large because Bubble Tea keeps one model per program. The files split it by concern: `model.go` holds the root `Update` and key routing, `tree.go` the tree, `board.go` the board, `board_lanes.go` the epic lanes and cards, `board_epics.go` the epic index and the facts each epic cell shows (ADR 0030), `graph.go` the graph, `query_state.go` the query, `commands.go` the prompt aliases, `edit_modal.go` the forms, `issue_writer.go` the `bd` calls, and `project_*.go` the project header, table and switch.
 
