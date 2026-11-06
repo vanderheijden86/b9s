@@ -1,0 +1,28 @@
+{
+  "source": "/tmp/bd-zsfu/ci-go.jsonl",
+  "exit_code": 1,
+  "counts": {
+    "passed": 2739,
+    "failed": 1,
+    "skipped": 5,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "packages": {
+    "pass": 13,
+    "fail": 1
+  },
+  "failed_tests": [
+    "github.com/vanderheijden86/b9s/pkg/web/TestBDContract_EveryWriteB9sMakes"
+  ],
+  "skipped_tests": [
+    "github.com/vanderheijden86/b9s/pkg/loader/TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/loader/TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_SustainedWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_BurstWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_MemoryPressure"
+  ],
+  "package_failures": [
+    "github.com/vanderheijden86/b9s/pkg/web"
+  ]
+}
