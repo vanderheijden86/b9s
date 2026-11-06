@@ -1,0 +1,11 @@
+Ported only PR52 commit b5444541a5c227c832a42ed9b18a5fb7c1b10f01 relative to PR45 head 0fb809a91023ab20305e6e923a0bfb69d956509f.
+PR45 squash 7239ff26466218ed10237b7c16dd9695e083955c is ancestor of fetched origin/main (exit 0).
+Before edits, main updater.go and fileops_test.go matched PR45 head exactly.
+Changed files: pkg/updater/updater.go, pkg/updater/fileops_test.go.
+Both resulting files exactly match PR52 head (git diff origin/pr-52 -- paths is empty).
+9 pure classifier cases preserve filename semantics. 6 subprocess cases preserve real executable/symlink and bundle behavior.
+Fixture guard rejects .app/.APP executable names before copy or execution. Expected RED: 6 passed, 1 failed, 0 skipped.
+Classifier extraction preserves the ancestor scan and bundle rejection. No release asset, checksum or provenance logic changed.
+No user-visible behavior change. ADR0028 unchanged. No documentation change needed.
+Formatting: gofmt -l on both files empty. git diff --check exit 0.
+No new source files. No unrelated files changed. No commits or delivery pushes.
