@@ -29,6 +29,10 @@ export PREVIEW_DEPLOYER_SA='platform/preview-deployer-{project}'
 export PREVIEW_READER_REF='{project}-reader'
 export PREVIEW_VIEWER_HEADER=X-Example-Viewer
 export PREVIEW_VIEWER=viewer@example.invalid
+# Empty disables in-lane reader publishing, so the host's default reader path
+# never leaks into a case that does not name its own fixture.
+export PREVIEW_READER_ENV_FILE=
+unset B9S_DOLT_PORT
 
 # Exercise the real Git boundary in disposable fixture repositories. These
 # fixtures never invoke an image builder or use Kubernetes credentials.
@@ -144,7 +148,6 @@ if grep -Fq 'port: 7683' <<<"$contract_library"; then
 else
   ok "network policy admits only the web and identity ports"
 fi
-contains "database traffic is limited to the MySQL port" 'port: 3306' "$contract_library"
 contains "deployment reads the dedicated Dolt secret" 'secretRef:' "$contract_library"
 contains "deployment names the cluster-supplied reader secret" 'name: ${PREVIEW_READER_REF}' "$contract_library"
 
@@ -243,6 +246,79 @@ if [[ $fail -eq 0 ]]; then
   set -e
   if [[ $invalid_middleware_rc -eq 2 ]]; then ok "unsafe middleware stops before cluster access"; else bad "unsafe middleware stops before cluster access" "exit $invalid_middleware_rc"; fi
   contains "unsafe middleware reports the boundary" "ingress middleware is not a list of Traefik CRD references" "$invalid_middleware"
+
+  render_with() {
+    env "$@" B9S_PREVIEW_KUBECONFIG="$kubeconfig" B9S_PREVIEW_CONTEXT=preview \
+      bash -c 'source "$1"; preview_parse_args bd-b6jw "$2"; preview_render_manifests /dev/stdout' \
+        bash "$PREVIEW/lib.sh" "$sha" 2>&1
+  }
+  refused_with() {
+    local desc="$1" expected="$2" output rc
+    shift 2
+    set +e
+    output="$(env "$@" B9S_PREVIEW_KUBECONFIG="$kubeconfig" B9S_PREVIEW_CONTEXT=preview \
+      "$timeout_bin" 20 "$PREVIEW/preview-status" bd-b6jw "$sha" 2>&1)"
+    rc=$?
+    set -e
+    if [[ $rc -eq 2 && $output == *"$expected"* ]]; then ok "$desc"; else bad "$desc" "exit $rc: $output"; fi
+  }
+  # Only the NetworkPolicy has these two-space keys; the Ingress has none.
+  policy_ingress() { awk '/^  ingress:$/{f=1; next} /^  egress:$/{f=0} f' <<<"$1"; }
+  policy_egress() { awk '/^  egress:$/{f=1; next} /^---$/{f=0} f' <<<"$1"; }
+
+  default_ingress="$(policy_ingress "$rendered")"
+  contains "ingress namespace defaults to kube-system" "kubernetes.io/metadata.name: kube-system" "$default_ingress"
+  traefik_rendered="$(render_with PREVIEW_INGRESS_NAMESPACE=traefik)"
+  traefik_ingress="$(policy_ingress "$traefik_rendered")"
+  contains "ingress namespace admits the named namespace" "kubernetes.io/metadata.name: traefik" "$traefik_ingress"
+  contains "ingress namespace keeps the runner rule" "kubernetes.io/metadata.name: runners" "$traefik_ingress"
+  if [[ $traefik_ingress == *kube-system* ]]; then
+    bad "ingress namespace replaces kube-system"
+  else
+    ok "ingress namespace replaces kube-system"
+  fi
+  contains "ingress namespace leaves DNS egress on kube-system" "kubernetes.io/metadata.name: kube-system" \
+    "$(policy_egress "$traefik_rendered")"
+  refused_with "unsafe ingress namespace stops before cluster access" \
+    "PREVIEW_INGRESS_NAMESPACE is not a Kubernetes name" PREVIEW_INGRESS_NAMESPACE=Bad_NS
+
+  contains "database egress defaults to TCP 3306" "{protocol: TCP, port: 3306}" "$(policy_egress "$rendered")"
+  port_egress="$(policy_egress "$(render_with B9S_DOLT_PORT=3307)")"
+  contains "database egress follows B9S_DOLT_PORT" "{protocol: TCP, port: 3307}" "$port_egress"
+  if [[ $port_egress == *3306* ]]; then bad "database egress opens only B9S_DOLT_PORT"; else ok "database egress opens only B9S_DOLT_PORT"; fi
+  refused_with "invalid B9S_DOLT_PORT stops before cluster access" "B9S_DOLT_PORT is not a TCP port" B9S_DOLT_PORT=99999
+
+  reader_dir="$(mktemp -d "${TMPDIR:-/tmp}/b9s-reader-contract.XXXXXX")"
+  printf '%s\n' '# issued by the platform' 'B9S_DOLT_HOST=dolt-2.dolt-2.svc.cluster.local' \
+    'B9S_DOLT_PORT=3307' 'B9S_DOLT_READ_USER=b9s_reader' 'B9S_DOLT_READ_PASSWORD="s3cr3t pass"' \
+    >"$reader_dir/reader.env"
+  contains "database egress follows the reader env file" "{protocol: TCP, port: 3307}" \
+    "$(policy_egress "$(render_with PREVIEW_READER_ENV_FILE="$reader_dir/reader.env")")"
+  refused_with "a reader port that disagrees with B9S_DOLT_PORT is refused" "disagrees with B9S_DOLT_PORT" \
+    PREVIEW_READER_ENV_FILE="$reader_dir/reader.env" B9S_DOLT_PORT=3306
+  refused_with "a named reader env file must exist" "reader env file is not a file" \
+    PREVIEW_READER_ENV_FILE="$reader_dir/absent.env"
+  grep -v PASSWORD "$reader_dir/reader.env" >"$reader_dir/no-password.env"
+  refused_with "a reader env file without a password is refused" "B9S_DOLT_READ_PASSWORD is missing" \
+    PREVIEW_READER_ENV_FILE="$reader_dir/no-password.env"
+  if [[ ! -e /mnt/secrets/reader/reader.env ]]; then
+    default_reader="$(render_with -u PREVIEW_READER_ENV_FILE)"
+    contains "an absent default reader env file leaves the render unchanged" "{protocol: TCP, port: 3306}" "$default_reader"
+  fi
+
+  # A quota-enforcing cluster may admit preview Pods only within these bounds.
+  quota="$(awk '/^kind: ResourceQuota$/{f=1} f && /^---$/{exit} f' <<<"$rendered")"
+  for bound in 'pods: "3"' 'limits.cpu: "2"' 'limits.memory: 2Gi' 'persistentvolumeclaims: "0"'; do
+    contains "quota bounds $bound" "$bound" "$quota"
+  done
+  if grep -Eq 'scopes|scopeSelector' <<<"$quota"; then bad "quota is unscoped"; else ok "quota is unscoped"; fi
+  images="$(grep -c '^ *image: ' <<<"$rendered" || true)"
+  limited="$(grep -cE '^ *limits: \{cpu: [^,]+, memory: [^}]+\}' <<<"$rendered" || true)"
+  if [[ $images -gt 0 && $images == "$limited" ]]; then
+    ok "every container sets cpu and memory limits"
+  else
+    bad "every container sets cpu and memory limits" "$images containers, $limited limited"
+  fi
 fi
 
 # Model kubectl's partial apply: a denied Namespace does not stop it applying
@@ -250,6 +326,7 @@ fi
 redeploy_dir="$(mktemp -d "${TMPDIR:-/tmp}/b9s-redeploy-contract.XXXXXX")"
 run_deploy() (
   export TEST_SHA="$1" TEST_DENY_NAMESPACE="$2" TEST_STATE_DIR="$3"
+  export PREVIEW_READER_ENV_FILE="${4:-}" TEST_SECRET_EXISTS="${5:-0}"
   export B9S_PREVIEW_KUBECONFIG="$ROOT/go.mod" B9S_PREVIEW_CONTEXT=preview
   export B9S_PREVIEW_EVIDENCE_DIR="$TEST_STATE_DIR/evidence"
   mkdir -p "$TEST_STATE_DIR"
@@ -268,8 +345,21 @@ run_deploy() (
     case "$1" in
       version) return 0 ;;
       --namespace)
-        [[ $2 == b9s-bd-b6jw-2 && $3 == rollout ]] || return 91
-        return 0 ;;
+        [[ $2 == b9s-bd-b6jw-2 ]] || return 91
+        case "$3" in
+          rollout) return 0 ;;
+          wait) printf 'wait %s\n' "${*: -1}" >>"$TEST_STATE_DIR/calls"; return 0 ;;
+          *) return 91 ;;
+        esac ;;
+      create)
+        [[ $2 == --filename=- && $# == 2 ]] || return 97
+        printf 'secret\n' >>"$TEST_STATE_DIR/calls"
+        printf '%s\n' "$*" >>"$TEST_STATE_DIR/argv"
+        cat >"$TEST_STATE_DIR/secret.yaml"
+        if [[ $TEST_SECRET_EXISTS == 1 ]]; then
+          printf 'Error from server (AlreadyExists): secrets "b9s-reader" already exists\n' >&2
+          return 1
+        fi ;;
       apply)
         local file='' dry_run=false
         shift
@@ -281,12 +371,11 @@ run_deploy() (
           esac
         done
         [[ -f $file ]] || return 93
-        grep -q '^kind: Namespace$' "$file" || return 94
         if $dry_run; then
-          [[ $(grep -c '^kind:' "$file") == 1 ]] || return 95
+          [[ $(grep -c '^kind:' "$file") == 1 ]] && grep -q '^kind: Namespace$' "$file" || return 95
           printf 'preflight\n' >>"$TEST_STATE_DIR/calls"
         else
-          printf 'apply\n' >>"$TEST_STATE_DIR/calls"
+          printf 'apply %s\n' "$(sed -n 's/^kind: //p' "$file" | paste -sd, -)" >>"$TEST_STATE_DIR/calls"
           if grep -q '^kind: Deployment$' "$file"; then
             printf '%s\n' "$TEST_SHA" >>"$TEST_STATE_DIR/workloads"
           fi
@@ -295,7 +384,7 @@ run_deploy() (
           printf 'Forbidden: namespace metadata update denied by preview policy\n' >&2
           return 1
         fi
-        if ! $dry_run; then
+        if ! $dry_run && [[ $(sed -n '1,2{s/^kind: //p}' "$file") == Namespace ]]; then
           awk '/^---$/{exit} {print}' "$file" >"$TEST_STATE_DIR/namespace.yaml"
         fi ;;
       *) return 96 ;;
@@ -319,15 +408,56 @@ else
 fi
 contains "redeploy refreshes namespace commit label" "preview.example/commit-sha: $second_sha" \
   "$(cat "$redeploy_dir/allowed/namespace.yaml" 2>/dev/null)"
-if [[ $(cat "$redeploy_dir/allowed/calls" 2>/dev/null) == $'preflight\napply\npreflight\napply' ]]; then
-  ok "each deployment preflights namespace policy before workload apply"
+# Admission may refuse a Deployment applied before the namespace's quota,
+# so the guardrails go first and the quota must be settled before workloads.
+guarded_deploy=$'preflight\napply Namespace,RoleBinding,LimitRange,ResourceQuota,NetworkPolicy\nwait resourcequota/preview-quota\napply Deployment,Service,Ingress'
+if [[ $(cat "$redeploy_dir/allowed/calls" 2>/dev/null) == "$guarded_deploy"$'\n'"$guarded_deploy" ]]; then
+  ok "each deployment applies namespace guardrails and waits for the quota before workloads"
 else
-  bad "each deployment preflights namespace policy before workload apply"
+  bad "each deployment applies namespace guardrails and waits for the quota before workloads" \
+    "$(cat "$redeploy_dir/allowed/calls" 2>/dev/null | paste -sd'|' -)"
 fi
 if [[ $(cat "$redeploy_dir/allowed/workloads" 2>/dev/null) == "$first_sha"$'\n'"$second_sha" ]]; then
   ok "redeploy applies the new workload SHA"
 else
   bad "redeploy applies the new workload SHA"
+fi
+
+# A lane publishes an already-issued read-only credential from a mounted env
+# file. The deployer may create Secrets but cannot read them, so the Secret is
+# created (never applied, which reads first) after the quota and before the
+# Deployment that mounts it.
+reader_fixture="$redeploy_dir/reader.env"
+printf '%s\n' 'B9S_DOLT_HOST=dolt-2.dolt-2.svc.cluster.local' 'B9S_DOLT_PORT=3307' \
+  'B9S_DOLT_READ_USER=b9s_reader' "B9S_DOLT_READ_PASSWORD='s3cr3t pass'" >"$reader_fixture"
+if run_deploy "$first_sha" 0 "$redeploy_dir/reader" "$reader_fixture" >"$redeploy_dir/reader.log" 2>&1; then
+  ok "a lane deployment publishes the reader Secret"
+else
+  bad "a lane deployment publishes the reader Secret" "see $redeploy_dir/reader.log"
+fi
+reader_calls="$(paste -sd'|' - <"$redeploy_dir/reader/calls" 2>/dev/null)"
+if [[ $reader_calls == 'preflight|apply Namespace,RoleBinding,LimitRange,ResourceQuota,NetworkPolicy|wait resourcequota/preview-quota|secret|apply Deployment,Service,Ingress' ]]; then
+  ok "the reader Secret lands after the quota and before the Deployment"
+else
+  bad "the reader Secret lands after the quota and before the Deployment" "$reader_calls"
+fi
+secret="$(cat "$redeploy_dir/reader/secret.yaml" 2>/dev/null || true)"
+contains "reader Secret takes the cluster-supplied name" "name: b9s-reader" "$secret"
+contains "reader Secret lives in the preview namespace" "namespace: b9s-bd-b6jw-2" "$secret"
+b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
+contains "reader Secret carries the host" "B9S_DOLT_HOST: $(b64 dolt-2.dolt-2.svc.cluster.local)" "$secret"
+contains "reader Secret carries the port" "B9S_DOLT_PORT: $(b64 3307)" "$secret"
+contains "reader Secret carries the user" "B9S_DOLT_READ_USER: $(b64 b9s_reader)" "$secret"
+contains "reader Secret carries the unquoted password" "B9S_DOLT_READ_PASSWORD: $(b64 's3cr3t pass')" "$secret"
+if grep -rqF 's3cr3t' "$redeploy_dir/reader/argv" "$redeploy_dir/reader/evidence" "$redeploy_dir/reader.log" 2>/dev/null; then
+  bad "the reader password stays out of argv, evidence and logs"
+else
+  ok "the reader password stays out of argv, evidence and logs"
+fi
+if run_deploy "$second_sha" 0 "$redeploy_dir/reader" "$reader_fixture" 1 >"$redeploy_dir/reader-again.log" 2>&1; then
+  ok "a redeploy accepts the reader Secret it cannot read back"
+else
+  bad "a redeploy accepts the reader Secret it cannot read back" "see $redeploy_dir/reader-again.log"
 fi
 
 if run_deploy "$second_sha" 1 "$redeploy_dir/denied" >"$redeploy_dir/denied.log" 2>&1; then

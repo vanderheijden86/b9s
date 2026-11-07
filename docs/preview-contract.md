@@ -62,9 +62,11 @@ any cluster access when a required value is missing.
 | `PREVIEW_INGRESS_MIDDLEWARE` | no | Comma-separated Traefik Middleware references (`namespace-name@kubernetescrd`) on every preview Ingress, in the order Traefik applies them; empty renders none |
 | `PREVIEW_LABEL_DOMAIN` | yes | Prefix of the namespace labels the cluster's policies match |
 | `PREVIEW_RUNNER_NAMESPACE` | yes | Namespace whose Pods may reach the preview |
+| `PREVIEW_INGRESS_NAMESPACE` | no | Namespace of the ingress controller, whose Pods may reach the preview on 7681 and 7682; default `kube-system`, where k3s runs Traefik |
 | `PREVIEW_WORKLOAD_ROLE` | yes | ClusterRole bound inside the preview namespace |
 | `PREVIEW_DEPLOYER_SA` | yes | `namespace/name` of the deploying ServiceAccount |
 | `PREVIEW_READER_REF` | yes | Name of the Secret holding the read-only database credential |
+| `PREVIEW_READER_ENV_FILE` | no | Env file holding an already-issued read-only credential that `preview-deploy` publishes as `PREVIEW_READER_REF`; default `/mnt/secrets/reader/reader.env` when that file exists, empty turns publishing off (see [Namespace and access boundary](#namespace-and-access-boundary)) |
 | `PREVIEW_VIEWER_HEADER` | yes | Request header the ingress sets to the viewer's identity, which `b9s web --trust-header` reads |
 | `PREVIEW_VIEWER` | yes | Email address the board accepts in that header, passed as `b9s web --owner` |
 
@@ -99,7 +101,7 @@ graph TB
     TRAEFIK --> ID
     TERM --> API
     API -->|"tmux attach -t b9s"| TMUX
-    CATALOG -->|"TCP 3306"| DOLT
+    CATALOG -->|"TCP B9S_DOLT_PORT"| DOLT
 ```
 
 The image bakes `/app/.commit-sha`. Deployment supplies only the task and
@@ -185,6 +187,22 @@ permissions. The first namespaced object is a RoleBinding of
 decides where that binding is allowed. LimitRange, ResourceQuota and
 NetworkPolicy ship with every preview.
 
+`preview-deploy` applies in two phases, because an admission policy may
+refuse a Deployment in a namespace that has no quota yet, and the API refuses
+objects a new quota counts until the quota controller has computed its status:
+
+1. Namespace, RoleBinding, LimitRange, ResourceQuota and NetworkPolicy.
+2. A bounded wait (`B9S_PREVIEW_QUOTA_TIMEOUT`) for the quota's status. A
+   deployer that cannot read quotas logs this and carries on.
+3. The reader Secret, when the lane publishes one.
+4. Deployment, Service and Ingress.
+
+The ResourceQuota is unscoped: at most 3 pods, 1 CPU and 1Gi requested, 2 CPU
+and 2Gi in limits, and no PersistentVolumeClaims. The one container sets CPU
+and memory requests and limits, and the LimitRange supplies defaults for any
+other. Nothing deletes the quota or the LimitRange on its own: they go only
+with the namespace.
+
 The credential is project-scoped, not lane-scoped. One b9s lane can still reach
 another b9s lane's preview. It cannot bind or deploy in a sibling project's
 namespace or in `default`.
@@ -203,13 +221,26 @@ This catches metadata policy regressions even when the existing namespaced
 RoleBinding still allows workload changes. The preflight does not grant access
 or make the subsequent multi-resource apply atomic.
 
-The `PREVIEW_READER_REF` Secret belongs to the cluster, not to the lane. A
-cluster may place it in each preview namespace by itself; on one that does not,
-an operator runs `scripts/preview/preview-provision-reader TASK_ID` once per
-task. A lane never creates the Secret and never waits for it before deploying:
-it runs `preview-deploy`, and if the Secret is absent the bounded rollout
-fails and that failure is the report. Do not block in advance because the
-Secret cannot be seen, since a lane has no permission to read it.
+The cluster issues the read-only credential in the `PREVIEW_READER_REF`
+Secret. A lane cannot issue one, since that needs Dolt root and an admin
+kubeconfig. It reaches the preview namespace in one of three ways:
+
+- The cluster places the Secret in each preview namespace itself.
+- The cluster mounts an already-issued credential into the lane as an env file
+  (`PREVIEW_READER_ENV_FILE`), and `preview-deploy` creates the Secret from it
+  after the quota and before the Deployment. The file holds `KEY=VALUE` lines
+  for `B9S_DOLT_HOST`, `B9S_DOLT_PORT`, `B9S_DOLT_READ_USER` and
+  `B9S_DOLT_READ_PASSWORD`. It is parsed, never sourced, and a value may be
+  wrapped in single or double quotes. The deployer may create Secrets but not
+  read them, so the Secret is created rather than applied, and a Secret that
+  already exists is kept. To publish a new credential, destroy the preview and
+  deploy it again.
+- An operator runs `scripts/preview/preview-provision-reader TASK_ID` once per
+  task.
+
+A lane never waits for the Secret before deploying. If it is absent, the
+bounded rollout fails and that failure is the report. Do not block in advance
+because the Secret cannot be seen, since a lane has no permission to read it.
 
 `preview-provision-reader` finds databases
 that contain an `issues` table, grants the read-only identity named by
@@ -221,7 +252,10 @@ Beads database.
 
 The Secret exposes only `B9S_DOLT_HOST`, `B9S_DOLT_PORT`,
 `B9S_DOLT_READ_USER`, and `B9S_DOLT_READ_PASSWORD`. The NetworkPolicy permits
-database traffic only on TCP 3306.
+database traffic only on one TCP port: the reader env file's `B9S_DOLT_PORT`
+when the lane publishes the credential, otherwise `B9S_DOLT_PORT` from the
+environment, otherwise 3306. When the file and the environment both name a
+port and they differ, the commands stop before any cluster access.
 
 ## Image delivery
 
@@ -274,6 +308,8 @@ Tuning knobs, all optional:
 | `B9S_PREVIEW_PUSH_REGISTRY` | same as registry | Docker push endpoint |
 | `B9S_PREVIEW_BUILDKIT_ADDR` | `tcp://buildkitd.buildkit.svc.cluster.local:1234` | Unprivileged in-cluster builder |
 | `B9S_PREVIEW_INGRESS_PORT` | `8081` | Local Traefik host port |
+| `B9S_DOLT_PORT` | `3306` | Database port the NetworkPolicy opens, when no reader env file names one |
+| `B9S_PREVIEW_QUOTA_TIMEOUT` | `60` | Bounded wait for the quota's status, in seconds |
 | `B9S_PREVIEW_ROLLOUT_TIMEOUT` | `180` | Bounded rollout wait in seconds |
 | `B9S_PREVIEW_DELETE_TIMEOUT` | `180` | Bounded namespace deletion wait in seconds |
 
@@ -342,7 +378,8 @@ identity mismatch and board failures without contacting a real cluster.
 
 `preview-destroy` derives exactly one namespace from the task ID, then checks
 the project and task labels before deletion. It never uses a wildcard, label
-selector, or `--all`.
+selector, or `--all`. It deletes the namespace only. The quota, LimitRange and
+reader Secret go with it, and nothing deletes them on their own.
 
 ```sh
 scripts/preview/preview-destroy bd-b6jw "$sha"

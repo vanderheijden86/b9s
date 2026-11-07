@@ -8,13 +8,17 @@ preview_require_boundary
 preview_require_cluster
 
 rendered="$PREVIEW_EVIDENCE_DIR/rendered.yaml"
+guardrails="$PREVIEW_EVIDENCE_DIR/guardrails.yaml"
+workloads="$PREVIEW_EVIDENCE_DIR/workloads.yaml"
+preview_render_guardrails >"$guardrails"
+preview_render_workloads >"$workloads"
 preview_render_manifests "$rendered"
 check_pass manifest-render "$rendered"
 
 # kubectl continues through later documents after a Namespace admission denial.
 # Exercise metadata permissions before allowing any workload changes.
 namespace_manifest="$PREVIEW_EVIDENCE_DIR/namespace.yaml"
-awk '/^---$/{exit} {print}' "$rendered" >"$namespace_manifest"
+awk '/^---$/{exit} {print}' "$guardrails" >"$namespace_manifest"
 if kc apply --dry-run=server --filename "$namespace_manifest" >"$PREVIEW_EVIDENCE_DIR/namespace-policy.log" 2>&1; then
   check_pass namespace-policy "$PREVIEW_NAMESPACE metadata apply is permitted"
 else
@@ -23,7 +27,29 @@ else
   preview_finish
 fi
 
-if kc apply --filename "$rendered" >"$PREVIEW_EVIDENCE_DIR/apply.log" 2>&1; then
+# Admission may refuse a Deployment in a namespace without its quota, so the
+# Namespace, RoleBinding, LimitRange, ResourceQuota and NetworkPolicy go first.
+if kc apply --filename "$guardrails" >"$PREVIEW_EVIDENCE_DIR/guardrails.log" 2>&1; then
+  check_pass guardrails-apply "$PREVIEW_NAMESPACE"
+else
+  check_fail guardrails-apply "see $PREVIEW_EVIDENCE_DIR/guardrails.log"
+  tail -n 40 "$PREVIEW_EVIDENCE_DIR/guardrails.log" >&2
+  preview_finish
+fi
+
+# A deployer that cannot read quotas still deploys; the workload apply then
+# reports any refusal itself.
+if preview_wait_for_quota >"$PREVIEW_EVIDENCE_DIR/quota.log" 2>&1; then
+  check_pass quota "preview-quota is enforced"
+else
+  preview_log "preview-quota status not confirmed; see $PREVIEW_EVIDENCE_DIR/quota.log"
+fi
+
+if [[ -n $PREVIEW_READER_ENV ]]; then
+  preview_publish_reader || preview_finish
+fi
+
+if kc apply --filename "$workloads" >"$PREVIEW_EVIDENCE_DIR/apply.log" 2>&1; then
   check_pass manifest-apply "$PREVIEW_NAMESPACE"
 else
   check_fail manifest-apply "see $PREVIEW_EVIDENCE_DIR/apply.log"

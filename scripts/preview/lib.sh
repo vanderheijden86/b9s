@@ -7,6 +7,9 @@ PREVIEW_ROOT="$(git -C "$PREVIEW_DIR" rev-parse --show-toplevel)"
 PREVIEW_PASS=0
 PREVIEW_FAIL=0
 
+PREVIEW_DEFAULT_READER_ENV_FILE=/mnt/secrets/reader/reader.env
+PREVIEW_QUOTA_PODS=3
+
 preview_log() { printf '[%s] %s\n' "$PREVIEW_CMD" "$*" >&2; }
 check_pass() { PREVIEW_PASS=$((PREVIEW_PASS + 1)); printf 'PASS  %s: %s\n' "$1" "${2:-}"; }
 check_fail() { PREVIEW_FAIL=$((PREVIEW_FAIL + 1)); printf 'FAIL  %s: %s\n' "$1" "${2:-}" >&2; }
@@ -86,8 +89,11 @@ preview_parse_args() {
     || preview_die usage "PREVIEW_VIEWER is not an email address"
   [[ $PREVIEW_LABEL_DOMAIN =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] \
     || preview_die usage "PREVIEW_LABEL_DOMAIN is not a DNS name"
+  # The ingress controller's namespace may reach the web and identity ports.
+  # k3s runs Traefik in kube-system; a cluster that runs it elsewhere names it.
+  PREVIEW_INGRESS_NAMESPACE="${PREVIEW_INGRESS_NAMESPACE:-kube-system}"
   local name
-  for name in PREVIEW_RUNNER_NAMESPACE PREVIEW_WORKLOAD_ROLE; do
+  for name in PREVIEW_RUNNER_NAMESPACE PREVIEW_WORKLOAD_ROLE PREVIEW_INGRESS_NAMESPACE; do
     [[ ${!name} =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || preview_die usage "$name is not a Kubernetes name"
   done
   PREVIEW_DEPLOYER_SA="${PREVIEW_DEPLOYER_SA//\{project\}/b9s}"
@@ -98,6 +104,30 @@ preview_parse_args() {
   PREVIEW_READER_REF="${PREVIEW_READER_REF//\{project\}/b9s}"
   [[ $PREVIEW_READER_REF =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] \
     || preview_die usage "PREVIEW_READER_REF is not a Kubernetes name"
+
+  # A lane cannot issue a database credential, but it may publish one the
+  # platform already issued. Unset uses the default path only when that file
+  # exists, so a cluster that places the Secret itself is unchanged; empty
+  # turns publishing off.
+  PREVIEW_READER_ENV=""
+  if [[ -z ${PREVIEW_READER_ENV_FILE+set} ]]; then
+    [[ ! -f $PREVIEW_DEFAULT_READER_ENV_FILE ]] || PREVIEW_READER_ENV="$PREVIEW_DEFAULT_READER_ENV_FILE"
+  elif [[ -n $PREVIEW_READER_ENV_FILE ]]; then
+    [[ -f $PREVIEW_READER_ENV_FILE ]] || preview_die usage "reader env file is not a file: $PREVIEW_READER_ENV_FILE"
+    PREVIEW_READER_ENV="$PREVIEW_READER_ENV_FILE"
+  fi
+  # The NetworkPolicy opens egress only to the port the Pod will dial, which
+  # is the published credential's port when the lane publishes one.
+  PREVIEW_DOLT_PORT="${B9S_DOLT_PORT:-}"
+  [[ -z $PREVIEW_DOLT_PORT ]] || preview_valid_port "$PREVIEW_DOLT_PORT" \
+    || preview_die usage "B9S_DOLT_PORT is not a TCP port"
+  if [[ -n $PREVIEW_READER_ENV ]]; then
+    preview_read_reader_env "$PREVIEW_READER_ENV"
+    [[ -z $PREVIEW_DOLT_PORT || $PREVIEW_DOLT_PORT == "$PREVIEW_READER_PORT" ]] \
+      || preview_die usage "reader env file port $PREVIEW_READER_PORT disagrees with B9S_DOLT_PORT=$PREVIEW_DOLT_PORT"
+    PREVIEW_DOLT_PORT="$PREVIEW_READER_PORT"
+  fi
+  PREVIEW_DOLT_PORT="${PREVIEW_DOLT_PORT:-3306}"
 
   [[ $PREVIEW_HOST_SUFFIX =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] \
     || preview_die usage "host suffix is not valid"
@@ -129,6 +159,44 @@ preview_parse_args() {
   export PREVIEW_KUBECONFIG PREVIEW_CONTEXT PREVIEW_IMAGE PREVIEW_PUSH_IMAGE PREVIEW_EVIDENCE_DIR
 }
 
+preview_valid_port() {
+  [[ $1 =~ ^[0-9]{1,5}$ ]] && ((10#$1 >= 1 && 10#$1 <= 65535))
+}
+
+# Reads KEY=VALUE lines without sourcing the file, so a credential file cannot
+# run code. Errors never quote a line, since one may hold the password.
+preview_read_reader_env() {
+  local file="$1" line key value
+  PREVIEW_READER_HOST="" PREVIEW_READER_PORT="" PREVIEW_READER_USER="" PREVIEW_READER_PASSWORD=""
+  while IFS= read -r line || [[ -n $line ]]; do
+    line="${line%$'\r'}"
+    [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+    [[ $line =~ ^(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] \
+      || preview_die usage "reader env file has a line that is not KEY=VALUE: $file"
+    key="${BASH_REMATCH[2]}"
+    value="${BASH_REMATCH[3]}"
+    if [[ $value =~ ^\"(.*)\"$ || $value =~ ^\'(.*)\'$ ]]; then
+      value="${BASH_REMATCH[1]}"
+    fi
+    case "$key" in
+      B9S_DOLT_HOST) PREVIEW_READER_HOST="$value" ;;
+      B9S_DOLT_PORT) PREVIEW_READER_PORT="$value" ;;
+      B9S_DOLT_READ_USER) PREVIEW_READER_USER="$value" ;;
+      B9S_DOLT_READ_PASSWORD) PREVIEW_READER_PASSWORD="$value" ;;
+    esac
+  done <"$file"
+  [[ -n $PREVIEW_READER_HOST ]] || preview_die usage "B9S_DOLT_HOST is missing from the reader env file"
+  [[ -n $PREVIEW_READER_PORT ]] || preview_die usage "B9S_DOLT_PORT is missing from the reader env file"
+  [[ -n $PREVIEW_READER_USER ]] || preview_die usage "B9S_DOLT_READ_USER is missing from the reader env file"
+  [[ -n $PREVIEW_READER_PASSWORD ]] || preview_die usage "B9S_DOLT_READ_PASSWORD is missing from the reader env file"
+  [[ $PREVIEW_READER_HOST =~ ^[A-Za-z0-9]([-A-Za-z0-9.]*[A-Za-z0-9])?$ ]] \
+    || preview_die usage "B9S_DOLT_HOST in the reader env file is not a host name"
+  preview_valid_port "$PREVIEW_READER_PORT" \
+    || preview_die usage "B9S_DOLT_PORT in the reader env file is not a TCP port"
+  [[ $PREVIEW_READER_USER =~ ^[A-Za-z0-9_]{1,32}$ ]] \
+    || preview_die usage "B9S_DOLT_READ_USER in the reader env file is not valid"
+}
+
 preview_require_boundary() {
   git -C "$PREVIEW_ROOT" cat-file -e "${PREVIEW_COMMIT_SHA}^{commit}" 2>/dev/null \
     || preview_die boundary "commit is absent from this repository"
@@ -155,14 +223,17 @@ preview_require_cluster() {
 }
 
 preview_render_manifests() {
-  local output="$1"
-  local ingress_annotations=""
-  if [[ -n $PREVIEW_INGRESS_MIDDLEWARE ]]; then
-    ingress_annotations="$(printf '%s\n' \
-      "  annotations:" \
-      "    traefik.ingress.kubernetes.io/router.middlewares: ${PREVIEW_INGRESS_MIDDLEWARE}")"
-  fi
-  cat >"$output" <<YAML
+  {
+    preview_render_guardrails
+    printf -- '---\n'
+    preview_render_workloads
+  } >"$1"
+}
+
+# The namespace and the objects that bound it. Admission on a quota-enforcing
+# cluster refuses workloads until these exist, so they are applied first.
+preview_render_guardrails() {
+  cat <<YAML
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -207,7 +278,7 @@ metadata:
   namespace: ${PREVIEW_NAMESPACE}
 spec:
   hard:
-    pods: "3"
+    pods: "${PREVIEW_QUOTA_PODS}"
     services: "2"
     requests.cpu: "1"
     requests.memory: 1Gi
@@ -231,7 +302,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kube-system
+              kubernetes.io/metadata.name: ${PREVIEW_INGRESS_NAMESPACE}
       ports:
         - {protocol: TCP, port: 7681}
         - {protocol: TCP, port: 7682}
@@ -251,8 +322,18 @@ spec:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
     - ports:
-        - {protocol: TCP, port: 3306}
----
+        - {protocol: TCP, port: ${PREVIEW_DOLT_PORT}}
+YAML
+}
+
+preview_render_workloads() {
+  local ingress_annotations=""
+  if [[ -n $PREVIEW_INGRESS_MIDDLEWARE ]]; then
+    ingress_annotations="$(printf '%s\n' \
+      "  annotations:" \
+      "    traefik.ingress.kubernetes.io/router.middlewares: ${PREVIEW_INGRESS_MIDDLEWARE}")"
+  fi
+  cat <<YAML
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -364,6 +445,51 @@ spec:
                 name: b9s
                 port: {name: web}
 YAML
+}
+
+# A new quota is enforced only once the controller has computed its status;
+# until then the API refuses the objects it counts, Deployments included.
+preview_wait_for_quota() {
+  local timeout="${B9S_PREVIEW_QUOTA_TIMEOUT:-60}"
+  kcn wait --for="jsonpath={.status.hard.pods}=${PREVIEW_QUOTA_PODS}" \
+    --timeout="${timeout}s" resourcequota/preview-quota
+}
+
+# Creates the reader Secret from the lane's env file. The deployer may create
+# Secrets but not read them, so this never applies (apply reads first), and an
+# existing Secret is kept: destroying the preview is how a lane rotates it.
+# The manifest goes through a pipe, keeping the password off argv and disk.
+preview_publish_reader() {
+  local log="$PREVIEW_EVIDENCE_DIR/reader-secret.log"
+  if preview_reader_secret | kc create --filename=- >"$log" 2>&1; then
+    check_pass reader-secret "created ${PREVIEW_READER_REF}"
+  elif grep -q AlreadyExists "$log"; then
+    check_pass reader-secret "${PREVIEW_READER_REF} already exists; destroy the preview to publish a new credential"
+  else
+    check_fail reader-secret "see $log"
+    tail -n 20 "$log" >&2
+    return 1
+  fi
+}
+
+preview_b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
+
+preview_reader_secret() {
+  printf '%s\n' \
+    'apiVersion: v1' \
+    'kind: Secret' \
+    'metadata:' \
+    "  name: ${PREVIEW_READER_REF}" \
+    "  namespace: ${PREVIEW_NAMESPACE}" \
+    '  labels:' \
+    '    app.kubernetes.io/name: b9s' \
+    '    app.kubernetes.io/managed-by: b9s-preview' \
+    'type: Opaque' \
+    'data:' \
+    "  B9S_DOLT_HOST: $(preview_b64 "$PREVIEW_READER_HOST")" \
+    "  B9S_DOLT_PORT: $(preview_b64 "$PREVIEW_READER_PORT")" \
+    "  B9S_DOLT_READ_USER: $(preview_b64 "$PREVIEW_READER_USER")" \
+    "  B9S_DOLT_READ_PASSWORD: $(preview_b64 "$PREVIEW_READER_PASSWORD")"
 }
 
 preview_wait_for_rollout() {
