@@ -34,9 +34,10 @@ export const hideToast = () => $("#toast").classList.remove("on");
 let loading: Promise<Set<string>> | null = null;
 
 /** refresh fetches the snapshot and re-renders; the IDs it changed flash. */
-export function refresh(): Promise<Set<string>> {
+export function refresh(signal?: AbortSignal): Promise<Set<string>> {
   if (loading) return loading;
-  loading = api.snapshot().then(snap => {
+  loading = api.snapshot(signal).then(snap => {
+    if (signal?.aborted) throw new DOMException("The snapshot was cancelled", "AbortError");
     const first = !D.loaded;
     const changed = load(snap);
     if (!first) changed.forEach(flash);

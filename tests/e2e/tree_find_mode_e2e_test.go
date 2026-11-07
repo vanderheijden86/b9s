@@ -59,6 +59,23 @@ func TestTreeFindModeKeepsEveryRowE2E(t *testing.T) {
 		check(strings.Contains(frame, title), "find mode hid %q:\n%s", title, frame)
 	}
 
+	// Ctrl-F with no query opens the bar in find mode, so "alpha" is query
+	// text and its letters run no commands (bd-8umy).
+	keys := []keyStep{kd("\x06", 150*time.Millisecond)}
+	for _, r := range "alpha" {
+		keys = append(keys, kd(string(r), 80*time.Millisecond))
+	}
+	keys = append(keys, kd("\r", 150*time.Millisecond))
+	out, err = runTreeTUI(t, tempDir, 2800, keys)
+	if err != nil {
+		t.Fatalf("ctrl-f first run failed: %v\noutput:\n%s", err, out)
+	}
+	frame = plainFinalFrame(out)
+	check(strings.Contains(frame, "find / alpha"), "ctrl-f then typing did not build a find query:\n%s", frame)
+	for _, title := range []string{"Alpha bug work", "Beta bug work", "Gamma bug work"} {
+		check(strings.Contains(frame, title), "ctrl-f find hid %q:\n%s", title, frame)
+	}
+
 	out, err = runTreeTUI(t, tempDir, 2800, searchAlphaKeys(kd("&", 200*time.Millisecond)))
 	if err != nil {
 		t.Fatalf("occur run failed: %v\noutput:\n%s", err, out)
@@ -67,4 +84,20 @@ func TestTreeFindModeKeepsEveryRowE2E(t *testing.T) {
 	check(strings.Contains(frame, "OCCUR[alpha]"), "& did not enter occur mode:\n%s", frame)
 
 	fmt.Printf("=== TREE FIND MODE DONE pass=%d fail=%d ===\n", pass, fail)
+}
+
+func TestTreeOccurEscapeRoutingE2E(t *testing.T) {
+	dir := t.TempDir()
+	writeTreeFixture(t, dir, makeLabelSearchFixture(t))
+	out, err := runTreeTUI(t, dir, 2800, searchAlphaKeys(
+		kd("&", 150*time.Millisecond),
+		kd("\x1b", 200*time.Millisecond),
+	))
+	if err != nil {
+		t.Fatalf("TUI failed: %v\n%s", err, out)
+	}
+	frame := plainFinalFrame(out)
+	if strings.Contains(frame, "OCCUR[") || strings.Contains(frame, "Quit b9s?") || !strings.Contains(frame, "alpha") {
+		t.Fatalf("Esc must leave occur and retain the query:\n%s", frame)
+	}
 }

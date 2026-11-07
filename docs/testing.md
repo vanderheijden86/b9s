@@ -170,6 +170,22 @@ prepared copies. `TestMemoryReadResearchConcurrentWriter` additionally requires
 
 ## Browser tests
 
+`npm --prefix web run test:api` runs bounded client regression tests against the
+bundled API module. They cover stale CSRF recovery for writes and open-project,
+idempotency keys, unrelated refusals, failed refreshes and the shared single
+replay limit for CSRF and network failures. `test:e2e` runs them before Playwright.
+
+`pairing.spec.ts` also keeps a browser page and an unsent comment open while it
+stops a real header-auth server process. It starts a replacement on the same
+port with a renewed secret, then sends the comment through the UI. The test
+requires a CSRF 403, one session refresh, a successful replay with the same body,
+one `bd` call and the same page marker. The `restart-proof` attachment records
+the process IDs and requests. Run it with:
+
+```bash
+npm --prefix web run test:e2e -- tests/pairing.spec.ts -g 'an open page writes' --project pixel --project iphone --workers 1
+```
+
 `web/tests/memory.spec.ts` covers the Memory constellation across Chromium, WebKit and Firefox, with bounded browser operations and local fixture projects. It checks shapes, directed Links, selection, neighbourhood highlighting, the authoritative problem filter, graph caching, errors and responsive layout.
 
 For the real embedded preview, start the server through the isolated launcher, then run the read-only probe in another terminal:
@@ -184,6 +200,8 @@ The probe refuses non-loopback URLs, compares visible nodes and Links with the c
 `make web-e2e` (or `npm --prefix web run test:e2e`) runs the web UI in Playwright, as a Pixel 7 in Chromium and an iPhone 14 in WebKit. `wide.spec.ts` and `keys.spec.ts` run only in the wide projects: 1440 x 900 desktop Chrome, Safari (WebKit) and Firefox, and an iPad Pro 11 in WebKit. The phone projects skip them. The three desktop projects also run `read.spec.ts` and `write.spec.ts`, so the tree, search, the detail panel and every write are checked in each desktop browser. `shell.spec.ts` runs in one project per size class of ADR 0052 (`phone-360`, `phone-412`, `tablet-768`, `tablet-1024`, `desktop-1440`, `desktop-1920` and `wide-2560`): it checks the class on `#app`, the bottom bar or rail, the sheet or side panel, the tablet's split of list pane and detail in both orientations with its keys, and that a rotation or a resize keeps the selection, the scroll and the open detail. A later spec joins those projects by adding itself to their `testMatch`. `desktop.spec.ts` runs in the three desktop browsers and in `desktop-1920` and `wide-2560`: the sidebar, the detail pane beside the views, hover, the context menu with its keys, the sheet as a dialog, and the cursor row and focus ring. Global setup builds the bundle and `.b9s-e2e/b9s` from the working tree. Set `B9S_WEB_BIN` to test another binary. Every project runs with `reducedMotion: "reduce"`, which drops the app's transitions: under load WebKit reports a sliding sheet as stable, and a tap then lands where its button was (bd-foit.18). A pull request runs `make web-gate`, the `tokens`, `pixel`, `iphone`, `desktop` and `ipad` projects, in the `web-e2e` job; the rest of the matrix runs nightly ([Continuous integration](#continuous-integration)).
 
 - Each test gets its own temp folder with `.beads/issues.jsonl`, an isolated `XDG_CONFIG_HOME`, and its own `b9s web --no-token` on a free loopback port (`web/tests/harness.ts`). No test reaches a Beads database.
+- The browser context depends on the server fixture and closes before the server stops. Every unexpected page error, including errors during context teardown, fails the test. `live.spec.ts` covers failed snapshot recovery, page-lifetime cancellation and server lifetime.
+- Board density assertions use Playwright's `hasTouch` fixture for the emulated device and the rendered `#app.phone` layout for epic visibility. The density fixture explicitly selects epic rail mode before navigation: lane mode is a saved preference independent of the current size class. Phones still show epic lane headers without a rail. Project names are aliases, not device capabilities. Run `board-detail.spec.ts` in `pixel`, `iphone` and all seven size projects to check both aliases and layouts.
 - `web/tests/fake-bd.mjs` stands in for `bd` on the `PATH`. It applies `update`, `close`, `delete`, `defer`, `comments add` and `create` to the JSONL, and logs each call to `.beads/bd-calls.log`, so a test checks both the command and its effect. `FAKE_BD_FAIL=<command>` makes that command fail.
 - Gestures use real pointer events through `page.mouse`, so swipes, long-presses and drags run the same handlers as a finger.
 - `perf.spec.ts` loads 1000 issues and checks load, a full re-render and a swipe deep in the list. Emulated phones on a laptop are faster than real ones, so this catches a render path that went quadratic, not a slow handset. It runs in the `pixel-perf`, `iphone-perf`, `tablet-perf` and `desktop-perf` projects, which start once every other project has finished, so the timing does not share the CPU with other workers. A failure elsewhere therefore skips it. A budget is a claim about the app alone, so a pull request does not run these projects: the nightly run times them on one worker (`--workers 1`), Chromium against the budget with the CI allowance and WebKit recorded in the annotations without a verdict (ADR 0059, bd-zoom.1.6). A budget that fails nightly is a Beads bug, never a wider budget.

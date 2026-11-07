@@ -5,6 +5,7 @@ package main_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -123,6 +124,72 @@ func TestProjectCommandWithoutServerSaysWhyE2E(t *testing.T) {
 
 	if !strings.Contains(screen, "Cannot list databases") {
 		t.Errorf(":proj on a project without a Dolt server did not say why\nscreen:\n%s", screen)
+	}
+}
+
+func TestForgetRecentProjectE2E(t *testing.T) {
+	for _, locked := range []bool{false, true} {
+		t.Run(fmt.Sprintf("lock_recent=%t", locked), func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			root := t.TempDir()
+			alpha := recentFixture(t, root, "alpha")
+			beta := recentFixture(t, root, "beta")
+			configDir := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "b9s")
+			if err := os.MkdirAll(configDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			settings := fmt.Sprintf(`# personal settings
+ui:
+  default_view: tree # keep trees
+lock_recent: %t
+recent_projects:
+  - name: alpha
+    path: %q
+  - name: offline
+    database: offline
+    host: 127.0.0.1:1
+  - name: beta
+    path: %q
+`, locked, alpha, beta)
+			configPath := filepath.Join(configDir, "config.yaml")
+			if err := os.WriteFile(configPath, []byte(settings), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			out, err := runTreeTUI(t, alpha, 3500, typeCommand("forget 2"))
+			if err != nil {
+				t.Fatalf("forget TUI action failed: %v\n%s", err, out)
+			}
+			frame := stripTerminalCodes([]byte(treeFinalFrame(out)))
+			t.Logf("Final TUI frame:\n%s", frame)
+			wantNames := []string{"alpha", "beta"}
+			wantStatus := "Forgot recent project offline"
+			if locked {
+				wantNames = []string{"alpha", "offline", "beta"}
+				wantStatus = "Recent projects are locked"
+				assertHeaderSlot(t, frame, 2, "offline")
+			} else {
+				assertHeaderSlot(t, frame, 2, "beta")
+				if regexp.MustCompile(`<\d>\s+offline\b`).MatchString(frame) {
+					t.Errorf("forgotten project remains in final header:\n%s", frame)
+				}
+			}
+			if !strings.Contains(frame, wantStatus) {
+				t.Errorf("final frame lacks status %q:\n%s", wantStatus, frame)
+			}
+			if got := savedRecentNames(t); !slices.Equal(got, wantNames) {
+				t.Errorf("saved recent projects = %v, want %v", got, wantNames)
+			}
+			saved, err := os.ReadFile(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, comment := range []string{"# personal settings", "default_view: tree # keep trees"} {
+				if !strings.Contains(string(saved), comment) {
+					t.Errorf("config lost %q:\n%s", comment, saved)
+				}
+			}
+		})
 	}
 }
 

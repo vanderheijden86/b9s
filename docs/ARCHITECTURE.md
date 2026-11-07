@@ -162,7 +162,9 @@ Every TUI instance serves `internal/control` on a unix socket in a 0700 state di
 3. Global keys: project digits, `L` and `A` pickers, `b` and `g` for the board and the graph, `e`, `K`, `Delete`, `Ctrl-N`, `Ctrl-E`, `?`, `:` and `/`.
 4. The focused pane: `handleTreeKeys`, `handleBoardKeys`, `handleGraphKeys` or the detail pane.
 
-A key that a global handler consumes never reaches a pane. `b` is the board everywhere, so the tree's bookmark on `b` is unreachable. Keys that fall into this trap are tracked in Beads rather than documented as features.
+A key that a global handler consumes never reaches a pane. `b` opens the board and `Alt-b` bookmarks a tree row. Board `g` and `0` reach board navigation before global view and project shortcuts. Active label and project filters own their text input before global shortcuts run. Table-driven routing tests exercise the keys advertised by help through `Model.Update`.
+
+The label picker records the focus of the pane that opened it and restores that focus on cancellation or acceptance. Applying a label from detail keeps the displayed issue, even if the filtered tree or board selects another row. Issue actions resolve the displayed issue while detail has focus. Tree marks apply only outside detail.
 
 The tree is always present. The board and the graph are overlays that `Esc` closes, and the detail pane sits beside the tree when the terminal is at least 100 columns wide, and over it otherwise. Each view owns its cursor and scroll state, and nothing else.
 
@@ -212,9 +214,20 @@ Bulk actions act on the marked issues, or on the cursor row when nothing is mark
 
 The header lists recent projects from `config.yaml`, not folders discovered by scanning. A new project takes key `1`, a known project keeps its key, and `lock_recent` freezes the list. A recent project whose database denies the startup user is left out of the header for the session, and its counts always come from the checkout's configured source. See [ADR 0008](adr/0008-list-recent-projects-instead-of-discovered-folders.md) and [ADR 0015](adr/0015-hide-recent-projects-the-startup-user-cannot-read.md).
 
+`:forget <number>` removes an inactive recent project by its current visible
+header number, without opening its server. `Config.ForgetRecent` respects
+`lock_recent`. `SaveRecentTo` excludes the explicit target from both the
+in-memory and on-disk lists before merging, so the disk copy cannot undo the
+removal. Other windows' additions and unrelated YAML settings and comments
+survive. The UI applies the shorter list only after the atomic save succeeds.
+A refresh already in flight may finish, but later header counts use the
+shorter list. A stale window can still restore its own copy on a later save.
+
 `:project` opens the project table, which lists the databases on the startup project's Dolt server that the startup user can read. `catalog.go` classifies each database into a closed `Reachability` set from the MySQL error number, so a down tunnel is never reported as refused access or the reverse. Opening a database without a checkout reads it as the startup user, the only credential b9s holds. See [ADR 0007](adr/0007-read-shared-beads-through-one-select-only-catalog-account.md) and [ADR 0009](adr/0009-open-entity-views-from-a-colon-command-prompt.md), superseded in part by [ADR 0027](adr/0027-show-a-flat-list-for-type-queries-and-on-t.md).
 
 A project switch is a small state machine in `project_switch.go`. While a project is `Opening`, the current one stays on screen and usable, and it is replaced only once the new one has loaded. A deadline of ten seconds bounds the wait, with the Dolt connect timeout of five seconds inside it. A failure keeps the old project and shows the `OpenReason`, a closed set that the CLI and the TUI share.
+
+Tree expansion, bookmarks and layout persist in the active project's `.beads/tree-state.json`, independently of whether a JSONL export exists. Startup passes the resolved beads directory, including `BEADS_DIR` overrides. A successful switch selects the destination's directory and clears the previous project's bookmarks and layout before loading destination state. A database opened without a checkout has no persistence directory and cannot write the previous project's state file.
 
 ## People and identities
 
@@ -236,6 +249,12 @@ The Dolt SQL login is a workspace credential shared by every agent, so it is sho
 
 `b9s web` (`cmd/b9s/web.go`) serves one project to browsers. It reuses the TUI's readers, watcher, query parser and `IssueWriter`, so the browser sees the same data and makes the same `bd` calls.
 
+Ordinary board issues render as borderless title rows with status, short ID and
+urgent priority. Selection highlights and wraps the title without adding
+metadata or parent breadcrumbs. Complete issue details carry that context.
+Epic summaries retain their description, counts and metadata, and same-cell
+ordering and indentation retain hierarchy ([ADR 0065](adr/0065-keep-web-board-issue-rows-title-focused.md)).
+
 ```text
   phone ──https──▶ tailscale serve ──▶ 127.0.0.1:7979  pkg/web.Server
                                           │
@@ -249,10 +268,12 @@ The Dolt SQL login is a workspace credential shared by every agent, so it is sho
 
 - **Store** (`store.go`) holds the open project and a version number that goes up on each watcher event. The snapshot is lean: long text and comments come from `/api/issue` when the detail opens.
 - **Events** (`/api/events`) send `hello` with the current version on connect, then `changed`, `project` and `health`. Under `--dev-assets` they also send `assets` when the served files change, and the browser reloads (`make web-dev`). The browser fetches a new snapshot when the version moves, so a missed event costs one fetch, never a wrong list.
+- **Live read failures** keep the last snapshot visible, show a reload error and the offline banner, and reconnect through the stream's backoff. Leaving the page cancels its live snapshot request, stream and deferred gesture refresh. A page restored from the back-forward cache reconnects and compares the server version with the visible snapshot.
 - **Queries** go to the server (`/api/query`), which runs the TUI's `ParseIssueQuery`, so the browser never has a second query language.
 - **Writes** (`write.go`) accept a closed set of operations, check them, and call `IssueWriter`. A failed `bd` answers 422 with its output. A write needs the session cookie and the `X-B9s-CSRF` header.
 - **Auth** (`auth.go`) derives the pairing token from a secret in the config folder, so a paired phone stays paired across restarts. See [ADR 0020](adr/0020-pair-every-browser-with-a-persistent-token.md).
 - **Hosted project discovery** (`--discover-dolt --projects-root`) refreshes readable databases from the startup server on project-list and project-open requests. `SHOW DATABASES` plus a bounded `issues` probe excludes non-Beads databases. New databases get local metadata for `bd` writes. Lost databases leave the sheet, while transient failures retain the last discovered list. Discovery uses the existing server and auth secret.
+- **Session recovery** (`web/src/api.ts`) refreshes `api/session` only when a POST returns the CSRF middleware's exact 403 error, then replays the same request once. This recovers an open tab when a header-auth pod starts with a different secret. Writes keep their idempotency key, and CSRF recovery shares one replay limit with the network retry. Unrelated errors, a failed refresh and a failed replay reach the caller. A rotated pairing secret still requires pairing again.
 - **Types**: `web/src/api.gen.ts` is generated from `types.go` by `TestGeneratedTypesAreCurrent`, and fails that test when stale.
 - **Bundle**: `pkg/web/dist` is committed and embedded with `go:embed`. `dist/source.sha256` hashes the inputs, and `TestEmbeddedBundleIsCurrent` fails when `web/` changed without `make web`. The GoReleaser before-hook runs that test and `TestGeneratedTypesAreCurrent`, so a release cannot ship a stale bundle and needs no Node.
 - **Mermaid**: the browser loads the pinned Mermaid asset only when a detail contains a Mermaid fence. It renders SVG in strict mode, keeps escaped source on failure, and preserves the original text for copy and edit. The asset is embedded with the web bundle. See [ADR 0031](adr/0031-render-mermaid-in-the-web-detail-view.md).

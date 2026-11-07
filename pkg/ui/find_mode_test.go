@@ -98,7 +98,13 @@ func TestFindModeKeepsAcrossQueries(t *testing.T) {
 	m := findModeModel(t)
 	all := m.TreeNodeCount()
 	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlF})
-	m = typeQuery(m, "epic")
+	for _, r := range "epic" {
+		m = pressKeys(m, runeKey(string(r)))
+	}
+	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if got := m.queryState.Text(); got != "epic" {
+		t.Fatalf("query text = %q, want %q", got, "epic")
+	}
 	if got := m.TreeNodeCount(); got != all {
 		t.Fatalf("find mode shows %d rows, want all %d", got, all)
 	}
@@ -131,5 +137,35 @@ func TestQueryBarNamesFindMode(t *testing.T) {
 	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlF})
 	if bar := m.renderUnifiedTitleBar(100); !strings.Contains(bar, "find / tunnel") {
 		t.Fatalf("find mode bar does not name the mode:\n%s", bar)
+	}
+}
+
+// Ctrl-F with no query opens the query bar in find mode, as / opens it in
+// filter mode, so the letters typed next are query text. Without the open bar,
+// t, u and n would run their tree commands instead (bd-8umy).
+func TestCtrlFWithoutQueryOpensQueryBarInFindMode(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	m := findModeModel(t)
+	all := m.TreeNodeCount()
+
+	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlF})
+	for _, r := range "tunnel" {
+		m = pressKeys(m, runeKey(string(r)))
+	}
+
+	if got := m.queryState.Text(); got != "tunnel" {
+		t.Fatalf("query text = %q, want %q: typed keys ran commands instead", got, "tunnel")
+	}
+	if !m.queryState.Find() {
+		t.Fatal("ctrl+f with no query did not choose find mode")
+	}
+	if m.tree.IsFlatMode() || !m.treeViewActive || m.focused != focusTree {
+		t.Fatal("typed query text changed the view")
+	}
+	if got := m.TreeNodeCount(); got != all {
+		t.Fatalf("find mode shows %d rows, want all %d", got, all)
+	}
+	if got := m.tree.SearchMatchCount(); got != 2 {
+		t.Fatalf("find mode has %d hits, want 2", got)
 	}
 }

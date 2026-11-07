@@ -105,6 +105,7 @@ The tree is always present. Every issue sits under its parent, and an issue with
 | `f` | Show only the top-level branch of the issue under the cursor. Each further press steps one parent down the path to that issue (epic, child epic, feature), skipping an issue without children, and the press after the lowest one shows the whole tree again |
 | `x` | Show only the subtree of the issue under the cursor. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
+| `Alt-B`, `B` | Bookmark the selected issue, or cycle through bookmarks. `b` opens the board |
 
 Ready means open with no open blocker. Filters compose with each other and with the [search query](#search).
 
@@ -143,6 +144,10 @@ The sort fields are priority, created, updated, title, status, type, deps, pager
 | `R`, `I` | List the issue's [attachments](#attachments) and open one, attach files |
 | `:update` | Open the update confirmation when a newer b9s release is available |
 
+`Esc` closes a tree popup first, then leaves occur or XRay, then clears the
+query and remaining filters. With no active mode or filter, it asks to quit.
+The flat layout stays on `t` (ADR 0027). Backtick opens the tutorial.
+
 ## Detail pane
 
 `Enter` moves focus to the detail pane, and `Enter` or `Esc` moves it back. The focused pane has the bright border, and the footer shows its keys.
@@ -174,10 +179,10 @@ Press `/` to query the loaded issues. The query field appears only while you typ
 | `Esc` | Clear the query |
 | `Tab` | Complete a field name, a value, a label or a word from the loaded issues |
 | `n`, `N` | Go to the next or previous match |
-| `Ctrl-F` | Switch between filter and find. Find hides nothing: the hits are underlined in orange and the field reads `find /` |
+| `Ctrl-F` | With no query, open the query field in find mode. With a query, switch it between filter and find. Find hides nothing: the hits are underlined in orange and the field reads `find /` |
 | `&` | Occur: show only the matches. Press again to show the tree |
 
-`/` filters, as it does in a k9s table: issues without a hit leave the view. `Ctrl-F` makes the same query find, as `/` does in a k9s YAML view: every issue stays, `n` and `N` step through the hits and unfold the branch around each one. The mode lasts until you press `Ctrl-F` again, also through `Esc` and new queries. Status and type keys write into the query, so in find mode they mark issues instead of hiding the rest. `&` is the occur key from `less`. See [ADR 0057](adr/0057-find-with-ctrl-f-and-occur-on-ampersand.md).
+`/` filters, as it does in a k9s table: issues without a hit leave the view. `Ctrl-F` makes the same query find, as `/` does in a k9s YAML view: every issue stays, `n` and `N` step through the hits and unfold the branch around each one. With no query, `Ctrl-F` opens the field in find mode, so you can type straight away. The mode lasts until you press `Ctrl-F` again, also through `Esc` and new queries. Status and type keys write into the query, so in find mode they mark issues instead of hiding the rest. `&` is the occur key from `less`. See [ADR 0057](adr/0057-find-with-ctrl-f-and-occur-on-ampersand.md).
 
 History keeps the latest 100 nonempty queries submitted with `Enter`, without consecutive repeats.
 Each checkout saves its history in `.beads/search-history.json` for later sessions.
@@ -257,6 +262,11 @@ Every change goes through the `bd` CLI, so b9s and `bd` always agree on what is 
 The edit form has the fields Title, Status, Description, Priority, Type, Assignee, Labels, Defer until and Notes, and shows the Creator in its title. `Tab` and `Shift-Tab` move between fields, and `Enter` starts a new line in Description and Notes. `→` at the end of the typed text completes an assignee or label. `Ctrl-E` opens Description or Notes in `$EDITOR` and reads the text back when the editor exits. `Esc` cancels. `Ctrl-S` saves from any field, and `Enter` saves from every field except Description and Notes. The line under the form title names these keys. A value in Defer until, such as `tomorrow` or `+3d`, runs `bd defer`.
 
 The view reloads by itself once `bd` has written, because b9s watches the data source. The all-projects view (`0`) is read-only.
+
+The label picker returns to the pane that opened it, on `Esc` or `Enter`.
+In the detail pane, applying a label keeps the displayed issue, even when that label excludes it from the tree or board.
+`e`, `K` and `Delete` target the displayed issue.
+Tree marks apply when the tree has focus.
 
 ## Attachments
 
@@ -367,6 +377,12 @@ An issue belongs to its nearest epic ancestor through parent-child links. The bo
 | Epic rail (default) | A column on the left holds each lane's epic as a box as tall as the lane: its ID and title, the first sentence of its description, a completion bar with done/total and the open P0 and P1 count, the in-progress, waiting and ready counts, and its labels, owner, due date and last change. A due date in the past shows in red. A folded epic shows only its title and bar. The epic stays in view while its lane scrolls. A selected epic gets the same highlighted border and fill as a selected card. |
 | Epic rows | A full-width box above each lane. Its first line holds the epic's ID and title, its counts, labels, owner and last change, and the completion bar with done/total on the right. Its second line holds the first sentence of the description. A selected epic gets the highlighted border and fill of a selected card. |
 
+The web board uses borderless issue rows with status, short ID, title and only
+P0 or P1. Selection highlights the row and wraps a long title without adding
+metadata or parent breadcrumbs. Open issue details for all metadata and parent
+relationships. Epic summaries retain their rich content. Phone and tablet rows
+retain 44 px touch targets ([ADR 0065](adr/0065-keep-web-board-issue-rows-title-focused.md)).
+
 Issues without an epic sit in a last `No epic` lane. `Tab` folds the selected issue's epic: its cards leave the board and each column shows how many it hides. `Shift-Tab` folds every epic, or unfolds them all when one is folded. The epic's own issue is the lane header, not a card; selecting it highlights the lane.
 
 The epics form the first column of the board: the rail cells in the rail design, the header rows in the rows design. `Left` and `Right` (`h` `l`) move between the epic column and the status columns inside the selected lane, and skip a column where the lane has no card. `Right` from an epic goes to the lane's card in the first column that has one. `Up` and `Down` (`j` `k`) move through the cards of the column and cross into the next lane at a lane's edge, passing the epic headers. In the epic column they go to the epic above or below, which is how you change lane; the lane without an epic is the last stop. `gg`, `G` and the page keys move over all the cards of the column. `}` selects the next epic, and `{` selects the epic of the current lane, then the epic before it. A selected epic shows in the detail pane.
@@ -394,6 +410,10 @@ A row separates four facts: the column is the stored status, `blocked by X` name
 | `e` | Hide or show empty columns |
 | `y` | Copy the issue ID |
 | `Esc` | Back to the tree |
+
+In the board, `g` waits for the second `g`. Return to the tree before pressing
+`g` to open the dependency graph. Digits `1`-`9` keep their header shortcuts.
+The removed inspector has no `Ctrl-J` or `Ctrl-K` bindings (ADR 0017).
 
 ## Dependency graph
 
@@ -583,6 +603,7 @@ Opening a graph workspace with plain `b9s` loads its Issues from the workspace's
 | `:chore` | `:chores` | Show only chores |
 | `:issues` | `:all` | Show every type again |
 | `:project` | `:projects`, `:proj` | List the databases on the Dolt server |
+| `:forget <number>` | | Forget the recent project on header key `1`-`9` |
 | `:mouse` | | Hand the mouse to the terminal, or take it back |
 | `:layout` | | Stack the detail pane below the tree, or put it back to the right |
 | `:wrap` | | Wrap long titles onto extra lines, or truncate them again, as `v` does |
@@ -614,11 +635,30 @@ Each b9s registers in `~/.local/state/b9s/instances` (or `$XDG_STATE_HOME/b9s/in
 
 ## Projects
 
-The header lists the project b9s started in and up to nine projects you opened recently, on the keys `1`-`9`. A project b9s has not seen yet is added as `1`, and a project already in the list keeps its number, so switching never renumbers the header. A project is identified by its Dolt host and database when it has one, so a checkout and an entry opened through `:project` on the same database share one row. `0` combines the issues of every Dolt project in the list into one read-only view. b9s does not scan folders for projects. A recent project whose server or tunnel is down stays in the header and shows `✗` in place of its issue counts. A recent project whose database refuses the startup project's Dolt user stays out of the header for that session. It stays in `recent_projects` and comes back when b9s starts as a user with access to that database. The counts come from the checkout's configured source, never from a JSONL export beside a Dolt checkout. See [ADR 0008](adr/0008-list-recent-projects-instead-of-discovered-folders.md) and [ADR 0015](adr/0015-hide-recent-projects-the-startup-user-cannot-read.md).
+`P` shows the project header and starts its filter. Type to narrow the projects,
+use `Up` and `Down` to choose, then `Enter` to open. `Esc` cancels.
+Reopening the filter with `P` starts with an empty query and all projects.
+The filter owns every key while it is open, including letters and digits that
+otherwise switch views or projects.
+Count and issue refreshes preserve the filter and its selection.
+Close Help, tutorial or database health before using `P`.
+
+The header lists the project b9s started in and up to nine projects you opened recently, on the keys `1`-`9`. A project b9s has not seen yet is added as `1`, and a project already in the list keeps its number, so switching never renumbers the header. A local project is identified by its resolved checkout path and host. Opening the same checkout after its database changes updates its entry in place. Symlink aliases share that entry. Projects without a checkout use their Dolt host and database, so an entry opened through `:project` can share a row with a checkout on the same database. `0` combines the issues of every Dolt project in the list into one read-only view. b9s does not scan folders for projects. A recent project whose server or tunnel is down stays in the header and shows `✗` in place of its issue counts. A recent project whose database refuses the startup project's Dolt user stays out of the header for that session. It stays in `recent_projects` and comes back when b9s starts as a user with access to that database. The counts come from the checkout's configured source, never from a JSONL export beside a Dolt checkout. See [ADR 0008](adr/0008-list-recent-projects-instead-of-discovered-folders.md) and [ADR 0015](adr/0015-hide-recent-projects-the-startup-user-cannot-read.md).
 
 When matching by checkout path, b9s resolves symbolic links so a linked folder and its target share one recent slot and header row. If the path cannot be resolved, b9s compares cleaned paths, so a missing folder keeps its identity.
 
 `:project` lists the Beads databases that the startup project's Dolt user can read. Move with `j` and `k` and press `Enter` to open one. A database without a local checkout opens read-only, because writes run `bd` inside a checkout. See [ADR 0007](adr/0007-read-shared-beads-through-one-select-only-catalog-account.md).
+
+To forget a recent project, type `:forget 2` with its current header number.
+This removes the entry from `recent_projects` and the header, then renumbers
+the remaining rows. It does not change the project's files or database.
+The command works while that project's server is unreachable, so later header
+count refreshes do not wait for it. A count refresh already running can still
+finish. Switch to another project before forgetting the active project.
+`lock_recent: true` prevents forgetting. The save preserves other settings and
+their YAML comments, and keeps entries another window added. Another open
+window can save its own copy of the forgotten entry again. Opening the project
+again also adds it to the recent list.
 
 b9s loads a project before it replaces the one on screen. While it loads, the status line shows `Opening <name>…` and `Esc` cancels. If the project cannot be opened, you stay where you were and a popup names the reason:
 
@@ -887,7 +927,6 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `p` `{` `}` | Go to the parent, the first sibling, the last sibling |
 | `o` `C` `r` `a` | Show open, closed, ready or all issues |
 | `/`, `n` `N`, `Ctrl-F`, `&` | Search, next or previous match, filter or find, only the matches without their ancestors |
-| `O` | Open the selected issue as a read-only Markdown file in `$VISUAL`, else `$EDITOR`, else the system default editor, in every view. b9s waits while a terminal editor runs |
 | `f`, `x` | Show only the cursor's branch or subtree; again undoes it |
 | `s`, `\|`, `v`, `F` | Sort, columns, wrap titles, follow live changes |
 | `Space`, `V`, `u`, `Ctrl-\` | Mark, mark a range, unmark, clear the marks |
