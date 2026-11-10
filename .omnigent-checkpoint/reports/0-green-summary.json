@@ -1,0 +1,35 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./internal/datasource",
+    "-run",
+    "^TestOpenProjectReleases",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "test_outcomes": {
+    "TestOpenProjectReleasesJSONL": "pass",
+    "TestOpenProjectReleasesSQLite": "pass",
+    "TestOpenProjectReleasesCommentsUnavailable": "pass",
+    "TestOpenProjectReleasesEmbeddedDolt": "pass",
+    "TestOpenProjectReleasesDoltReader/whole": "pass",
+    "TestOpenProjectReleasesDoltReader/lean": "pass",
+    "TestOpenProjectReleasesDoltReader": "pass"
+  }
+}
