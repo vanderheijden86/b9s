@@ -18,6 +18,7 @@ b9s has three test layers. Unit tests cover packages, integration tests cover th
 
 ```bash
 go build ./...
+make test-stable                           # automated agents, bounded packages and host-sensitive exclusions
 go test ./... -skip DoltIntegration          # everything that needs no Dolt server
 go test ./pkg/ui/ -run TestTreeView -v       # one package, one pattern
 go test ./... -race -skip DoltIntegration    # with the race detector
@@ -26,6 +27,13 @@ go test ./... -short -skip DoltIntegration   # skips the slow cases
 ```
 
 `make test` runs the default set. Every run must have a bounded timeout. A test that hangs is a bug in the test or the code, never a reason to raise the timeout.
+
+Automated agents run `make test-stable` alone, without a base-branch comparison.
+It sets a ten-minute package timeout and excludes `tests/e2e` and the
+host-sensitive tests named in `STABLE_SKIP` in the Makefile. Those tests remain
+in `make test` and CI. For an uncached run with a suite deadline and countable
+results, use `GOFLAGS='-v -count=1' timeout --kill-after=10s 660s make test-stable`.
+Run relevant PTY regressions separately with their declared subprocess deadlines.
 
 The E2E suite runs its PTY tests one after another and takes about seven minutes, or up to eleven on a loaded machine. The 1200s limit covers the whole suite, not one test: each PTY run has its own deadline of 10 to 15 seconds, and a run that reaches it fails, so a hang still shows within seconds. Count the results of a verbose run with `grep -c '^--- SKIP' e2e.log` (and `PASS`, `FAIL`): a skip that no missing server or tool explains needs a look.
 
