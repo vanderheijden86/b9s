@@ -1,0 +1,28 @@
+{"Time":"2026-11-10T21:38:16.082878296Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/ui"}
+{"Time":"2026-11-10T21:38:16.113453493Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderShowsMetaWithoutTable"}
+{"Time":"2026-11-10T21:38:16.113482733Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderShowsMetaWithoutTable","Output":"=== RUN   TestRenderIssueDetail_HeaderShowsMetaWithoutTable\n"}
+{"Time":"2026-11-10T21:38:16.114641984Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderShowsMetaWithoutTable","Output":"--- PASS: TestRenderIssueDetail_HeaderShowsMetaWithoutTable (0.00s)\n"}
+{"Time":"2026-11-10T21:38:16.114661189Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderShowsMetaWithoutTable","Elapsed":0}
+{"Time":"2026-11-10T21:38:16.114671684Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID"}
+{"Time":"2026-11-10T21:38:16.114675511Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID","Output":"=== RUN   TestIssueDetailViewportShowsFullID\n"}
+{"Time":"2026-11-10T21:38:16.11467971Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem"}
+{"Time":"2026-11-10T21:38:16.114682464Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem","Output":"=== RUN   TestIssueDetailViewportShowsFullID/bd-iiem\n"}
+{"Time":"2026-11-10T21:38:16.125726171Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem","Output":"--- PASS: TestIssueDetailViewportShowsFullID/bd-iiem (0.01s)\n"}
+{"Time":"2026-11-10T21:38:16.125768148Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem","Elapsed":0.01}
+{"Time":"2026-11-10T21:38:16.1257853Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem.2.3"}
+{"Time":"2026-11-10T21:38:16.125792676Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem.2.3","Output":"=== RUN   TestIssueDetailViewportShowsFullID/bd-iiem.2.3\n"}
+{"Time":"2026-11-10T21:38:16.13266542Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem.2.3","Output":"--- PASS: TestIssueDetailViewportShowsFullID/bd-iiem.2.3 (0.01s)\n"}
+{"Time":"2026-11-10T21:38:16.132714716Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/bd-iiem.2.3","Elapsed":0.01}
+{"Time":"2026-11-10T21:38:16.132726435Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/long-project-name-iiem.2.3"}
+{"Time":"2026-11-10T21:38:16.132730509Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/long-project-name-iiem.2.3","Output":"=== RUN   TestIssueDetailViewportShowsFullID/long-project-name-iiem.2.3\n"}
+{"Time":"2026-11-10T21:38:16.138050443Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/long-project-name-iiem.2.3","Output":"--- PASS: TestIssueDetailViewportShowsFullID/long-project-name-iiem.2.3 (0.01s)\n"}
+{"Time":"2026-11-10T21:38:16.138087292Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID/long-project-name-iiem.2.3","Elapsed":0.01}
+{"Time":"2026-11-10T21:38:16.138097136Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID","Output":"--- PASS: TestIssueDetailViewportShowsFullID (0.02s)\n"}
+{"Time":"2026-11-10T21:38:16.138101195Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailViewportShowsFullID","Elapsed":0.02}
+{"Time":"2026-11-10T21:38:16.138120894Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderIsAHeavyBox"}
+{"Time":"2026-11-10T21:38:16.138127265Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderIsAHeavyBox","Output":"=== RUN   TestRenderIssueDetail_HeaderIsAHeavyBox\n"}
+{"Time":"2026-11-10T21:38:16.139062194Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderIsAHeavyBox","Output":"--- PASS: TestRenderIssueDetail_HeaderIsAHeavyBox (0.00s)\n"}
+{"Time":"2026-11-10T21:38:16.139081848Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRenderIssueDetail_HeaderIsAHeavyBox","Elapsed":0}
+{"Time":"2026-11-10T21:38:16.139237634Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"PASS\n"}
+{"Time":"2026-11-10T21:38:16.142293244Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t0.059s\n"}
+{"Time":"2026-11-10T21:38:16.142329538Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Elapsed":0.059}
