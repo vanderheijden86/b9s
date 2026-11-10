@@ -102,6 +102,11 @@ B9S_TEST_STOCK_BD=/path/to/stock/bd \
   go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -v
 ```
 
+The attachment test uses a long private `TMPDIR` to exercise footer clipping at
+the fixed 160-column PTY width. The test-mode opener result precedes the download
+path so it stays visible when the path exceeds that width. A missing result
+must fail the test, not trigger a bd-version skip.
+
 The mobile and preview shell scripts in `tests/` are not Go tests. They check a deployed preview through the URL a reviewer uses and take the base URL, task ID and commit SHA as arguments, so a run against the wrong build fails instead of passing on a sibling.
 
 ## Memory preview terminal checks
