@@ -1,0 +1,10 @@
+Beads initialized: beads-connect exited 0, connected to b9s as bd_b9s.
+Repository: /home/omnigent/workspace/b9s
+Fetch: timeout 60s git fetch origin main, exit 0.
+Delivery remote probe: git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-jt4s, exit 2 (absent).
+No local delivery branch and clean worktree. Created omnigent/bd-jt4s from origin/main.
+Actual branch: omnigent/bd-jt4s
+HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Required commits: none. Ancestry checks: not applicable.
+Checkpoint inspect: no checkpoint exists (exit 2).
