@@ -2,7 +2,7 @@
 #
 # Build with SQLite FTS5 (full-text search) support enabled
 
-.PHONY: build install clean test web web-dev web-types web-e2e book
+.PHONY: build install clean test test-stable web web-dev web-types web-e2e book
 
 # Enable FTS5 for full-text search in SQLite exports
 export CGO_CFLAGS := -DSQLITE_ENABLE_FTS5
@@ -27,6 +27,15 @@ clean:
 
 test:
 	go test ./...
+
+# The suite automated agents run. It leaves out tests/e2e (minutes of PTY runs)
+# and tests whose result depends on the host rather than the code: MIME
+# detection, the bd binary (init, embedded store), build stamping and timer
+# scheduling under CPU load. Each one stays in `make test` and in CI.
+STABLE_SKIP := DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers
+
+test-stable:
+	go test -timeout 10m -skip '$(STABLE_SKIP)' $$(go list ./... | grep -v /tests/e2e)
 
 # The web UI (b9s web). pkg/web/dist is committed, so only a change under
 # web/ needs Node; TestEmbeddedBundleIsCurrent fails when dist is stale.
