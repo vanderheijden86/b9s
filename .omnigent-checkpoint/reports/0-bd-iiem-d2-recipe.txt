@@ -1,0 +1,10 @@
+Native stable recipe and STABLE_SKIP exactly match assigned origin/main.
+# The suite automated agents run. It leaves out tests/e2e (minutes of PTY runs)
+# and tests whose result depends on the host rather than the code: MIME
+# detection, the bd binary (init, embedded store), build stamping and timer
+# scheduling under CPU load. Each one stays in `make test` and in CI.
+STABLE_SKIP := DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers
+
+test-stable:
+	go test -timeout 10m -skip '$(STABLE_SKIP)' $$(go list ./... | grep -v /tests/e2e)
+
