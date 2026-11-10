@@ -1,0 +1,95 @@
+Task bd-iiem, implementer, dispatch 2
+Repository /home/omnigent/workspace/b9s
+Result: all requested native checks passed. Ready for independent review/test roles.
+No unresolved required-check failures or external prerequisites. No issues filed.
+Original missing-ID product defect remains unreproduced.
+
+PREFLIGHT
+Actual branch omnigent/bd-iiem.
+HEAD 03b79239e41207ff6daa10a102f162155254b589, unchanged.
+Fetched origin/main c2fccef8b537ed034ebd360ea7cf31c02250e083, PR target main.
+Remote delivery present, exact ls-remote probe exit 0, fetched and resumed existing tip.
+Required commits none. Required ancestry against base and HEAD not applicable.
+Beads connected once in dispatch 1. Lockfile modules installed with Go 1.25.5.
+No Go dependency/lockfile changes. Current branch and worktree preserved on continuation.
+Checkpoint inspect matched task/base/branch/source HEAD. Reuse comparison rejected prior
+incomplete advisory evidence. All requested dispatch-2 checks executed fresh.
+
+FILES RELATIVE TO ASSIGNED MAIN MERGE-BASE (combined task/PR scope)
+- Makefile: native test-stable, .PHONY, STABLE_SKIP, exact stable recipe from assigned main.
+- docs/testing.md: native stable command, exclusions, uncached verbose reporting and deadlines.
+- docs/USER_GUIDE.md: prior remote task commit documents full ID with project prefix, preserved.
+- pkg/ui/issue_detail_test.go: prior full-ID card assertions preserved. Viewport test strengthened
+  with ordinary, nested and long multi-hyphen IDs, requiring ID and title inside visible header box.
+- tests/e2e/detail_footer_keys_e2e_test.go: prior real-terminal full-ID regression preserved.
+Current uncommitted files relative to delivery HEAD: Makefile, docs/testing.md,
+pkg/ui/issue_detail_test.go. No other edits.
+
+Integration context: delivery history predates current main. Direct origin/main-tip-to-worktree
+status lists 219 paths (158 M, 55 D, 6 A), including inherited main advancement. No deletion
+commands or branch integration occurred. Complete direct-tip list:
+/tmp/bd-iiem-d2-base-files.txt. Task changes versus main merge-base:
+/tmp/bd-iiem-d2-task-files.txt. Any later integration remains Polly's responsibility.
+
+FULL-ID EVIDENCE
+TUI/card renderer pkg/ui/issue_detail.go:61 renders item.ID. Original bd-mrux card commit
+2a0a44bc also rendered item.ID. Card/header assertions and model viewport assertions pass.
+Viewport cases: bd-iiem, bd-iiem.2.3, long-project-name-iiem.2.3.
+Existing PTY regression shows full ID, title and description through real terminal rendering.
+Web source web/src/render.ts:906 renders esc(i.id) in .dtop, beside .dtitle at line 907.
+Web inspected in source only. No browser runtime proof or web production change claimed.
+No product behavior/data-read/data-write changes or new ADR required.
+
+EXACT VERIFICATION COMMANDS (all run from /home/omnigent/workspace/b9s)
+All requested dispatch-2 commands exited 0. Test counts are passed/failed/skipped.
+
+GOFLAGS='-v -count=1' timeout --kill-after=10s 660s make test-stable
+- Native repository target, run alone. No external Makefile and no base comparison/worktree.
+- Recipe has 10m package timeout. Suite has 660s outer bound, 10s kill grace.
+- Top-level 1983/0/18. Including subtests 3262/0/20. Packages 21 passed/0 failed.
+- No flaky, interrupted or unrun outcomes observed among scheduled tests.
+- Top-level skips: opt-in real bd 1, unavailable S3 endpoint 3, unavailable Dolt DSN 7,
+  opt-in Memory probes 4, opt-in long stress 3. Two additional loader subtests lack
+  srps/cass fixtures. Host-sensitive exclusions match assigned main STABLE_SKIP exactly.
+- Reports /tmp/bd-iiem-d2-stable.log, /tmp/bd-iiem-d2-stable-counts.json,
+  /tmp/bd-iiem-d2-stable.evidence.json. Actual exit /tmp/bd-iiem-d2-stable.exit.
+
+timeout --kill-after=10s 180s go build ./...
+- Exit 0, build check, test counts not applicable. /tmp/bd-iiem-d2-build.txt.
+
+timeout --kill-after=10s 180s go vet ./...
+- Exit 0, Go static/type check, test counts not applicable. /tmp/bd-iiem-d2-vet.txt.
+
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=60s ./pkg/ui/ -run '^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$'
+- Exit 0, top-level 3/0/0, including subtests 6/0/0.
+- Reports /tmp/bd-iiem-d2-focused.jsonl, /tmp/bd-iiem-d2-focused-counts.json.
+
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=120s ./tests/e2e/ -run '^TestDetailHeaderShowsFullIDE2E$'
+- Exit 0, top-level and including subtests 1/0/0.
+- Existing PTY helper retains its subprocess deadline and B9S_TUI_AUTOCLOSE_MS=3000.
+- Reports /tmp/bd-iiem-d2-terminal.jsonl, /tmp/bd-iiem-d2-terminal-counts.json.
+
+git -C /home/omnigent/workspace/b9s diff --check
+- Exit 0, no whitespace errors.
+gofmt -l /home/omnigent/workspace/b9s/pkg/ui/issue_detail_test.go
+- Exit 0, no files listed.
+
+Recipe equality checked by comparing native STABLE_SKIP/target block with origin/main:Makefile.
+Exact match. Evidence /tmp/bd-iiem-d2-recipe.txt.
+
+INITIAL FAILURES AND RESOLUTION
+- Dispatch 1 native make test-stable exited 2 because target was absent. Dispatch 2 explicitly
+  authorized the minimal native Makefile target and documentation. Fresh native run passed.
+- Dispatch 1 supplemental GOFLAGS=-json changed nested go list output into invalid package
+  arguments, exit 2. Verbose reporting resolves it. No invalid-run pass evidence reused.
+- Original focused tests already passed on unchanged production code. No original-defect red
+  reproduction or unsupported production fix claimed. No mutation rerun needed.
+- No separate blocker issue or self-dependency created. No outstanding failed required checks.
+
+RESIDUAL RISKS AND HANDOFF
+- Original product report remains unreproduced.
+- Web visibility is source-inspected, not browser-tested in this task.
+- Explicit stable skips/exclusions remain outside this run, including two absent loader fixtures.
+- Delivery history predates assigned main. Direct-tip differences are inherited and recorded.
+- Independent reviewer/tester still needed. No merge, delivery commit, delivery push or PR.
+- Separate unapproved checkpoint saves preserve tracked edits and selected scrubbed reports.

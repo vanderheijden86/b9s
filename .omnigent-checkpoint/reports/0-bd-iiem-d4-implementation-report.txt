@@ -1,0 +1,97 @@
+Task bd-iiem, implementer revision, dispatch 4, for reviewer round 2.
+Repository /home/omnigent/workspace/b9s.
+Branch omnigent/bd-iiem. HEAD 03b79239e41207ff6daa10a102f162155254b589.
+Assigned fetched main/PR target c2fccef8b537ed034ebd360ea7cf31c02250e083.
+Merge-base 2819ca00d8358ada28498a284faf08cb2373d70e. Required commits none.
+
+RESULT
+Both review-round-1 content integration findings resolved through docs-only edits.
+No unresolved required checks, external prerequisites, or new issues.
+Ready for independent review round 2. No reviewer verdict claimed.
+
+EXACT REVISION FILES
+- docs/USER_GUIDE.md: main's detail scheduling paragraph preserved verbatim.
+  Full-ID statement, including project prefix, lives in preceding detail introduction.
+- docs/testing.md: main's installer Go-requirement paragraph preserved verbatim.
+  Native stable-suite instructions preserved after the existing E2E guidance.
+No other revision edits. Existing Makefile and both test files unchanged in this dispatch.
+
+Full combined task scope versus assigned main merge-base remains five files:
+Makefile, docs/testing.md, docs/USER_GUIDE.md, pkg/ui/issue_detail_test.go,
+tests/e2e/detail_footer_keys_e2e_test.go.
+Current uncommitted files: Makefile, docs/USER_GUIDE.md, docs/testing.md,
+pkg/ui/issue_detail_test.go. PTY regression is preserved from existing delivery HEAD.
+
+INTEGRATION EVIDENCE
+Reviewer initial read-only checks: USER_GUIDE and testing docs each exited 1,
+one conflict each. Other three task paths were clean.
+
+Final command:
+python3 /tmp/bd-iiem-d4-integration-check.py
+Exit 0. Script reads assigned main, merge-base, and current worktree snapshots of every
+task-changed path. It executes git merge-file -p for each with 30s subprocess deadlines.
+This emits integrated content into /tmp only. It does not merge branches or change Git state.
+Full argv and snapshot paths are preserved in /tmp/bd-iiem-d4-integration.json.
+Summary /tmp/bd-iiem-d4-integration.txt.
+
+Makefile: merge-file exit 0, conflict markers 0.
+docs/USER_GUIDE.md: merge-file exit 0, conflict markers 0.
+docs/testing.md: merge-file exit 0, conflict markers 0.
+pkg/ui/issue_detail_test.go: merge-file exit 0, conflict markers 0.
+tests/e2e/detail_footer_keys_e2e_test.go: merge-file exit 0, conflict markers 0.
+All 5/5 file integration checks pass.
+
+Four assertions on integrated output passed:
+- Main scheduling paragraph preserved verbatim.
+- Full-ID wording preserved, including project prefix.
+- Main installer paragraph preserved verbatim.
+- Stable-suite command and instructions preserved.
+
+CURRENT REVISION CHECKS
+Working directory /home/omnigent/workspace/b9s.
+timeout --kill-after=10s 90s go test -json -count=1 -timeout=60s ./tests/docs/
+Exit 0. 3 passed, 0 failed, 0 skipped, 1 package passed.
+Reports /tmp/bd-iiem-d4-docs.jsonl and /tmp/bd-iiem-d4-docs-counts.json.
+
+git -C /home/omnigent/workspace/b9s diff --check
+Exit 0, no whitespace errors.
+
+PRIOR COMPLETED CHECKS (dispatch 2, not rerun after docs-only revision)
+Go 1.25.5 linux/amd64. Committed dependency files unchanged.
+GOFLAGS='-v -count=1' timeout --kill-after=10s 660s make test-stable
+Native target run alone, exit 0. Top-level 1983 passed/0 failed/18 skipped.
+Including subtests 3262/0/20. 21 packages passed/0 failed.
+/tmp/bd-iiem-d2-stable.log and /tmp/bd-iiem-d2-stable-counts.json.
+
+timeout --kill-after=10s 180s go build ./...
+Exit 0. /tmp/bd-iiem-d2-build.txt.
+
+timeout --kill-after=10s 180s go vet ./...
+Exit 0. /tmp/bd-iiem-d2-vet.txt.
+
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=60s ./pkg/ui/ -run '^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$'
+Exit 0. Top-level 3/0/0, including subtests 6/0/0.
+/tmp/bd-iiem-d2-focused.jsonl.
+
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=120s ./tests/e2e/ -run '^TestDetailHeaderShowsFullIDE2E$'
+Exit 0. Top-level and including subtests 1/0/0.
+/tmp/bd-iiem-d2-terminal.jsonl.
+
+Reviewer round 1 independently reran focused 3/0/0 (6/0/0 including subtests)
+and terminal 1/0/0. Reviewer confirmed Makefile stable recipe equals assigned main.
+Reference /tmp/bd-iiem-review-report.txt.
+These prior full checks are historical evidence, not freshly executed full-suite results
+on the documentation revision. User dispatch explicitly permits docs-only checks here.
+
+RESIDUAL RISKS
+Original missing-ID product report remains unreproduced. TUI/card render full item.ID.
+Viewport guards ordinary, nested and long multi-hyphen IDs inside visible header.
+PTY regression covers ordinary full ID. Web renders esc(i.id), inspected in source only.
+Stable excludes host-sensitive checks. 18 top-level optional skips cover real bd, S3,
+Dolt DSN, Memory opt-ins and stress. Two extra skipped subtests lack loader fixtures.
+No runtime implementation, tests, Makefile recipe or dependency changes in this revision.
+
+PRESERVATION
+No Git merge, reset, deletion, delivery commit/push, history rewrite, force push or PR.
+Only selected unapproved checkpoint saves, attributed Beads comments and lane milestones.
+HEAD and fetched main remain unchanged. No unrelated work disturbed.
