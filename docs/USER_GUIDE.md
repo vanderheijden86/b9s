@@ -143,9 +143,9 @@ The sort fields are priority, created, updated, title, status, type, deps, pager
 
 ## Detail pane
 
-`Enter` moves focus to the detail pane, and `Enter` or `Esc` moves it back. The focused pane has the bright border, and the footer shows its keys.
+`Enter` moves focus to the detail pane, and `Enter` or `Esc` moves it back. The focused pane has the bright border, and the footer shows its keys. The header shows the full issue ID, including the project prefix.
 
-The pane opens with a card framed in the issue's status colour: type, full issue ID (including the project prefix) and last update (its age, with the exact local time below it), the title, then status, priority, creator and assignee. Below the card come the created date, owner and labels, then the description, design, acceptance and notes as Markdown. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, then the [attachments](#attachments), and the comments come last.
+The pane opens with a card framed in the issue's status colour: type, ID and last update (its age, with the exact local time below it), the title, then status, priority, creator and assignee. Below the card come the created date, owner, scheduling dates and labels, then the description, design, acceptance and notes as Markdown. Due and deferred-until dates include the local time in both terminal and web details, and in copied terminal Markdown. Unset scheduling dates are omitted. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, then the [attachments](#attachments), and the comments come last.
 
 Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with TD, TB or LR direction, and for `sequenceDiagram` ([ADR 0030](adr/0030-render-mermaid-as-terminal-text-in-the-detail-view.md)). Other types, diagrams that fail to render, and diagrams wider than the pane stay as code. Widen the pane to retry a wide diagram. Copying an issue keeps the Mermaid source.
 
