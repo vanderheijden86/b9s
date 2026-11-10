@@ -1,0 +1,5 @@
+## omnigent/bd-hffz.12...origin/main
+3a5ed086abe347af005c06efc3fe3f2c7661af12
+3a5ed086abe347af005c06efc3fe3f2c7661af12
+base_ancestor_of_HEAD_exit=0
+Required commits: none. Remote delivery probe exit: 2 (absent). Dependency bd-hffz.11 closed.
