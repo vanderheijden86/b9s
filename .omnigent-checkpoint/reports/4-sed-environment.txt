@@ -1,0 +1,22 @@
+Host: Linux 6.8.0-149-generic x86_64
+/usr/bin/sed
+sed (GNU sed) 4.9
+Packaged by Debian
+Copyright (C) 2022 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+Written by Jay Fenlason, Tom Lord, Ken Pizzini,
+Paolo Bonzini, Jim Meyering, and Assaf Gordon.
+
+This sed program was built with SELinux support.
+SELinux is disabled on this system.
+
+GNU sed home page: <https://www.gnu.org/software/sed/>.
+General help using GNU software: <https://www.gnu.org/gethelp/>.
+E-mail bug reports to: <bug-sed@gnu.org>.
+bsd-sed lookup_exit=127
+bsed lookup_exit=127
+gsed lookup_exit=127
+Actual BSD sed unavailable. No BSD run or red reproduction performed. No emulation used. Current test contains no sed expression.
