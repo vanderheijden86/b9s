@@ -1,0 +1,6 @@
+checks_passed=7 checks_failed=0 checks_skipped=0
+exported=1754 recorded=1754 JSONL=1754 unique_ids=1754
+preserved_typed_dependencies=1963 parent_child=639 max_hierarchy_edges=2
+IDs and every typed dependency exactly match the original read-only bd export.
+Sensitive fields absent. No email, URI or home path found in retained JSONL.
+source=bd -C /home/omnigent/workspace/b9s export (exit 0)
