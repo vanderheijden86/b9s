@@ -1,0 +1,276 @@
+{
+  "root": "/tmp/bd-iiem-d6-tree-cnwv9zdi",
+  "temporary_git_environment": {
+    "GIT_INDEX_FILE": "/tmp/bd-iiem-d6-tree-cnwv9zdi/index",
+    "GIT_OBJECT_DIRECTORY": "/tmp/bd-iiem-d6-tree-cnwv9zdi/objects",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES": "/home/omnigent/workspace/b9s/.git/objects"
+  },
+  "source_head": "03b79239e41207ff6daa10a102f162155254b589",
+  "synthetic_commit": "6bf7201cd75211687396343e3a7301f121f5d3a6",
+  "integrated_tree": "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829",
+  "merge_tree_output": "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829\n",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "for-each-ref",
+        "--format=%(refname) %(objectname)"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-path",
+        "index"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-path",
+        "objects"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "read-tree",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "add",
+        "--",
+        "Makefile",
+        "docs/USER_GUIDE.md",
+        "docs/testing.md",
+        "pkg/ui/issue_detail_test.go",
+        "tests/e2e/detail_footer_keys_e2e_test.go"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "write-tree"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "commit-tree",
+        "a696ab497305acdcc7c51b903dfed23efb9f4251",
+        "-p",
+        "03b79239e41207ff6daa10a102f162155254b589"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "merge-tree",
+        "--write-tree",
+        "origin/main",
+        "6bf7201cd75211687396343e3a7301f121f5d3a6"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829:Makefile"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829:docs/USER_GUIDE.md"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829:docs/testing.md"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829:pkg/ui/issue_detail_test.go"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829:tests/e2e/detail_footer_keys_e2e_test.go"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "origin/main:Makefile"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "show",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829:Makefile"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "diff",
+        "--name-only",
+        "origin/main",
+        "025d0f13ae1c12c3ac0f34a1e4bc3a411fc56829"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "for-each-ref",
+        "--format=%(refname) %(objectname)"
+      ],
+      "exit_code": 0,
+      "stderr": ""
+    }
+  ],
+  "make_parse": {
+    "argv": [
+      "timeout",
+      "--kill-after=5s",
+      "30s",
+      "make",
+      "--no-print-directory",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "-f",
+      "/tmp/bd-iiem-d6-tree-cnwv9zdi/integrated.Makefile",
+      "-n",
+      "test-stable"
+    ],
+    "exit_code": 0,
+    "stdout": "go test -timeout 10m -skip 'DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers' $(go list ./... | grep -v /tests/e2e)\n",
+    "stderr": ""
+  },
+  "diff_paths_against_main": [
+    "docs/USER_GUIDE.md",
+    "docs/testing.md",
+    "pkg/ui/issue_detail_test.go",
+    "tests/e2e/detail_footer_keys_e2e_test.go"
+  ],
+  "assertions": {
+    "Makefile:matches_reviewed_file_integration": true,
+    "docs/USER_GUIDE.md:matches_reviewed_file_integration": true,
+    "docs/testing.md:matches_reviewed_file_integration": true,
+    "pkg/ui/issue_detail_test.go:matches_reviewed_file_integration": true,
+    "tests/e2e/detail_footer_keys_e2e_test.go:matches_reviewed_file_integration": true,
+    "actual_integrated_makefile_equals_main": true,
+    "actual_integrated_make_parse_warning_free": true,
+    "actual_main_diff_only_expected_four_task_files": true,
+    "real_head_unchanged": true,
+    "real_refs_unchanged": true,
+    "real_index_unchanged": true,
+    "real_task_files_unchanged": true
+  },
+  "clean": true
+}
