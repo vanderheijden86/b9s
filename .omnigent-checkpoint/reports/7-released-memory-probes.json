@@ -1,0 +1,56 @@
+[
+  {
+    "command": [
+      "/tmp/bd-ac05.1.1-evidence/bd-release/bd",
+      "versions",
+      "--help"
+    ],
+    "exit_code": 1,
+    "output": "Error: unknown command \"versions\" for \"bd\"\n\nDid you mean this?\n\tversion\n\nRun 'bd --help' for usage.\n"
+  },
+  {
+    "command": [
+      "/tmp/bd-ac05.1.1-evidence/bd-release/bd",
+      "links",
+      "--help"
+    ],
+    "exit_code": 1,
+    "output": "Error: unknown command \"links\" for \"bd\"\n\nDid you mean this?\n\tlink\n\tlint\n\nRun 'bd --help' for usage.\n"
+  },
+  {
+    "command": [
+      "/tmp/bd-ac05.1.1-evidence/bd-release/bd",
+      "memories",
+      "--help"
+    ],
+    "exit_code": 0,
+    "output": "List all memories, or search by keyword.\n\nExamples:\n  bd memories              # list all memories\n  bd memories dolt         # search for memories about dolt\n  bd memories \"race flag\"  # search for a phrase\n\nUsage:\n  bd memories [search] [flags]\n\nFlags:\n  -h, --help   help for memories\n\nGlobal Flags:\n      --actor string              Actor name for audit trail (default: $BEADS_ACTOR, git user.name, $USER)\n      --cpu-profile               Generate CPU profile for performance analysis\n      --database string           Run against a different server database for this invocation, without changing the project's configured database (proxied-server mode only)\n      --db string                 Database path (default: auto-discover .beads/*.db). In proxied-server mode, a value that isn't an existing path is treated as a database name override (see --database)\n  -C, --directory string          Change to this directory before running the command (like git -C)\n      --dolt-auto-commit string   Dolt auto-commit policy (off|on|batch). 'on': commit after each write. 'batch': defer commits to bd dolt commit; uncommitted changes persist in the working set until then (a live batch-mode bd process also flushes on SIGTERM/SIGHUP, except in proxied-server mode, where bd dolt commit is the only flush point). In proxied-server mode the deferral covers the writes the CLI makes on that route, including config and version metadata; explicit commit points (bd batch, bd mol bond/pour/squash, bd mol wisp create, and the wisp half of bd mol burn) still commit, and a bd serve process on the same database is unaffected. Default: on. Override via config key dolt.auto-commit\n      --global                    Use the global shared-server database (beads_global)\n      --ignore-schema-skew        Proceed despite forward schema drift (some queries may fail)\n      --json                      Output in JSON format\n      --mem-profile string        Write heap profile to FILE on exit (also respects BEADS_MEM_PROFILE)\n      --no-color                  Disable color output (also: NO_COLOR=1 or CLICOLOR=0)\n  -q, --quiet                     Suppress non-essential output (errors only)\n      --readonly                  Read-only mode: block write operations (for worker sandboxes)\n      --sandbox                   Sandbox mode: disables Dolt auto-push\n  -v, --verbose                   Enable verbose/debug output\n"
+  },
+  {
+    "command": [
+      "/tmp/bd-ac05.1.1-evidence/bd-rc-release/bd",
+      "versions",
+      "--help"
+    ],
+    "exit_code": 1,
+    "output": "Error: unknown command \"versions\" for \"bd\"\n\nDid you mean this?\n\tversion\n\nRun 'bd --help' for usage.\n"
+  },
+  {
+    "command": [
+      "/tmp/bd-ac05.1.1-evidence/bd-rc-release/bd",
+      "links",
+      "--help"
+    ],
+    "exit_code": 1,
+    "output": "Error: unknown command \"links\" for \"bd\"\n\nDid you mean this?\n\tlink\n\tlint\n\nRun 'bd --help' for usage.\n"
+  },
+  {
+    "command": [
+      "/tmp/bd-ac05.1.1-evidence/bd-rc-release/bd",
+      "memories",
+      "--help"
+    ],
+    "exit_code": 0,
+    "output": "List all memories, or search by keyword.\n\nExamples:\n  bd memories              # list all memories\n  bd memories dolt         # search for memories about dolt\n  bd memories \"race flag\"  # search for a phrase\n\nUsage:\n  bd memories [search] [flags]\n\nFlags:\n  -h, --help   help for memories\n\nGlobal Flags:\n      --actor string              Actor name for audit trail (default: $BEADS_ACTOR, git user.name, $USER)\n      --cpu-profile               Generate CPU profile for performance analysis\n      --database string           Run against a different server database for this invocation, without changing the project's configured database (proxied-server mode only)\n      --db string                 Database path (default: auto-discover .beads/*.db). In proxied-server mode, a value that isn't an existing path is treated as a database name override (see --database)\n  -C, --directory string          Change to this directory before running the command (like git -C)\n      --dolt-auto-commit string   Dolt auto-commit policy (off|on|batch). 'on': commit after each write. 'batch': defer commits to bd dolt commit; uncommitted changes persist in the working set until then (a live batch-mode bd process also flushes on SIGTERM/SIGHUP, except in proxied-server mode, where bd dolt commit is the only flush point). In proxied-server mode the deferral covers the writes the CLI makes on that route, including config and version metadata; explicit commit points (bd batch, bd mol bond/pour/squash, bd mol wisp create, and the wisp half of bd mol burn) still commit, and a bd serve process on the same database is unaffected. Default: on. Override via config key dolt.auto-commit\n      --global                    Use the global shared-server database (beads_global)\n      --ignore-schema-skew        Proceed despite forward schema drift (some queries may fail)\n      --json                      Output in JSON format\n      --mem-profile string        Write heap profile to FILE on exit (also respects BEADS_MEM_PROFILE)\n      --no-color                  Disable color output (also: NO_COLOR=1 or CLICOLOR=0)\n  -q, --quiet                     Suppress non-essential output (errors only)\n      --readonly                  Read-only mode: block write operations (for worker sandboxes)\n      --sandbox                   Sandbox mode: disables Dolt auto-push\n  -v, --verbose                   Enable verbose/debug output\n"
+  }
+]

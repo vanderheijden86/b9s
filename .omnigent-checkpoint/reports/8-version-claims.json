@@ -1,0 +1,76 @@
+{
+  "checks": [
+    {
+      "claim": "bd version 1.3.1 (c1c4b642a)",
+      "passed": true,
+      "evidence": "bd-release-executable.json"
+    },
+    {
+      "claim": "bd version 1.3.2-rc.2 (53637a74a)",
+      "passed": true,
+      "evidence": "bd-rc-release-executable.json"
+    },
+    {
+      "claim": "1.5.0",
+      "passed": true,
+      "evidence": "gas-city-release-executable.json"
+    },
+    {
+      "claim": "b9s v1.3.3",
+      "passed": true,
+      "evidence": "b9s-release-executable.json"
+    },
+    {
+      "claim": "Installed Pod bd 1.3.0-rc.1 (9c6a69ec1)",
+      "passed": true,
+      "evidence": "installed-tools.json"
+    },
+    {
+      "claim": "Fallback 3307 is specified, not verified on laptop. Pod port refuses connection.",
+      "passed": true,
+      "evidence": "installed-tools.json"
+    },
+    {
+      "claim": "Upstream issue 5877",
+      "passed": true,
+      "evidence": "beads-5877.json"
+    },
+    {
+      "claim": "Upstream issue 6535",
+      "passed": true,
+      "evidence": "beads-6535.json"
+    },
+    {
+      "claim": "Gas City release requires bd v1.3.1",
+      "passed": true,
+      "evidence": "gas-city-release.json"
+    },
+    {
+      "claim": "b9s v1.3.3 datasource tree lacks proxied_server.go",
+      "passed": true,
+      "evidence": "b9s-release-sources.json"
+    },
+    {
+      "claim": "Both released bd builds fail graph capability probes",
+      "passed": true,
+      "evidence": "released-memory-probes.json"
+    }
+  ],
+  "counts": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "required_installed_inventory": {
+    "state": "blocked",
+    "issue": "bd-ac05.1.1",
+    "unresolved": [
+      "Operator laptop installed release/candidate bd, bd-prev and b9s versions",
+      "big-hetzner executable and running Dolt versions",
+      "Laptop fallback Dolt version and endpoint",
+      "Actual Gas City installation, selected bd, city and rig store metadata"
+    ]
+  }
+}

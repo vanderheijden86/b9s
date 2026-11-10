@@ -1,0 +1,12 @@
+{
+  "command": [
+    "gh",
+    "api",
+    "repos/vanderheijden86/b9s/git/trees/v1.3.3?recursive=1",
+    "--jq",
+    "[.tree[].path | select(startswith(\"internal/datasource/\"))]"
+  ],
+  "exit_code": 0,
+  "output": "[\"internal/datasource/catalog.go\",\"internal/datasource/catalog_integration_test.go\",\"internal/datasource/catalog_test.go\",\"internal/datasource/comment_id_test.go\",\"internal/datasource/comments.go\",\"internal/datasource/comments_shared.go\",\"internal/datasource/comments_shared_test.go\",\"internal/datasource/comments_test.go\",\"internal/datasource/creators.go\",\"internal/datasource/creators_test.go\",\"internal/datasource/diff.go\",\"internal/datasource/dolt.go\",\"internal/datasource/dolt_address.go\",\"internal/datasource/dolt_address_test.go\",\"internal/datasource/dolt_integration_test.go\",\"internal/datasource/dolt_issuewriter_test.go\",\"internal/datasource/dolt_multi.go\",\"internal/datasource/dolt_multi_empty_path_test.go\",\"internal/datasource/dolt_multi_test.go\",\"internal/datasource/dolt_multi_watcher.go\",\"internal/datasource/dolt_test.go\",\"internal/datasource/dolt_watcher.go\",\"internal/datasource/dolt_watcher_test.go\",\"internal/datasource/embedded.go\",\"internal/datasource/embedded_bd_test.go\",\"internal/datasource/embedded_test.go\",\"internal/datasource/graph_preview.go\",\"internal/datasource/graph_preview_test.go\",\"internal/datasource/identities.go\",\"internal/datasource/identities_test.go\",\"internal/datasource/load.go\",\"internal/datasource/load_test.go\",\"internal/datasource/memory_graph.go\",\"internal/datasource/memory_graph_test.go\",\"internal/datasource/memory_read_research_test.go\",\"internal/datasource/open.go\",\"internal/datasource/open_integration_test.go\",\"internal/datasource/open_test.go\",\"internal/datasource/sample_project_test.go\",\"internal/datasource/sample_space_programme_test.go\",\"internal/datasource/scratch_server_test.go\",\"internal/datasource/select.go\",\"internal/datasource/source.go\",\"internal/datasource/source_test.go\",\"internal/datasource/sqlite.go\",\"internal/datasource/sqlite_test.go\",\"internal/datasource/validate.go\",\"internal/datasource/watch.go\"]\n",
+  "stderr": ""
+}

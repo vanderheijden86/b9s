@@ -1,0 +1,55 @@
+{
+  "document": "/home/omnigent/workspace/b9s/docs/ecosystem.md",
+  "document_sha256": "42e6114af3ddc66880b83e2b0cac819be54fa8c14dd795637ca0266bd2a9905b",
+  "checks": [
+    {
+      "check": "git diff --check",
+      "passed": true,
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "check": "document explicitly distinguishes downloaded and installed versions",
+      "passed": true
+    },
+    {
+      "check": "document explicitly retains missing acceptance prerequisites",
+      "passed": true
+    },
+    {
+      "check": "no em dash in document",
+      "passed": true
+    },
+    {
+      "check": "nine component/store rows with all six required columns",
+      "passed": true
+    },
+    {
+      "check": "new document whitespace via git diff --no-index --check",
+      "command": [
+        "git",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "/home/omnigent/workspace/b9s/docs/ecosystem.md"
+      ],
+      "passed": true,
+      "exit_code": 1,
+      "output": "",
+      "interpretation": "git diff --no-index returns 1 for a new-file diff. Empty --check output contains no whitespace warnings."
+    }
+  ],
+  "counts": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "review_scope": "implementer self-review only, independent review not performed",
+  "acceptance_state": "blocked",
+  "blocker_issue_id": "bd-ac05.1.1"
+}

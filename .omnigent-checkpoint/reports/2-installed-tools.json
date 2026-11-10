@@ -1,0 +1,81 @@
+[
+  {
+    "command": [
+      "bd",
+      "--version"
+    ],
+    "path": "/usr/local/bin/bd",
+    "exit_code": 0,
+    "output": "bd version 1.3.0-rc.1 (9c6a69ec1)\n"
+  },
+  {
+    "command": [
+      "bd-prev",
+      "--version"
+    ],
+    "path": null,
+    "exit_code": 127,
+    "output": "command not found"
+  },
+  {
+    "command": [
+      "gc",
+      "version"
+    ],
+    "path": null,
+    "exit_code": 127,
+    "output": "command not found"
+  },
+  {
+    "command": [
+      "b9s",
+      "--version"
+    ],
+    "path": null,
+    "exit_code": 127,
+    "output": "command not found"
+  },
+  {
+    "command": [
+      "dolt",
+      "version"
+    ],
+    "path": null,
+    "exit_code": 127,
+    "output": "command not found"
+  },
+  {
+    "command": [
+      "ssh",
+      "-V"
+    ],
+    "path": null,
+    "exit_code": 127,
+    "output": "command not found"
+  },
+  {
+    "command": [
+      "go",
+      "version"
+    ],
+    "path": "/usr/local/bin/go",
+    "exit_code": 0,
+    "output": "go version go1.25.5 linux/amd64\n"
+  },
+  {
+    "command": [
+      "python socket.create_connection",
+      "big-hetzner",
+      "22"
+    ],
+    "output": "gaierror: [Errno -2] Name or service not known"
+  },
+  {
+    "command": [
+      "python socket.create_connection",
+      "127.0.0.1",
+      "3307"
+    ],
+    "output": "ConnectionRefusedError: [Errno 111] Connection refused"
+  }
+]

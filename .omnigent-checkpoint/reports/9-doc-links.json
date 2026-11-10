@@ -1,0 +1,197 @@
+{
+  "command": [
+    "python3",
+    "documentation link existence and bounded HTTP GET checks"
+  ],
+  "results": [
+    {
+      "link": "ARCHITECTURE.md",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/docs/ARCHITECTURE.md"
+    },
+    {
+      "link": "data-io.md",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/docs/data-io.md"
+    },
+    {
+      "link": "adr/0007-read-shared-beads-through-one-select-only-catalog-account.md",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/docs/adr/0007-read-shared-beads-through-one-select-only-catalog-account.md"
+    },
+    {
+      "link": "adr/0025-read-embedded-dolt-through-bd-export.md",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/docs/adr/0025-read-embedded-dolt-through-bd-export.md"
+    },
+    {
+      "link": "adr/0041-retain-cli-memory-reads-after-transport-probes.md",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/docs/adr/0041-retain-cli-memory-reads-after-transport-probes.md"
+    },
+    {
+      "link": "adr/0045-probe-bd-help-before-memory-reads.md",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/docs/adr/0045-probe-bd-help-before-memory-reads.md"
+    },
+    {
+      "link": "../internal/datasource/proxied_server.go",
+      "passed": true,
+      "resolved": "/home/omnigent/workspace/b9s/internal/datasource/proxied_server.go"
+    },
+    {
+      "link": "https://github.com/gastownhall/beads/releases/tag/v1.3.1",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/gastownhall/beads/releases/tag/v1.3.1"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "link": "https://github.com/gastownhall/beads/releases/tag/v1.3.2-rc.2",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/gastownhall/beads/releases/tag/v1.3.2-rc.2"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "link": "https://github.com/gastownhall/gascity/releases/tag/v1.5.0",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/gastownhall/gascity/releases/tag/v1.5.0"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "link": "https://github.com/vanderheijden86/b9s/releases/tag/v1.3.3",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/vanderheijden86/b9s/releases/tag/v1.3.3"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "link": "https://github.com/vanderheijden86/b9s/tree/v1.3.3/internal/datasource",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/vanderheijden86/b9s/tree/v1.3.3/internal/datasource"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "link": "https://github.com/gastownhall/beads/issues/5877",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/gastownhall/beads/issues/5877"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "link": "https://github.com/gastownhall/beads/issues/6535",
+      "command": [
+        "curl",
+        "--location",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--max-time",
+        "25",
+        "--output",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}",
+        "https://github.com/gastownhall/beads/issues/6535"
+      ],
+      "exit_code": 0,
+      "http_status": "200",
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "counts": {
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  }
+}

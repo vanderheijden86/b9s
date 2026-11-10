@@ -1,0 +1,33 @@
+{
+  "command": [
+    "timeout",
+    "900s",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "GOMAXPROCS": "4",
+    "GOFLAGS": "-p=2 -v",
+    "go": "go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "elapsed_seconds": 118.16,
+  "counts": {
+    "passed": 3759,
+    "failed": 0,
+    "skipped": 20
+  },
+  "counts_scope": "all emitted test and subtest terminal outcomes, parents included",
+  "top_level_counts": {
+    "passed": 2124,
+    "failed": 0,
+    "skipped": 18
+  },
+  "package_outcomes": {
+    "passed": 22,
+    "failed": 0,
+    "no_test_files": 0
+  },
+  "excluded_by_target": "tests/e2e and STABLE_SKIP named in Makefile, not counted as runtime skips",
+  "log": "/tmp/bd-ac05.1.1-evidence/test-stable.txt"
+}

@@ -1,0 +1,28 @@
+{
+  "download_command": [
+    "gh",
+    "release",
+    "download",
+    "v1.3.1",
+    "--repo",
+    "gastownhall/beads",
+    "--pattern",
+    "beads_1.3.1_linux_amd64.tar.gz",
+    "--pattern",
+    "checksums.txt",
+    "--dir",
+    "/tmp/bd-ac05.1.1-evidence/bd-release"
+  ],
+  "download_exit": 0,
+  "download_output": "",
+  "archive_sha256": "3219443a9734b89b93fb16ee8d65844759fa1b3cd3cf139c606b7353cfb0715c",
+  "expected_sha256": "3219443a9734b89b93fb16ee8d65844759fa1b3cd3cf139c606b7353cfb0715c",
+  "checksum_match": true,
+  "command": [
+    "/tmp/bd-ac05.1.1-evidence/bd-release/bd",
+    "--version"
+  ],
+  "exit_code": 0,
+  "output": "bd version 1.3.1 (c1c4b642a)\n",
+  "binary_sha256": "a8f48d771b9e11eccfced4aed72923b59eda746f7a9b425e7ca1af7a51251653"
+}

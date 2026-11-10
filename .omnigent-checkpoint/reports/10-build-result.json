@@ -1,0 +1,22 @@
+{
+  "command": [
+    "timeout",
+    "300s",
+    "go",
+    "build",
+    "./..."
+  ],
+  "environment": {
+    "GOMAXPROCS": "4",
+    "GOFLAGS": "-p=2",
+    "go": "go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "elapsed_seconds": 86.84,
+  "check_counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "test_counts": "not applicable, build command"
+}
