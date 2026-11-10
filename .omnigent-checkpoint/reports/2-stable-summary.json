@@ -1,0 +1,173 @@
+{
+  "command": [
+    "env",
+    "GOFLAGS=-v",
+    "timeout",
+    "660s",
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "counts_basis": "completed Go test outcomes, including parent tests and subtests",
+  "counts": {
+    "passed": 3759,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_counts": {
+    "passed": 2124,
+    "failed": 0,
+    "skipped": 18
+  },
+  "package_results": [
+    "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t2.177s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.352s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.034s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t9.051s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.199s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.020s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t1.830s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.324s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.057s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.017s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t19.126s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.050s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.066s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.032s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t47.966s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t1.310s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.024s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.015s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.461s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t2.275s",
+    "ok  \tgithub.com/vanderheijden86/b9s/scripts/web\t0.107s",
+    "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.182s"
+  ],
+  "failures": [],
+  "skips": [
+    {
+      "name": "TestProbeMemory_RealBinaries",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestS3StoreContract",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestS3PutRejectsShortRead",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestS3PutRejectsLongRead",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltReader_NewAndClose",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltReader_LoadIssues",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltReader_GetHeadHash",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltWatcher_NewAndStop",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltWatcher_StartIsIdempotent",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestMemoryPreviewGraphReadTiming",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestMemoryReadResearchStages",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestMemoryReadResearchTransportParity",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestMemoryReadResearchConcurrentWriter",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "outcome": "skip",
+      "top_level": false,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "outcome": "skip",
+      "top_level": false,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestStress_SustainedWrites",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestStress_BurstWrites",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    },
+    {
+      "name": "TestStress_MemoryPressure",
+      "outcome": "skip",
+      "top_level": true,
+      "duration": "0.00s"
+    }
+  ]
+}

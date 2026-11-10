@@ -1,0 +1,17 @@
+{
+  "command": [
+    "git",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "diff",
+    "--name-only",
+    "c2fccef8b537ed034ebd360ea7cf31c02250e083",
+    "--",
+    "*.go"
+  ],
+  "changed_go_files": [],
+  "formatting": "not applicable: no changed Go files",
+  "adr_sha256": "c7536dba20ac5d778e827efd624fbc3798095c82c6eb77aeceb668f7ed2e82d6",
+  "expected_adr_sha256": "c7536dba20ac5d778e827efd624fbc3798095c82c6eb77aeceb668f7ed2e82d6",
+  "git_status_porcelain": ""
+}
