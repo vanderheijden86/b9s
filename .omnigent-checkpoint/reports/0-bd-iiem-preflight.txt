@@ -1,0 +1,6 @@
+## omnigent/bd-iiem
+03b79239e41207ff6daa10a102f162155254b589
+c2fccef8b537ed034ebd360ea7cf31c02250e083
+remote_delivery=present
+required_commits=none
+03b79239 test(ui): guard full issue IDs in detail headers
