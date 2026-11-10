@@ -1,0 +1,31 @@
+Task: bd-wd87.8
+Result: BLOCKED before implementation. No source files changed.
+Repository: /home/omnigent/workspace/b9s
+Branch: omnigent/bd-wd87.8
+HEAD and fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+The assigned integration base does not contain the required macOS launcher.
+Observed checks:
+- git ls-tree --name-only HEAD: packaging exists.
+- git ls-files '*mac*' '*dmg*' '*launch*': no macOS packaging/launcher source (only Arch packaging and unrelated vendor files).
+- rg osascript / Contents/MacOS / B9s.app across scripts, packaging, tests, docs, workflows: no launcher implementation.
+- git log --all -- packaging/macos: empty available history.
+- packaging/macos/launcher.sh, b9s-app.sh, app_test.go, README.md and stub are absent.
+- Makefile has no dmg target. .goreleaser.yaml has no macOS app packaging.
+Existing Beads prerequisite records:
+- bd-wd87.1 CLOSED: created packaging/macos launcher/build/setup scripts.
+- bd-wd87.2: first-launch setup, referenced by bd-wd87.3.
+- bd-wd87.3 CLOSED: created packaging/macos/app_test.go, README.md and packaging ADR.
+- bd-wd87.9 CLOSED: universal executable stub for launcher.
+These prerequisite artifacts are absent from the assigned base. No prerequisite commits were supplied.
+Required resolution: Polly must supply the integration context containing the existing launcher and its required commit(s). No feature work may be recreated from main.
+Dependency command completed: timeout 300s go -C /home/omnigent/workspace/b9s mod download, exit 0.
+Go environment: go1.25.5 linux/amd64.
+Required verification commands not executed because their implementation input is absent:
+- timeout 300s go build ./...
+- timeout 900s make test-stable (alone)
+- timeout 300s go vet ./...
+- focused launcher/static/shell checks (launcher and tests absent)
+Test counts: unknown/unrun. No test passes or failures claimed. No skipped or flaky count claimed.
+macOS GUI runtime checks cannot execute in this Linux Pod. No macOS result claimed.
+No database tests executed or shared Dolt test writes performed.
+Attempt to notify Polly through sys_session_message failed: Session orchestration is disabled. Final report and attributed Beads comments carry this finding.
