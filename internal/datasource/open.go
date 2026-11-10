@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 
@@ -148,7 +149,9 @@ type OpenTarget struct {
 // OpenedProject is a project whose issues loaded.
 type OpenedProject struct {
 	Issues []model.Issue
-	Source DataSource
+	// Releases derives from Issues and shares its Partial limitation.
+	Releases []model.Release
+	Source   DataSource
 	// DoltFailure is set when the configured Dolt server failed and a local
 	// export was read instead.
 	DoltFailure *OpenFailure
@@ -189,7 +192,9 @@ func OpenProject(target OpenTarget) (OpenedProject, *OpenFailure) {
 			// other column loaded; treating it like a source failure would
 			// fall back to a lower-priority, possibly stale source over a
 			// live connection with one broken table.
-			return OpenedProject{Issues: issues, Source: source, DoltFailure: doltFailure, CommentsErr: err, Partial: partial}, nil
+			project := projectFromIssues(issues, source, time.Now())
+			project.DoltFailure, project.CommentsErr, project.Partial = doltFailure, err, partial
+			return project, nil
 		}
 		f := &OpenFailure{Reason: OpenUnreadable, Project: target.Name, Dir: target.Dir, Err: err}
 		if source.Type == SourceTypeDoltEmbedded {
@@ -215,6 +220,10 @@ func OpenProject(target OpenTarget) (OpenedProject, *OpenFailure) {
 		return OpenedProject{}, doltFailure
 	}
 	return OpenedProject{}, lastFailure
+}
+
+func projectFromIssues(issues []model.Issue, source DataSource, now time.Time) OpenedProject {
+	return OpenedProject{Issues: issues, Releases: model.BuildReleases(issues, now), Source: source}
 }
 
 // OpenProjectLean is OpenProject with OpenTarget.Lean set.
