@@ -1,0 +1,62 @@
+Task bd-a5xi.1 | Codex implementer
+Repository: /home/omnigent/workspace/b9s
+Result: implementation complete for independent review/testing. Required blockers: none. No delivery commit, delivery push or PR.
+
+GIT PREFLIGHT
+Assigned base / PR target: main
+Actual branch: omnigent/bd-a5xi.1
+HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Required commits: none (prerequisite ancestry not applicable).
+Initial clean checkout: main. timeout 60s git fetch origin main succeeded. Fetched ref checked. timeout 60s git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-a5xi.1 exited 2 (absent). Local delivery branch also absent. Created assigned branch from origin/main. Checkpoint inspect: absent. Existing work preserved.
+Evidence: preflight.txt
+
+CHANGED FILES (all new, uncommitted)
+scripts/refresh-sample/main.go: Go refresh script, closed field projection, source-bound BEADS_DIR, read-only export via internal/bdrun, 60-second deadline, contact/location scrubbing, sorted JSONL and .count output.
+scripts/refresh-sample/main_test.go: privacy/projection/error tests, fake-bd contract and fixture load through pkg/loader.
+tests/testdata/real/b9s.jsonl: 1754 issues, 107 epics, 1963 typed dependencies, 639 parent-child links, maximum depth two edges / three levels.
+tests/testdata/real/b9s.count: 1754 plus newline.
+tests/testdata/real/README.md: refresh usage, count/privacy contracts, failure behavior and tests.
+
+DATA CONTRACT
+All exported IDs and typed dependencies are preserved. Assignee, owner, creator, comments, attachments, prose, close reasons, metadata, external references and unknown fields are omitted. Titles/labels redact emails, URLs and filesystem paths. Dispatch/lane labels are omitted. Empty/malformed exports, duplicate IDs, wrong dependency sources and missing targets fail before output writes.
+
+EXACT COMMANDS / RESULTS
+Working directory for Go/make commands: /home/omnigent/workspace/b9s.
+- timeout 180s go mod download
+  Exit 0. Committed dependency files unchanged. Evidence: dependencies.txt.
+- timeout 120s go test -json -count=1 -timeout=60s ./scripts/refresh-sample -run '^TestProjection'
+  Expected RED, exit 1. 0 passed, 10 failed, 0 skipped including subtests (4 top-level failures). Private-field leaks, unsorted IDs and invalid exports reproduced. Evidence: red.jsonl, red-summary.json, red.exit.
+- timeout 120s go test -json -count=1 -timeout=60s ./scripts/refresh-sample -run '^TestRefreshUsesReadOnlyExportAndRecordsCount$'
+  Expected source-isolation RED, exit 1. 0 passed, 1 failed, 0 skipped. Fixed by source-bound BEADS_DIR and internal/bdrun. Evidence: source-red.jsonl, source-red.exit.
+- timeout 120s go test -json -count=1 -timeout=60s ./scripts/refresh-sample
+  Final GREEN, exit 0. 15 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun including subtests (7 top-level tests). Valid JSONL, exact count, privacy, dependency integrity, nested hierarchy, source isolation and failed-refresh preservation. Evidence: focused-final.jsonl, focused-final-summary.json, focused-final.exit.
+- timeout 180s go build ./...
+  Final exit 0. Go compilation supplies the type check. Evidence: build-final.txt.
+- timeout 180s go vet ./...
+  Exit 0. Evidence: vet.txt.
+- timeout 720s env GOFLAGS=-v make test-stable
+  Run alone, no baseline comparison. Exit 0. 23 packages passed. 3775 passed, 0 failed, 20 skipped, 0 interrupted, 0 unrun test/subtest/fuzz-seed outcomes. Top-level: 2131 passed, 0 failed, 18 skipped. No retries. Makefile's 10-minute package timeout and declared exclusions retained. Evidence: stable.txt, stable-summary.json, stable.exit.
+- Python source-to-fixture assertions (exact script in the tool transcript)
+  7 check groups passed, 0 failed, 0 skipped: count, IDs, dependency multiset, private issue fields, private dependency fields, email/URI/home-path scan, hierarchy acyclicity/depth. All 1754 IDs and 1963 dependency tuples preserved. Evidence: fixture-parity.txt. Private raw export excluded from checkpoints.
+- gofmt -l /home/omnigent/workspace/b9s/scripts/refresh-sample/main.go /home/omnigent/workspace/b9s/scripts/refresh-sample/main_test.go
+  Exit 0, empty output. git diff --check emitted no diagnostics.
+- timeout 90s go run ./scripts/refresh-sample
+  Exit 0. Wrote 1754 issues and count. Evidence: refresh.txt.
+- timeout 90s go run ./scripts/refresh-sample -source /home/omnigent/workspace/b9s -output /tmp/bd-a5xi.1-evidence/refreshed.jsonl
+  Final implementation exit 0. Wrote 1754 issues and count. All IDs/dependencies match the candidate. Evidence: refresh-final.txt.
+
+SKIPS / DIAGNOSTICS
+18 explicit opt-in skips: real bd binary probe (1), S3 endpoint (3), Dolt DSN (7), Memory preview/research settings (4), PERF_TEST stress mode (3).
+Two optional legacy fixture subtests skip missing tests/testdata/srps_issues.jsonl and cass_issues.jsonl. Their code explicitly skips absent files. Differently named committed files exist under tests/testdata/real. Filed and deferred unrelated follow-up bd-imdz, discovered-from:bd-a5xi.1. No required b9s fixture check skipped. No tests wrote to the shared Dolt server.
+A diagnostic byte comparison against the later real export exited 1. Two unrelated live issues changed status/date fields. A timestamp-only hypothesis was rejected. Changed fields also include status, started_at and closed_at. IDs/dependencies still match exactly. The candidate remains the original point-in-time snapshot. This is live-source drift, not a required-check failure.
+
+RESIDUAL RISKS
+Fixture and count are separate file writes. A filesystem failure can leave a mismatched pair. The fixture test rejects this, and README requires both files to be refreshed/versioned together.
+Retained display text needs review before future publication. Arbitrary secrets without recognizable contact/location syntax cannot be identified by regular expressions.
+The live database can change after export. Pod assertions must use the versioned count, not the live count.
+Independent reviewer/tester checks and delivery approval remain Polly's next stages.
+
+CHECKPOINT / DELIVERY
+Source saved successfully to separate unapproved ref refs/heads/omnigent-checkpoints/bd-a5xi.1. Five new files explicitly selected. Only scrubbed reports selected. Delivery HEAD unchanged. No delivery commit/push/PR approved or performed.
+Evidence names above resolve under /tmp/bd-a5xi.1-evidence/.
