@@ -1,0 +1,120 @@
+{
+  "head": "03b79239e41207ff6daa10a102f162155254b589",
+  "assigned_main": "c2fccef8b537ed034ebd360ea7cf31c02250e083",
+  "merge_base": "2819ca00d8358ada28498a284faf08cb2373d70e",
+  "snapshot_directory": "/tmp/bd-iiem-d4-integration-s7bxxpjd",
+  "files": [
+    {
+      "path": "Makefile",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/0-main",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/0-base",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/0-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d4-integration-s7bxxpjd/0-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "docs/USER_GUIDE.md",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/1-main",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/1-base",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/1-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d4-integration-s7bxxpjd/1-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "docs/testing.md",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/2-main",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/2-base",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/2-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d4-integration-s7bxxpjd/2-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "pkg/ui/issue_detail_test.go",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/3-main",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/3-base",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/3-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d4-integration-s7bxxpjd/3-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "tests/e2e/detail_footer_keys_e2e_test.go",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/4-main",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/4-base",
+        "/tmp/bd-iiem-d4-integration-s7bxxpjd/4-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d4-integration-s7bxxpjd/4-integrated",
+      "stderr": ""
+    }
+  ],
+  "content_assertions": {
+    "main_scheduling_paragraph_preserved_verbatim": true,
+    "full_id_wording_preserved": true,
+    "main_installer_paragraph_preserved_verbatim": true,
+    "stable_instructions_preserved": true
+  },
+  "clean": true
+}
