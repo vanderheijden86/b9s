@@ -1,0 +1,197 @@
+{
+  "sanitized_control_cases": 1,
+  "negative_probe_cases": 8,
+  "expected_rejections": 8,
+  "missed_detections": 0,
+  "results": [
+    {
+      "case": 0,
+      "path": "sanitized-control",
+      "leak": null,
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContains(TheAuthors|AnyUsers)HomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-0/pkg/updater",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 1,
+      "path": "docs/adr/0052-responsive-native-web-redesign.md",
+      "leak": "/Users/andrevanderheijden/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-1/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 2,
+      "path": "docs/adr/0052-responsive-native-web-redesign.md",
+      "leak": "/home/new-contributor/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-2/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 3,
+      "path": "docs/plans/2026-10-11-responsive-web/implementation-plan.md",
+      "leak": "/Users/andrevanderheijden/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-3/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 4,
+      "path": "docs/plans/2026-10-11-responsive-web/implementation-plan.md",
+      "leak": "/home/new-contributor/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-4/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 5,
+      "path": "docs/plans/2026-10-11-responsive-web/requirements.md",
+      "leak": "/Users/andrevanderheijden/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-5/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 6,
+      "path": "docs/plans/2026-10-11-responsive-web/requirements.md",
+      "leak": "/home/new-contributor/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-6/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 7,
+      "path": "docs/new-home-path.md",
+      "leak": "/Users/andrevanderheijden/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-7/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    },
+    {
+      "case": 8,
+      "path": "docs/new-home-path.md",
+      "leak": "/home/new-contributor/src/b9s",
+      "command": [
+        "/tmp/bd-0w9e-checks-SId66C/updater.test",
+        "-test.run",
+        "^TestNoTrackedFileContainsAnyUsersHomeDirectory$",
+        "-test.timeout=10s",
+        "-test.v"
+      ],
+      "cwd": "/tmp/bd-0w9e-checks-SId66C/fixture-8/pkg/updater",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "counts": {
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      },
+      "expected_behavior_observed": true
+    }
+  ]
+}
