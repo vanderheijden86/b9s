@@ -1,0 +1,84 @@
+Task: bd-jt4s, lane attempt 2, role implementer
+Implementation verdict: PASS. Ready for independent review and testing. Delivery is not approved.
+
+PREFLIGHT
+Beads initialized: beads-connect exited 0, connected to b9s as bd_b9s.
+Repository: /home/omnigent/workspace/b9s
+Fetch: timeout 60s git fetch origin main, exit 0.
+Delivery remote probe: git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-jt4s, exit 2 (absent).
+No local delivery branch and clean worktree. Created omnigent/bd-jt4s from origin/main.
+Actual branch: omnigent/bd-jt4s
+HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Required commits: none. Ancestry checks: not applicable.
+Checkpoint inspect: no checkpoint exists (exit 2).
+
+CAUSE AND CHANGE
+Task bd-jt4s, implementation on omnigent/bd-jt4s.
+Observed cause: a variable-length absolute download path preceded the test-mode opener marker. Bubble Tea standard_renderer.go truncates each line to viewport width. The PTY is fixed at 160 columns.
+Unchanged E2E with short temp paths passed on bd 1.3.0-rc.1 and 1.3.2-rc.2 (each 1 passed, 0 failed, 0 skipped, exit 0).
+Test-first long-TMPDIR unit regression reproduced hidden marker after download/opener record assertions passed (0 passed, 1 failed, 0 skipped, exit 1).
+Test-first long-TMPDIR PTY reproduced reported missing marker with stock bd 1.3.2-rc.2 (0 passed, 1 failed, 0 skipped, exit 1).
+Product fix: place test-mode outcome before download name/path. Normal-mode opener behavior is unchanged.
+Retained every original E2E assertion. No version skip, swallowed failure or timeout increase.
+Green focused unit and long-path stock bd 1.3.2-rc.2 E2E each passed: 1 passed, 0 failed, 0 skipped, exit 0.
+Changed files:
+pkg/ui/attachments.go: test-mode status format.
+pkg/ui/attachments_test.go: long private TMPDIR, 160-column clipping regression.
+tests/e2e/attachments_e2e_test.go: long private TMPDIR fixture.
+docs/testing.md: regression rationale and no bd-version skip.
+ADRs 0024/0025 preserved: reference comments via stock bd, embedded reads through bd export.
+Guard: focused unit checks the rendered clipped footer while retaining opener record and downloaded file assertions. E2E exercises the actual renderer with a long TMPDIR and retains persistence/hash/list/download assertions.
+No new state, source files, ADR decisions, or dependency changes.
+
+
+VERIFICATION (all commands ran from /home/omnigent/workspace/b9s)
+Dependencies: timeout 180s go mod download, exit 0. Committed go.mod/go.sum and vendor unchanged.
+focused-before: timeout 150s go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -json
+  exit 0, {"passed": 1, "failed": 0, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/focused-before.jsonl
+focused-rc2-before: timeout 150s env B9S_TEST_STOCK_BD=/tmp/bd-jt4s-evidence/stock-1.3.2-rc.2/bd go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -json
+  exit 0, {"passed": 1, "failed": 0, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/focused-rc2-before.jsonl
+unit-red: timeout 90s go test ./pkg/ui -run '^TestEnterInTestModeRecordsOpenerWithoutRunningIt$' -count=1 -timeout=60s -json
+  exit 1, {"passed": 0, "failed": 1, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/unit-red.jsonl
+focused-rc2-red: timeout 150s env B9S_TEST_STOCK_BD=/tmp/bd-jt4s-evidence/stock-1.3.2-rc.2/bd go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -json
+  exit 1, {"passed": 0, "failed": 1, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/focused-rc2-red.jsonl
+unit-green: timeout 90s go test ./pkg/ui -run '^TestEnterInTestModeRecordsOpenerWithoutRunningIt$' -count=1 -timeout=60s -json
+  exit 0, {"passed": 1, "failed": 0, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/unit-green.jsonl
+focused-rc2-green: timeout 150s env B9S_TEST_STOCK_BD=/tmp/bd-jt4s-evidence/stock-1.3.2-rc.2/bd go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -json
+  exit 0, {"passed": 1, "failed": 0, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/focused-rc2-green.jsonl
+focused-green: timeout 150s go test ./tests/e2e -run '^TestAttachmentsStockBDLocalBackendE2E$' -count=1 -timeout=120s -json
+  exit 0, {"passed": 1, "failed": 0, "skipped": 0, "interrupted": 0, "unrun": 0}
+  evidence /tmp/bd-jt4s-evidence/focused-green.jsonl
+The two red failures are intentional pre-fix regression proof. Both pass after the fix. Baselines use default short TMPDIR. Both final E2E runs use a forced long private TMPDIR.
+Stable: timeout 660s env GOFLAGS=-v make test-stable
+  exit 0, top-level {"passed": 2124, "failed": 0, "skipped": 18}, subtests {"passed": 1635, "failed": 0, "skipped": 2}, packages passed 22
+  evidence /tmp/bd-jt4s-evidence/stable.txt
+Stable ran alone, without baseline comparison. Counts separate top-level tests and subtests to avoid double-counting. No selected test was interrupted or left without a result. Project STABLE_SKIP omissions are outside the selection and are not runtime skips.
+Runtime skips: 1 optional real-binary Memory probe, 3 S3 service tests, 7 Dolt DSN tests, 4 optional Memory preview/research tests, 3 opt-in stress tests. Two loader subtests skipped absent optional srps_issues.jsonl/cass_issues.jsonl fixtures. Detailed names/reasons are in results.json and stable.txt.
+timeout 180s go build ./...: exit 0. No diagnostics. Test counts not applicable. Evidence /tmp/bd-jt4s-evidence/build.txt
+timeout 180s go vet ./...: exit 0. No diagnostics. Test counts not applicable. Evidence /tmp/bd-jt4s-evidence/vet.txt
+gofmt -w /home/omnigent/workspace/b9s/pkg/ui/attachments.go /home/omnigent/workspace/b9s/pkg/ui/attachments_test.go /home/omnigent/workspace/b9s/tests/e2e/attachments_e2e_test.go: exit 0. Follow-up gofmt -l on the same absolute paths: exit 0, zero unformatted files. Evidence /tmp/bd-jt4s-evidence/format.txt
+git -C /home/omnigent/workspace/b9s diff --check: exit 0. Evidence /tmp/bd-jt4s-evidence/diff-check.txt
+
+ENVIRONMENT
+{
+  "go": "go version go1.25.5 linux/amd64",
+  "platform": "Linux-6.8.0-149-generic-x86_64-with-glibc2.41",
+  "script": "script from util-linux 2.41.5",
+  "stock_bd": "bd version 1.3.2-rc.2 (53637a74a: HEAD@53637a74ad77)",
+  "stock_bd_sha256": "579e17e5252eab37cf3a17da3d3b833796865defeab09589c611713708ec77b1",
+  "installed_bd": "bd version 1.3.0-rc.1 (9c6a69ec1: HEAD@9c6a69ec1235)",
+  "installed_bd_sha256": "33eef85573dc10c0f846dad743f9a30503f52e4fb60d6f9eb4ab5be83bb2c501"
+}
+
+LIMITATIONS AND KNOWN ISSUES
+Required blockers: none. Unresolved required-check failures: none. Unrelated follow-up issues filed: none. Flaky tests: none observed, no retries used. Native macOS was not exercised. The full terminal E2E suite, browser matrix, and external-service suites were outside this bounded dispatch. No web files changed, so no additional browser or Node checks apply. Go build provides Go typechecking, go vet provides the project static lint check. No image digest was exposed to this session.
+
+DELIVERY
+Four tracked files changed, 21 insertions and 3 deletions. No new source files. HEAD remains the preflight SHA. No delivery commit, delivery push or PR. Unapproved checkpoint saves succeeded to refs/heads/omnigent-checkpoints/bd-jt4s. Final evidence checkpoint is saved after this report is written. Beads progress comments were attributed to Codex. Task status/assignee/dependencies/lane labels were not changed.
