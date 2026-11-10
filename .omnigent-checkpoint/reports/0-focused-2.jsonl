@@ -1,0 +1,56 @@
+{"Time":"2026-11-10T21:58:22.536312858Z","Action":"start","Package":"github.com/vanderheijden86/b9s/scripts/wt-image"}
+{"Time":"2026-11-10T21:58:22.539739974Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureIncludesUncommittedBytes"}
+{"Time":"2026-11-10T21:58:22.539832892Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureIncludesUncommittedBytes","Output":"=== RUN   TestCaptureIncludesUncommittedBytes\n"}
+{"Time":"2026-11-10T21:58:22.6370392Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureIncludesUncommittedBytes","Output":"--- PASS: TestCaptureIncludesUncommittedBytes (0.10s)\n"}
+{"Time":"2026-11-10T21:58:22.637083489Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureIncludesUncommittedBytes","Elapsed":0.1}
+{"Time":"2026-11-10T21:58:22.637105928Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureExcludesBuildIgnoredFiles"}
+{"Time":"2026-11-10T21:58:22.637111152Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureExcludesBuildIgnoredFiles","Output":"=== RUN   TestCaptureExcludesBuildIgnoredFiles\n"}
+{"Time":"2026-11-10T21:58:22.719915737Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureExcludesBuildIgnoredFiles","Output":"--- PASS: TestCaptureExcludesBuildIgnoredFiles (0.08s)\n"}
+{"Time":"2026-11-10T21:58:22.719955992Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureExcludesBuildIgnoredFiles","Elapsed":0.08}
+{"Time":"2026-11-10T21:58:22.719971863Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureOmitsDeletedTrackedFiles"}
+{"Time":"2026-11-10T21:58:22.719977151Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureOmitsDeletedTrackedFiles","Output":"=== RUN   TestCaptureOmitsDeletedTrackedFiles\n"}
+{"Time":"2026-11-10T21:58:22.792569782Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureOmitsDeletedTrackedFiles","Output":"--- PASS: TestCaptureOmitsDeletedTrackedFiles (0.07s)\n"}
+{"Time":"2026-11-10T21:58:22.792779525Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureOmitsDeletedTrackedFiles","Elapsed":0.07}
+{"Time":"2026-11-10T21:58:22.792858185Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIgnoresModificationTime"}
+{"Time":"2026-11-10T21:58:22.792864078Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIgnoresModificationTime","Output":"=== RUN   TestCaptureHashIgnoresModificationTime\n"}
+{"Time":"2026-11-10T21:58:22.892766861Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIgnoresModificationTime","Output":"--- PASS: TestCaptureHashIgnoresModificationTime (0.10s)\n"}
+{"Time":"2026-11-10T21:58:22.892808925Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIgnoresModificationTime","Elapsed":0.1}
+{"Time":"2026-11-10T21:58:22.892824954Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesBytes"}
+{"Time":"2026-11-10T21:58:22.892832002Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesBytes","Output":"=== RUN   TestCaptureHashIdentifiesBytes\n"}
+{"Time":"2026-11-10T21:58:23.000880897Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesBytes","Output":"--- PASS: TestCaptureHashIdentifiesBytes (0.11s)\n"}
+{"Time":"2026-11-10T21:58:23.000932972Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesBytes","Elapsed":0.11}
+{"Time":"2026-11-10T21:58:23.000954181Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesExecutableMode"}
+{"Time":"2026-11-10T21:58:23.000976783Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesExecutableMode","Output":"=== RUN   TestCaptureHashIdentifiesExecutableMode\n"}
+{"Time":"2026-11-10T21:58:23.061468987Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesExecutableMode","Output":"--- PASS: TestCaptureHashIdentifiesExecutableMode (0.06s)\n"}
+{"Time":"2026-11-10T21:58:23.061506589Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureHashIdentifiesExecutableMode","Elapsed":0.06}
+{"Time":"2026-11-10T21:58:23.061519216Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsUnsupportedIgnorePatterns"}
+{"Time":"2026-11-10T21:58:23.061524334Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsUnsupportedIgnorePatterns","Output":"=== RUN   TestCaptureRejectsUnsupportedIgnorePatterns\n"}
+{"Time":"2026-11-10T21:58:23.097037977Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsUnsupportedIgnorePatterns","Output":"--- PASS: TestCaptureRejectsUnsupportedIgnorePatterns (0.04s)\n"}
+{"Time":"2026-11-10T21:58:23.097075933Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsUnsupportedIgnorePatterns","Elapsed":0.04}
+{"Time":"2026-11-10T21:58:23.097086175Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsEscapingSymlink"}
+{"Time":"2026-11-10T21:58:23.097089417Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsEscapingSymlink","Output":"=== RUN   TestCaptureRejectsEscapingSymlink\n"}
+{"Time":"2026-11-10T21:58:23.134450927Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsEscapingSymlink","Output":"--- PASS: TestCaptureRejectsEscapingSymlink (0.04s)\n"}
+{"Time":"2026-11-10T21:58:23.134572447Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsEscapingSymlink","Elapsed":0.04}
+{"Time":"2026-11-10T21:58:23.134680547Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsSymlinkParent"}
+{"Time":"2026-11-10T21:58:23.134695427Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsSymlinkParent","Output":"=== RUN   TestCaptureRejectsSymlinkParent\n"}
+{"Time":"2026-11-10T21:58:23.169971322Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsSymlinkParent","Output":"--- PASS: TestCaptureRejectsSymlinkParent (0.04s)\n"}
+{"Time":"2026-11-10T21:58:23.170009759Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestCaptureRejectsSymlinkParent","Elapsed":0.04}
+{"Time":"2026-11-10T21:58:23.170020737Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestDockerRegistryDeliveryUsesMirror"}
+{"Time":"2026-11-10T21:58:23.170026101Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestDockerRegistryDeliveryUsesMirror","Output":"=== RUN   TestDockerRegistryDeliveryUsesMirror\n"}
+{"Time":"2026-11-10T21:58:23.22174432Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestDockerRegistryDeliveryUsesMirror","Output":"--- PASS: TestDockerRegistryDeliveryUsesMirror (0.05s)\n"}
+{"Time":"2026-11-10T21:58:23.221775741Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestDockerRegistryDeliveryUsesMirror","Elapsed":0.05}
+{"Time":"2026-11-10T21:58:23.221784873Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestK3dDeliveryNamesOnlyAssignedCluster"}
+{"Time":"2026-11-10T21:58:23.221796064Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestK3dDeliveryNamesOnlyAssignedCluster","Output":"=== RUN   TestK3dDeliveryNamesOnlyAssignedCluster\n"}
+{"Time":"2026-11-10T21:58:23.264260473Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestK3dDeliveryNamesOnlyAssignedCluster","Output":"--- PASS: TestK3dDeliveryNamesOnlyAssignedCluster (0.04s)\n"}
+{"Time":"2026-11-10T21:58:23.264291131Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestK3dDeliveryNamesOnlyAssignedCluster","Elapsed":0.04}
+{"Time":"2026-11-10T21:58:23.264300106Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestFailedPushHasNoSuccessResult"}
+{"Time":"2026-11-10T21:58:23.264303373Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestFailedPushHasNoSuccessResult","Output":"=== RUN   TestFailedPushHasNoSuccessResult\n"}
+{"Time":"2026-11-10T21:58:23.324867676Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestFailedPushHasNoSuccessResult","Output":"--- PASS: TestFailedPushHasNoSuccessResult (0.06s)\n"}
+{"Time":"2026-11-10T21:58:23.324899999Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestFailedPushHasNoSuccessResult","Elapsed":0.06}
+{"Time":"2026-11-10T21:58:23.324909252Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestBakedSourceMismatchFails"}
+{"Time":"2026-11-10T21:58:23.324912572Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestBakedSourceMismatchFails","Output":"=== RUN   TestBakedSourceMismatchFails\n"}
+{"Time":"2026-11-10T21:58:23.324961363Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestBakedSourceMismatchFails","Output":"--- PASS: TestBakedSourceMismatchFails (0.00s)\n"}
+{"Time":"2026-11-10T21:58:23.324966782Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Test":"TestBakedSourceMismatchFails","Elapsed":0}
+{"Time":"2026-11-10T21:58:23.324971835Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Output":"PASS\n"}
+{"Time":"2026-11-10T21:58:23.325894026Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Output":"ok  \tgithub.com/vanderheijden86/b9s/scripts/wt-image\t0.789s\n"}
+{"Time":"2026-11-10T21:58:23.325917653Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/wt-image","Elapsed":0.79}
