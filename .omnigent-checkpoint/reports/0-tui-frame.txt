@@ -1,0 +1,43 @@
+=== RUN   TestMermaidSequenceProofE2E
+    mermaid_e2e_test.go:95: Sequence proof terminal frame:
+                                    O   P   R                                                          o Open     P Projects   Types         __________  ________       
+        <1> 001                     1   0   1                                                          C Closed   L Labels     F1 ♦ Epic     \______   \/   __   \______
+        <2> 001                     1   0   1                                                          r Ready    A Assignees  F2 ▲ Feature   |    |  _/\____    /  ___/
+        <3> bv-e2e-tui-cap-26...    0   0   0                                                          a All      H Hide/Show  F3 ✔ Task      |    |   \   /    /\___ \ 
+        <0> All                                                                                        b Board    [] Scroll    F4 ● Bug       |______  /  /____//____  >
+                                                                                                       / Search   esc Back        ○ Chore            \/              \/ 
+        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+        ┃ ✔ task · bd-uv2t                                                                                                                                             ┃
+        ┃ Sequence proof                                                                                                                                               ┃
+        ┃                                                                                                                                                              ┃
+        ┃  OPEN   P2  creator unknown  assignee none                                                                                                                   ┃
+        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+        created 2026-11-10                                                                                                                                              
+                                                                                                                                                                        
+        DESCRIPTION                                                                                                                                                     
+        ┌──────┐     ┌─────┐                                                                                                                                            
+        │ User │     │ b9s │                                                                                                                                            
+        └───┬──┘     └──┬──┘                                                                                                                                            
+            │           │                                                                                                                                               
+            │ Open detail                                                                                                                                               
+            ├──────────►│                                                                                                                                               
+            │           │                                                                                                                                               
+            │ Render diagram                                                                                                                                            
+            │◄┈┈┈┈┈┈┈┈┈┈┤                                                                                                                                               
+            │           │                                                                                                                                               
+        ┌───┴──┐     ┌──┴──┐                                                                                                                                            
+        │ User │     │ b9s │                                                                                                                                            
+        └──────┘     └─────┘                                                                                                                                            
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+         enter:back to tree  j/k:scroll  home/end:top/bottom  1-9:child  ^R:refresh  n/p:next/prev sibling  s:comment order  e:edit  c:copy  ?:help  esc:back  L:labels 
+--- PASS: TestMermaidSequenceProofE2E (5.50s)
