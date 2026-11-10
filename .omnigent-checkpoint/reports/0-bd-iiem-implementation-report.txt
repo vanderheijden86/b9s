@@ -1,0 +1,101 @@
+Task: bd-iiem
+Role: implementer
+Repository: /home/omnigent/workspace/b9s
+Outcome: Scoped coverage complete. Required native stable entrypoint blocked.
+
+GIT PREFLIGHT (reported before editing)
+- beads-connect succeeded, once.
+- Actual branch: omnigent/bd-iiem.
+- HEAD: 03b79239e41207ff6daa10a102f162155254b589.
+- Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083.
+- Remote delivery present: ls-remote exact heads probe exit 0.
+- Fetched delivery ref and resumed its existing tip, never bootstrap HEAD.
+- Required commits: none. Required ancestry against base and HEAD: not applicable.
+- Initial worktree clean. Final HEAD unchanged.
+- Initial --track switch refused because the clone fetch mapping excludes that branch.
+  Explicit fetched refs/remotes/origin/omnigent/bd-iiem resumed with --no-track.
+- lane-checkpoint inspect exit 2: no checkpoint existed.
+- No delivery commits, delivery pushes, PRs, merges, branch resets or deletion commands.
+
+OBSERVED STATE
+- Existing remote tip contains prior card, viewport, PTY guards and full-prefix guide text.
+- pkg/ui/issue_detail.go:61 renders item.ID in the card header.
+- Original bd-mrux card commit 2a0a44bc also renders item.ID.
+- web/src/render.ts:906 renders esc(i.id) in .dtop next to .dtitle.
+- Initial focused tests passed on unchanged production code: 3/0/0.
+- Original missing-ID defect remains unreproduced. No production fix, red reproduction,
+  shortened-ID mutation, browser runtime proof or new copy behavior is claimed.
+
+CHANGED FILES THIS ATTEMPT
+- pkg/ui/issue_detail_test.go: TestIssueDetailViewportShowsFullID now covers ordinary,
+  nested, and long multi-hyphen IDs. ID and title must occur inside the visible heavy
+  header box, rather than anywhere in the viewport. One tracked file changed.
+- Existing docs/USER_GUIDE.md already documents full IDs. No documentation change needed.
+- Existing real-terminal regression preserved and executed.
+- No data read/write, state-machine or product behavior changes. No new ADR needed.
+- Guard: rendered viewport assertions reject missing or shortened IDs in its header.
+
+EXACT COMMANDS AND MEASURED RESULTS
+Working directory for Go/make commands: /home/omnigent/workspace/b9s.
+Counts below are passed/failed/skipped. Nested tests are reported separately.
+
+1. timeout --kill-after=10s 180s go mod download
+   Exit 0, Go 1.25.5 linux/amd64. Committed go.mod/go.sum unchanged.
+   Report: /tmp/bd-iiem-dependencies.txt.
+
+2. timeout --kill-after=10s 180s go test -json -count=1 -timeout=60s ./pkg/ui/ -run '^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$'
+   Before edits: exit 0, top-level 3/0/0, including subtests 3/0/0.
+   After edits: exit 0, top-level 3/0/0, including subtests 6/0/0.
+   Reports: /tmp/bd-iiem-focused-initial.jsonl and /tmp/bd-iiem-focused-final.jsonl.
+   Test-first evidence established existing behavior. No red/green production fix applicable.
+
+3. GOFLAGS='-json -count=1' timeout --kill-after=10s 660s make test-stable
+   Exit 2: make: No rule to make target 'test-stable'. Stop.
+   No tests ran. Test counts unavailable, not a passing suite.
+   Report: /tmp/bd-iiem-stable-entrypoint.log.
+
+4. git -C /home/omnigent/workspace/b9s show origin/main:Makefile > /tmp/bd-iiem-assigned-base.Makefile
+   Read-only extraction of assigned-base stable recipe, no base test run/worktree.
+   GOFLAGS='-json -count=1' timeout --kill-after=10s 660s make -f /tmp/bd-iiem-assigned-base.Makefile test-stable
+   Exit 2: incorrect reporting configuration also affected nested go list, producing
+   invalid package arguments. This was my invocation error, not project test evidence.
+   Corrected reporting mode in the next command. Report: /tmp/bd-iiem-stable.jsonl.
+
+5. GOFLAGS='-v -count=1' timeout --kill-after=10s 660s make -f /tmp/bd-iiem-assigned-base.Makefile test-stable
+   Exit 0. Unchanged repository stable recipe, against delivery source only, run alone.
+   Recipe: go test -timeout 10m -skip 'DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers' $(go list ./... | grep -v /tests/e2e)
+   Top-level 1983/0/18. Including subtests 3262/0/20. Packages 21 passed, 0 failed.
+   Report: /tmp/bd-iiem-stable-final.log. Counts: /tmp/bd-iiem-stable-counts.json.
+   Supplemental evidence only. Does not silently waive missing native required target.
+   Top-level skips: real-bd probe 1, S3 endpoint 3, Dolt DSN 7, Memory opt-in probes 4,
+   opt-in long stress 3. Two additional subtests lack srps/cass loader fixtures.
+   No flaky outcomes observed. No deadline failures in valid runs.
+
+6. timeout --kill-after=10s 180s go build ./...
+   Exit 0. Report: /tmp/bd-iiem-build.txt. Build check, no test counts.
+
+7. timeout --kill-after=10s 180s go vet ./...
+   Exit 0. Report: /tmp/bd-iiem-vet.txt. Go static/type checks, no test counts.
+
+8. timeout --kill-after=10s 180s go test -json -count=1 -timeout=120s ./tests/e2e/ -run '^TestDetailHeaderShowsFullIDE2E$'
+   Exit 0, top-level and including subtests 1/0/0.
+   Real PTY subprocess uses treeTUIDeadline and B9S_TUI_AUTOCLOSE_MS=3000.
+   Report: /tmp/bd-iiem-terminal.jsonl.
+
+9. gofmt -w /home/omnigent/workspace/b9s/pkg/ui/issue_detail_test.go
+   gofmt -l /home/omnigent/workspace/b9s/pkg/ui/issue_detail_test.go
+   git -C /home/omnigent/workspace/b9s diff --check
+   All exited 0. Formatting listing and diff check had no output.
+
+REQUIRED BLOCKERS AND RESIDUAL RISKS
+- bd-iiem: native required make test-stable cannot execute on assigned delivery branch,
+  exit 2, missing target. Main has the target, but migrating feature work is outside
+  this task's scope. Polly must resolve or accept the explicit external-recipe evidence.
+- No other unresolved required-check failures observed. No separate issues filed.
+- Original reported defect remains unreproduced. Web inspected in source only.
+- External stable skips remain explicit. No shared Dolt writes from tests.
+- Independent reviewer/tester still required. Delivery authorization has not been given.
+
+CHECKPOINT
+Separate unapproved refs/heads/omnigent-checkpoints/bd-iiem pushes succeeded.
+Tracked source patch and selected scrubbed reports saved. Delivery HEAD stayed unchanged.

@@ -1,0 +1,8 @@
+{"Time":"2026-11-10T21:41:58.717809319Z","Action":"start","Package":"github.com/vanderheijden86/b9s/tests/e2e"}
+{"Time":"2026-11-10T21:42:02.680799557Z","Action":"run","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestDetailHeaderShowsFullIDE2E"}
+{"Time":"2026-11-10T21:42:02.680835748Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestDetailHeaderShowsFullIDE2E","Output":"=== RUN   TestDetailHeaderShowsFullIDE2E\n"}
+{"Time":"2026-11-10T21:42:08.684479399Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestDetailHeaderShowsFullIDE2E","Output":"--- PASS: TestDetailHeaderShowsFullIDE2E (6.00s)\n"}
+{"Time":"2026-11-10T21:42:08.684527063Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestDetailHeaderShowsFullIDE2E","Elapsed":6}
+{"Time":"2026-11-10T21:42:08.684535249Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Output":"PASS\n"}
+{"Time":"2026-11-10T21:42:08.697183308Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Output":"ok  \tgithub.com/vanderheijden86/b9s/tests/e2e\t9.979s\n"}
+{"Time":"2026-11-10T21:42:08.697215487Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/e2e","Elapsed":9.979}
