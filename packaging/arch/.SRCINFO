@@ -1,0 +1,21 @@
+pkgbase = b9s-bin
+	pkgdesc = Terminal and web UI for Beads issues
+	pkgver = 1.3.5
+	pkgrel = 1
+	url = https://github.com/vanderheijden86/b9s
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	depends = glibc
+	optdepends = beads: issue editing and embedded Dolt projects
+	optdepends = xdg-utils: open links and attachments
+	provides = b9s=1.3.5
+	conflicts = b9s
+	options = !strip
+	options = !debug
+	source_x86_64 = https://github.com/vanderheijden86/b9s/releases/download/v1.3.5/b9s_1.3.5_linux_amd64.tar.gz
+	sha256sums_x86_64 = 2097463963a19821336402560b31fbda3cc52ec4a12fd85354cc91bccb6c57ae
+	source_aarch64 = https://github.com/vanderheijden86/b9s/releases/download/v1.3.5/b9s_1.3.5_linux_arm64.tar.gz
+	sha256sums_aarch64 = 04997bac05c7e40c4f2c1b62a3fda4e5e3b3a9acd1263212d3ce18b3bed4624d
+
+pkgname = b9s-bin
