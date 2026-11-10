@@ -1,0 +1,68 @@
+{
+  "command": [
+    "/tmp/bd-a5xi.3-image-1/runtime/lib/ld-musl-x86_64.so.1",
+    "--library-path",
+    "/tmp/bd-a5xi.3-image-1/runtime/lib:/tmp/bd-a5xi.3-image-1/runtime/usr/lib",
+    "/tmp/bd-a5xi.3-image-1/runtime/usr/local/bin/b9s",
+    "--version"
+  ],
+  "binary_stdout": "b9s dev",
+  "binary_exit": 0,
+  "image": "registry.registry.svc.cluster.local:5000/b9s-worktree:wt-c2fccef8b537-true-63f38b902a78b29d149c0ba84471177b4cfd3e24d452f1a0563e805247c1e245",
+  "digest": "sha256:fff3d652f87bb4e6cc43b019dd1d0df542fce8479836f4f459038bf5ec548bb2",
+  "source": {
+    "commit": "c2fccef8b537ed034ebd360ea7cf31c02250e083",
+    "dirty": true,
+    "tree_hash": "63f38b902a78b29d149c0ba84471177b4cfd3e24d452f1a0563e805247c1e245"
+  },
+  "source_files": 6042,
+  "checks": [
+    {
+      "name": "HEAD and dirty flag match current worktree",
+      "passed": true
+    },
+    {
+      "name": "Manifest bytes and modes match frozen context and current worktree",
+      "passed": true
+    },
+    {
+      "name": "Tree SHA-256 recomputes from sorted manifest",
+      "passed": true
+    },
+    {
+      "name": "Runtime baked source JSON matches all fields",
+      "passed": true
+    },
+    {
+      "name": "Runtime baked commit matches HEAD",
+      "passed": true
+    },
+    {
+      "name": "Registry manifest digest matches BuildKit result",
+      "passed": true
+    },
+    {
+      "name": "Registry OCI labels match baked source",
+      "passed": true
+    },
+    {
+      "name": "Exported image binary executes",
+      "passed": true
+    },
+    {
+      "name": "Baked source file proves uncommitted Dockerfile input",
+      "passed": true
+    }
+  ],
+  "counts": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "buildkit": "buildctl github.com/moby/buildkit v0.17.2 a3d734228b860a215f8a336e3983d35cbfaf08d8"
+  }
+}
