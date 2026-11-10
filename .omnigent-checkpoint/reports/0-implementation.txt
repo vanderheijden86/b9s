@@ -1,0 +1,16 @@
+Task bd-jt4s, implementation on omnigent/bd-jt4s.
+Observed cause: a variable-length absolute download path preceded the test-mode opener marker. Bubble Tea standard_renderer.go truncates each line to viewport width. The PTY is fixed at 160 columns.
+Unchanged E2E with short temp paths passed on bd 1.3.0-rc.1 and 1.3.2-rc.2 (each 1 passed, 0 failed, 0 skipped, exit 0).
+Test-first long-TMPDIR unit regression reproduced hidden marker after download/opener record assertions passed (0 passed, 1 failed, 0 skipped, exit 1).
+Test-first long-TMPDIR PTY reproduced reported missing marker with stock bd 1.3.2-rc.2 (0 passed, 1 failed, 0 skipped, exit 1).
+Product fix: place test-mode outcome before download name/path. Normal-mode opener behavior is unchanged.
+Retained every original E2E assertion. No version skip, swallowed failure or timeout increase.
+Green focused unit and long-path stock bd 1.3.2-rc.2 E2E each passed: 1 passed, 0 failed, 0 skipped, exit 0.
+Changed files:
+pkg/ui/attachments.go: test-mode status format.
+pkg/ui/attachments_test.go: long private TMPDIR, 160-column clipping regression.
+tests/e2e/attachments_e2e_test.go: long private TMPDIR fixture.
+docs/testing.md: regression rationale and no bd-version skip.
+ADRs 0024/0025 preserved: reference comments via stock bd, embedded reads through bd export.
+Guard: focused unit checks the rendered clipped footer while retaining opener record and downloaded file assertions. E2E exercises the actual renderer with a long TMPDIR and retains persistence/hash/list/download assertions.
+No new state, source files, ADR decisions, or dependency changes.
