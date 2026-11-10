@@ -56,19 +56,28 @@ func TestRenderIssueDetail_HeaderShowsMetaWithoutTable(t *testing.T) {
 
 func TestIssueDetailViewportShowsFullID(t *testing.T) {
 	t.Setenv("B9S_TEST_MODE", "1")
-	issue := model.Issue{
-		ID: "project-name-iiem.2.3", Title: "Inspect the detail header",
-		Status: model.StatusOpen, IssueType: model.TypeTask,
-	}
-	m := NewModel([]model.Issue{issue}, "")
-	updated, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
-	m = updated.(Model)
-	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyEnter})
-	out := stripANSI(m.viewport.View())
-	for _, want := range []string{issue.ID, issue.Title} {
-		if !strings.Contains(out, want) {
-			t.Errorf("detail viewport missing %q:\n%s", want, out)
-		}
+	for _, id := range []string{"bd-iiem", "bd-iiem.2.3", "long-project-name-iiem.2.3"} {
+		t.Run(id, func(t *testing.T) {
+			issue := model.Issue{
+				ID: id, Title: "Inspect the detail header",
+				Status: model.StatusOpen, IssueType: model.TypeTask,
+			}
+			m := NewModel([]model.Issue{issue}, "")
+			updated, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+			m = updated.(Model)
+			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyEnter})
+			out := stripANSI(m.viewport.View())
+			top, bottom := strings.Index(out, "┏"), strings.Index(out, "┗")
+			if top < 0 || bottom <= top {
+				t.Fatalf("visible detail header box missing:\n%s", out)
+			}
+			header := out[top:bottom]
+			for _, want := range []string{issue.ID, issue.Title} {
+				if !strings.Contains(header, want) {
+					t.Errorf("visible detail header must show full ID and title, missing %q:\n%s", want, out)
+				}
+			}
+		})
 	}
 }
 
