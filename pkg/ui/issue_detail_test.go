@@ -140,6 +140,43 @@ func TestRenderIssueDetail_MermaidInComment(t *testing.T) {
 	}
 }
 
+func TestDetailCKeyKeepsMermaidSequenceSource(t *testing.T) {
+	source := "```mermaid\nsequenceDiagram\n    participant User\n    participant b9s\n    User->>b9s: Open detail\n    b9s-->>User: Render diagram\n```"
+	issue := model.Issue{
+		ID: "bd-uv2t", Title: "Sequence proof", Status: model.StatusOpen,
+		IssueType: model.TypeTask, Description: source,
+	}
+	m := NewModel([]model.Issue{issue}, "")
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m = updated.(Model)
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(Model)
+	if m.focused != focusDetail {
+		t.Fatal("Enter must open detail before copying")
+	}
+	if out := stripANSI(m.viewport.View()); strings.Contains(out, "sequenceDiagram") ||
+		!strings.Contains(out, "Render diagram") {
+		t.Fatalf("detail must render the diagram before copying:\n%s", out)
+	}
+
+	var copied string
+	m.clipboardWrite = func(text string) error {
+		copied = text
+		return nil
+	}
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	m = updated.(Model)
+	if m.statusIsError || !strings.Contains(m.statusMsg, "Copied bd-uv2t to clipboard") {
+		t.Fatalf("copy failed: %s", m.statusMsg)
+	}
+	if !strings.Contains(copied, source) {
+		t.Fatalf("copy must preserve the original Mermaid fence:\n%s", copied)
+	}
+	if strings.Contains(copied, "┌") {
+		t.Fatalf("copy must contain source without rendered boxes:\n%s", copied)
+	}
+}
+
 func TestRenderIssueDetail_UpdateNoticeIsOneQuietLine(t *testing.T) {
 	out := renderDetailFixture(t, &detailUpdateNotice{Tag: "v1.1.0"})
 	if !strings.Contains(out, "v1.1.0 available") {
