@@ -1,0 +1,126 @@
+{
+  "issue_id": "bd-a5xi.3",
+  "finding": "contract-break",
+  "status": "resolved in implementation, independent re-review pending",
+  "checks": [
+    {
+      "case": "registry",
+      "command": [
+        "/tmp/bd-a5xi.3-revision-2/wt-image",
+        "--repo",
+        "/tmp/bd-a5xi.3-review-1/routing-fixture-2",
+        "--output",
+        "/tmp/bd-a5xi.3-revision-2/routing-registry",
+        "--timeout",
+        "10s",
+        "--registry",
+        "localregistry"
+      ],
+      "exit": 1,
+      "stderr": "wt-image: --registry and --push-registry require an explicit registry authority: localhost, a dotted host or host:port, without a scheme",
+      "builder_invoked": false,
+      "source_capture_started": false,
+      "passed": true
+    },
+    {
+      "case": "push-registry",
+      "command": [
+        "/tmp/bd-a5xi.3-revision-2/wt-image",
+        "--repo",
+        "/tmp/bd-a5xi.3-review-1/routing-fixture-2",
+        "--output",
+        "/tmp/bd-a5xi.3-revision-2/routing-push-registry",
+        "--timeout",
+        "10s",
+        "--registry",
+        "registry.internal:5000",
+        "--push-registry",
+        "localregistry"
+      ],
+      "exit": 1,
+      "stderr": "wt-image: --registry and --push-registry require an explicit registry authority: localhost, a dotted host or host:port, without a scheme",
+      "builder_invoked": false,
+      "source_capture_started": false,
+      "passed": true
+    },
+    {
+      "case": "registry-prefix",
+      "command": [
+        "/tmp/bd-a5xi.3-revision-2/wt-image",
+        "--repo",
+        "/tmp/bd-a5xi.3-review-1/routing-fixture-2",
+        "--output",
+        "/tmp/bd-a5xi.3-revision-2/routing-registry-prefix",
+        "--timeout",
+        "10s",
+        "--registry",
+        "localregistry/prefix.with.dot"
+      ],
+      "exit": 1,
+      "stderr": "wt-image: --registry and --push-registry require an explicit registry authority: localhost, a dotted host or host:port, without a scheme",
+      "builder_invoked": false,
+      "source_capture_started": false,
+      "passed": true
+    },
+    {
+      "case": "push-registry-prefix",
+      "command": [
+        "/tmp/bd-a5xi.3-revision-2/wt-image",
+        "--repo",
+        "/tmp/bd-a5xi.3-review-1/routing-fixture-2",
+        "--output",
+        "/tmp/bd-a5xi.3-revision-2/routing-push-registry-prefix",
+        "--timeout",
+        "10s",
+        "--registry",
+        "registry.internal:5000",
+        "--push-registry",
+        "localregistry/prefix.with.dot"
+      ],
+      "exit": 1,
+      "stderr": "wt-image: --registry and --push-registry require an explicit registry authority: localhost, a dotted host or host:port, without a scheme",
+      "builder_invoked": false,
+      "source_capture_started": false,
+      "passed": true
+    },
+    {
+      "case": "canonical reference",
+      "input": "localregistry/b9s-worktree:example",
+      "canonical": "docker.io/localregistry/b9s-worktree:example",
+      "passed": true
+    },
+    {
+      "case": "canonical reference",
+      "input": "localregistry:5000/b9s-worktree:example",
+      "canonical": "localregistry:5000/b9s-worktree:example",
+      "passed": true
+    },
+    {
+      "case": "canonical reference",
+      "input": "localhost/b9s-worktree:example",
+      "canonical": "localhost/b9s-worktree:example",
+      "passed": true
+    },
+    {
+      "case": "canonical reference",
+      "input": "registry.internal/b9s-worktree:example",
+      "canonical": "registry.internal/b9s-worktree:example",
+      "passed": true
+    },
+    {
+      "case": "canonical reference",
+      "input": "localhost/prefix.with.dot/b9s-worktree:example",
+      "canonical": "localhost/prefix.with.dot/b9s-worktree:example",
+      "passed": true
+    }
+  ],
+  "counts": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "canonical_parser": "github.com/distribution/reference v0.6.0 ParseNormalizedNamed",
+  "safety": "Docker stub only. No image push."
+}

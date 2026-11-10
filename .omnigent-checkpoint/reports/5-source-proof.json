@@ -1,0 +1,66 @@
+{
+  "source": {
+    "commit": "c2fccef8b537ed034ebd360ea7cf31c02250e083",
+    "dirty": true,
+    "tree_hash": "b5abad156f52ae9ba3435b7886c7c9d4b07407cf9b996f59ad50f0adbf199607"
+  },
+  "image": "registry.registry.svc.cluster.local:5000/b9s-worktree:wt-c2fccef8b537-true-b5abad156f52ae9ba3435b7886c7c9d4b07407cf9b996f59ad50f0adbf199607",
+  "digest": "sha256:d19eddd9ccfb4ac81c7adb7e09d2f10441a4b2614d1b9b3dec5e6ae008f93988",
+  "files": 6042,
+  "checks": [
+    {
+      "name": "commit and dirty flag equal current worktree",
+      "passed": true
+    },
+    {
+      "name": "manifest lists every selected source file in sorted order",
+      "passed": true
+    },
+    {
+      "name": "all manifest bytes and normalized modes match frozen and current files",
+      "passed": true
+    },
+    {
+      "name": "deterministic tree hash recomputes",
+      "passed": true
+    },
+    {
+      "name": "runtime baked source matches",
+      "passed": true
+    },
+    {
+      "name": "runtime baked commit matches",
+      "passed": true
+    },
+    {
+      "name": "live registry manifest digest matches BuildKit image",
+      "passed": true
+    },
+    {
+      "name": "live registry labels match baked metadata",
+      "passed": true
+    },
+    {
+      "name": "exported image binary executes",
+      "passed": true
+    },
+    {
+      "name": "all four reviewed files match real build snapshot",
+      "passed": true
+    }
+  ],
+  "counts": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "binary_command": [
+    "/tmp/bd-a5xi.3-image-2/runtime/lib/ld-musl-x86_64.so.1",
+    "--library-path",
+    "/tmp/bd-a5xi.3-image-2/runtime/lib:/tmp/bd-a5xi.3-image-2/runtime/usr/lib",
+    "/tmp/bd-a5xi.3-image-2/runtime/usr/local/bin/b9s",
+    "--version"
+  ],
+  "binary_stdout": "b9s dev\n",
+  "binary_exit": 0
+}

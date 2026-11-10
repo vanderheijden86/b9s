@@ -1,0 +1,154 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "GOFLAGS": "-v",
+    "go": "go version go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 2140,
+    "failed": 0,
+    "skipped": 18,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "including_subtests": {
+    "passed": 3783,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "skips": [
+    {
+      "test": "TestProbeMemory_RealBinaries",
+      "top_level": true,
+      "preceding_line": "capability_test.go:223: set B9S_TEST_STOCK_BD and/or B9S_TEST_PREVIEW_BD to probe real binaries"
+    },
+    {
+      "test": "TestS3StoreContract",
+      "top_level": true,
+      "preceding_line": "s3_test.go:23: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "test": "TestS3PutRejectsShortRead",
+      "top_level": true,
+      "preceding_line": "s3_test.go:79: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "test": "TestS3PutRejectsLongRead",
+      "top_level": true,
+      "preceding_line": "s3_test.go:98: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "test": "TestDoltReader_NewAndClose",
+      "top_level": true,
+      "preceding_line": "dolt_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltReader_LoadIssues",
+      "top_level": true,
+      "preceding_line": "dolt_test.go:64: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltReader_GetHeadHash",
+      "top_level": true,
+      "preceding_line": "dolt_test.go:91: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_NewAndStop",
+      "top_level": true,
+      "preceding_line": "dolt_watcher_test.go:28: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_StartIsIdempotent",
+      "top_level": true,
+      "preceding_line": "dolt_watcher_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "top_level": true,
+      "preceding_line": "dolt_watcher_test.go:71: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "top_level": true,
+      "preceding_line": "dolt_watcher_test.go:100: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestMemoryPreviewGraphReadTiming",
+      "top_level": true,
+      "preceding_line": "memory_graph_test.go:37: set B9S_MEMORY_PREVIEW_WORKSPACE to an isolated embedded graph preview"
+    },
+    {
+      "test": "TestMemoryReadResearchStages",
+      "top_level": true,
+      "preceding_line": "memory_read_research_test.go:62: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+    },
+    {
+      "test": "TestMemoryReadResearchTransportParity",
+      "top_level": true,
+      "preceding_line": "memory_read_research_test.go:165: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+    },
+    {
+      "test": "TestMemoryReadResearchConcurrentWriter",
+      "top_level": true,
+      "preceding_line": "memory_read_research_test.go:398: set B9S_MEMORY_RESEARCH_MUTATE=1 to add one probe Memory and Link in the isolated copy"
+    },
+    {
+      "test": "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "top_level": false,
+      "preceding_line": "--- PASS: TestLoadRealIssues (0.00s)"
+    },
+    {
+      "test": "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "top_level": false,
+      "preceding_line": "--- SKIP: TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)"
+    },
+    {
+      "test": "TestStress_SustainedWrites",
+      "top_level": true,
+      "preceding_line": "background_worker_test.go:1297: set PERF_TEST=1 to run 10+ minute stress tests"
+    },
+    {
+      "test": "TestStress_BurstWrites",
+      "top_level": true,
+      "preceding_line": "background_worker_test.go:1414: set PERF_TEST=1 to run 10+ minute stress tests"
+    },
+    {
+      "test": "TestStress_MemoryPressure",
+      "top_level": true,
+      "preceding_line": "background_worker_test.go:1514: set PERF_TEST=1 to run 10+ minute stress tests"
+    }
+  ],
+  "package_results": [
+    "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t18.601s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/scripts/web\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/scripts/wt-image\t1.837s",
+    "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t(cached)"
+  ]
+}

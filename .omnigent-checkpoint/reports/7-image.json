@@ -1,0 +1,14 @@
+{
+  "containerimage.config.digest": "sha256:932e888d13f5ece695be447672e60c328fea3493dbd0ebd9ef33c7124797184d",
+  "containerimage.descriptor": {
+    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "digest": "sha256:d19eddd9ccfb4ac81c7adb7e09d2f10441a4b2614d1b9b3dec5e6ae008f93988",
+    "size": 1677,
+    "platform": {
+      "architecture": "amd64",
+      "os": "linux"
+    }
+  },
+  "containerimage.digest": "sha256:d19eddd9ccfb4ac81c7adb7e09d2f10441a4b2614d1b9b3dec5e6ae008f93988",
+  "image.name": "registry.registry.svc.cluster.local:5000/b9s-worktree:wt-c2fccef8b537-true-b5abad156f52ae9ba3435b7886c7c9d4b07407cf9b996f59ad50f0adbf199607"
+}
