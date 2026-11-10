@@ -115,6 +115,13 @@ Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd e
 
 `MultiDoltReader` in `dolt_multi.go` opens one `DoltReader` per database for the all-projects view (`0`). It is read-only.
 
+`OpenProject` returns `OpenedProject.Releases` alongside `Issues` for every source.
+The releases are derived with `model.BuildReleases` from the same loaded issues
+and dependencies, without another query or export. A comments-only failure keeps
+both slices and reports `CommentsErr`. A first-page Dolt open derives only the
+releases present in that page, so `Partial` applies to both slices. The full open
+includes closed milestones and their `released` state.
+
 ## Memory preview adapter
 
 `b9s memories` reads an isolated graph preview workspace through its matching `bd` binary. `internal/datasource/graph_preview.go` checks `graph_mode` and `graph_ready`, and its `GraphPreviewClient` wraps the preview reads: `bd memories` for summaries and literal search, `bd list --format records-json --all` for the inventory, `bd show --version` for a body at a retained version, `bd links` for incident Links and `bd versions` for the retained versions. It rejects `hasMore`, since the current CLI has no continuation cursor, and reports bd's refusal code in its errors. It opens no Dolt store directly.
