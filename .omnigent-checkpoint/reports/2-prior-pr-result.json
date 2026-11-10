@@ -1,0 +1,29 @@
+{
+  "task": "bd-0w9e",
+  "repo": "/home/omnigent/workspace/b9s",
+  "command": [
+    "timeout",
+    "60s",
+    "gh",
+    "pr",
+    "create",
+    "--base",
+    "main",
+    "--head",
+    "omnigent/bd-0w9e",
+    "--title",
+    "[0w9e] Responsive web docs contain the author's home directory",
+    "--body-file",
+    "/tmp/bd-0w9e-pr-lOgs0Y/pr-body.md"
+  ],
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "pull request create failed: GraphQL: No commits between main and omnigent/bd-0w9e (createPullRequest)\n",
+  "existing_prs": [],
+  "branch": "omnigent/bd-0w9e",
+  "head": "c2fccef8b537ed034ebd360ea7cf31c02250e083",
+  "worktree_porcelain_before": "",
+  "new_source_changes": false,
+  "new_commit_created": false,
+  "base": "main"
+}
