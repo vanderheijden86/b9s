@@ -1,0 +1,3 @@
+bash_syntax_exit=0
+srcinfo_match_exit=0
+diff_check_exit=0

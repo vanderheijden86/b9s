@@ -1,0 +1,55 @@
+{
+  "command": [
+    "/tmp/bd-hffz.12/proot",
+    "-i",
+    "1000:1000",
+    "-r",
+    "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+    "-b",
+    "/dev",
+    "-b",
+    "/proc",
+    "-b",
+    "/tmp",
+    "-w",
+    "/tmp/bd-hffz.12/cli-fixture",
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin",
+    "HOME=/tmp/bd-hffz.12/cli-home",
+    "XDG_CONFIG_HOME=/tmp/bd-hffz.12/cli-home/config",
+    "TERM=xterm-256color",
+    "B9S_TEST_MODE=1",
+    "B9S_NO_BROWSER=1",
+    "B9S_TUI_AUTOCLOSE_MS=1200",
+    "/usr/bin/b9s",
+    "web",
+    "--no-token",
+    "--listen",
+    "127.0.0.1:38205"
+  ],
+  "environment": {
+    "arch_image": "2026.11.01 x86_64",
+    "proot": "5.5.0-25dc6a31",
+    "runtime_root": "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+    "network": "loopback only for smoke",
+    "bd": "absent"
+  },
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "snapshot_issue_ids": [
+    "A",
+    "B"
+  ],
+  "embedded_assets": [
+    {
+      "url": "http://127.0.0.1:38205/app.js",
+      "bytes": 129669
+    }
+  ]
+}

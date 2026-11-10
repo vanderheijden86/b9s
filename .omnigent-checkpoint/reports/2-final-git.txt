@@ -1,0 +1,8 @@
+## omnigent/bd-hffz.12...origin/main
+ M README.md
+?? packaging/
+packaging/arch/.SRCINFO
+packaging/arch/PKGBUILD
+packaging/arch/README.md
+3a5ed086abe347af005c06efc3fe3f2c7661af12
+3a5ed086abe347af005c06efc3fe3f2c7661af12

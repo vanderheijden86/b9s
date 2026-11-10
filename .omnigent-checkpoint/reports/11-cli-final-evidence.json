@@ -1,0 +1,202 @@
+{
+  "environment": {
+    "arch_image": "2026.11.01 x86_64",
+    "proot": "5.5.0-25dc6a31",
+    "runtime_root": "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+    "network": "loopback only for smoke",
+    "bd": "absent"
+  },
+  "counts": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "flaky": 0,
+  "results": [
+    {
+      "name": "installed_payload_matches_release",
+      "state": "passed",
+      "detail": {
+        "binary_sha256": "0dc5d43c5dbcd6007d90c3de5d536ad5d233e534f1cbee5093ab59ac4937ff86",
+        "mode": "0755",
+        "bd_installed": false
+      }
+    },
+    {
+      "name": "cli_help",
+      "state": "passed",
+      "detail": {
+        "command": [
+          "/tmp/bd-hffz.12/proot",
+          "-i",
+          "1000:1000",
+          "-r",
+          "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+          "-b",
+          "/dev",
+          "-b",
+          "/proc",
+          "-b",
+          "/tmp",
+          "-w",
+          "/tmp/bd-hffz.12/cli-fixture",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin",
+          "HOME=/tmp/bd-hffz.12/cli-home",
+          "XDG_CONFIG_HOME=/tmp/bd-hffz.12/cli-home/config",
+          "TERM=xterm-256color",
+          "B9S_TEST_MODE=1",
+          "B9S_NO_BROWSER=1",
+          "B9S_TUI_AUTOCLOSE_MS=1200",
+          "/usr/bin/b9s",
+          "--help"
+        ],
+        "exit_code": 0,
+        "report": "/tmp/bd-hffz.12/cli-help.log"
+      }
+    },
+    {
+      "name": "tui_reads_jsonl_and_exits",
+      "state": "passed",
+      "detail": {
+        "command": [
+          "/tmp/bd-hffz.12/proot",
+          "-i",
+          "1000:1000",
+          "-r",
+          "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+          "-b",
+          "/dev",
+          "-b",
+          "/proc",
+          "-b",
+          "/tmp",
+          "-w",
+          "/tmp/bd-hffz.12/cli-fixture",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin",
+          "HOME=/tmp/bd-hffz.12/cli-home",
+          "XDG_CONFIG_HOME=/tmp/bd-hffz.12/cli-home/config",
+          "TERM=xterm-256color",
+          "B9S_TEST_MODE=1",
+          "B9S_NO_BROWSER=1",
+          "B9S_TUI_AUTOCLOSE_MS=1200",
+          "/usr/bin/script",
+          "--quiet",
+          "--return",
+          "--command",
+          "/usr/bin/b9s",
+          "/dev/null"
+        ],
+        "exit_code": 0,
+        "report": "/tmp/bd-hffz.12/cli-tui.log"
+      }
+    },
+    {
+      "name": "embedded_web_reads_jsonl_and_serves_bundle",
+      "state": "passed",
+      "detail": {
+        "command": [
+          "/tmp/bd-hffz.12/proot",
+          "-i",
+          "1000:1000",
+          "-r",
+          "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+          "-b",
+          "/dev",
+          "-b",
+          "/proc",
+          "-b",
+          "/tmp",
+          "-w",
+          "/tmp/bd-hffz.12/cli-fixture",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin",
+          "HOME=/tmp/bd-hffz.12/cli-home",
+          "XDG_CONFIG_HOME=/tmp/bd-hffz.12/cli-home/config",
+          "TERM=xterm-256color",
+          "B9S_TEST_MODE=1",
+          "B9S_NO_BROWSER=1",
+          "B9S_TUI_AUTOCLOSE_MS=1200",
+          "/usr/bin/b9s",
+          "web",
+          "--no-token",
+          "--listen",
+          "127.0.0.1:38205"
+        ],
+        "environment": {
+          "arch_image": "2026.11.01 x86_64",
+          "proot": "5.5.0-25dc6a31",
+          "runtime_root": "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+          "network": "loopback only for smoke",
+          "bd": "absent"
+        },
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "interrupted": 0,
+          "unrun": 0
+        },
+        "snapshot_issue_ids": [
+          "A",
+          "B"
+        ],
+        "embedded_assets": [
+          {
+            "url": "http://127.0.0.1:38205/app.js",
+            "bytes": 129669
+          }
+        ]
+      }
+    },
+    {
+      "name": "cli_version",
+      "state": "passed",
+      "detail": {
+        "command": [
+          "timeout",
+          "15s",
+          "/tmp/bd-hffz.12/proot",
+          "-i",
+          "1000:1000",
+          "-r",
+          "/tmp/bd-hffz.12/arch-install-root/root.x86_64",
+          "-b",
+          "/dev",
+          "-b",
+          "/proc",
+          "-b",
+          "/tmp",
+          "-w",
+          "/tmp",
+          "/usr/bin/env",
+          "-i",
+          "PATH=/usr/bin",
+          "HOME=/tmp/bd-hffz.12/cli-home",
+          "/usr/bin/b9s",
+          "--version"
+        ],
+        "exit_code": 0,
+        "observed_output": "b9s v1.3.5 (3a5ed086)\ncommit https://github.com/vanderheijden86/b9s/commit/3a5ed086abe347af005c06efc3fe3f2c7661af12\n",
+        "evidence_source": "Observed terminal result from the separately executed version command. Not rerun."
+      }
+    }
+  ],
+  "previous_failed_probe": {
+    "report": "/tmp/bd-hffz.12/cli-smoke.json",
+    "counts": {
+      "passed": 3,
+      "failed": 1,
+      "skipped": 0,
+      "interrupted": 0,
+      "unrun": 0
+    },
+    "cause": "Probe wrongly required /assets/ paths. Bundled index specifies app.js. Corrected probe parses the HTML and retrieves its same-origin scripts. No product change."
+  }
+}
