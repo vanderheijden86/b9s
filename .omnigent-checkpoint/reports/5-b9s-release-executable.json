@@ -1,0 +1,28 @@
+{
+  "download_command": [
+    "gh",
+    "release",
+    "download",
+    "v1.3.3",
+    "--repo",
+    "vanderheijden86/b9s",
+    "--pattern",
+    "b9s_1.3.3_linux_amd64.tar.gz",
+    "--pattern",
+    "checksums.txt",
+    "--dir",
+    "/tmp/bd-ac05.1.1-evidence/b9s-release"
+  ],
+  "download_exit": 0,
+  "download_output": "",
+  "archive_sha256": "24117001830ead95231f87b8a335d7262a3f8efa4d249d3105e37e2b1bab1d3a",
+  "expected_sha256": "24117001830ead95231f87b8a335d7262a3f8efa4d249d3105e37e2b1bab1d3a",
+  "checksum_match": true,
+  "command": [
+    "/tmp/bd-ac05.1.1-evidence/b9s-release/b9s",
+    "--version"
+  ],
+  "exit_code": 0,
+  "output": "b9s v1.3.3\n",
+  "binary_sha256": "97bc6dbc99b53ff5836b631f9355b208b35b03b6f2a472429fc8ff076fd8c734"
+}
