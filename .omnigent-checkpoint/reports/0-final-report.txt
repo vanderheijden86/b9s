@@ -1,0 +1,59 @@
+Implementation report: bd-xx9w.1.3
+Recorded: 2026-11-10 21:57 CET
+Status: IMPLEMENTATION_COMPLETE, ready for independent review and tests.
+
+Git preflight before editing
+Repository: /home/omnigent/workspace/b9s
+Initial branch: main, clean bootstrap checkout.
+Actual assigned branch: omnigent/bd-xx9w.1.3
+HEAD: 3a5ed086abe347af005c06efc3fe3f2c7661af12
+Fetched origin/main: 3a5ed086abe347af005c06efc3fe3f2c7661af12
+Base and future PR target: main.
+Commands: timeout 60s git -C /home/omnigent/workspace/b9s fetch origin main
+          timeout 60s git -C /home/omnigent/workspace/b9s ls-remote --exit-code --heads origin refs/heads/omnigent/bd-xx9w.1.3
+Fetch exited 0. Exact remote delivery probe exited 2 (absent). No existing local delivery branch. Created assigned branch from origin/main, not bootstrap HEAD.
+Required commits: none. Required-commit ancestry against fetched base and HEAD: not applicable.
+Dependency evidence: bd show bd-xx9w.1.2 --json reported closed. BuildReleases and Release model present in fetched base. No feature recreated from another branch.
+Checkpoint inspection reported absent before edits.
+Preflight reported in chat, Beads and lane-progress before code edits.
+
+Changed files
+internal/datasource/open.go: adds OpenedProject.Releases, derived from the existing issue snapshot on the common successful-open path. No extra source queries or export. Preserves source, DoltFailure, CommentsErr and Partial.
+internal/datasource/load_test.go: fixtures for JSONL, SQLite, embedded bd export and DoltReader whole/lean scans. Assert all four release states, epic scope and exact loaded milestone/epic data. Embedded fixture records exactly one export. SQLite comments-only degradation retains live release data over a stale export.
+docs/ARCHITECTURE.md: documents source projection, degraded comments and partial snapshots.
+No new source files. go.mod/go.sum unchanged. ADRs 0025, 0026, 0060, 0063 and 0064 followed.
+No UI or browser behavior changed. No new ADR needed for wiring the existing model decision.
+
+Exact commands and observed results
+All project commands ran in /home/omnigent/workspace/b9s.
+Runtime: go version go1.25.5 linux/amd64. GOOS=linux GOARCH=amd64 CGO_ENABLED=1.
+beads-connect: exit 0, connected as project-scoped bd_b9s.
+timeout 180s go mod download: exit 0. Lockfiles unchanged. Installed before checks.
+gofmt -w /home/omnigent/workspace/b9s/internal/datasource/open.go /home/omnigent/workspace/b9s/internal/datasource/load_test.go: exit 0.
+RED: timeout 120s go test ./internal/datasource -run '^TestOpenProjectReleases' -count=1 -timeout=60s -json
+Exit 1: 0 passed, 4 failed, 0 skipped, 0 interrupted, 0 unrun leaf cases. Each failed on absent releases after reading its source fixture. Initial constructor scaffold omitted release derivation.
+GREEN: timeout 120s go test ./internal/datasource -run '^TestOpenProjectReleases' -count=1 -timeout=60s -json
+Exit 0: 6 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun leaf cases. Seven completed test events including the Dolt subtest parent.
+STABLE: timeout 660s env GOFLAGS=-v make test-stable
+Ran alone, no baseline comparison. Exit 0. 3558 passed, 0 failed, 20 optional skipped, 0 interrupted, 0 unrun leaf cases. 22 packages passed. 3766 passed test events including subtest parents, plus 20 skipped events.
+The Makefile sets the package timeout to 10m. Outer timeout was 660s. No deadline expired. No retry and no flaky outcome observed. Makefile-excluded cases are outside this selected suite and are not included in skipped counts.
+timeout 180s go build ./...: exit 0 (Go type checking and build).
+timeout 180s go vet ./...: exit 0 (Go lint).
+git -C /home/omnigent/workspace/b9s diff --check: no errors.
+gofmt -l /home/omnigent/workspace/b9s/internal/datasource/open.go /home/omnigent/workspace/b9s/internal/datasource/load_test.go: no paths. Combined format/diff command exited 0.
+
+Evidence files
+preflight.txt, dependencies.txt, red.jsonl, red.exit, red-summary.json,
+green.jsonl, green.exit, green-summary.json, stable.txt, stable.exit,
+stable-summary.json, build.txt, vet.txt, self-review.txt, source-hashes.json.
+All paths are under /tmp/bd-xx9w.1.3-evidence/.
+Raw reports retained for reviewer to recount. Stable summary lists every optional skip.
+Source hashes bind evidence to the exact files checked.
+
+Limits and remaining lane work
+No unresolved required-check failures. Required blocker issue IDs: none. No unrelated follow-up issues filed.
+The Dolt fixture uses the production DoltReader SQL scan/merge over an isolated local SQLite file, following existing fakeDolt tests. It is not evidence of a live Dolt/MySQL connection. Embedded bd export is a deterministic CLI fixture, not a live embedded store.
+Optional skips need S3, Dolt, Memory binaries/workspaces, real-data fixtures or opt-in stress. The assigned stable suite excludes host-sensitive and PTY E2E tests. No shared Dolt writes from tests.
+First-page Dolt opens expose only releases in that partial page. Full opens include closed milestones. Release UI and assignment behavior remain outside this task.
+Independent reviewer and tester must judge these results. This self-review does not substitute for either role.
+No task status, assignee, labels or dependencies changed. No delivery commit, delivery-branch push or PR. Unapproved checkpoint ref is separate from delivery.
