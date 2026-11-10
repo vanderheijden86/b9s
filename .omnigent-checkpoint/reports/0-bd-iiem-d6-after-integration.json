@@ -1,0 +1,197 @@
+{
+  "phase": "after",
+  "head": "03b79239e41207ff6daa10a102f162155254b589",
+  "assigned_main": "c2fccef8b537ed034ebd360ea7cf31c02250e083",
+  "merge_base": "2819ca00d8358ada28498a284faf08cb2373d70e",
+  "snapshot_directory": "/tmp/bd-iiem-d6-after-ooomy256",
+  "files": [
+    {
+      "path": "Makefile",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d6-after-ooomy256/0-main",
+        "/tmp/bd-iiem-d6-after-ooomy256/0-base",
+        "/tmp/bd-iiem-d6-after-ooomy256/0-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d6-after-ooomy256/0-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "docs/USER_GUIDE.md",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d6-after-ooomy256/1-main",
+        "/tmp/bd-iiem-d6-after-ooomy256/1-base",
+        "/tmp/bd-iiem-d6-after-ooomy256/1-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d6-after-ooomy256/1-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "docs/testing.md",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d6-after-ooomy256/2-main",
+        "/tmp/bd-iiem-d6-after-ooomy256/2-base",
+        "/tmp/bd-iiem-d6-after-ooomy256/2-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d6-after-ooomy256/2-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "pkg/ui/issue_detail_test.go",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d6-after-ooomy256/3-main",
+        "/tmp/bd-iiem-d6-after-ooomy256/3-base",
+        "/tmp/bd-iiem-d6-after-ooomy256/3-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d6-after-ooomy256/3-integrated",
+      "stderr": ""
+    },
+    {
+      "path": "tests/e2e/detail_footer_keys_e2e_test.go",
+      "command": [
+        "git",
+        "merge-file",
+        "-p",
+        "-L",
+        "assigned-main",
+        "-L",
+        "merge-base",
+        "-L",
+        "delivery-worktree",
+        "/tmp/bd-iiem-d6-after-ooomy256/4-main",
+        "/tmp/bd-iiem-d6-after-ooomy256/4-base",
+        "/tmp/bd-iiem-d6-after-ooomy256/4-delivery"
+      ],
+      "exit_code": 0,
+      "conflict_markers": 0,
+      "integrated_output": "/tmp/bd-iiem-d6-after-ooomy256/4-integrated",
+      "stderr": ""
+    }
+  ],
+  "make_checks": [
+    {
+      "label": "delivery",
+      "counts": {
+        "stable_targets": 1,
+        "skip_definitions": 1,
+        "stable_recipes": 1
+      },
+      "command": [
+        "timeout",
+        "--kill-after=5s",
+        "30s",
+        "make",
+        "--no-print-directory",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "-f",
+        "/home/omnigent/workspace/b9s/Makefile",
+        "-n",
+        "test-stable"
+      ],
+      "exit_code": 0,
+      "warnings": false,
+      "stdout": "go test -timeout 10m -skip 'DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers' $(go list ./... | grep -v /tests/e2e)\n",
+      "stderr": ""
+    },
+    {
+      "label": "integrated",
+      "counts": {
+        "stable_targets": 1,
+        "skip_definitions": 1,
+        "stable_recipes": 1
+      },
+      "command": [
+        "timeout",
+        "--kill-after=5s",
+        "30s",
+        "make",
+        "--no-print-directory",
+        "-C",
+        "/home/omnigent/workspace/b9s",
+        "-f",
+        "/tmp/bd-iiem-d6-after-ooomy256/0-integrated",
+        "-n",
+        "test-stable"
+      ],
+      "exit_code": 0,
+      "warnings": false,
+      "stdout": "go test -timeout 10m -skip 'DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers' $(go list ./... | grep -v /tests/e2e)\n",
+      "stderr": ""
+    }
+  ],
+  "assertions": {
+    "Makefile:textual_merge": true,
+    "docs/USER_GUIDE.md:textual_merge": true,
+    "docs/testing.md:textual_merge": true,
+    "pkg/ui/issue_detail_test.go:textual_merge": true,
+    "tests/e2e/detail_footer_keys_e2e_test.go:textual_merge": true,
+    "delivery:stable_uniqueness": true,
+    "delivery:make_parse_warning_free": true,
+    "integrated:stable_uniqueness": true,
+    "integrated:make_parse_warning_free": true,
+    "integrated_makefile_equals_main_verbatim": true,
+    "delivery_stable_semantics_match_main": true,
+    "guide_is_main_plus_only_full_id_sentence": true,
+    "scheduling_paragraph_verbatim": true,
+    "installer_paragraph_verbatim": true,
+    "testing_is_main_plus_only_stable_instructions": true,
+    "ui_is_main_plus_only_full_id_assertions_and_viewport_test": true,
+    "pty_is_main_plus_only_full_id_regression_and_import": true,
+    "long_id_case_retained": true,
+    "visible_header_assertion_retained": true,
+    "pty_full_id_assertion_retained": true,
+    "pkg/ui/issue_detail_test.go:unique_functions": true,
+    "pkg/ui/issue_detail_test.go:main_functions_retained": true,
+    "pkg/ui/issue_detail_test.go:integrated_gofmt_clean": true,
+    "tests/e2e/detail_footer_keys_e2e_test.go:unique_functions": true,
+    "tests/e2e/detail_footer_keys_e2e_test.go:main_functions_retained": true,
+    "tests/e2e/detail_footer_keys_e2e_test.go:integrated_gofmt_clean": true
+  },
+  "passed": 26,
+  "failed": 0,
+  "clean": true
+}
