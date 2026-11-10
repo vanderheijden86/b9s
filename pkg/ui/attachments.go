@@ -523,7 +523,7 @@ func attachmentOpenDownload(ctx context.Context, handle *blobstore.Handle, att a
 	opener, args := systemOpenerCommand(path)
 	result.openerCmd = append([]string{opener}, args...)
 	if testMode {
-		result.statusMsg = fmt.Sprintf("%s downloaded to %s (test mode: opener not run)", att.Name, path)
+		result.statusMsg = fmt.Sprintf("test mode: opener not run (%s downloaded to %s)", att.Name, path)
 		return result
 	}
 	if err := exec.Command(opener, args...).Start(); err != nil {
