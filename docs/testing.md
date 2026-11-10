@@ -91,6 +91,17 @@ The tests in `tests/e2e` build the binary once, then run it under the Unix `scri
 
 The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.jsonl` are the common ones. A test that needs a Dolt server uses the same rules as the integration tests.
 
+The Mermaid sequence proof uses the `bd-uv2t` source in an isolated JSONL
+project. It opens detail in a real terminal and checks both participant boxes,
+connected lifelines, message arrows and labels. The copy test opens detail and
+presses `c` with a captured clipboard writer to check that the original fence
+survives rendering.
+
+```bash
+go test ./pkg/ui -run '^TestDetailCKeyKeepsMermaidSequenceSource$' -count=1 -timeout=60s
+go test ./tests/e2e -run '^TestMermaidSequenceProofE2E$' -count=1 -timeout=120s -v
+```
+
 `TestAttachmentsStockBDLocalBackendE2E` creates an isolated embedded project with
 stock `bd`, attaches a file through the TUI's `I` form, checks the detail and
 `R` picker, and opens it with `B9S_TEST_MODE`. It checks the persisted reference,
