@@ -1,0 +1,17 @@
+{
+  "exit_code": 0,
+  "counts": {
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "including_subtests": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  }
+}
