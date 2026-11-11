@@ -20,6 +20,7 @@ export interface FixtureIssue {
   id: string; title: string; status?: string; priority?: number; type?: string; assignee?: string;
   parent?: string; blockedBy?: string[]; labels?: string[]; description?: string; comments?: string[];
   updatedMinutesAgo?: number;
+  close_reason?: string; metadata?: Record<string, unknown>;
 }
 
 export function toJSONL(list: FixtureIssue[]): string {
@@ -33,6 +34,7 @@ export function toJSONL(list: FixtureIssue[]): string {
     return JSON.stringify({
       id: f.id, title: f.title, description: f.description || "", status: f.status || "open", priority: f.priority ?? 2,
       issue_type: f.type || "task", assignee: f.assignee || "", created_at: t, updated_at: t,
+      close_reason: f.close_reason, metadata: f.metadata,
       ...(f.status === "closed" ? { closed_at: t } : {}), labels: f.labels || [], dependencies: deps,
       comments: (f.comments || []).map((c, k) => ({ id: `${f.id}-c${k}`, issue_id: f.id, author: "alice", text: c, created_at: t })),
     });

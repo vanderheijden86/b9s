@@ -1,9 +1,61 @@
 package datasource
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
+
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestReadersPreserveExtraDetailFields(t *testing.T) {
+	for _, schema := range []string{sqliteSimpleSchema, sqliteIssuesSchema} {
+		t.Run(schema[:min(len(schema), 40)], func(t *testing.T) {
+			path := openSQLiteFixture(t, []string{
+				schema,
+				`ALTER TABLE issues ADD COLUMN close_reason TEXT`,
+				`ALTER TABLE issues ADD COLUMN metadata TEXT`,
+				`INSERT INTO issues (id, title, status, priority, issue_type, close_reason, metadata)
+					VALUES ('bd-39', 'Planning', 'closed', 2, 'task', 'Finished after review', '{"branch":"feature/planning","nested":{"count":9007199254740993}}')`,
+				`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+			})
+			reader, err := NewSQLiteReader(DataSource{Type: SourceTypeSQLite, Path: path})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			issues, err := reader.LoadIssues()
+			if err != nil || len(issues) != 1 {
+				t.Fatalf("LoadIssues = %+v, %v", issues, err)
+			}
+			assertExtraDetailFields(t, issues[0])
+			dolt := &DoltReader{db: reader.db}
+			issues, err = dolt.loadIssuesSimple(nil)
+			if err != nil || len(issues) != 1 {
+				t.Fatalf("Dolt simple read = %+v, %v", issues, err)
+			}
+			assertExtraDetailFields(t, issues[0])
+		})
+	}
+}
+
+func assertExtraDetailFields(t *testing.T, issue model.Issue) {
+	t.Helper()
+	raw, err := json.Marshal(issue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		CloseReason string          `json:"close_reason"`
+		Metadata    json.RawMessage `json:"metadata"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.CloseReason != "Finished after review" || string(got.Metadata) != `{"branch":"feature/planning","nested":{"count":9007199254740993}}` {
+		t.Errorf("detail fields lost: %s", raw)
+	}
+}
 
 // sqliteSimpleSchema is the 8-column shape loadIssuesSimple's fallback query
 // selects. A database with only these columns makes the full-schema query in

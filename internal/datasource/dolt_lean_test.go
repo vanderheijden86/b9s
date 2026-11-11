@@ -15,6 +15,34 @@ func TestLeanIssueQuerySelectsNoTextColumn(t *testing.T) {
 	}
 }
 
+func TestIssueTextPreservesExtraDetailFields(t *testing.T) {
+	db := openCreatorsDB(t,
+		`CREATE TABLE issues (id TEXT, description TEXT, design TEXT, acceptance_criteria TEXT, notes TEXT, status TEXT, issue_type TEXT, close_reason TEXT, metadata TEXT)`,
+		`INSERT INTO issues VALUES ('bd-39', '', '', '', '', 'closed', 'task', 'Finished after review', '{"branch":"feature/planning","nested":{"count":9007199254740993}}')`,
+		`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+	)
+	reader := &DoltReader{db: db}
+	text, err := reader.LoadIssueText("bd-39")
+	if err != nil {
+		t.Fatal(err)
+	}
+	issue := model.Issue{ID: "bd-39", Abridged: true}
+	text.ApplyTo(&issue)
+	assertExtraDetailFields(t, issue)
+	if issue.Abridged {
+		t.Fatal("text load left issue abridged")
+	}
+	if _, err := db.Exec(`UPDATE issues SET status = 'open'`); err != nil {
+		t.Fatal(err)
+	}
+	texts, err := reader.loadWholeIssueText([]string{"bd-39"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	texts["bd-39"].ApplyTo(&issue)
+	assertExtraDetailFields(t, issue)
+}
+
 // A closed issue arrives without its text and comments, and LoadIssueText
 // supplies them; issues that are not closed, and epics, arrive whole.
 func TestDoltIntegration_LoadLeanIssues(t *testing.T) {

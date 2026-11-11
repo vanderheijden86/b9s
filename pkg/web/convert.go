@@ -24,6 +24,7 @@ func leanIssues(issues []model.Issue) []Issue {
 	out := convertIssues(issues)
 	for i := range out {
 		out[i].Description, out[i].Design, out[i].Acceptance, out[i].Notes = "", "", "", ""
+		out[i].CloseReason, out[i].Metadata = "", ""
 		out[i].Comments = []Comment{}
 	}
 	return out
@@ -47,6 +48,8 @@ func convertIssue(src *model.Issue, status map[string]model.Status) Issue {
 		Design:         src.Design,
 		Acceptance:     src.AcceptanceCriteria,
 		Notes:          src.Notes,
+		CloseReason:    src.CloseReason,
+		Metadata:       src.MetadataJSON(),
 		Status:         string(src.Status),
 		Priority:       src.Priority,
 		Type:           string(src.IssueType),

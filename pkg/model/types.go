@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -9,17 +10,19 @@ import (
 
 // Issue represents a trackable work item
 type Issue struct {
-	ID                 string    `json:"id"`
-	ContentHash        string    `json:"-"`
-	Title              string    `json:"title"`
-	Description        string    `json:"description"`
-	Design             string    `json:"design,omitempty"`
-	AcceptanceCriteria string    `json:"acceptance_criteria,omitempty"`
-	Notes              string    `json:"notes,omitempty"`
-	Status             Status    `json:"status"`
-	Priority           int       `json:"priority"`
-	IssueType          IssueType `json:"issue_type"`
-	Assignee           string    `json:"assignee,omitempty"`
+	ID                 string          `json:"id"`
+	ContentHash        string          `json:"-"`
+	Title              string          `json:"title"`
+	Description        string          `json:"description"`
+	Design             string          `json:"design,omitempty"`
+	AcceptanceCriteria string          `json:"acceptance_criteria,omitempty"`
+	Notes              string          `json:"notes,omitempty"`
+	CloseReason        string          `json:"close_reason,omitempty"`
+	Metadata           json.RawMessage `json:"metadata,omitempty"`
+	Status             Status          `json:"status"`
+	Priority           int             `json:"priority"`
+	IssueType          IssueType       `json:"issue_type"`
+	Assignee           string          `json:"assignee,omitempty"`
 	// CreatedBy is the bd actor that created the issue and never changes;
 	// Assignee is whoever holds it now. Owner is the creator's git email.
 	CreatedBy         string        `json:"created_by,omitempty"`
@@ -40,10 +43,27 @@ type Issue struct {
 	Comments          []*Comment    `json:"comments,omitempty"`
 	SourceRepo        string        `json:"source_repo,omitempty"`
 	// Abridged marks an issue read without its long text and comments
-	// (Description, Design, AcceptanceCriteria, Notes, Comments). They are
+	// (Description, Design, AcceptanceCriteria, Notes, CloseReason, Metadata, Comments). They are
 	// unknown, not empty: a reader must load them before showing, copying or
 	// editing them.
 	Abridged bool `json:"-"`
+}
+
+// MetadataJSON formats the original JSON without rounding numbers or interpreting
+// values as Markdown. An absent or empty object has no detail section.
+func (i Issue) MetadataJSON() string {
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, i.Metadata); err != nil {
+		return ""
+	}
+	if compact.String() == "null" || compact.String() == "{}" {
+		return ""
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, compact.Bytes(), "", "  "); err != nil {
+		return ""
+	}
+	return pretty.String()
 }
 
 // issueAlias is used by UnmarshalJSON to avoid infinite recursion.
@@ -80,6 +100,7 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 // Clone creates a deep copy of the issue
 func (i Issue) Clone() Issue {
 	clone := i
+	clone.Metadata = append(json.RawMessage(nil), i.Metadata...)
 
 	if i.EstimatedMinutes != nil {
 		v := *i.EstimatedMinutes

@@ -69,6 +69,7 @@ func sanitizeIssueForTerminal(issue model.Issue) model.Issue {
 	clean.Design = sanitizeTerminalText(clean.Design)
 	clean.AcceptanceCriteria = sanitizeTerminalText(clean.AcceptanceCriteria)
 	clean.Notes = sanitizeTerminalText(clean.Notes)
+	clean.CloseReason = sanitizeTerminalText(clean.CloseReason)
 	clean.Status = model.Status(sanitizeTerminalLine(string(clean.Status)))
 	clean.IssueType = model.IssueType(sanitizeTerminalLine(string(clean.IssueType)))
 	clean.Assignee = sanitizeTerminalLine(clean.Assignee)
