@@ -1,0 +1,40 @@
+{
+  "exit_code": 1,
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64"
+  },
+  "counts": {
+    "passed": 270,
+    "failed": 18,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": null
+  },
+  "top_level_counts": {
+    "fail": 1
+  },
+  "package_counts": {
+    "fail": 1
+  },
+  "skipped_tests": [],
+  "failed_tests": [
+    "TestViewFooterKeysAllWork/type:task/picker=0/tab/tab",
+    "TestViewFooterKeysAllWork/type:task/picker=0/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/type:task/picker=1/tab/tab",
+    "TestViewFooterKeysAllWork/type:task/picker=1/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/type:task/picker=2/tab/tab",
+    "TestViewFooterKeysAllWork/type:task/picker=2/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/!type:epic/picker=0/tab/tab",
+    "TestViewFooterKeysAllWork/!type:epic/picker=0/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/!type:epic/picker=1/tab/tab",
+    "TestViewFooterKeysAllWork/!type:epic/picker=1/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/!type:epic/picker=2/tab/tab",
+    "TestViewFooterKeysAllWork/!type:epic/picker=2/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/F3_type_query/picker=0/tab/tab",
+    "TestViewFooterKeysAllWork/F3_type_query/picker=0/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/F3_type_query/picker=1/tab/tab",
+    "TestViewFooterKeysAllWork/F3_type_query/picker=1/\u21e7tab/shift+tab",
+    "TestViewFooterKeysAllWork/F3_type_query/picker=2/tab/tab",
+    "TestViewFooterKeysAllWork/F3_type_query/picker=2/\u21e7tab/shift+tab"
+  ]
+}
