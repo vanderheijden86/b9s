@@ -1,0 +1,4 @@
+command: gofmt -d /home/omnigent/workspace/b9s/tests/e2e/tree_view_e2e_test.go
+assertion: test ! -s /tmp/bd-q4n6/format-final.diff
+exit_code=0
+diff_check_exit=0

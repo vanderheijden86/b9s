@@ -1,0 +1,130 @@
+{
+  "command": [
+    "env",
+    "GOFLAGS=-v",
+    "timeout",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64\nlinux\namd64\n1\n\nauto\nscript from util-linux 2.41.5\neb77cef9f8e68e9854f3c1b6ec6a6074b812830a\neb77cef9f8e68e9854f3c1b6ec6a6074b812830a\n8f670235fd7d216caa5d23b70e11f1f3dbc3acc95519c8042b0f994daebfeaa9  /home/omnigent/workspace/b9s/go.mod\n26cd942dfc044f3a1740212256aa3216a41d45078755537443d933dd1e7e9d4d  /home/omnigent/workspace/b9s/go.sum\n",
+    "GOFLAGS": "-v"
+  },
+  "exit_code": 0,
+  "count_unit": "leaf tests, excluding parent summaries",
+  "counts": {
+    "passed": 3561,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "all_test_result_events": {
+    "passed": 3769,
+    "failed": 0,
+    "skipped": 20
+  },
+  "nonpassing_leaf_results": [
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "test": "TestProbeMemory_RealBinaries",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3StoreContract",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3PutRejectsShortRead",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3PutRejectsLongRead",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_NewAndClose",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_LoadIssues",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_GetHeadHash",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_NewAndStop",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_StartIsIdempotent",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryPreviewGraphReadTiming",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchStages",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchTransportParity",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchConcurrentWriter",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "test": "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "test": "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_SustainedWrites",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_BurstWrites",
+      "result": "skip"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_MemoryPressure",
+      "result": "skip"
+    }
+  ]
+}

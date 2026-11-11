@@ -1,0 +1,28 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestTreeViewJumpTopBottom$",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "counts": {
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0
+  },
+  "leaf_results": {
+    "TestTreeViewJumpTopBottom/bottom": "pass",
+    "TestTreeViewJumpTopBottom/top": "fail"
+  },
+  "observed_failure": [
+    "tree_view_e2e_test.go:913: expected Epic One to be highlighted as selected; final frame:",
+    "\u001b[1;38;5;141mDependency Graph (8)\u001b[0m                \u001b[38;5;59m\u2502\u001b[0m\u001b[1;38;5;141mDependency Graph\u001b[0m"
+  ]
+}
