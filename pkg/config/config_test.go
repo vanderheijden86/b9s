@@ -10,6 +10,9 @@ import (
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 
+	if !cfg.UI.Mouse {
+		t.Error("expected mouse capture enabled by default")
+	}
 	if cfg.UI.DefaultView != "list" {
 		t.Errorf("expected default view 'list', got %q", cfg.UI.DefaultView)
 	}
@@ -182,6 +185,50 @@ func TestSaveAndLoad_RoundTrip(t *testing.T) {
 	}
 	if loaded.UI.DefaultView != "board" {
 		t.Errorf("expected 'board', got %q", loaded.UI.DefaultView)
+	}
+	if loaded.UI.Mouse {
+		t.Error("expected explicit false mouse setting to survive SaveTo")
+	}
+}
+
+func TestSaveMousePreferencePreservesColumns(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := SaveMousePreference(path, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveColumnPreference(path, "priority", "hide"); err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveMousePreference(path, true); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadFrom(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.UI.Mouse || cfg.UI.Columns["priority"] != "hide" {
+		t.Errorf("mouse and column preferences did not survive alternating saves: %+v", cfg.UI)
+	}
+}
+
+func TestSaveMousePreferenceRejectsInvalidConfig(t *testing.T) {
+	for _, body := range []string{"ui: [broken", "scalar", "ui: scalar", "ui: [list]"} {
+		t.Run(body, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := SaveMousePreference(path, false); err == nil {
+				t.Fatal("saving mouse must reject an invalid config parent")
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != body {
+				t.Errorf("invalid config overwritten: %s", data)
+			}
+		})
 	}
 }
 

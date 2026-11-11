@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 // PromptMode is the ':' command prompt's input lifecycle.
@@ -130,8 +132,7 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 	return m, nil
 }
 
-// MouseCaptured reports whether b9s receives mouse events. The program starts
-// with cell-motion capture on, for wheel scrolling.
+// MouseCaptured reports whether b9s receives mouse events for wheel scrolling.
 func (m Model) MouseCaptured() bool { return !m.mouseReleased }
 
 // toggleMouseCapture hands the mouse to the terminal, or takes it back. While
@@ -139,12 +140,22 @@ func (m Model) MouseCaptured() bool { return !m.mouseReleased }
 // starting copy mode, so text cannot be selected.
 func (m Model) toggleMouseCapture() (Model, tea.Cmd) {
 	m.mouseReleased = !m.mouseReleased
+	m.appConfig.UI.Mouse = m.MouseCaptured()
+	cmd := tea.EnableMouseCellMotion
+	m.statusIsError = false
 	if m.mouseReleased {
 		m.statusMsg = "Mouse released: drag to select text, :mouse to restore wheel scroll"
-		return m, tea.DisableMouse
+		cmd = tea.DisableMouse
+	} else {
+		m.statusMsg = "Mouse captured: wheel scrolls b9s, :mouse to select text"
 	}
-	m.statusMsg = "Mouse captured: wheel scrolls b9s, :mouse to select text"
-	return m, tea.EnableMouseCellMotion
+	if m.preferenceConfigPath != "" {
+		if err := config.SaveMousePreference(m.preferenceConfigPath, m.MouseCaptured()); err != nil {
+			m.statusMsg = "Saving mouse: " + err.Error()
+			m.statusIsError = true
+		}
+	}
+	return m, cmd
 }
 
 // toggleSplitLayout switches the split between the detail pane to the right
