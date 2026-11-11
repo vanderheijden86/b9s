@@ -1,0 +1,9 @@
+bd-teri.1 dispatch 3, review round 1 correction
+Actual branch: omnigent/bd-teri.1. HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083.
+Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083 (timeout 60s git fetch origin main exit 0).
+Remote delivery ref absent: timeout 60s git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-teri.1 exit 2.
+Existing local branch and seven uncommitted files from previous implementation preserved.
+Required commits none, prerequisite ancestry not applicable.
+Checkpoint inspect exit 0, matching context, source tree 5ee08695def273e3b72c3abad5b847e243fd09d3. Existing dirty work is already present, no restore needed.
+Reviewer report read. Required finding belongs to bd-teri.1. No unrelated blocker.
+Correction: previous main-satisfies claim was too broad. Filtered-out siblings block n/p, and first nine hidden child targets prevent digit entry.
