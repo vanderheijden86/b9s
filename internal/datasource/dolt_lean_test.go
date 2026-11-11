@@ -15,6 +15,58 @@ func TestLeanIssueQuerySelectsNoTextColumn(t *testing.T) {
 	}
 }
 
+func TestIssueTextPreservesExtraDetailFields(t *testing.T) {
+	db := openCreatorsDB(t,
+		`CREATE TABLE issues (id TEXT, description TEXT, design TEXT, acceptance_criteria TEXT, notes TEXT, status TEXT, issue_type TEXT, close_reason TEXT, metadata TEXT)`,
+		`INSERT INTO issues VALUES ('bd-39', '', '', '', '', 'closed', 'task', 'Finished after review', '{"branch":"feature/planning","nested":{"count":9007199254740993}}')`,
+		`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+	)
+	reader := &DoltReader{db: db}
+	text, err := reader.LoadIssueText("bd-39")
+	if err != nil {
+		t.Fatal(err)
+	}
+	issue := model.Issue{ID: "bd-39", Abridged: true}
+	text.ApplyTo(&issue)
+	assertExtraDetailFields(t, issue)
+	if issue.Abridged {
+		t.Fatal("text load left issue abridged")
+	}
+	if _, err := db.Exec(`UPDATE issues SET status = 'open'`); err != nil {
+		t.Fatal(err)
+	}
+	texts, err := reader.loadWholeIssueText([]string{"bd-39"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	texts["bd-39"].ApplyTo(&issue)
+	assertExtraDetailFields(t, issue)
+}
+
+func TestDoltReadsExtraDetailFields(t *testing.T) {
+	reader := newFakeDoltDB(t, "bd", true)
+	for _, stmt := range []string{
+		`ALTER TABLE issues ADD COLUMN close_reason TEXT`,
+		`ALTER TABLE issues ADD COLUMN metadata TEXT`,
+		`UPDATE issues SET close_reason = 'Finished after review', metadata = '{"branch":"feature/planning","nested":{"count":9007199254740993}}'`,
+	} {
+		if _, err := reader.db.Exec(stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, read := range map[string]func() ([]model.Issue, error){
+		"full": reader.LoadIssues, "lean": reader.LoadLeanIssues, "first page": reader.LoadFirstPage,
+	} {
+		t.Run(name, func(t *testing.T) {
+			issues, err := read()
+			if err != nil || len(issues) != 1 {
+				t.Fatalf("read = %+v, %v", issues, err)
+			}
+			assertExtraDetailFields(t, issues[0])
+		})
+	}
+}
+
 // A closed issue arrives without its text and comments, and LoadIssueText
 // supplies them; issues that are not closed, and epics, arrive whole.
 func TestDoltIntegration_LoadLeanIssues(t *testing.T) {
