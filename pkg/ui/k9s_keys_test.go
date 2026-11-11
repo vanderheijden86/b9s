@@ -210,6 +210,9 @@ func TestRemovedEditorKeyRouting(t *testing.T) {
 }
 
 func routingKey(key string) tea.KeyMsg {
+	if key == "1-9" {
+		return runeMsg("1")
+	}
 	special := map[string]tea.KeyType{
 		"home": tea.KeyHome, "end": tea.KeyEnd, "pgdown": tea.KeyPgDown, "pgup": tea.KeyPgUp,
 		"enter": tea.KeyEnter, "tab": tea.KeyTab, "shift+tab": tea.KeyShiftTab,
@@ -315,6 +318,22 @@ func TestAdvertisedViewKeysRouteThroughModel(t *testing.T) {
 				msg := routingKey(shortcut.key)
 				expected := makeModel()
 				switch shortcut.key {
+				case "1-9":
+					expected.detailChildKey(1)
+				case "n", "p":
+					if view == focusDetail {
+						if shortcut.key == "n" {
+							expected.tree.NextSibling()
+						} else {
+							expected.tree.PrevSibling()
+						}
+						expected.syncTreeToDetail()
+						expected.viewport.GotoTop()
+					}
+				case "backspace":
+					if view == focusDetail {
+						expected.detailBackKey()
+					}
 				case "e":
 					if view == focusTree || view == focusDetail {
 						expected.openEditModal(expected.getSelectedIssue())

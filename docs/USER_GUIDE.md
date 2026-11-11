@@ -160,12 +160,20 @@ Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with
 |------|--------|
 | `j` `k` | Scroll |
 | `Home`, `End` | Jump to the top, the bottom |
-| `n`, `p` | Open the next or previous sibling |
+| `n`, `p` | Open the next or previous sibling in tree detail, including children beyond the ninth |
 | `1`-`9` | Open the child with that number in the CHILDREN list. In the detail pane the digits stand for children, not projects |
 | `Backspace` | Go back to the issue a child's number was pressed on |
 | `c` | Copy the whole issue as Markdown |
 | `d` | Hide the pane |
 | `Enter`, `Esc` | Return to the tree |
+
+To reach any child from its parent's tree detail, press `1`-`9` to open a
+numbered child, then use `n` and `p` to move through all its siblings.
+There is no nine-child limit on sibling navigation. Siblings follow the tree's
+order, which can differ from the CHILDREN list's numbering.
+`Backspace` returns to the parent even after moving through siblings.
+From a board or graph detail, press `Esc` until the tree has focus, then `Enter`
+to open its detail before using this path.
 
 ## Search
 
