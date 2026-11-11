@@ -1,0 +1,61 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "count_unit": "leaf tests",
+  "counts": {
+    "passed": 3567,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_counts": {
+    "PASS": 2133,
+    "SKIP": 18
+  },
+  "skipped_tests": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "cached_packages": [
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t(cached)",
+    "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t(cached)"
+  ]
+}

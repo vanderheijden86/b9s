@@ -1,0 +1,104 @@
+{"Time":"2026-11-11T02:04:13.589313785Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/ui"}
+{"Time":"2026-11-11T02:04:13.589470584Z","Action":"start","Package":"github.com/vanderheijden86/b9s/internal/datasource"}
+{"Time":"2026-11-11T02:04:13.589498954Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/web"}
+{"Time":"2026-11-11T02:04:13.589510137Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/model"}
+{"Time":"2026-11-11T02:04:13.592037405Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestIssueCloneKeepsMetadataIndependent"}
+{"Time":"2026-11-11T02:04:13.592072467Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestIssueCloneKeepsMetadataIndependent","Output":"=== RUN   TestIssueCloneKeepsMetadataIndependent\n"}
+{"Time":"2026-11-11T02:04:13.592267997Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestIssueCloneKeepsMetadataIndependent","Output":"--- PASS: TestIssueCloneKeepsMetadataIndependent (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.59229123Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Test":"TestIssueCloneKeepsMetadataIndependent","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.592299986Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Output":"PASS\n"}
+{"Time":"2026-11-11T02:04:13.592718168Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/model","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.003s\n"}
+{"Time":"2026-11-11T02:04:13.592745213Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/model","Elapsed":0.003}
+{"Time":"2026-11-11T02:04:13.595231365Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestIssueTextPreservesExtraDetailFields"}
+{"Time":"2026-11-11T02:04:13.595256392Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestIssueTextPreservesExtraDetailFields","Output":"=== RUN   TestIssueTextPreservesExtraDetailFields\n"}
+{"Time":"2026-11-11T02:04:13.606105358Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestIssueTextPreservesExtraDetailFields","Output":"--- PASS: TestIssueTextPreservesExtraDetailFields (0.01s)\n"}
+{"Time":"2026-11-11T02:04:13.606145439Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestIssueTextPreservesExtraDetailFields","Elapsed":0.01}
+{"Time":"2026-11-11T02:04:13.606166886Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields"}
+{"Time":"2026-11-11T02:04:13.606174172Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields","Output":"=== RUN   TestDoltReadsExtraDetailFields\n"}
+{"Time":"2026-11-11T02:04:13.644663572Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/full"}
+{"Time":"2026-11-11T02:04:13.644703348Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/full","Output":"=== RUN   TestDoltReadsExtraDetailFields/full\n"}
+{"Time":"2026-11-11T02:04:13.646652264Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/full","Output":"--- PASS: TestDoltReadsExtraDetailFields/full (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.646685232Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/full","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.64669364Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/lean"}
+{"Time":"2026-11-11T02:04:13.646698776Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/lean","Output":"=== RUN   TestDoltReadsExtraDetailFields/lean\n"}
+{"Time":"2026-11-11T02:04:13.647478996Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/lean","Output":"--- PASS: TestDoltReadsExtraDetailFields/lean (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.64750979Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/lean","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.647521133Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/first_page"}
+{"Time":"2026-11-11T02:04:13.647526154Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/first_page","Output":"=== RUN   TestDoltReadsExtraDetailFields/first_page\n"}
+{"Time":"2026-11-11T02:04:13.65007921Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/first_page","Output":"--- PASS: TestDoltReadsExtraDetailFields/first_page (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.650135897Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields/first_page","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.650414908Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields","Output":"--- PASS: TestDoltReadsExtraDetailFields (0.04s)\n"}
+{"Time":"2026-11-11T02:04:13.650433378Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltReadsExtraDetailFields","Elapsed":0.04}
+{"Time":"2026-11-11T02:04:13.650546023Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary"}
+{"Time":"2026-11-11T02:04:13.650561394Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary","Output":"=== RUN   TestApplyIssueDetailsSQLiteParameterBoundary\n"}
+{"Time":"2026-11-11T02:04:13.65657839Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections"}
+{"Time":"2026-11-11T02:04:13.656624006Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections","Output":"=== RUN   TestIssueDetailExtraSections\n"}
+{"Time":"2026-11-11T02:04:13.658152083Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/close_reason"}
+{"Time":"2026-11-11T02:04:13.658186434Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/close_reason","Output":"=== RUN   TestIssueDetailExtraSections/close_reason\n"}
+{"Time":"2026-11-11T02:04:13.658268495Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestEmbeddedBundleIsCurrent"}
+{"Time":"2026-11-11T02:04:13.658290414Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestEmbeddedBundleIsCurrent","Output":"=== RUN   TestEmbeddedBundleIsCurrent\n"}
+{"Time":"2026-11-11T02:04:13.658395878Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/close_reason","Output":"--- PASS: TestIssueDetailExtraSections/close_reason (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.658459936Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/close_reason","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.659647826Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/metadata"}
+{"Time":"2026-11-11T02:04:13.659667935Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/metadata","Output":"=== RUN   TestIssueDetailExtraSections/metadata\n"}
+{"Time":"2026-11-11T02:04:13.660476825Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestEmbeddedBundleIsCurrent","Output":"--- PASS: TestEmbeddedBundleIsCurrent (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.660533012Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestEmbeddedBundleIsCurrent","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.660582222Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestConvertIssueExtraDetailFields"}
+{"Time":"2026-11-11T02:04:13.660588383Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestConvertIssueExtraDetailFields","Output":"=== RUN   TestConvertIssueExtraDetailFields\n"}
+{"Time":"2026-11-11T02:04:13.661127197Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestConvertIssueExtraDetailFields","Output":"--- PASS: TestConvertIssueExtraDetailFields (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.661182678Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestConvertIssueExtraDetailFields","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.661234408Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestLeanIssuesKeepEpicSummaryAndDue"}
+{"Time":"2026-11-11T02:04:13.66124178Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestLeanIssuesKeepEpicSummaryAndDue","Output":"=== RUN   TestLeanIssuesKeepEpicSummaryAndDue\n"}
+{"Time":"2026-11-11T02:04:13.661304065Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestLeanIssuesKeepEpicSummaryAndDue","Output":"--- PASS: TestLeanIssuesKeepEpicSummaryAndDue (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.661337431Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestLeanIssuesKeepEpicSummaryAndDue","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.661390951Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestGeneratedTypesAreCurrent"}
+{"Time":"2026-11-11T02:04:13.661396452Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestGeneratedTypesAreCurrent","Output":"=== RUN   TestGeneratedTypesAreCurrent\n"}
+{"Time":"2026-11-11T02:04:13.661550313Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestGeneratedTypesAreCurrent","Output":"--- PASS: TestGeneratedTypesAreCurrent (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.6616005Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/web","Test":"TestGeneratedTypesAreCurrent","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.661663326Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Output":"PASS\n"}
+{"Time":"2026-11-11T02:04:13.664216714Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/web","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t0.075s\n"}
+{"Time":"2026-11-11T02:04:13.664248199Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/web","Elapsed":0.075}
+{"Time":"2026-11-11T02:04:13.674916507Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/metadata","Output":"--- PASS: TestIssueDetailExtraSections/metadata (0.02s)\n"}
+{"Time":"2026-11-11T02:04:13.675017702Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections/metadata","Elapsed":0.02}
+{"Time":"2026-11-11T02:04:13.675069741Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections","Output":"--- PASS: TestIssueDetailExtraSections (0.02s)\n"}
+{"Time":"2026-11-11T02:04:13.675118288Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailExtraSections","Elapsed":0.02}
+{"Time":"2026-11-11T02:04:13.675184376Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailOmitsEmptyExtraSections"}
+{"Time":"2026-11-11T02:04:13.675195291Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailOmitsEmptyExtraSections","Output":"=== RUN   TestIssueDetailOmitsEmptyExtraSections\n"}
+{"Time":"2026-11-11T02:04:13.675805111Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailOmitsEmptyExtraSections","Output":"--- PASS: TestIssueDetailOmitsEmptyExtraSections (0.00s)\n"}
+{"Time":"2026-11-11T02:04:13.675875517Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestIssueDetailOmitsEmptyExtraSections","Elapsed":0}
+{"Time":"2026-11-11T02:04:13.675934075Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDetailCopyIncludesExtraDetailSections"}
+{"Time":"2026-11-11T02:04:13.675945527Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDetailCopyIncludesExtraDetailSections","Output":"=== RUN   TestDetailCopyIncludesExtraDetailSections\n"}
+{"Time":"2026-11-11T02:04:13.682230552Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDetailCopyIncludesExtraDetailSections","Output":"--- PASS: TestDetailCopyIncludesExtraDetailSections (0.01s)\n"}
+{"Time":"2026-11-11T02:04:13.682345027Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestDetailCopyIncludesExtraDetailSections","Elapsed":0.01}
+{"Time":"2026-11-11T02:04:13.682986137Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"PASS\n"}
+{"Time":"2026-11-11T02:04:13.686806879Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t0.097s\n"}
+{"Time":"2026-11-11T02:04:13.686839716Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Elapsed":0.098}
+{"Time":"2026-11-11T02:04:13.946689022Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32766"}
+{"Time":"2026-11-11T02:04:13.946721189Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32766","Output":"=== RUN   TestApplyIssueDetailsSQLiteParameterBoundary/32766\n"}
+{"Time":"2026-11-11T02:04:14.090687959Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32766","Output":"--- PASS: TestApplyIssueDetailsSQLiteParameterBoundary/32766 (0.14s)\n"}
+{"Time":"2026-11-11T02:04:14.09072737Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32766","Elapsed":0.14}
+{"Time":"2026-11-11T02:04:14.090747056Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32767"}
+{"Time":"2026-11-11T02:04:14.09075262Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32767","Output":"=== RUN   TestApplyIssueDetailsSQLiteParameterBoundary/32767\n"}
+{"Time":"2026-11-11T02:04:14.218189259Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32767","Output":"--- PASS: TestApplyIssueDetailsSQLiteParameterBoundary/32767 (0.13s)\n"}
+{"Time":"2026-11-11T02:04:14.218230487Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32767","Elapsed":0.13}
+{"Time":"2026-11-11T02:04:14.218249351Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32768"}
+{"Time":"2026-11-11T02:04:14.218255315Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32768","Output":"=== RUN   TestApplyIssueDetailsSQLiteParameterBoundary/32768\n"}
+{"Time":"2026-11-11T02:04:14.347414173Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32768","Output":"--- PASS: TestApplyIssueDetailsSQLiteParameterBoundary/32768 (0.13s)\n"}
+{"Time":"2026-11-11T02:04:14.347467944Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary/32768","Elapsed":0.13}
+{"Time":"2026-11-11T02:04:14.348623564Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary","Output":"--- PASS: TestApplyIssueDetailsSQLiteParameterBoundary (0.70s)\n"}
+{"Time":"2026-11-11T02:04:14.348642587Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestApplyIssueDetailsSQLiteParameterBoundary","Elapsed":0.7}
+{"Time":"2026-11-11T02:04:14.34864858Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields"}
+{"Time":"2026-11-11T02:04:14.348654378Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields","Output":"=== RUN   TestReadersPreserveExtraDetailFields\n"}
+{"Time":"2026-11-11T02:04:14.348662279Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/simple"}
+{"Time":"2026-11-11T02:04:14.348664996Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/simple","Output":"=== RUN   TestReadersPreserveExtraDetailFields/simple\n"}
+{"Time":"2026-11-11T02:04:14.353763453Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/simple","Output":"--- PASS: TestReadersPreserveExtraDetailFields/simple (0.01s)\n"}
+{"Time":"2026-11-11T02:04:14.353826482Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/simple","Elapsed":0.01}
+{"Time":"2026-11-11T02:04:14.35386897Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/full"}
+{"Time":"2026-11-11T02:04:14.353874945Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/full","Output":"=== RUN   TestReadersPreserveExtraDetailFields/full\n"}
+{"Time":"2026-11-11T02:04:14.359129669Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/full","Output":"--- PASS: TestReadersPreserveExtraDetailFields/full (0.01s)\n"}
+{"Time":"2026-11-11T02:04:14.359301054Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields/full","Elapsed":0.01}
+{"Time":"2026-11-11T02:04:14.359319821Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields","Output":"--- PASS: TestReadersPreserveExtraDetailFields (0.01s)\n"}
+{"Time":"2026-11-11T02:04:14.359327131Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestReadersPreserveExtraDetailFields","Elapsed":0.01}
+{"Time":"2026-11-11T02:04:14.359332631Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Output":"PASS\n"}
+{"Time":"2026-11-11T02:04:14.368518534Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Output":"ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t0.779s\n"}
+{"Time":"2026-11-11T02:04:14.368567563Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Elapsed":0.779}
