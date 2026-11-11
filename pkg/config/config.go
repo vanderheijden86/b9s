@@ -29,6 +29,7 @@ type Project struct {
 
 // UIConfig holds UI preference settings.
 type UIConfig struct {
+	Mouse       bool              `yaml:"mouse"`                  // Capture the mouse for wheel scrolling
 	Columns     map[string]string `yaml:"columns,omitempty"`      // auto, show or hide, keyed by column
 	DefaultView string            `yaml:"default_view,omitempty"` // list, tree, board, split
 	BoardEpics  string            `yaml:"board_epics,omitempty"`  // rail or rows; v switches at runtime
@@ -41,6 +42,16 @@ type UIConfig struct {
 // SaveColumnPreference updates one preference without replacing unrelated
 // settings or comments from another session's config.
 func SaveColumnPreference(path, column, preference string) error {
+	return savePreference(path, []string{"ui", "columns", column}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: preference})
+}
+
+// SaveMousePreference updates mouse capture without replacing unrelated
+// settings or comments from another session's config.
+func SaveMousePreference(path string, captured bool) error {
+	return savePreference(path, []string{"ui", "mouse"}, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: fmt.Sprint(captured)})
+}
+
+func savePreference(path string, keys []string, value *yaml.Node) error {
 	if path == "" {
 		return fmt.Errorf("cannot determine config directory")
 	}
@@ -60,7 +71,7 @@ func SaveColumnPreference(path, column, preference string) error {
 		doc = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}}
 	}
 	node := doc.Content[0]
-	for _, key := range []string{"ui", "columns"} {
+	for _, key := range keys[:len(keys)-1] {
 		if node.Kind != yaml.MappingNode {
 			return fmt.Errorf("config parent of %s is not a mapping", key)
 		}
@@ -78,9 +89,19 @@ func SaveColumnPreference(path, column, preference string) error {
 		node = child
 	}
 	if node.Kind != yaml.MappingNode {
-		return fmt.Errorf("ui.columns is not a mapping")
+		return fmt.Errorf("%s is not a mapping", strings.Join(keys[:len(keys)-1], "."))
 	}
-	setMappingValue(node, column, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: preference})
+	key := keys[len(keys)-1]
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			old := node.Content[i+1]
+			value.HeadComment = old.HeadComment
+			value.LineComment = old.LineComment
+			value.FootComment = old.FootComment
+			break
+		}
+	}
+	setMappingValue(node, key, value)
 	data, err = yaml.Marshal(&doc)
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
@@ -205,6 +226,7 @@ func (l legacyConfig) findProject(name string) *Project {
 func DefaultConfig() Config {
 	return Config{
 		UI: UIConfig{
+			Mouse:       true,
 			DefaultView: "list",
 			SplitRatio:  0.4,
 			Sort:        SortConfig{Field: "created", Direction: "desc"},
