@@ -1,0 +1,1 @@
+RED regression: exit 1. 29 leaf cases failed, 0 passed, 0 skipped. 31 named nodes failed including parent tests. Failures reproduce missing modal, contextual key leakage, missing chooser, and missing lazy preview text. Command: timeout 90s go test ./pkg/ui -run ^TestQuickView -count=1 -timeout=60s -json
