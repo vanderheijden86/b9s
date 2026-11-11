@@ -153,3 +153,16 @@ func TestHelpSearch_ReopeningHelpStartsUnfiltered(t *testing.T) {
 		t.Fatalf("reopened help must start without a filter")
 	}
 }
+
+func TestHelpSearch_FindsChildrenBeyondNine(t *testing.T) {
+	m := openHelpOverlay(t)
+	m = sendKeys(m, tea.KeyMsg{Type: tea.KeyCtrlS})
+	m = typeText(m, "sibling")
+
+	view := stripANSI(m.View())
+	for _, hint := range []string{"Next sibling", "Previous sibling", "beyond 9", "tree"} {
+		if !strings.Contains(view, hint) {
+			t.Errorf("help search must explain the path past child 9, missing %q:\n%s", hint, view)
+		}
+	}
+}

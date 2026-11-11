@@ -79,7 +79,7 @@ The tree is always present. Every issue sits under its parent, and an issue with
 |------|--------|
 | `j` `k`, `Up` `Down` | Move the cursor |
 | `h` | Collapse the issue, or go to its parent when it is already collapsed |
-| `l` | Expand the issue, or go to its first child when it is already expanded |
+| `l` | Expand the issue, or go to its first visible child when it is already expanded |
 | `p` | Go to the parent |
 | `{` `}` | Go to the first or last sibling |
 | `PgDn`, `Ctrl-B` `PgUp` | Page down and up |
@@ -160,12 +160,28 @@ Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with
 |------|--------|
 | `j` `k` | Scroll |
 | `Home`, `End` | Jump to the top, the bottom |
-| `n`, `p` | Open the next or previous sibling |
+| `n`, `p` | Open the next or previous sibling in tree detail, including children beyond the ninth |
 | `1`-`9` | Open the child with that number in the CHILDREN list. In the detail pane the digits stand for children, not projects |
 | `Backspace` | Go back to the issue a child's number was pressed on |
 | `c` | Copy the whole issue as Markdown |
 | `d` | Hide the pane |
 | `Enter`, `Esc` | Return to the tree |
+
+To reach any visible child from its parent's tree detail, press `1`-`9` to open
+a visible numbered child, then use `n` and `p` to move through its visible
+siblings. These keys skip hidden siblings without changing the filter.
+There is no nine-child limit. Siblings follow the tree's order, which can
+differ from the CHILDREN list's numbering.
+`Backspace` returns to the parent even after moving through siblings.
+
+If all nine numbered children are hidden by the filter, press `Enter` to return
+to the tree. If the parent is folded, press `l` to expand it.
+On the expanded parent, press `l` to select its first visible child, then
+`Enter` to open that child's detail. Use `n` and `p` to reach the other visible
+children. Child numbers and the active filter stay unchanged.
+
+From a board or graph detail, press `Esc` until the tree has focus, then `Enter`
+to open its detail before using this path.
 
 ## Search
 
