@@ -1,0 +1,23 @@
+{
+  "tree": "cee5c4bb3afb5edf18517e18d6a632276151e61a",
+  "merge_tree_exit": 0,
+  "integrated_paths": [
+    "docs/USER_GUIDE.md",
+    "docs/testing.md",
+    "pkg/ui/issue_detail_test.go",
+    "tests/e2e/detail_footer_keys_e2e_test.go"
+  ],
+  "make_command": [
+    "timeout",
+    "20s",
+    "make",
+    "-f",
+    "/tmp/bd-iiem-current-integrated-Makefile",
+    "-n",
+    "test-stable"
+  ],
+  "make_exit": 0,
+  "make_stderr": "",
+  "make_stdout": "go test -timeout 10m -skip 'DoltIntegration|TestAdd_MimeSniff_TxtAndMd|TestEmbeddedBD_ReadsAndWatchesARealStore|TestEnterInTestModeRecordsOpenerWithoutRunningIt|TestEnterOpenerAllowlist|TestBDContract_EveryWriteB9sMakes|TestDebouncer_CoalescesRapidTriggers' $(go list ./... | grep -v /tests/e2e)\n",
+  "checkpoint_source_path_diff": "empty against HEAD for all five task paths"
+}
