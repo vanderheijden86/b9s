@@ -731,7 +731,7 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 
 The TUI polls at `poll_interval` while you use it. After two minutes without a key or mouse event, or while the terminal reports that it has lost focus, it polls at `idle_poll_interval`. After fifteen minutes it polls every 30 seconds, or at `idle_poll_interval` when that is longer. The first key after an idle period polls at once, so the screen is current before you act on it. Changes made by others while you are idle therefore show up after up to 30 seconds. `b9s web` always polls at `poll_interval`. See [ADR 0061](adr/0061-back-off-the-dolt-poll-while-the-user-is-idle.md).
 
-`s` picks another sort for the current session only. The override survives reloads and is not saved, so the next start returns to the configured sort. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it. See [ADR 0010](adr/0010-take-tree-sort-from-user-config.md).
+`s` picks another sort for the current session only. The override survives reloads and is not saved, so the next start returns to the configured sort. If the file does not parse, for example because of an unknown sort field, b9s prints the config path and load error to stderr, starts with the defaults and never saves over it. Edit the named file to fix the error, then restart b9s. See [ADR 0010](adr/0010-take-tree-sort-from-user-config.md).
 
 ### Hotkeys
 
