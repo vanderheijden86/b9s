@@ -1,0 +1,19 @@
+{
+  "command": "timeout 180s go test ./pkg/ui ./pkg/config -run '^(TestMouse|TestSaveMouse|TestDefaultConfig$|TestSaveAndLoad_RoundTrip$)' -count=1 -timeout=60s -json",
+  "exit_code": 0,
+  "timeout_seconds": null,
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "platform": "Linux-6.8.0-149-generic-x86_64-with-glibc2.41"
+  },
+  "counts": {
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf Go test cases",
+  "reported_test_outcomes_including_parents": 24,
+  "report": "/tmp/bd-teri.7/green.jsonl"
+}
