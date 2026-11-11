@@ -1,0 +1,87 @@
+bd-teri.3 preview send-back: diagnosis and focused fix
+2026-11-11 03:16 CET
+
+LOCAL_FIX_CHECKS_PASSED; LIVE_PREVIEW_BLOCKED_PENDING_REVIEW_AND_REAPPROVED_DELIVERY
+
+Diagnosis
+Existing issue: bd-1si3. No duplicate filed and no status/dependency changes.
+Repository-local startup readiness race. No external prerequisite identified.
+Entrypoint starts identity HTTP on 7682 before b9s web listens on 7681. Kubernetes readiness originally checked only identity.
+Observed original Pod Ready: 03:00:04 CET. Deployment Available: 03:00:05 CET.
+Original failed verification log completed: 03:00:06.954 CET.
+Web-listening log: 03:00:07.613 CET. Required verification therefore reached the board before its listener started.
+Same unchanged Pod has zero restarts and now returns authenticated /api/session HTTP 200.
+A successful later read does not overturn the original required failure. No retry of the failed lane-preview command was performed.
+Discriminator evidence: root-cause.json contains actual probe configuration, Pod/Deployment timestamps, startup log and sanitized current session HTTP result.
+Credential header and session credentials were not written to reports.
+
+Git preflight and preservation
+Repository: /home/omnigent/workspace/b9s
+Actual branch: omnigent/bd-teri.3
+HEAD and fetched delivery ref: 820a1105e675765c445ed3fc2a48ded7ba2cb1b7
+Fetched integration base and PR target: origin/main c2fccef8b537ed034ebd360ea7cf31c02250e083, target main.
+Exact remote delivery probe found the approved original commit, then delivery ref was fetched.
+Required prerequisite commits: none. Required-commit ancestry: N/A.
+Worktree was clean before this fix. Prior checkpoint was inspected, source_head mismatch after the approved delivery commit was expected, and no old patch was restored.
+HEAD/remote commit unchanged. Local tested tree changed to 3a0e1dd6ba1de718164ac45f66ea47944a235ddc.
+No delivery commit, delivery push, cluster apply, restart, production write, install, clone or deletion in this send-back.
+Existing installed Go 1.25.5 and dependencies were reused. No lockfile or dependency change.
+
+Changed files (three)
+scripts/preview/lib.sh: readiness GET /api/session on web port with cluster-configured viewer header/value. Existing probe initial delay, period, timeout and failure threshold unchanged. Identity remains liveness endpoint.
+tests/preview_contract_test.sh: four assertions on the rendered readiness block pin session path, web port, viewer header and viewer value.
+docs/preview-contract.md: readiness contract and dated diagnosis/discriminator for bd-1si3.
+No application keyboard code changed. No new state or architecture decision introduced. Existing ADR 0058 still requires both board and real terminal proof.
+
+Executed verification on revised tree
+Counts are separate per suite because suites overlap. Contract counts are assertions. Go counts are leaf test cases.
+Contract RED on original manifest:
+  Command: timeout 180s bash /home/omnigent/workspace/b9s/tests/preview_contract_test.sh
+  Exit: 1
+  Counts: passed=219, failed=4, skipped=0, interrupted=0, unrun=0
+  Evidence: /tmp/bd-teri.3-evidence/preview-diagnosis/contract-red-summary.json
+Contract GREEN on revised manifest:
+  Command: timeout 180s bash /home/omnigent/workspace/b9s/tests/preview_contract_test.sh
+  Exit: 0
+  Counts: passed=223, failed=0, skipped=0, interrupted=0, unrun=0
+  Evidence: /tmp/bd-teri.3-evidence/preview-diagnosis/contract-green-summary.json
+Focused search/history/key guard:
+  Command: timeout 120s go test ./pkg/ui/ -run ^Test(Search|EveryHandledKey) -count=1 -timeout=60s -json
+  Exit: 0
+  Counts: passed=28, failed=0, skipped=0, interrupted=0, unrun=0
+  Evidence: /tmp/bd-teri.3-evidence/preview-diagnosis/focused-summary.json
+Stable suite alone:
+  Command: timeout 720s env GOFLAGS=-v make test-stable
+  Exit: 0
+  Counts: passed=3561, failed=0, skipped=20, interrupted=0, unrun=0
+  Evidence: /tmp/bd-teri.3-evidence/preview-diagnosis/stable-summary.json
+Bounded local PTY proof:
+  Command: timeout 180s go test ./tests/e2e/ -run ^TestSearch(ArrowsNavigateResults|History)E2E$ -count=1 -timeout=120s -json
+  Exit: 0
+  Counts: passed=7, failed=0, skipped=0, interrupted=0, unrun=0
+  Evidence: /tmp/bd-teri.3-evidence/preview-diagnosis/pty-summary.json
+Expected RED reproduces missing web readiness on the original manifest. All four failures pass after the focused fix.
+timeout 180s go build ./...: exit 0.
+timeout 180s go vet ./...: exit 0.
+bash -n /home/omnigent/workspace/b9s/scripts/preview/lib.sh /home/omnigent/workspace/b9s/tests/preview_contract_test.sh: exit 0.
+git -C /home/omnigent/workspace/b9s diff --check: exit 0.
+timeout 30s gofmt -l /home/omnigent/workspace/b9s/pkg/ui/model.go /home/omnigent/workspace/b9s/pkg/ui/hotkeys.go /home/omnigent/workspace/b9s/pkg/ui/query_bar_test.go /home/omnigent/workspace/b9s/tests/e2e/tree_search_filter_e2e_test.go: exit 0, empty output.
+All final selected local suites completed with zero failed/interrupted/unrun cases. No flake observed.
+Stable suite includes Go cache and the existing 20 optional skips. Committed stable exclusions remain unchanged.
+Optional skip groups: binary probe 1, S3 3, Dolt DSN 7, Memory timing 1, research 3, external fixtures 2, performance stress 3.
+Stable suite ran alone, with no baseline worktree or comparison. Fresh focused and PTY checks used -count=1.
+No browser suite applies to this manifest/terminal fix. No preview live-readiness success claimed for the new manifest.
+
+All unresolved required-check failures and limits
+bd-1si3: original required live preview-verify web-board connection refusal. Original verify counts 7 passed / 1 failed, exit 1.
+Keyboard behavior remains unverified in the live preview round. Fresh local PTY 7/0/0 is separate evidence.
+No other unresolved required-check failure observed. No unrelated follow-up issue or external prerequisite.
+New readiness manifest has local regression proof but is not yet deployed. Current review/test approvals apply only to original tree.
+Polly must send the revised tree for independent review/testing and reapprove delivery before a new commit/push and preview round.
+The existing Pod/namespace/image and deployed commit were not changed or used as a substitute for testing the revised manifest.
+
+Durability
+Unapproved checkpoint ref: refs/heads/omnigent-checkpoints/bd-teri.3.
+Checkpoint save after meaningful changes and before long validation succeeded. Final checkpoint output: checkpoint-final.txt.
+Checkpoint comparison before final handoff: compatible=true, complete=true for saved contract green evidence and current source tree.
+Reports are scrubbed. No credentials, raw session responses or environment files selected.

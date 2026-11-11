@@ -1,0 +1,20 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "bash",
+    "/home/omnigent/workspace/b9s/tests/preview_contract_test.sh"
+  ],
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 223,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "contract assertions"
+}

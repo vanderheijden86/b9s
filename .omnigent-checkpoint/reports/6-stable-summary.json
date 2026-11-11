@@ -1,0 +1,45 @@
+{
+  "command": [
+    "timeout",
+    "720s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 3561,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "skipped": [
+    "github.com/vanderheijden86/b9s/internal/bdrun/TestProbeMemory_RealBinaries",
+    "github.com/vanderheijden86/b9s/internal/blobstore/TestS3StoreContract",
+    "github.com/vanderheijden86/b9s/internal/blobstore/TestS3PutRejectsShortRead",
+    "github.com/vanderheijden86/b9s/internal/blobstore/TestS3PutRejectsLongRead",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltReader_NewAndClose",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltReader_LoadIssues",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltReader_GetHeadHash",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_NewAndStop",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_StartIsIdempotent",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_DetectsNoChangeOnPoll",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryPreviewGraphReadTiming",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryReadResearchStages",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryReadResearchTransportParity",
+    "github.com/vanderheijden86/b9s/internal/datasource/TestMemoryReadResearchConcurrentWriter",
+    "github.com/vanderheijden86/b9s/pkg/loader/TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/loader/TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_SustainedWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_BurstWrites",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestStress_MemoryPressure"
+  ],
+  "failed": []
+}
