@@ -49,6 +49,22 @@ The E2E suite runs its PTY tests one after another and takes about seven minutes
 
 Unit tests in `pkg/ui` build a `Model` with fixture issues and send it key messages. Accessors such as `TreeSelectedID()` and `TreeNodeCount()` in `pkg/ui/model.go` expose the state a test needs without rendering.
 
+`detail_footer_keys_test.go` reads the rendered footer and exercises its advertised
+shortcuts on detail, tree, flat tree, board, graph, split and list screens.
+Flat-tree coverage includes the saved layout preference and query-forced lists
+from positive or negated type predicates, including the F3 shortcut (ADR 0027).
+The view guard covers project, label and assignee picker modes and each alternative in
+composite hints, including every project digit and function key. Assertions check
+the selected issue, command message, modal, filter, fold or layout that the hint
+promises. Clipboard writes use an injected recorder and project switches inspect
+their message without opening a project. Unsupported hints must be omitted,
+including folding in the flat tree and keys without a handler in list focus.
+Run the guards with a bounded command:
+
+```bash
+go test ./pkg/ui -run 'Footer' -count=1 -timeout=60s
+```
+
 ## Dolt rules
 
 **Never write to the shared Dolt server from a test.** It holds every project's Beads data. Package-wide runs pass `-skip DoltIntegration`, and CI does not run those tests at all.
