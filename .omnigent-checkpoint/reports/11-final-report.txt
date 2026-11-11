@@ -1,0 +1,105 @@
+bd-yacz, attempt 2: IMPLEMENTATION GREEN, ready for independent review.
+
+Git preflight
+Repository: /home/omnigent/workspace/b9s
+Assigned integration base and PR target: main
+Delivery branch: omnigent/bd-yacz
+Actual branch: omnigent/bd-yacz
+HEAD: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+Fetched origin/main: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+Required commits: none. Required commit ancestry checks: not applicable.
+Exact remote delivery probe returned 2 (absent). Local delivery was absent.
+Created delivery from origin/main after successful fetch and ref check.
+Matching checkpoint cdd14f983fefefc6c4f6d7c1d8364bf354df1bfd restored to a clean worktree.
+Restored source tree: e9dcd8ab8d6dc899b943468a9bf59c34b8591988.
+Preserved all prior revision 2 implementation changes. No additional source edits.
+No delivery commit, delivery push or PR. Task state/dependencies/assignee unchanged.
+
+Behavior and guards
+Detail, board detail and tree Creator/Assignee labels resolve identity names.
+A differing stored alias remains beside the name. Empty/unknown names retain
+existing fallbacks. Labels are sanitized after resolving the raw alias.
+Shared header/row budgets reserve metadata, gaps, decorations and title space.
+Person columns grow when space permits and shrink while retaining headings.
+Identity reload invalidates cached tree widths and refreshes visible detail.
+The detail renderer requires the registry parameter. Rendered-view regression
+cases guard all affected views, terminal controls, aliases and width budgets.
+User guide documents labels and clipping. ADR 0014 remains the governing decision.
+
+Fresh checks and exact commands
+1. timeout 300s go -C /home/omnigent/workspace/b9s mod download
+   Exit 0. Dependencies installed from committed go.mod/go.sum. No lockfile changes.
+2. timeout 180s go -C /home/omnigent/workspace/b9s test ./pkg/ui/ -run '^Test(IdentityNamesInPersonViews|PersonLabelSanitizesResolvedIdentity|TreePersonColumns|IdentityReloadRefreshesVisiblePeople|RenderIssueDetail|FormatIssueMarkdown|TreeCreatorColumn|TreeAssigneeColumn|IdentitiesLoadedMsg)' -count=1 -timeout=60s -json
+   Exit 0. Leaf counts: 63 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun.
+   27 top-level tests passed. One package passed.
+3. timeout 300s go -C /home/omnigent/workspace/b9s build ./...
+   Exit 0. Required build/typecheck gate passed. Test counts not applicable.
+4. timeout 180s go -C /home/omnigent/workspace/b9s vet ./...
+   Exit 0. Required vet gate passed. Test counts not applicable.
+5. timeout 180s go -C /home/omnigent/workspace/b9s test ./tests/e2e/ -run '^Test(DetailShowsCreatorApartFromAssigneeE2E|TreeViewColumnSelectorHidesDispatch)$' -count=1 -timeout=90s -json
+   Exit 0. 2 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun.
+   Real binary under script, with isolated local fixtures and 15s per-PTY limits.
+6. env GOFLAGS=-v timeout 720s make -C /home/omnigent/workspace/b9s test-stable
+   Exit 0. Ran alone, with no baseline comparison. Make's Go package deadline: 10m.
+   Leaf counts: 3599 passed, 0 failed, 20 skipped, 0 interrupted, 0 unrun.
+   Top-level counts: 2130 passed, 0 failed, 18 skipped. All 22 packages passed.
+   No cached package results. No retries or flaky outcomes observed.
+7. git -C /home/omnigent/workspace/b9s diff --check
+   Exit 0.
+8. gofmt -l /home/omnigent/workspace/b9s/pkg/ui/creator_fields_test.go /home/omnigent/workspace/b9s/pkg/ui/detail_defer_until_test.go /home/omnigent/workspace/b9s/pkg/ui/detail_render_cost_test.go /home/omnigent/workspace/b9s/pkg/ui/identities.go /home/omnigent/workspace/b9s/pkg/ui/issue_detail.go /home/omnigent/workspace/b9s/pkg/ui/issue_detail_test.go /home/omnigent/workspace/b9s/pkg/ui/memory_graph_view_test.go /home/omnigent/workspace/b9s/pkg/ui/model.go /home/omnigent/workspace/b9s/pkg/ui/tree.go
+   Exit 0. No formatting differences.
+
+Fresh affected-view evidence
+Inspected rendered-views.txt from the fresh Model.Update/View run, including
+Enter routing to detail and board detail, identity names plus email aliases,
+Unicode alignment, and 80/96/120/160-cell default tree layouts.
+All 12 default-metadata cases retained one header and one issue line.
+Supplementary PTY tests exercised the running detail and column selector.
+Tests did not open a browser/editor or write to shared Dolt.
+
+Stable runtime skips
+20 leaf skips, all existing optional environment checks:
+1 real-binary Memory capability probe, 3 S3 checks, 7 opt-in Dolt reader/watcher
+checks, 4 Memory preview/research checks, 2 absent legacy JSONL fixtures and
+3 opt-in long stress tests. Exact names are in stable-summary.json.
+Make's declared host-sensitive/DoltIntegration exclusions and omitted tests/e2e
+are selection rules, not additional runtime skips. All affected regression
+cases ran. No required check was skipped or failed.
+
+Historical RED evidence
+Restored 1-red-summary.txt records revision 2 RED: 5 failed, 7 passed, 0 skipped.
+Prior attributed Beads comments record the initial missing-identity RED cases.
+Inspected this historical evidence. Did not rerun it or present it as fresh.
+Original reviewer /tmp probe source files are absent in this Pod.
+Fresh regression cases exercise their reported default-metadata layouts.
+
+Changed files, all restored from prior revision 2
+- docs/USER_GUIDE.md: identity labels, aliases and constrained widths.
+- pkg/ui/identities.go: shared label formatting and width-cache invalidation.
+- pkg/ui/issue_detail.go: required registry and resolved person labels.
+- pkg/ui/model.go: pass the active registry to detail rendering.
+- pkg/ui/tree.go: resolved labels and shared complete column budgets.
+- pkg/ui/creator_fields_test.go: identity/view, Unicode, reload and layout guards.
+- pkg/ui/issue_detail_test.go: registry argument at existing test call sites.
+- pkg/ui/detail_defer_until_test.go: registry argument at existing test call sites.
+- pkg/ui/detail_render_cost_test.go: registry argument at existing test call sites.
+- pkg/ui/memory_graph_view_test.go: registry argument at existing test call site.
+No new repository files or deletions.
+
+Residual risks and review status
+Long tree labels are clipped where the terminal cannot fit them, as documented.
+Live Dolt identity integration and full PTY/browser suites were not required.
+No scratch Dolt server is configured. Image digest is unavailable.
+Fresh checks use Go 1.25.5 linux/amd64. Runtime details: environment.txt.
+No unresolved required-check failures. No unrelated follow-up issues filed.
+Independent review/test and delivery approval remain with Polly.
+
+Evidence directory: /tmp/bd-yacz-attempt2/
+preflight.txt, dependencies.txt, environment.txt, implementation-review.txt,
+focused.jsonl, focused.stderr, focused.exit, focused-summary.json,
+focused-evidence.json, rendered-views.txt, build.txt, build.exit, vet.txt,
+vet.exit, pty.jsonl, pty.stderr, pty.exit, pty-summary.json, stable.txt,
+stable.exit, stable-summary.json, stable-evidence.json, final-diff.txt.
+Historical reports: /home/omnigent/workspace/b9s/.git/lane-checkpoints/bd-yacz/.
+Unapproved checkpoint saves succeeded. Final checkpoint includes this report,
+measured summaries, runtime fingerprint, rendered views and historical RED.

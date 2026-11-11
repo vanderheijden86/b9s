@@ -1,0 +1,29 @@
+Command: git -C /home/omnigent/workspace/b9s diff --check
+exit_code=0
+Final Git status
+## omnigent/bd-yacz...origin/main
+ M docs/USER_GUIDE.md
+ M pkg/ui/creator_fields_test.go
+ M pkg/ui/detail_defer_until_test.go
+ M pkg/ui/detail_render_cost_test.go
+ M pkg/ui/identities.go
+ M pkg/ui/issue_detail.go
+ M pkg/ui/issue_detail_test.go
+ M pkg/ui/memory_graph_view_test.go
+ M pkg/ui/model.go
+ M pkg/ui/tree.go
+HEAD and fetched base
+eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+Changed files
+docs/USER_GUIDE.md
+pkg/ui/creator_fields_test.go
+pkg/ui/detail_defer_until_test.go
+pkg/ui/detail_render_cost_test.go
+pkg/ui/identities.go
+pkg/ui/issue_detail.go
+pkg/ui/issue_detail_test.go
+pkg/ui/memory_graph_view_test.go
+pkg/ui/model.go
+pkg/ui/tree.go
+Test cache markers in fresh stable report

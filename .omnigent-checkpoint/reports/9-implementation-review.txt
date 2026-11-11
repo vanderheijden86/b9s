@@ -1,0 +1,40 @@
+Attempt 2 implementation inspection
+
+Restored prior revision 2 checkpoint only. No additional repository source edits.
+Read project and global instructions, docs/testing.md, docs/ARCHITECTURE.md,
+ADR 0014 and executable-guards.md.
+
+personLabel resolves raw stored aliases through the active identity registry,
+retains a differing raw alias, keeps empty values empty, and sanitizes terminal
+controls after resolution. Nil registries preserve raw names.
+Detail and board detail share the required identity registry argument.
+Tree labels use terminal display widths, with identity reload invalidating the
+cached column layout. Shared header/row rendering supplies width budgets for
+metadata, gaps, decorations and minimum title space. Person columns shrink
+while retaining headings. User guide describes resolution and clipping.
+
+Fresh focused run: exit 0, 63 leaf tests passed, 0 failed, 0 skipped,
+0 interrupted, 0 unrun. Includes all three affected views, Unicode, canonical
+aliases, empty names, terminal sanitization, live model registry reload and
+80/96/120/160-cell default layouts. Fresh rendered-views.txt inspected.
+Fresh PTY run: exit 0, 2 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun.
+Checks detail creator/assignee rendering and tree column selection persistence.
+These checks use isolated local fixtures, script and bounded auto-exit.
+No browser/editor actions or shared Dolt writes were needed.
+
+Prior checkpoint RED summary records 5 failing and 7 passing default-column
+cases before revision 2. Prior task comments also record missing-identity RED
+failures in all three affected views before the original implementation.
+Historical RED evidence was inspected, not rerun or counted as fresh results.
+Original /tmp reviewer probe source files are absent in this Pod.
+The fresh committed regression cases exercise the same reported layouts.
+
+Guard: a required registry parameter makes forgotten detail call sites fail
+compilation. Rendered-view and default-layout tests guard the identity and
+width behavior. No new architecture decision, state or error type is needed.
+
+Residual limitation: very long person labels are clipped in constrained tree
+columns, as documented. Fresh identity integration against live Dolt is not
+part of the dispatched required checks. No Dolt scratch server is available.
+Full PTY/browser suites are outside the dispatched required checks.
+Independent review remains with Polly. No delivery commits, pushes or PR.
