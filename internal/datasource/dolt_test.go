@@ -22,6 +22,7 @@ func skipIfNoDolt(t *testing.T) {
 	if doltTestDSN() == "" {
 		t.Skip("B9S_TEST_DOLT_DSN not set, skipping Dolt integration test")
 	}
+	requireDoltTestServer(t, buildDSN("root", os.Getenv("BEADS_DOLT_PASSWORD"), doltSource().Path, ""))
 }
 
 // doltSource builds a DataSource from the B9S_TEST_DOLT_DSN environment variable.
