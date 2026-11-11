@@ -1,0 +1,8 @@
+{"Time":"2026-11-11T02:35:10.593773473Z","Action":"start","Package":"github.com/vanderheijden86/b9s/tests/e2e"}
+{"Time":"2026-11-11T02:35:15.404012816Z","Action":"run","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestClipboardOSC52AfterY"}
+{"Time":"2026-11-11T02:35:15.404076204Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestClipboardOSC52AfterY","Output":"=== RUN   TestClipboardOSC52AfterY\n"}
+{"Time":"2026-11-11T02:35:20.907770738Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestClipboardOSC52AfterY","Output":"--- PASS: TestClipboardOSC52AfterY (5.50s)\n"}
+{"Time":"2026-11-11T02:35:20.907808985Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/e2e","Test":"TestClipboardOSC52AfterY","Elapsed":5.5}
+{"Time":"2026-11-11T02:35:20.907936121Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Output":"PASS\n"}
+{"Time":"2026-11-11T02:35:20.927972381Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/e2e","Output":"ok  \tgithub.com/vanderheijden86/b9s/tests/e2e\t10.334s\n"}
+{"Time":"2026-11-11T02:35:20.928021032Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/e2e","Elapsed":10.334}
