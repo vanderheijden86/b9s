@@ -1,0 +1,7 @@
+spec="docs/plans/example.md" issues=1 spec_id_retained=false attachments=0
+spec="/other-vm/plan.md" issues=1 spec_id_retained=false attachments=0
+spec="https://example.invalid/plan.md" issues=1 spec_id_retained=false attachments=0
+spec="bd-spec1" issues=1 spec_id_retained=false attachments=0
+
+command: timeout 90s go run /tmp/bd-teri.13-evidence/current-main-probe.go
+exit_code=0

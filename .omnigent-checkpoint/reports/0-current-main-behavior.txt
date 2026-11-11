@@ -1,0 +1,18 @@
+Base/HEAD inspected: c2fccef8b537ed034ebd360ea7cf31c02250e083 (origin/main)
+GitHub #18: gh issue view 18 --repo vanderheijden86/b9s --comments and JSON body/comments, REST issue and paginated comments.
+REST comments count: 0. Comments response: []. No image or screenshot references in body.
+Issue requests direct resolvable artifacts or on-demand backend bridging when producer and b9s use different VMs.
+Current main observations:
+- pkg/model/types.go Issue lacks spec_id. loader.ParseIssues decodes through that model.
+- internal/datasource/dolt.go, dolt_lean.go and sqlite.go select no spec_id.
+- pkg/ui/attachments.go openAttachmentPicker collects issue.Comments through attachref.Collect.
+- internal/attach/list.go folds reference comments only.
+- internal/blobstore/open.go selects local or s3; openLocal refuses shared Dolt unless opted in.
+- cmd/b9s/attach.go newAttachEnv requires configured storage before listing.
+- Current-main dynamic probe: /tmp/bd-teri.13-evidence/current-main-probe.go and current-main-probe.txt.
+Four inputs: docs/plans/example.md, /other-vm/plan.md, https://example.invalid/plan.md, bd-spec1.
+Each input parsed into one issue, dropped spec_id on serialization, and returned zero Model.AttachmentList entries.
+Probe exit 0 means it observed the missing behavior, NOT that the feature exists.
+No feature implementation or new product test is authorized or included. The exception for an already implemented feature does not apply.
+Beads documentation opened: https://beads.gascity.com/cli-reference/create
+Observed --spec-id described as specification link and graph example uses bd-spec1. Local bd create --help also describes a specification document link.
