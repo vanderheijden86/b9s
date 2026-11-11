@@ -1,0 +1,76 @@
+{
+  "command": [
+    "python3",
+    "/tmp/bd-teri.13-evidence/check-docs.py"
+  ],
+  "checks": [
+    {
+      "name": "frontmatter",
+      "passed": true,
+      "detail": "YAML parsed with required ADR fields"
+    },
+    {
+      "name": "number",
+      "passed": true,
+      "detail": "new=66 previous maximum=65"
+    },
+    {
+      "name": "sections",
+      "passed": true,
+      "detail": [
+        "Context",
+        "Decision",
+        "Reference interpretation and cross-VM access",
+        "Safe opening",
+        "Explicit snapshot import",
+        "Options considered",
+        "Consequences",
+        "Follow-up tasks",
+        "Advice"
+      ]
+    },
+    {
+      "name": "toc",
+      "passed": true,
+      "detail": "9 headers, TOC required only above 10"
+    },
+    {
+      "name": "local_links",
+      "passed": true,
+      "detail": [
+        "../../pkg/model/types.go",
+        "../../pkg/loader/loader.go",
+        "../../internal/datasource/dolt.go",
+        "../../internal/datasource/sqlite.go",
+        "../../pkg/ui/attachments.go",
+        "../../internal/attach/list.go",
+        "../../internal/blobstore/open.go",
+        "0024-attach-files-through-reference-comments.md",
+        "../ARCHITECTURE.md",
+        "../../pkg/ui/attachments.go"
+      ]
+    },
+    {
+      "name": "issue_content",
+      "passed": true,
+      "detail": "REST issue and complete comments inspected, 0 comments, no image references"
+    },
+    {
+      "name": "followups",
+      "passed": true,
+      "detail": "Four existing deferred tickets, each linked discovered-from:bd-teri.13"
+    },
+    {
+      "name": "text_and_diagrams",
+      "passed": true,
+      "detail": "No em dashes or Mermaid. Policy tables suffice, so no diagram check applies."
+    }
+  ],
+  "counts": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  }
+}

@@ -1,0 +1,3 @@
+
+command: timeout 300s go vet ./...
+exit_code=0

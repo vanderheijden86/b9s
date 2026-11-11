@@ -1,0 +1,262 @@
+{
+  "command": [
+    "timeout",
+    "720s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "counting": "Primary counts are completed top-level Go test functions. Nested test outcomes are reported separately. Makefile-excluded tests and tests/e2e were not scheduled and are not counted as skips. No retries were run.",
+  "counts": {
+    "passed": 2124,
+    "failed": 0,
+    "skipped": 18,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "all_outcomes_including_subtests": {
+    "passed": 3759,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attach",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attachref",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/control",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/config",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/debug",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/identity",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/model",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil/proptest",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/util/topk",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/version",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/watcher",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/web",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/scripts/web",
+      "outcome": "ok",
+      "cached": false
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/docs",
+      "outcome": "ok",
+      "cached": false
+    }
+  ],
+  "skipped_top_level": [
+    {
+      "name": "TestProbeMemory_RealBinaries",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun"
+    },
+    {
+      "name": "TestS3StoreContract",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore"
+    },
+    {
+      "name": "TestS3PutRejectsShortRead",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore"
+    },
+    {
+      "name": "TestS3PutRejectsLongRead",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore"
+    },
+    {
+      "name": "TestDoltReader_NewAndClose",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestDoltReader_LoadIssues",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestDoltReader_GetHeadHash",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestDoltWatcher_NewAndStop",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestDoltWatcher_StartIsIdempotent",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestMemoryPreviewGraphReadTiming",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestMemoryReadResearchStages",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestMemoryReadResearchTransportParity",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestMemoryReadResearchConcurrentWriter",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/internal/datasource"
+    },
+    {
+      "name": "TestStress_SustainedWrites",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/pkg/ui"
+    },
+    {
+      "name": "TestStress_BurstWrites",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/pkg/ui"
+    },
+    {
+      "name": "TestStress_MemoryPressure",
+      "outcome": "skip",
+      "top_level": true,
+      "package": "github.com/vanderheijden86/b9s/pkg/ui"
+    }
+  ],
+  "failed_outcomes": [],
+  "skips_explanation": {
+    "top_level": {
+      "real_bd_binaries_not_configured": 1,
+      "s3_endpoint_not_configured": 3,
+      "dolt_dsn_not_configured": 7,
+      "memory_preview_or_research_not_configured": 4,
+      "performance_mode_not_enabled": 3
+    },
+    "nested": {
+      "real_dataset_files_absent": 2
+    },
+    "required_check_failures": []
+  }
+}

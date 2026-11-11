@@ -1,0 +1,202 @@
+[
+  {
+    "id": "bd-cbs3",
+    "title": "[cbs3] Open specification references across b9s hosts",
+    "description": "Follow-up to GitHub #18 and proposed ADR 0066. Preserve spec_id, allow safe explicit opening without a blob backend, and offer a separate explicit snapshot import. Producer-only paths require an operator-provided mount or publication. No automatic copying, SSH, or schema migration. Intended hierarchy: bd-teri epic. Lane shim rejects --parent, so Polly must assign hierarchy.",
+    "acceptance_criteria": "Reader parity, safe direct opening, explicit import, and cross-VM tests and documentation are completed by the follow-up tasks. Existing attachment semantics remain intact.",
+    "status": "deferred",
+    "priority": 2,
+    "issue_type": "feature",
+    "owner": "vanderheijden86@gmail.com",
+    "created_at": "2026-11-11T04:07:29Z",
+    "created_by": "vanderheijden86",
+    "updated_at": "2026-11-11T04:07:53Z",
+    "dependencies": [
+      {
+        "id": "bd-teri.13",
+        "title": "[teri.13] Design: open --spec-id artifacts from b9s as attachments",
+        "description": "Source: GitHub issue on vanderheijden86/b9s. Read it with: gh issue view 18 --repo vanderheijden86/b9s (including comments and screenshots). Check current main first; if it already behaves as asked, say so in the outcome and add a test that proves it. Put 'Refs #18' in the PR body.\n\nIssue #18: plans decomposed into beads link their spec through --spec-id, but b9s only shows attachments stored through its own local or s3 backend, and the reporter's b9s runs on another VM. Analyse options (resolve spec-id paths or URLs directly, or copy on demand into a backend) and write the decision as an ADR in docs/adr with a follow-up task list. No implementation in this task.",
+        "status": "in_progress",
+        "priority": 2,
+        "issue_type": "task",
+        "assignee": "unknown",
+        "owner": "vanderheijden86@gmail.com",
+        "created_at": "2026-11-10T20:15:13Z",
+        "created_by": "vanderheijden86",
+        "updated_at": "2026-11-11T04:01:40Z",
+        "started_at": "2026-11-11T04:01:36Z",
+        "lease_expires_at": "2026-11-11T04:06:36Z",
+        "heartbeat_at": "2026-11-11T04:01:36Z",
+        "metadata": {
+          "dispatch_context": "{\"version\":1,\"project\":\"b9s\",\"repo_url\":\"https://github.com/vanderheijden86/b9s.git\",\"source_issue\":null,\"integration_branch\":\"main\",\"delivery_branch\":\"omnigent/bd-teri.13\",\"required_commits\":[]}"
+        },
+        "labels": [
+          "dispatch-attempt=2",
+          "dispatch-branch=omnigent/bd-teri.13",
+          "dispatch-entered=1794369750",
+          "dispatch-failure=no_verdict",
+          "dispatch-project=b9s",
+          "dispatch-queue",
+          "dispatch-session=49f5f9070ae14125bcef6b9ec354a762",
+          "dispatch:RUNNING"
+        ],
+        "dependency_type": "discovered-from"
+      }
+    ],
+    "dependent_count": 0,
+    "dependency_count": 1,
+    "comment_count": 1,
+    "comments_omitted": true,
+    "revision": "8096007720371201118"
+  },
+  {
+    "id": "bd-psgc",
+    "title": "[psgc] Preserve spec_id in every issue reader",
+    "description": "ADR 0066, GitHub #18. Carry nullable spec_id through model, clone and JSONL, SQLite, full/lean/first-page/delta/multi-Dolt and embedded readers, including on-demand detail and web DTO/type generation where applicable. Detect optional-column capability without losing other fields or masking query errors. Keep opaque IDs literal and do not invent filesystem semantics. Intended feature bd-cbs3. Polly assigns hierarchy because the lane shim rejects --parent.",
+    "acceptance_criteria": "Test-first fixtures prove relative path, absolute path, HTTPS URL, opaque ID, empty value and schemas lacking spec_id. Tests cover reload, clone, fallback, hydration and source parity. No resolution or I/O during reads. Run stable suite, build and vet.",
+    "status": "deferred",
+    "priority": 2,
+    "issue_type": "task",
+    "owner": "vanderheijden86@gmail.com",
+    "created_at": "2026-11-11T04:07:56Z",
+    "created_by": "vanderheijden86",
+    "updated_at": "2026-11-11T04:08:45Z",
+    "dependencies": [
+      {
+        "id": "bd-teri.13",
+        "title": "[teri.13] Design: open --spec-id artifacts from b9s as attachments",
+        "description": "Source: GitHub issue on vanderheijden86/b9s. Read it with: gh issue view 18 --repo vanderheijden86/b9s (including comments and screenshots). Check current main first; if it already behaves as asked, say so in the outcome and add a test that proves it. Put 'Refs #18' in the PR body.\n\nIssue #18: plans decomposed into beads link their spec through --spec-id, but b9s only shows attachments stored through its own local or s3 backend, and the reporter's b9s runs on another VM. Analyse options (resolve spec-id paths or URLs directly, or copy on demand into a backend) and write the decision as an ADR in docs/adr with a follow-up task list. No implementation in this task.",
+        "status": "in_progress",
+        "priority": 2,
+        "issue_type": "task",
+        "assignee": "unknown",
+        "owner": "vanderheijden86@gmail.com",
+        "created_at": "2026-11-10T20:15:13Z",
+        "created_by": "vanderheijden86",
+        "updated_at": "2026-11-11T04:01:40Z",
+        "started_at": "2026-11-11T04:01:36Z",
+        "lease_expires_at": "2026-11-11T04:06:36Z",
+        "heartbeat_at": "2026-11-11T04:01:36Z",
+        "metadata": {
+          "dispatch_context": "{\"version\":1,\"project\":\"b9s\",\"repo_url\":\"https://github.com/vanderheijden86/b9s.git\",\"source_issue\":null,\"integration_branch\":\"main\",\"delivery_branch\":\"omnigent/bd-teri.13\",\"required_commits\":[]}"
+        },
+        "labels": [
+          "dispatch-attempt=2",
+          "dispatch-branch=omnigent/bd-teri.13",
+          "dispatch-entered=1794369750",
+          "dispatch-failure=no_verdict",
+          "dispatch-project=b9s",
+          "dispatch-queue",
+          "dispatch-session=49f5f9070ae14125bcef6b9ec354a762",
+          "dispatch:RUNNING"
+        ],
+        "dependency_type": "discovered-from"
+      }
+    ],
+    "dependent_count": 0,
+    "dependency_count": 1,
+    "comment_count": 1,
+    "comments_omitted": true,
+    "revision": "1229531734190293395"
+  },
+  {
+    "id": "bd-0alf",
+    "title": "[0alf] Open specification references without a blob backend",
+    "description": "ADR 0066, GitHub #18, intended feature bd-cbs3. After reader support, show a distinct Specification entry beside attachments in TUI detail and R picker. Resolve only explicit paths under an operator-trusted per-project root or explicit producer-root mapping. Use literal HTTPS links for explicit user navigation. No server-side URL fetch, automatic opening, hidden copies, shell expansion, SSH, or arbitrary file URI. Opaque IDs remain visible with an unsupported reason. Cancel stale replies on project switch. Web clients never receive a server local path as a browser file URL.",
+    "acceptance_criteria": "Test-first resolver and TUI tests cover root containment including symlinks and traversal, missing cross-VM file, malformed URLs and controls, opaque IDs, no backend, read-only operation, opener safety, B9S_TEST_MODE and project-switch races. Add bounded PTY coverage and documentation with two VM roots and HTTPS publication. Any browser link UI must use auth rules and reject unsafe schemes.",
+    "status": "deferred",
+    "priority": 2,
+    "issue_type": "task",
+    "owner": "vanderheijden86@gmail.com",
+    "created_at": "2026-11-11T04:07:59Z",
+    "created_by": "vanderheijden86",
+    "updated_at": "2026-11-11T04:08:45Z",
+    "dependencies": [
+      {
+        "id": "bd-teri.13",
+        "title": "[teri.13] Design: open --spec-id artifacts from b9s as attachments",
+        "description": "Source: GitHub issue on vanderheijden86/b9s. Read it with: gh issue view 18 --repo vanderheijden86/b9s (including comments and screenshots). Check current main first; if it already behaves as asked, say so in the outcome and add a test that proves it. Put 'Refs #18' in the PR body.\n\nIssue #18: plans decomposed into beads link their spec through --spec-id, but b9s only shows attachments stored through its own local or s3 backend, and the reporter's b9s runs on another VM. Analyse options (resolve spec-id paths or URLs directly, or copy on demand into a backend) and write the decision as an ADR in docs/adr with a follow-up task list. No implementation in this task.",
+        "status": "in_progress",
+        "priority": 2,
+        "issue_type": "task",
+        "assignee": "unknown",
+        "owner": "vanderheijden86@gmail.com",
+        "created_at": "2026-11-10T20:15:13Z",
+        "created_by": "vanderheijden86",
+        "updated_at": "2026-11-11T04:01:40Z",
+        "started_at": "2026-11-11T04:01:36Z",
+        "lease_expires_at": "2026-11-11T04:06:36Z",
+        "heartbeat_at": "2026-11-11T04:01:36Z",
+        "metadata": {
+          "dispatch_context": "{\"version\":1,\"project\":\"b9s\",\"repo_url\":\"https://github.com/vanderheijden86/b9s.git\",\"source_issue\":null,\"integration_branch\":\"main\",\"delivery_branch\":\"omnigent/bd-teri.13\",\"required_commits\":[]}"
+        },
+        "labels": [
+          "dispatch-attempt=2",
+          "dispatch-branch=omnigent/bd-teri.13",
+          "dispatch-entered=1794369750",
+          "dispatch-failure=no_verdict",
+          "dispatch-project=b9s",
+          "dispatch-queue",
+          "dispatch-session=49f5f9070ae14125bcef6b9ec354a762",
+          "dispatch:RUNNING"
+        ],
+        "dependency_type": "discovered-from"
+      }
+    ],
+    "dependent_count": 0,
+    "dependency_count": 1,
+    "comment_count": 1,
+    "comments_omitted": true,
+    "revision": "-6406697706769855222"
+  },
+  {
+    "id": "bd-6oqw",
+    "title": "[6oqw] Import a reachable specification snapshot explicitly",
+    "description": "ADR 0066, GitHub #18, intended feature bd-cbs3. After reader and direct-reference support, offer an explicit Import specification snapshot action using the existing attachment backend and reference comments. Snapshot a confined regular local file or fetch a credential-free HTTPS resource through a bounded SSRF-safe importer. Keep spec_id unchanged. Upload bytes before adding the stock bd reference comment, check source/project generation before mutation, preserve local-with-Dolt refusal, and never copy on view or fallback after open failure.",
+    "acceptance_criteria": "Tests cover importer byte and time limits, regular-file descriptor containment and source races, per-hop URL and dial-IP checks, private/loopback/link-local/metadata targets, redirects, no environment proxy or forwarded credentials, MIME/hash checks, crash after upload, comment failure and sequential retry deduplication. Concurrent imports may add duplicate comments but produce one folded hash entry. Document local snapshot VM scope versus S3 sharing and bounded local fixture E2E.",
+    "status": "deferred",
+    "priority": 2,
+    "issue_type": "task",
+    "owner": "vanderheijden86@gmail.com",
+    "created_at": "2026-11-11T04:08:01Z",
+    "created_by": "vanderheijden86",
+    "updated_at": "2026-11-11T04:08:45Z",
+    "dependencies": [
+      {
+        "id": "bd-teri.13",
+        "title": "[teri.13] Design: open --spec-id artifacts from b9s as attachments",
+        "description": "Source: GitHub issue on vanderheijden86/b9s. Read it with: gh issue view 18 --repo vanderheijden86/b9s (including comments and screenshots). Check current main first; if it already behaves as asked, say so in the outcome and add a test that proves it. Put 'Refs #18' in the PR body.\n\nIssue #18: plans decomposed into beads link their spec through --spec-id, but b9s only shows attachments stored through its own local or s3 backend, and the reporter's b9s runs on another VM. Analyse options (resolve spec-id paths or URLs directly, or copy on demand into a backend) and write the decision as an ADR in docs/adr with a follow-up task list. No implementation in this task.",
+        "status": "in_progress",
+        "priority": 2,
+        "issue_type": "task",
+        "assignee": "unknown",
+        "owner": "vanderheijden86@gmail.com",
+        "created_at": "2026-11-10T20:15:13Z",
+        "created_by": "vanderheijden86",
+        "updated_at": "2026-11-11T04:01:40Z",
+        "started_at": "2026-11-11T04:01:36Z",
+        "lease_expires_at": "2026-11-11T04:06:36Z",
+        "heartbeat_at": "2026-11-11T04:01:36Z",
+        "metadata": {
+          "dispatch_context": "{\"version\":1,\"project\":\"b9s\",\"repo_url\":\"https://github.com/vanderheijden86/b9s.git\",\"source_issue\":null,\"integration_branch\":\"main\",\"delivery_branch\":\"omnigent/bd-teri.13\",\"required_commits\":[]}"
+        },
+        "labels": [
+          "dispatch-attempt=2",
+          "dispatch-branch=omnigent/bd-teri.13",
+          "dispatch-entered=1794369750",
+          "dispatch-failure=no_verdict",
+          "dispatch-project=b9s",
+          "dispatch-queue",
+          "dispatch-session=49f5f9070ae14125bcef6b9ec354a762",
+          "dispatch:RUNNING"
+        ],
+        "dependency_type": "discovered-from"
+      }
+    ],
+    "dependent_count": 0,
+    "dependency_count": 1,
+    "comment_count": 1,
+    "comments_omitted": true,
+    "revision": "1575668805179657359"
+  }
+]
