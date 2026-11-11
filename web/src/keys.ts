@@ -21,7 +21,7 @@ import * as api from "./api";
 import { memoryKey } from "./memory";
 import { D, eff, get, kids, laneOf, pool } from "./data";
 import { detailKids, ensureVisible, railShown, render, renderBoard, revealBoardCursor, siblings } from "./render";
-import { S, saveBoardFolded, saveChips, stepLanes, treeRows } from "./state";
+import { S, listLayout, saveBoardFolded, saveChips, stepLanes, treeRows } from "./state";
 import { $, $opt, copyText, split, store } from "./util";
 
 /**
@@ -234,6 +234,7 @@ function page(): number {
 }
 
 function setFolded(all: boolean): void {
+  if (listLayout()) return;
   S.folded.clear();
   if (all) pool().forEach(i => { if (kids(i.id).length) S.folded.add(i.id); });
   render();
@@ -291,12 +292,15 @@ function treeKey(k: string): boolean {
     case "Enter": openDetail(c.id); return true;
     case "d": openDetail(c.id); return true;
     case "h":
+      if (listLayout()) return true;
       if (hasKids && !S.folded.has(c.id)) { S.folded.add(c.id); render(); } else if (c.parent && ids.includes(c.parent)) moveTo(c.parent);
       return true;
     case "l":
+      if (listLayout()) return true;
       if (S.folded.has(c.id)) { S.folded.delete(c.id); render(); } else if (hasKids) moveTo(ids[ids.indexOf(c.id) + 1]);
       return true;
     case "Tab":
+      if (listLayout()) return true;
       if (hasKids) { if (S.folded.has(c.id)) S.folded.delete(c.id); else S.folded.add(c.id); render(); }
       return true;
     case "p": if (c.parent && ids.includes(c.parent)) moveTo(c.parent); return true;

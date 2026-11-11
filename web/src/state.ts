@@ -30,7 +30,7 @@ export const S = {
   /** O: the tree shows only matching issues, without the parents that give them context */
   onlyMatches: false,
   /** t: the tree pane shows every match as one sorted list, without parents or nesting */
-  list: store.get("list", false),
+  list: false,
   cursor: null as string | null,
   marks: new Set<string>(),
   marking: false,
@@ -174,6 +174,11 @@ export function typeTerms(): string[] {
   return S.text.toLowerCase().split(/\s+/).filter(token => /^!?type:/.test(token));
 }
 
+/** listLayout keeps type lookups free of parent context without changing the project's saved choice (ADR 0027). */
+export function listLayout(): boolean {
+  return S.list || typeTerms().some(token => /^!?type:.+/.test(token));
+}
+
 export interface TreeRow { i?: Item; d: number; dim?: boolean; hasKids?: boolean; folded?: boolean; hdr?: string; n?: number; key?: string }
 
 export function treeRows(): { rows: TreeRow[]; matchCount: number } {
@@ -187,7 +192,7 @@ export function treeRows(): { rows: TreeRow[]; matchCount: number } {
     show = new Set([...show].filter(x => keep.has(x)));
   }
   const cmp = SORTS[S.sort];
-  if (S.list) {
+  if (listLayout()) {
     const flat = [...show].filter(x => match.has(x)).map(x => get(x)!).sort(cmp);
     return { rows: flat.map(i => ({ i, d: 0 })), matchCount: match.size };
   }
