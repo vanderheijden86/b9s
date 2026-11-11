@@ -61,6 +61,7 @@ func requireScratchServer(t *testing.T) string {
 	if err := checkScratchAddr(addr); err != nil {
 		t.Fatalf("refusing to write to %s: %v", addr, err)
 	}
+	requireDoltTestServer(t, buildDSN(scratchServerUser(), os.Getenv("BEADS_DOLT_PASSWORD"), addr, ""))
 	return addr
 }
 

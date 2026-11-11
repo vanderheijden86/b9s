@@ -10,7 +10,8 @@ import (
 
 // integrationSource describes the configured test server without a database,
 // which is how the :project table connects.
-func integrationSource() DataSource {
+func integrationSource(t *testing.T) DataSource {
+	t.Helper()
 	host := os.Getenv("B9S_TEST_DOLT_HOST")
 	port := os.Getenv("B9S_TEST_DOLT_PORT")
 	if port == "" {
@@ -20,12 +21,14 @@ func integrationSource() DataSource {
 	if user == "" {
 		user = "root"
 	}
-	return DataSource{Type: SourceTypeDolt, Path: host + ":" + port, User: user}
+	source := DataSource{Type: SourceTypeDolt, Path: host + ":" + port, User: user}
+	requireDoltTestServer(t, buildDSN(user, os.Getenv("BEADS_DOLT_PASSWORD"), source.Path, ""))
+	return source
 }
 
 func trustIntegrationSource(t *testing.T) {
 	t.Helper()
-	t.Setenv("B9S_TRUSTED_DOLT_ENDPOINTS", integrationSource().Path)
+	t.Setenv("B9S_TRUSTED_DOLT_ENDPOINTS", integrationSource(t).Path)
 }
 
 // Listing needs only read access, so it runs as a scoped project user: set
@@ -38,7 +41,7 @@ func TestDoltIntegration_ListProjectDatabasesIncludesReadableDatabase(t *testing
 		t.Skip("set B9S_TEST_DOLT_CATALOG_DB to a Beads database the test user can read")
 	}
 
-	databases, err := ListProjectDatabases(integrationSource())
+	databases, err := ListProjectDatabases(integrationSource(t))
 	if err != nil {
 		t.Fatalf("ListProjectDatabases: %v (reachability: %s)", err, ClassifyConnError(err))
 	}
@@ -56,9 +59,10 @@ func TestDoltIntegration_ListProjectDatabasesIncludesReadableDatabase(t *testing
 func TestDoltIntegration_ListProjectDatabasesReportsDeniedForWrongPassword(t *testing.T) {
 	skipIfNoDoltIntegration(t)
 	trustIntegrationSource(t)
+	source := integrationSource(t)
 	t.Setenv("BEADS_DOLT_PASSWORD", fmt.Sprintf("wrong-%d", time.Now().UnixNano()))
 
-	_, err := ListProjectDatabases(integrationSource())
+	_, err := ListProjectDatabases(source)
 
 	if got := ClassifyConnError(err); got != ReachDenied {
 		t.Errorf("ClassifyConnError(%v) = %v, want denied", err, got)
