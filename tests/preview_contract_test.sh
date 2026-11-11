@@ -192,6 +192,11 @@ if [[ $fail -eq 0 ]]; then
   fi
   contains "identity endpoint is exposed" "name: identity" "$rendered"
   contains "preview has a clickable hostname" "host: b9s-bd-b6jw.previews.example.test" "$rendered"
+  readiness_probe="$(awk '/^          readinessProbe:/{probe=1;next} /^          livenessProbe:/{probe=0} probe' <<<"$rendered")"
+  contains "readiness waits for the web session endpoint" 'path: /api/session' "$readiness_probe"
+  contains "readiness checks the web listener" 'port: web' "$readiness_probe"
+  contains "readiness uses the configured viewer header" 'name: "X-Example-Viewer"' "$readiness_probe"
+  contains "readiness authenticates as the configured viewer" 'value: "viewer@example.invalid"' "$readiness_probe"
 
   set +e
   invalid="$(B9S_PREVIEW_KUBECONFIG="$kubeconfig" B9S_PREVIEW_CONTEXT=preview \
@@ -422,11 +427,18 @@ run_verify() (
         *) return 95 ;;
       esac
     done
-    [[ $flags == -fsS && $connect == 3 && $max == 10 && -n $output ]] || return 96
+    [[ $flags == -fsS && $connect == 3 && $max -ge 1 && $max -le 10 && -n $output ]] || return 96
     printf '%s\n' "$url" >>"$TEST_STATE_DIR/http"
     case "$url" in
       */__preview)
         if [[ $url == *svc.cluster.local* ]]; then
+          if [[ $TEST_SCENARIO == service-budget ]]; then
+            SECONDS=$((SECONDS + 10))
+            return 7
+          fi
+          if [[ $TEST_SCENARIO == recovering-service && $(grep -c '/__preview' "$TEST_STATE_DIR/http") -le 2 ]]; then
+            return 7
+          fi
           [[ $TEST_SERVICE_RC == 0 ]] || return "$TEST_SERVICE_RC"
         else
           [[ $TEST_INGRESS_RC == 0 ]] || return "$TEST_INGRESS_RC"
@@ -464,6 +476,9 @@ verify_case() {
   if [[ $rc == "$expected_rc" ]]; then ok "verifier $name exit $expected_rc"; else bad "verifier $name exit $expected_rc" "exit $rc: $output"; fi
   contains "verifier $name prints final counts" '=== preview-verify DONE pass=' "$output"
   expected='http://b9s.b9s-bd-b6jw-4.svc.cluster.local:7682/__preview'
+  if [[ $scenario == recovering-service || $service_rc == 7 ]]; then
+    expected+=$'\n'"$expected"$'\n'"$expected"
+  fi
   if [[ $boundary == ingress ]]; then
     expected+=$'\nhttp://b9s-bd-b6jw-4.previews.example.test:18081/__preview'
   fi
@@ -487,6 +502,8 @@ verify_case() {
 }
 
 verify_case cluster healthy 0 0 0 service 1
+verify_case recovering-service recovering-service 0 6 0 service 1
+verify_case service-budget service-budget 0 0 0 ingress 1
 for transport in 6 7 28; do
   verify_case "laptop-$transport" healthy "$transport" 0 0 ingress 1
 done

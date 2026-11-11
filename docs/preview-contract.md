@@ -109,7 +109,11 @@ On a DNS, connection or timeout failure (curl exit 6, 7 or 28), it tries the
 task's ingress URL. This lets a workstation use the configured ingress while
 a runner can use the cluster Service. Each HTTP request has a three-second
 connection timeout and a ten-second total timeout, with at most two identity
-requests. If both fail, the report names the endpoint and curl exit code and
+request budgets. A Service connection refusal can precede routing to a ready
+Pod. The verifier makes at most three Service attempts, one second apart,
+within the same ten-second total budget. It retries only curl exit 7. DNS,
+timeout and other response handling retain the boundary rules above. If both
+budgets fail, the report names the endpoint and curl exit code and
 asks the operator to check preview DNS, ingress access and rollout.
 
 The verifier compares all three identity fields with the requested preview
@@ -117,6 +121,17 @@ on the selected boundary. An HTTP error, malformed identity or identity
 mismatch fails verification without selecting another boundary. The board's
 `/api/session` request uses the same selected boundary, so identity from the
 Service cannot approve a board reached through ingress, or the reverse.
+
+Kubernetes readiness requests `/api/session` on the web port with the configured
+viewer header and viewer. The identity endpoint starts before the web listener,
+so its response alone cannot establish readiness. The probe keeps its bounded
+timeouts and failure threshold. Identity remains the liveness endpoint.
+
+Startup diagnosis (bd-1si3, 2026-11-11): an identity-only probe marked the Pod
+ready before port 7681 accepted connections. Compare the Pod's Ready transition,
+the failed verifier's timestamp and the web-listening log. If verification fails
+between those events and the same Pod later answers an authenticated session
+request without a restart, the startup readiness contract admitted it too early.
 
 The web process runs with `--projects-root /data/projects --discover-dolt`.
 Project-list and project-open requests refresh readable Beads databases through
