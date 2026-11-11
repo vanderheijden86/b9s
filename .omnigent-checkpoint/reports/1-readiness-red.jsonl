@@ -1,0 +1,41 @@
+{"Time":"2026-11-11T04:51:00.932389845Z","Action":"start","Package":"github.com/vanderheijden86/b9s/scripts/preview"}
+{"Time":"2026-11-11T04:51:00.936075631Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness"}
+{"Time":"2026-11-11T04:51:00.936109679Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness","Output":"=== RUN   TestPreviewReadiness\n"}
+{"Time":"2026-11-11T04:51:00.960057503Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy"}
+{"Time":"2026-11-11T04:51:00.96009623Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy","Output":"=== RUN   TestPreviewReadiness/healthy\n"}
+{"Time":"2026-11-11T04:51:00.962432777Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy","Output":"--- PASS: TestPreviewReadiness/healthy (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.962471279Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.962481228Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down"}
+{"Time":"2026-11-11T04:51:00.962486747Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down","Output":"=== RUN   TestPreviewReadiness/identity-down\n"}
+{"Time":"2026-11-11T04:51:00.963409951Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down","Output":"--- PASS: TestPreviewReadiness/identity-down (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.963473059Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.963524108Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down"}
+{"Time":"2026-11-11T04:51:00.963533424Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Output":"=== RUN   TestPreviewReadiness/web-down\n"}
+{"Time":"2026-11-11T04:51:00.964769528Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Output":"    readiness_test.go:134: readiness=true, want false: gate identity, authenticated web and a nonblank TUI in lib.sh\n"}
+{"Time":"2026-11-11T04:51:00.965487663Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Output":"--- FAIL: TestPreviewReadiness/web-down (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.96550501Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.965513945Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused"}
+{"Time":"2026-11-11T04:51:00.965517863Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Output":"=== RUN   TestPreviewReadiness/viewer-refused\n"}
+{"Time":"2026-11-11T04:51:00.966293896Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Output":"    readiness_test.go:134: readiness=true, want false: gate identity, authenticated web and a nonblank TUI in lib.sh\n"}
+{"Time":"2026-11-11T04:51:00.966701034Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Output":"--- FAIL: TestPreviewReadiness/viewer-refused (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.96672298Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.966744735Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing"}
+{"Time":"2026-11-11T04:51:00.966751759Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Output":"=== RUN   TestPreviewReadiness/tui-missing\n"}
+{"Time":"2026-11-11T04:51:00.968677436Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Output":"    readiness_test.go:134: readiness=true, want false: gate identity, authenticated web and a nonblank TUI in lib.sh\n"}
+{"Time":"2026-11-11T04:51:00.968753953Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Output":"--- FAIL: TestPreviewReadiness/tui-missing (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.968774742Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.968782449Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank"}
+{"Time":"2026-11-11T04:51:00.968786618Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Output":"=== RUN   TestPreviewReadiness/tui-blank\n"}
+{"Time":"2026-11-11T04:51:00.970276092Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Output":"    readiness_test.go:134: readiness=true, want false: gate identity, authenticated web and a nonblank TUI in lib.sh\n"}
+{"Time":"2026-11-11T04:51:00.970749928Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Output":"--- FAIL: TestPreviewReadiness/tui-blank (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.970815776Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.970881973Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers"}
+{"Time":"2026-11-11T04:51:00.970892324Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Output":"=== RUN   TestPreviewReadiness/web-recovers\n"}
+{"Time":"2026-11-11T04:51:00.972317321Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Output":"    readiness_test.go:131: identity must not approve readiness before the web process starts\n"}
+{"Time":"2026-11-11T04:51:00.972929382Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Output":"--- FAIL: TestPreviewReadiness/web-recovers (0.00s)\n"}
+{"Time":"2026-11-11T04:51:00.972947338Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Elapsed":0}
+{"Time":"2026-11-11T04:51:00.972957533Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness","Output":"--- FAIL: TestPreviewReadiness (0.04s)\n"}
+{"Time":"2026-11-11T04:51:00.972964475Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness","Elapsed":0.04}
+{"Time":"2026-11-11T04:51:00.972971448Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Output":"FAIL\n"}
+{"Time":"2026-11-11T04:51:00.97384173Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Output":"FAIL\tgithub.com/vanderheijden86/b9s/scripts/preview\t0.041s\n"}
+{"Time":"2026-11-11T04:51:00.973863501Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/scripts/preview","Elapsed":0.041}
