@@ -1,0 +1,47 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=10s",
+    "180s",
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-timeout=60s",
+    "-overlay=/tmp/bd-iiem-current-overlay.json",
+    "./pkg/ui/",
+    "-run",
+    "^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$"
+  ],
+  "exit_code": 1,
+  "seconds": 17.584,
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "GOFLAGS": "",
+    "CGO_CFLAGS": ""
+  },
+  "top_level": {
+    "pass": 0,
+    "fail": 3,
+    "skip": 0
+  },
+  "including_subtests": {
+    "pass": 0,
+    "fail": 6,
+    "skip": 0
+  },
+  "packages": {
+    "fail": 1
+  },
+  "skips": [],
+  "log": "/tmp/bd-iiem-current-mutation.log",
+  "expected_failure": true,
+  "interpretation": "Isolated shortened-ID mutation fails full-prefix guards. This is not a reproduced product defect.",
+  "failure_reasons": [
+    "issue_detail_test.go:47: detail header missing \"bd-e5u3.9\":",
+    "issue_detail_test.go:77: visible detail header must show full ID and title, missing \"bd-iiem\":",
+    "issue_detail_test.go:77: visible detail header must show full ID and title, missing \"bd-iiem.2.3\":",
+    "issue_detail_test.go:77: visible detail header must show full ID and title, missing \"long-project-name-iiem.2.3\":",
+    "issue_detail_test.go:175: box missing \"bd-e5u3.9\":"
+  ]
+}

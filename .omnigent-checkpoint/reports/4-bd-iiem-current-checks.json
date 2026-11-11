@@ -1,0 +1,118 @@
+[
+  {
+    "name": "build",
+    "command": [
+      "timeout",
+      "--kill-after=10s",
+      "240s",
+      "go",
+      "build",
+      "./..."
+    ],
+    "exit_code": 0,
+    "seconds": 14.672,
+    "log": "/tmp/bd-iiem-current-build.log",
+    "test_counts": null
+  },
+  {
+    "name": "vet",
+    "command": [
+      "timeout",
+      "--kill-after=10s",
+      "180s",
+      "go",
+      "vet",
+      "./..."
+    ],
+    "exit_code": 0,
+    "seconds": 24.846,
+    "log": "/tmp/bd-iiem-current-vet.log",
+    "test_counts": null
+  },
+  {
+    "name": "binary",
+    "command": [
+      "timeout",
+      "--kill-after=10s",
+      "180s",
+      "go",
+      "build",
+      "-o",
+      "/tmp/bd-iiem-current-b9s",
+      "./cmd/b9s"
+    ],
+    "exit_code": 0,
+    "seconds": 5.26,
+    "log": "/tmp/bd-iiem-current-binary.log",
+    "test_counts": null
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "timeout",
+      "--kill-after=10s",
+      "120s",
+      "npm",
+      "--prefix",
+      "/home/omnigent/workspace/b9s/web",
+      "run",
+      "typecheck"
+    ],
+    "exit_code": 0,
+    "seconds": 0.791,
+    "log": "/tmp/bd-iiem-current-typecheck.log",
+    "test_counts": null
+  },
+  {
+    "name": "web-build",
+    "command": [
+      "timeout",
+      "--kill-after=10s",
+      "120s",
+      "npm",
+      "--prefix",
+      "/home/omnigent/workspace/b9s/web",
+      "run",
+      "build",
+      "--",
+      "--out",
+      "/tmp/bd-iiem-current-web-dist"
+    ],
+    "exit_code": 0,
+    "seconds": 0.559,
+    "log": "/tmp/bd-iiem-current-web-build.log",
+    "test_counts": null
+  },
+  {
+    "name": "diff",
+    "command": [
+      "timeout",
+      "20s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "seconds": 0.027,
+    "log": "/tmp/bd-iiem-current-diff.log",
+    "test_counts": null
+  },
+  {
+    "name": "format",
+    "command": [
+      "timeout",
+      "20s",
+      "gofmt",
+      "-l",
+      "/home/omnigent/workspace/b9s/pkg/ui/issue_detail_test.go",
+      "/home/omnigent/workspace/b9s/tests/e2e/detail_footer_keys_e2e_test.go"
+    ],
+    "exit_code": 0,
+    "seconds": 0.012,
+    "log": "/tmp/bd-iiem-current-format.log",
+    "test_counts": null,
+    "unformatted_paths": []
+  }
+]

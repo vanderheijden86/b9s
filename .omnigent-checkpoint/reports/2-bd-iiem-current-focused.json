@@ -1,0 +1,37 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=10s",
+    "180s",
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-timeout=60s",
+    "./pkg/ui/",
+    "-run",
+    "^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$"
+  ],
+  "exit_code": 0,
+  "seconds": 127.714,
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "GOFLAGS": "",
+    "CGO_CFLAGS": ""
+  },
+  "top_level": {
+    "pass": 3,
+    "fail": 0,
+    "skip": 0
+  },
+  "including_subtests": {
+    "pass": 6,
+    "fail": 0,
+    "skip": 0
+  },
+  "packages": {
+    "pass": 1
+  },
+  "skips": [],
+  "log": "/tmp/bd-iiem-current-focused.log"
+}
