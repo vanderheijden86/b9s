@@ -1,0 +1,11 @@
+Repository: /home/omnigent/workspace/b9s
+Assigned base and PR target: main
+Actual branch: omnigent/bd-teri.2
+HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Remote delivery: absent (exact git ls-remote --exit-code --heads returned 2)
+Local delivery: absent before preflight, created from origin/main
+Initial worktree: clean
+Required-commit ancestry: none specified, no checks applicable
+Checkpoint: absent (lane-checkpoint inspect exit 0)
+Issue #40: read body, comments (none), and screenshot showing TUI query caret at end.

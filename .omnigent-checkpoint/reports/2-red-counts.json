@@ -1,0 +1,24 @@
+{
+  "report": "/tmp/bd-teri.2-evidence/red.jsonl",
+  "counting": "leaf test cases, excluding parent aggregates",
+  "counts": {
+    "passed": 0,
+    "failed": 6,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level": {
+    "fail": 1
+  },
+  "failures": [
+    "TestQueryCaretEditing/tree/typed",
+    "TestQueryCaretEditing/tree/pasted",
+    "TestQueryCaretEditing/flat/typed",
+    "TestQueryCaretEditing/flat/pasted",
+    "TestQueryCaretEditing/board/typed",
+    "TestQueryCaretEditing/board/pasted",
+    "TestQueryCaretEditing"
+  ],
+  "skips": []
+}

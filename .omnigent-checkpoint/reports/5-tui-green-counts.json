@@ -1,0 +1,16 @@
+{
+  "report": "/tmp/bd-teri.2-evidence/tui-green.jsonl",
+  "counting": "leaf test cases, excluding parent aggregates",
+  "counts": {
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level": {
+    "pass": 4
+  },
+  "failures": [],
+  "skips": []
+}
