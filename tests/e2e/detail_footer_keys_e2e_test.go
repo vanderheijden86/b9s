@@ -6,7 +6,27 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/charmbracelet/x/ansi"
 )
+
+func TestDetailExtraSectionsE2E(t *testing.T) {
+	dir := detailFooterFixture(t)
+	fixture := `{"id":"detail-1","title":"Planning","status":"open","priority":2,"issue_type":"task","close_reason":"Finished after review","metadata":{"branch":"feature/planning","worktree":"/tmp/planning"}}`
+	if err := os.WriteFile(filepath.Join(dir, ".beads", "beads.jsonl"), []byte(fixture+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runTreeTUIWithEnv(t, dir, 2500, []keyStep{kd("\r", 300*time.Millisecond)}, "B9S_TEST_MODE=1")
+	if err != nil {
+		t.Fatalf("TUI failed: %v\n%s", err, out)
+	}
+	frame := ansi.Strip(treeFinalFrame(out))
+	for _, want := range []string{"CLOSE REASON", "Finished after review", "METADATA", "feature/planning", "/tmp/planning"} {
+		if !strings.Contains(frame, want) {
+			t.Errorf("detail missing %q:\n%s", want, frame)
+		}
+	}
+}
 
 func TestDetailCommentOrderE2E(t *testing.T) {
 	for _, oldestFirst := range []bool{false, true} {
