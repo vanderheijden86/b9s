@@ -1,0 +1,22 @@
+Original reviewer probes rerun against revision 2.
+Commands:
+timeout 60s go -C /home/omnigent/workspace/b9s run /tmp/bd-yacz-evidence/reviewer-budget-probe.go
+timeout 60s go -C /home/omnigent/workspace/b9s run /tmp/bd-yacz-evidence/reviewer-layout-probe.go
+Both exit 0. Acceptance assertions: 6 probe cases passed, 0 failed.
+At 96 cells, both short and long names render exactly 2 physical lines (header + issue).
+At 80/96/120/160 cells, each layout has only line 0 and line 1, each within the terminal width.
+terminal=96 creator="alice" assignee="bob" physical_lines=2 expected=2
+             Issue [Created ▼]  PRI  DISPATCH      CREATOR       ASSIGNEE          CREATED  ID  
+  ✔ OPEN     Creator fixture    P2                 @alice        @bob                  now  c1 
+terminal=96 creator="andre@example.invalid" assignee="li@example.invalid" physical_lines=2 expected=2
+             Issue PRI  DISPATCH      CREATOR             ASSIGNEE                 CREATED  ID  
+  ✔ OPEN     Crea… P2                 @andre@example.in…  @li@example.invalid          now  c1 
+
+terminal=80 line=0 cells=80 text="             Issue PRI  DISPATCH      CREATOR     ASSIGNEE         CREATED  ID  "
+terminal=80 line=1 cells=79 text="  ✔ OPEN     Crea… P2                 @andre@ex…  @li@exampl…          now  c1 "
+terminal=96 line=0 cells=96 text="             Issue PRI  DISPATCH      CREATOR             ASSIGNEE                 CREATED  ID  "
+terminal=96 line=1 cells=95 text="  ✔ OPEN     Crea… P2                 @andre@example.in…  @li@example.invalid          now  c1 "
+terminal=120 line=0 cells=120 text="             Issue [Created ▼]         PRI  DISPATCH      CREATOR                 ASSIGNEE                 CREATED  ID  "
+terminal=120 line=1 cells=119 text="  ✔ OPEN     Creator fixture           P2                 @andre@example.invalid  @li@example.invalid          now  c1 "
+terminal=160 line=0 cells=160 text="             Issue [Created ▼]                                                 PRI  DISPATCH      CREATOR                 ASSIGNEE                 CREATED  ID  "
+terminal=160 line=1 cells=159 text="  ✔ OPEN     Creator fixture                                                   P2                 @andre@example.invalid  @li@example.invalid          now  c1 "
