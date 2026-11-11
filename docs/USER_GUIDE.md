@@ -126,7 +126,7 @@ Dates put the day first (`30-09`) unless the locale is month-first, as in the Un
 
 Under Created and Updated a parent ranks by its newest descendant, so an epic moves up when a subtask is added or changed ([ADR 0032](adr/0032-rank-tree-parents-by-newest-descendant-date.md)).
 
-The sort fields are priority, created, updated, title, status, type, deps, pagerank and deferred. Deferred puts the issue that comes back soonest first, and issues without a defer date last in either direction. The default comes from the [configuration file](#configuration), and the tree starts sorted by creation date, newest first.
+The sort fields are priority, created, updated, title, status, type, deps and deferred. Deferred puts the issue that comes back soonest first, and issues without a defer date last in either direction. The default comes from the [configuration file](#configuration), and the tree starts sorted by creation date, newest first.
 
 ### Other tree keys
 
@@ -715,7 +715,7 @@ ui:
   board_epics: rail       # rail or rows; v switches
   date_order: auto        # auto, dmy or mdy: day or month first in dates (T)
   sort:
-    field: created      # priority, created, updated, title, status, type, deps, pagerank or deferred
+    field: created      # priority, created, updated, title, status, type, deps or deferred
     direction: desc     # asc or desc; leave out for the field's natural order
 refresh:
   poll_interval: 500ms  # Dolt hash polling; at least 100ms; restart b9s after a change
@@ -732,6 +732,8 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
 The TUI polls at `poll_interval` while you use it. After two minutes without a key or mouse event, or while the terminal reports that it has lost focus, it polls at `idle_poll_interval`. After fifteen minutes it polls every 30 seconds, or at `idle_poll_interval` when that is longer. The first key after an idle period polls at once, so the screen is current before you act on it. Changes made by others while you are idle therefore show up after up to 30 seconds. `b9s web` always polls at `poll_interval`. See [ADR 0061](adr/0061-back-off-the-dolt-poll-while-the-user-is-idle.md).
 
 `s` picks another sort for the current session only. The override survives reloads and is not saved, so the next start returns to the configured sort. If the file does not parse, for example because of an unknown sort field, b9s ignores the whole file, starts with the defaults and never saves over it. See [ADR 0010](adr/0010-take-tree-sort-from-user-config.md).
+
+`pagerank` is not a supported sort field. A configuration that names it fails to load with an error listing the accepted fields. Choose one of the fields above.
 
 ### Hotkeys
 
