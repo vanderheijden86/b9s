@@ -1,0 +1,17 @@
+{
+  "leaf_test_counts": {
+    "passed": 212,
+    "failed": 0,
+    "skipped": 0
+  },
+  "top_level_test_counts": {
+    "passed": 48,
+    "failed": 0,
+    "skipped": 0
+  },
+  "package_outcomes": {
+    "github.com/vanderheijden86/b9s/pkg/ui": "pass"
+  },
+  "failed_tests": [],
+  "skipped_tests": []
+}
