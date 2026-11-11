@@ -73,13 +73,13 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 			assignee, estimated_minutes, created_at, updated_at,
 			due_date, closed_at, external_ref, compaction_level,
 			compacted_at, compacted_at_commit, original_size,
-			labels, design, acceptance_criteria, notes, source_repo
+			labels, design, acceptance_criteria, notes, source_repo, defer_until
 		FROM issues
 		WHERE (tombstone IS NULL OR tombstone = 0)
 		ORDER BY updated_at DESC
 	`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.queryIssues(query)
 	if err != nil {
 		if !sqliteMissingColumnError(err) {
 			// A transient failure (a locked or closed database) must be
@@ -100,6 +100,7 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 		var createdAt, updatedAt, dueDate, closedAt, compactedAt sql.NullTime
 		var description, assignee, externalRef, design, acceptanceCriteria, notes, sourceRepo, compactedAtCommit sql.NullString
 		var labelsJSON sql.NullString
+		var deferUntil sql.NullString
 		var issueType string
 
 		err := rows.Scan(
@@ -107,7 +108,7 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 			&assignee, &estimatedMinutes, &createdAt, &updatedAt,
 			&dueDate, &closedAt, &externalRef, &compactionLevel,
 			&compactedAt, &compactedAtCommit, &originalSize,
-			&labelsJSON, &design, &acceptanceCriteria, &notes, &sourceRepo,
+			&labelsJSON, &design, &acceptanceCriteria, &notes, &sourceRepo, &deferUntil,
 		)
 		if err != nil {
 			continue
@@ -135,6 +136,7 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 			t := dueDate.Time
 			issue.DueDate = &t
 		}
+		issue.DeferUntil = sqliteDeferUntil(deferUntil)
 		if closedAt.Valid {
 			t := closedAt.Time
 			issue.ClosedAt = &t
@@ -218,16 +220,39 @@ func sqliteMissingColumnError(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "no such column")
 }
 
+func (r *SQLiteReader) queryIssues(query string) (*sql.Rows, error) {
+	rows, err := r.db.Query(query)
+	if sqliteMissingColumnError(err) && strings.Contains(err.Error(), "no such column: defer_until") {
+		// Older schemas can lack defer_until while retaining every other
+		// full-query field, so only the optional projection becomes NULL.
+		return r.db.Query(strings.Replace(query, "defer_until", "NULL", 1))
+	}
+	return rows, err
+}
+
+func sqliteDeferUntil(value sql.NullString) *time.Time {
+	// DATETIME values arrive through sql.NullString as RFC3339Nano.
+	// Empty SQLite dates remain strings and must not discard the issue.
+	if !value.Valid || value.String == "" {
+		return nil
+	}
+	date, err := time.Parse(time.RFC3339Nano, value.String)
+	if err != nil {
+		return nil
+	}
+	return &date
+}
+
 // loadIssuesSimple is a fallback for databases with fewer columns
 func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.Issue, error) {
 	query := `
-		SELECT id, title, description, status, priority, issue_type, created_at, updated_at
+		SELECT id, title, description, status, priority, issue_type, created_at, updated_at, defer_until
 		FROM issues
 		WHERE (tombstone IS NULL OR tombstone = 0)
 		ORDER BY updated_at DESC
 	`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.queryIssues(query)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
@@ -238,12 +263,13 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 	for rows.Next() {
 		var issue model.Issue
 		var description sql.NullString
+		var deferUntil sql.NullString
 		var createdAt, updatedAt sql.NullTime
 		var issueType string
 
 		err := rows.Scan(
 			&issue.ID, &issue.Title, &description, &issue.Status, &issue.Priority, &issueType,
-			&createdAt, &updatedAt,
+			&createdAt, &updatedAt, &deferUntil,
 		)
 		if err != nil {
 			continue
@@ -259,6 +285,7 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 		if updatedAt.Valid {
 			issue.UpdatedAt = updatedAt.Time
 		}
+		issue.DeferUntil = sqliteDeferUntil(deferUntil)
 
 		// Load comments for this issue, the same as the full-schema query
 		// does: the simple fallback must not silently return no comments
