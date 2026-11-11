@@ -1,0 +1,25 @@
+Task: bd-9zft.5
+Result: BLOCKED before editing
+Assigned repository: /home/omnigent/workspace/b9s
+Branch: omnigent/bd-9zft.5
+HEAD and fetched origin/main: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+Required commit ancestry: none specified
+Remote delivery presence: absent, exact ls-remote exit 2
+Checkpoint inspection: absent, exit 2
+
+Required prerequisite blocker: bd-9zft.2 (closed in Beads but implementation absent from assigned main).
+Related foundational dependency: bd-9zft.1 (pkg/skin implementation absent).
+Observed: git ls-tree HEAD pkg/skin pkg/ui/palette.go prints no entries.
+Observed: repository UI/config searches find no ui.skin, Skin config, or TestAdaptiveColoursComeFromSkins.
+Observed: pkg/ui/styles.go and pkg/ui/theme.go initialize AdaptiveColor slots with fixed hex literals.
+Observed: pkg/ui/theme.go lines 138-142 initialize fixed ThemeFg priority/triage colours.
+This prevents the assigned skin-token refactor and extension of its existing guard without recreating missing feature work.
+Dispatch requires stopping on a missing prerequisite and forbids recreating missing feature work from main or substituting another base.
+
+Completed dependency command: timeout 180s go mod download
+Actual exit code: 0
+No test suites executed. Test counts are unknown, not inferred.
+Required checks not run due to prerequisite blocker: focused red/green tests, go build ./..., make test-stable, go vet ./..., bounded local TUI runtime evidence.
+No required-check command failed. All required checks remain unrun.
+Source changes: none. Delivery commit/push/PR: none.
+Unrelated follow-up findings: none.
