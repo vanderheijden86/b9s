@@ -1,0 +1,20 @@
+Focused RED exit: 1
+Leaf test outcomes: {'fail': 6, 'pass': 12}
+TestIdentityNamesInPersonViews/detail/aliases: fail
+TestIdentityNamesInPersonViews/detail/canonical_aliases: fail
+TestIdentityNamesInPersonViews/detail/same_names: pass
+TestIdentityNamesInPersonViews/detail/unknown_names: pass
+TestIdentityNamesInPersonViews/detail/no_registry: pass
+TestIdentityNamesInPersonViews/detail/empty_names: pass
+TestIdentityNamesInPersonViews/board_detail/aliases: fail
+TestIdentityNamesInPersonViews/board_detail/canonical_aliases: fail
+TestIdentityNamesInPersonViews/board_detail/same_names: pass
+TestIdentityNamesInPersonViews/board_detail/unknown_names: pass
+TestIdentityNamesInPersonViews/board_detail/no_registry: pass
+TestIdentityNamesInPersonViews/board_detail/empty_names: pass
+TestIdentityNamesInPersonViews/tree_columns/aliases: fail
+TestIdentityNamesInPersonViews/tree_columns/canonical_aliases: fail
+TestIdentityNamesInPersonViews/tree_columns/same_names: pass
+TestIdentityNamesInPersonViews/tree_columns/unknown_names: pass
+TestIdentityNamesInPersonViews/tree_columns/no_registry: pass
+TestIdentityNamesInPersonViews/tree_columns/empty_names: pass

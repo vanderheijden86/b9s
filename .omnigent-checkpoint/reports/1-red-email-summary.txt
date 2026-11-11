@@ -1,0 +1,5 @@
+Focused email RED exit: 1
+Leaf test outcomes: {'fail': 3}
+TestIdentityNamesInPersonViews/detail/email_alias: fail
+TestIdentityNamesInPersonViews/board_detail/email_alias: fail
+TestIdentityNamesInPersonViews/tree_columns/email_alias: fail
