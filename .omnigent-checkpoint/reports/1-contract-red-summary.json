@@ -1,0 +1,21 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "bash",
+    "/home/omnigent/workspace/b9s/tests/preview_contract_test.sh"
+  ],
+  "environment": {
+    "runtime": "bash contract harness, go1.25.5 linux/amd64"
+  },
+  "exit_code": 1,
+  "counts": {
+    "passed": 219,
+    "failed": 4,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "unit": "contract assertions",
+  "expected_failure": "readiness lacks authenticated web-session path, web port, viewer header and viewer value"
+}
