@@ -188,7 +188,7 @@ func TestIssueDetailIncludesIncomingMemoryLinksForEpics(t *testing.T) {
 		t.Fatalf("incoming Memory link missing: %s", text)
 	}
 	n, _ := g.Node("sample-e")
-	detail := stripANSI(renderIssueDetail(n.Issue, nil, plainTheme(), 100, nil, nil, lines, false))
+	detail := stripANSI(renderIssueDetail(n.Issue, nil, nil, plainTheme(), 100, nil, nil, lines, false))
 	if !strings.Contains(detail, "MEMORY LINKS") {
 		t.Fatalf("section missing: %s", detail)
 	}
