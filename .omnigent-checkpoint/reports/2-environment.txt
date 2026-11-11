@@ -1,0 +1,10 @@
+Runtime fingerprint
+go version go1.25.5 linux/amd64
+linux
+amd64
+1
+
+Linux 6.8.0-149-generic x86_64 GNU/Linux
+Repository tree diff SHA256
+8af7eba90aa049086db10c78309804da270266aaedc6643f1f06fbb3fcfeed23  -
+Go formatting differences
