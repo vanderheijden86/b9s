@@ -1,0 +1,26 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-timeout=60s",
+    "./internal/datasource",
+    "-run",
+    "^TestSQLiteReader_(DeferUntil|WithoutDeferUntilPreservesFullFields|FilterSeesDeferUntil)$"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "unit": "leaf tests, excluding parent aggregates"
+}
