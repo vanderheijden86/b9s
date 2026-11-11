@@ -1,0 +1,68 @@
+Task: bd-77az
+Role: implementer-codex
+Outcome: GREEN for independent review. No unresolved required-check failures.
+Repository: /home/omnigent/workspace/b9s
+
+Git preflight (acknowledged by Polly before editing):
+- Actual branch: omnigent/bd-77az
+- HEAD: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+- Fetched integration base and PR target: origin/main, eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+- timeout 60s git -C /home/omnigent/workspace/b9s fetch origin main: exit 0
+- timeout 60s git -C /home/omnigent/workspace/b9s ls-remote --exit-code --heads origin refs/heads/omnigent/bd-77az: exit 2, absent
+- Local delivery absent. Created from fetched origin/main, with clean worktree.
+- Required commits: none. Ancestry against base and HEAD: not applicable.
+- Initial lane-checkpoint inspect: exit 2, no checkpoint exists.
+- beads-connect ran once and succeeded. Polly repeated issue lookup and authorized edits.
+- Final HEAD/base unchanged. No delivery commit, delivery push or PR.
+
+Changed files:
+- cmd/b9s/main.go: one stderr diagnostic at startup when config.Load fails. Includes actual path, original error, defaults notice and unchanged-file notice. Existing DefaultConfig fallback and cfgErr save guard retained.
+- tests/e2e/open_failure_e2e_test.go: real PTY startup regression for invalid sort field, invalid sort direction, poll interval below 100ms and malformed YAML. Asserts diagnostic, working/default UI, discarded invalid settings, and exact file byte preservation. Valid and missing config controls assert no warning.
+- docs/USER_GUIDE.md: documents stderr error and how to fix the named config and restart.
+No new source files. No file deletion commands. No shared Dolt writes from tests.
+
+Environment:
+- Go: go version go1.25.5 linux/amd64
+- PTY: script from util-linux 2.41.5
+- Stable suite Makefile CGO_CFLAGS: -DSQLITE_ENABLE_FTS5
+- Dependency install: timeout 180s go mod download, exit 0. go.mod/go.sum unchanged.
+
+Exact checks (run sequentially, stable alone, no base comparison):
+1. RED: timeout 180s go test ./tests/e2e -run '^TestStartupConfigLoadWarningE2E$' -count=1 -timeout=90s -json
+   Exit 1 as expected: passed=0 failed=5 skipped=0 interrupted=0 unrun=0.
+   Four failing leaf cases and one failing parent. All failures were absent warning/path/original reason. Working defaults and unchanged-file assertions passed before the fix.
+2. GREEN: timeout 180s go test ./tests/e2e -run '^TestStartupConfig(LoadWarning|WithoutWarning)E2E$' -count=1 -timeout=90s -json
+   Exit 0: passed=8 failed=0 skipped=0 interrupted=0 unrun=0.
+   Six passing leaf cases and two passing parents. Each PTY run has an existing 15s context deadline and 1200ms application auto-close.
+3. timeout 180s go build ./...
+   Exit 0, no diagnostics. Test counts not applicable.
+4. timeout 660s env GOFLAGS=-v make test-stable
+   Exit 0: passed=3769 failed=0 skipped=20 interrupted=0 unrun=0.
+   3789 tests started and completed, including parent/subtests. All 22 packages passed.
+   Target supplies go test -timeout 10m, excludes tests/e2e and its committed STABLE_SKIP pattern.
+   20 optional runtime skips: real bd binaries (1), S3 endpoint (3), Dolt DSN (7), isolated Memory research/preview fixtures (4), absent real-data fixtures (2), opt-in PERF_TEST stress tests (3).
+5. timeout 180s go vet ./...
+   Exit 0, no diagnostics. Test counts not applicable.
+6. timeout 30s gofmt -l /home/omnigent/workspace/b9s/cmd/b9s/main.go /home/omnigent/workspace/b9s/tests/e2e/open_failure_e2e_test.go
+   Exit 0 and empty output. No formatting changes needed.
+7. timeout 30s git -C /home/omnigent/workspace/b9s diff --check
+   Exit 0, no diagnostics.
+Formatting applied before GREEN: gofmt -w /home/omnigent/workspace/b9s/cmd/b9s/main.go /home/omnigent/workspace/b9s/tests/e2e/open_failure_e2e_test.go
+
+Counts use completed Go test events/results, including parents and subtests. Package results are separate. Unrun applies to selected executions, not tests intentionally excluded by the stable target. No observed flakes, retries or interrupted executions.
+
+Evidence:
+- /tmp/bd-77az-preflight.txt
+- /tmp/bd-77az-dependencies.txt
+- /tmp/bd-77az-red-report.json (source /tmp/bd-77az-red.jsonl, exit /tmp/bd-77az-red.exit)
+- /tmp/bd-77az-green-report.json (source /tmp/bd-77az-green.jsonl, exit /tmp/bd-77az-green.exit)
+- /tmp/bd-77az-build.txt
+- /tmp/bd-77az-stable-report.json (source /tmp/bd-77az-stable.txt, exit /tmp/bd-77az-stable.exit)
+- /tmp/bd-77az-vet.txt
+- /tmp/bd-77az-format.txt
+
+Guard: real startup regression fails when the diagnostic is removed, and checks safe fallback plus preservation of the original invalid file. No new ADR is needed for this narrow error-reporting change.
+
+Residual limits: diagnostic is on startup stderr. Optional service/fixture/stress checks were skipped as listed. No web source changed and no browser suite was required by this dispatch. Independent review and independent tests remain Polly's next roles. No additional follow-up issues filed.
+
+Durability: unapproved checkpoint saves pushed only refs/heads/omnigent-checkpoints/bd-77az. Delivery branch remains uncommitted and unpushed as instructed.

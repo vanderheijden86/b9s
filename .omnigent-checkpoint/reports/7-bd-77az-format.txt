@@ -1,0 +1,4 @@
+command: timeout 30s gofmt -l /home/omnigent/workspace/b9s/cmd/b9s/main.go /home/omnigent/workspace/b9s/tests/e2e/open_failure_e2e_test.go
+gofmt_exit_code=0 (requires empty output)
+command: timeout 30s git -C /home/omnigent/workspace/b9s diff --check
+exit_code=0
