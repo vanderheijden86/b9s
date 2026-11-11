@@ -53,7 +53,7 @@ func TestSearchHistoryEditingRecallKeepsStoredQuery(t *testing.T) {
 	state.StartEditing()
 	state.SetText("draft")
 	state.recallHistory(true)
-	state.Append('β')
+	state.Insert('β')
 	state.recallHistory(false)
 	if state.Text() != "draft" {
 		t.Fatalf("draft = %q", state.Text())
