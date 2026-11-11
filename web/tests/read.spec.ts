@@ -3,6 +3,55 @@ import net from "node:net";
 import { expect, freePort, open, row, SAMPLE, settled, startProject, stopProject, test } from "./harness";
 
 test.describe("reading", () => {
+  test("detail shows close reason", async ({ page, project }) => {
+    project.writeIssues([{ ...SAMPLE[1], close_reason: "Finished after review" }]);
+    await open(page, project);
+    await row(page, "t-1").click();
+    const d = page.locator(".detail");
+    await expect(d.locator(".dsec", { hasText: /^Close Reason$/ })).toBeVisible();
+    await expect(d).toContainText("Finished after review");
+  });
+
+  test("detail shows literal metadata", async ({ page, project }, testInfo) => {
+    project.writeIssues([{ ...SAMPLE[1], metadata: {
+      branch: "feature/planning", worktree: "/tmp/planning",
+      nested: { enabled: true, items: [1, "two"] }, html: "<img src=x onerror=alert(1)>",
+    } }]);
+    await open(page, project);
+    await row(page, "t-1").click();
+    const d = page.locator(".detail");
+    await expect(d.locator(".dsec", { hasText: /^Metadata$/ })).toBeVisible();
+    const metadata = d.locator("pre").filter({ hasText: "feature/planning" });
+    await expect(metadata).toContainText('"/tmp/planning"');
+    await expect(metadata).toContainText('"enabled": true');
+    await expect(metadata).toContainText("<img src=x onerror=alert(1)>");
+    await expect(metadata.locator("img")).toHaveCount(0);
+    await metadata.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath("issue-metadata.png") });
+  });
+
+  test("detail omits absent extra sections", async ({ page, project }) => {
+    await open(page, project);
+    await row(page, "t-1").click();
+    await expect(page.locator(".detail .dsec", { hasText: /^(Close Reason|Metadata)$/ })).toHaveCount(0);
+  });
+
+  test("Markdown copy keeps extra detail sections", async ({ page, project }) => {
+    project.writeIssues([{ ...SAMPLE[1], close_reason: "Finished after review", metadata: { branch: "feature/planning" } }]);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "clipboard", { value: {
+        writeText: async (text: string) => { document.body.dataset.copied = text; },
+      } });
+    });
+    await open(page, project);
+    await row(page, "t-1").click();
+    await expect(page.locator(".detail")).toContainText("Finished after review");
+    await page.keyboard.press("c");
+    await expect(page.locator("body")).toHaveAttribute("data-copied", /### Close Reason\nFinished after review/);
+    await expect(page.locator("body")).toHaveAttribute("data-copied", /### Metadata\n\n {4}\{/);
+    await expect(page.locator("body")).toHaveAttribute("data-copied", /feature\/planning/);
+  });
+
   test("detail shows scheduling dates in local time and omits unset dates", async ({ page, project }, testInfo) => {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));

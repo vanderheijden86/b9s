@@ -893,7 +893,8 @@ export function renderDetail(was = detailPlace()): void {
       ${i.discovered_from.some(x => get(x)) ? `<div class="dsec">Discovered from</div>${i.discovered_from.map(relHTML).join("")}` : ""}
       ${i.related.some(x => get(x)) ? `<div class="dsec">Related</div>${i.related.map(relHTML).join("")}` : ""}
       ${memoryLinks(f)}
-      ${textSec("Description", f?.description, !f)}${textSec("Design", f?.design, !f)}${textSec("Acceptance", f?.acceptance, !f)}${textSec("Notes", f?.notes, !f)}
+      ${textSec("Close Reason", f?.close_reason, !f)}${textSec("Description", f?.description, !f)}${textSec("Design", f?.design, !f)}${textSec("Acceptance", f?.acceptance, !f)}${textSec("Notes", f?.notes, !f)}
+      ${f?.metadata ? `<div class="dsec">Metadata</div><div class="md"><pre><code>${esc(f.metadata)}</code></pre></div>` : ""}
       <div class="dsec"><span>Comments ${f ? cms.length : i.comment_count}</span><button data-act="commentsort" title="Reverse comment order">${S.commentsOldestFirst ? "Oldest first" : "Newest first"}</button>${ro ? "" : `<button data-act="comment">+ add</button>`}</div>
       ${cms.map(c => `<div class="cm"><div class="who"><b>${esc(c.author || "unknown")}</b> · ${age(Date.parse(c.created_at) || 0)}</div><div class="md">${md(c.text)}</div></div>`).join("") || `<div class="md"><p style="color:var(--muted)">${f || !i.comment_count ? "No comments." : "Loading…"}</p></div>`}
     </div>

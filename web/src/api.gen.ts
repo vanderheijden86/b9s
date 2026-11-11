@@ -13,6 +13,8 @@ export interface Issue {
   design: string;
   acceptance: string;
   notes: string;
+  close_reason: string;
+  metadata: string;
   status: string;
   priority: number;
   type: string;

@@ -1,9 +1,92 @@
 package datasource
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestApplyIssueDetailsSQLiteParameterBoundary(t *testing.T) {
+	db := openCreatorsDB(t,
+		`CREATE TABLE issues (id TEXT PRIMARY KEY, close_reason TEXT, metadata TEXT)`,
+		`WITH RECURSIVE numbers(n) AS (
+			SELECT 1 UNION ALL SELECT n + 1 FROM numbers WHERE n < 32768
+		)
+		INSERT INTO issues
+		SELECT 'bd-' || n, 'Finished ' || n, '{"branch":"branch-' || n || '"}' FROM numbers`,
+	)
+	for _, count := range []int{32766, 32767, 32768} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			issues := make([]model.Issue, count)
+			for i := range issues {
+				issues[i].ID = fmt.Sprintf("bd-%d", i+1)
+			}
+			if err := applyIssueDetails(db, issues); err != nil {
+				t.Fatalf("load details for %d issues: %v", count, err)
+			}
+			for i, issue := range issues {
+				wantReason := fmt.Sprintf("Finished %d", i+1)
+				wantMetadata := fmt.Sprintf(`{"branch":"branch-%d"}`, i+1)
+				if issue.CloseReason != wantReason || string(issue.Metadata) != wantMetadata {
+					t.Fatalf("issue %s: got %q, %s, want %q, %s",
+						issue.ID, issue.CloseReason, issue.Metadata, wantReason, wantMetadata)
+				}
+			}
+		})
+	}
+}
+
+func TestReadersPreserveExtraDetailFields(t *testing.T) {
+	for _, tc := range []struct{ name, schema string }{{"simple", sqliteSimpleSchema}, {"full", sqliteIssuesSchema}} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := openSQLiteFixture(t, []string{
+				tc.schema,
+				`ALTER TABLE issues ADD COLUMN close_reason TEXT`,
+				`ALTER TABLE issues ADD COLUMN metadata TEXT`,
+				`INSERT INTO issues (id, title, status, priority, issue_type, close_reason, metadata)
+					VALUES ('bd-39', 'Planning', 'closed', 2, 'task', 'Finished after review', '{"branch":"feature/planning","nested":{"count":9007199254740993}}')`,
+				`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+			})
+			reader, err := NewSQLiteReader(DataSource{Type: SourceTypeSQLite, Path: path})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			issues, err := reader.LoadIssues()
+			if err != nil || len(issues) != 1 {
+				t.Fatalf("LoadIssues = %+v, %v", issues, err)
+			}
+			assertExtraDetailFields(t, issues[0])
+			dolt := &DoltReader{db: reader.db}
+			issues, err = dolt.loadIssuesSimple(nil)
+			if err != nil || len(issues) != 1 {
+				t.Fatalf("Dolt simple read = %+v, %v", issues, err)
+			}
+			assertExtraDetailFields(t, issues[0])
+		})
+	}
+}
+
+func assertExtraDetailFields(t *testing.T, issue model.Issue) {
+	t.Helper()
+	raw, err := json.Marshal(issue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		CloseReason string          `json:"close_reason"`
+		Metadata    json.RawMessage `json:"metadata"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.CloseReason != "Finished after review" || string(got.Metadata) != `{"branch":"feature/planning","nested":{"count":9007199254740993}}` {
+		t.Errorf("detail fields lost: %s", raw)
+	}
+}
 
 // sqliteSimpleSchema is the 8-column shape loadIssuesSimple's fallback query
 // selects. A database with only these columns makes the full-schema query in
