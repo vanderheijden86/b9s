@@ -1,0 +1,83 @@
+{
+  "command": [
+    "timeout",
+    "720s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "cwd": "/home/omnigent/workspace/b9s",
+  "exit_code": 0,
+  "elapsed_seconds": 138.8668,
+  "counts": {
+    "top_level": {
+      "passed": 2125,
+      "failed": 0,
+      "skipped": 18,
+      "interrupted": 0,
+      "unrun": 0
+    },
+    "including_subtests": {
+      "passed": 3769,
+      "failed": 0,
+      "skipped": 20,
+      "interrupted": 0,
+      "unrun": 0
+    }
+  },
+  "skips": [
+    "--- SKIP: TestProbeMemory_RealBinaries (0.00s)",
+    "--- SKIP: TestS3StoreContract (0.00s)",
+    "--- SKIP: TestS3PutRejectsShortRead (0.00s)",
+    "--- SKIP: TestS3PutRejectsLongRead (0.00s)",
+    "--- SKIP: TestDoltReader_NewAndClose (0.00s)",
+    "--- SKIP: TestDoltReader_LoadIssues (0.00s)",
+    "--- SKIP: TestDoltReader_GetHeadHash (0.00s)",
+    "--- SKIP: TestDoltWatcher_NewAndStop (0.00s)",
+    "--- SKIP: TestDoltWatcher_StartIsIdempotent (0.00s)",
+    "--- SKIP: TestDoltWatcher_DetectsNoChangeOnPoll (0.00s)",
+    "--- SKIP: TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB (0.00s)",
+    "--- SKIP: TestMemoryPreviewGraphReadTiming (0.00s)",
+    "--- SKIP: TestMemoryReadResearchStages (0.00s)",
+    "--- SKIP: TestMemoryReadResearchTransportParity (0.00s)",
+    "--- SKIP: TestMemoryReadResearchConcurrentWriter (0.00s)",
+    "--- SKIP: TestStress_SustainedWrites (0.00s)",
+    "--- SKIP: TestStress_BurstWrites (0.00s)",
+    "--- SKIP: TestStress_MemoryPressure (0.00s)"
+  ],
+  "packages": [
+    "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t1.785s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.367s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.031s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t8.930s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.145s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.007s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t0.794s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.057s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.006s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.004s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t17.556s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.021s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.009s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.014s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t39.861s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.540s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.008s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.004s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.371s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t1.653s",
+    "ok  \tgithub.com/vanderheijden86/b9s/scripts/web\t0.051s",
+    "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.040s"
+  ],
+  "log": "/tmp/bd-p8zj-reports/test-stable.txt",
+  "flaky": "No retries ran. Single run cannot establish absence of flakes.",
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "host": "Linux 6.8.0-149-generic x86_64",
+    "GOFLAGS": "-v",
+    "image_digest": "unavailable"
+  }
+}

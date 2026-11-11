@@ -1,0 +1,15 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "vet",
+    "./..."
+  ],
+  "cwd": "/home/omnigent/workspace/b9s",
+  "elapsed_seconds": 21.6071,
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "test_counts": "not applicable: vet command"
+}

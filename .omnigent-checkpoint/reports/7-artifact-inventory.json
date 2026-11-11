@@ -1,0 +1,42 @@
+{
+  "PATH": "/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path:/opt/venv/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games",
+  "bd_path": "/usr/local/bin/bd",
+  "BD_REAL_override_present": false,
+  "artifacts": [
+    {
+      "path": "/usr/local/bin/bd",
+      "exists": true,
+      "sha256": "6d379e04af9063ec49e955a4da7d0a2cbf998f9e51cd690207d3acc6cbb21d8b"
+    },
+    {
+      "path": "/usr/local/libexec/beads/bd",
+      "exists": true,
+      "sha256": "33eef85573dc10c0f846dad743f9a30503f52e4fb60d6f9eb4ab5be83bb2c501"
+    },
+    {
+      "path": "/home/omnigent/workspace/b9s/.beads/hooks/post-checkout",
+      "exists": true,
+      "sha256": "cfaf5be55306380ad70b2831dc64f218b6006b8b3f8bff6d425e0a96c5e22752"
+    },
+    {
+      "path": "/home/omnigent/workspace/b9s/.beads/hooks/post-checkout.old",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "/home/omnigent/workspace/b9s/.git/hooks/post-checkout",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "/home/omnigent/workspace/b9s/.git/hooks/post-checkout.old",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "/tmp/bd-i8ag-reports",
+      "exists": false,
+      "sha256": null
+    }
+  ]
+}

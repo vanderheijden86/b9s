@@ -1,0 +1,15 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "build",
+    "./..."
+  ],
+  "cwd": "/home/omnigent/workspace/b9s",
+  "elapsed_seconds": 19.7255,
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "test_counts": "not applicable: build command"
+}
