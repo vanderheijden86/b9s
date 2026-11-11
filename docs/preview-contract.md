@@ -127,6 +127,13 @@ no pod restart, so the running server retains its CSRF value. Discovery does
 not grant database access or enable shared Dolt writes. The identity endpoint
 continues to report the image's baked commit, task and namespace.
 
+Pod readiness requires the identity endpoint, an authenticated `/api/session`
+response on the web port, and a nonblank tmux pane. The local HTTP requests
+each have a one-second timeout. Kubernetes caps each readiness probe at four
+seconds and the rollout command keeps its configured deadline. Identity alone
+cannot approve a Pod before the web listener and TUI start. The identity-only
+liveness probe remains independent of database and TUI readiness.
+
 The web process runs with `--projects-root /data/projects --discover-dolt`.
 Project-list and project-open requests refresh readable Beads databases through
 the same SELECT-only account. Discovery creates only local checkout metadata,
