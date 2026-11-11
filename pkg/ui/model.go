@@ -4689,7 +4689,7 @@ func viewKeyHelp(view focus) []struct{ key, desc string } {
 			{"g", "Dependency graph"}, {"e", "Edit issue"},
 			{"S", "Status of marked / selected"}, {"ctrl+f", "Search: filter or find"},
 			{"j", "Move down"}, {"k", "Move up"},
-			{"h", "Collapse / parent"}, {"l", "Expand / child"},
+			{"h", "Collapse / parent"}, {"l", "Expand / first visible child"},
 			{"home", "First row"}, {"end", "Last row"}, {"G", "Last row"},
 			{"pgdown", "Page down"}, {"pgup", "Page up"},
 			{"ctrl+d", "Half page down"}, {"ctrl+u", "Half page up"},
@@ -4734,7 +4734,13 @@ func viewKeyHelp(view focus) []struct{ key, desc string } {
 			{"enter", "Open selected issue"},
 		}
 	case focusDetail:
-		return []struct{ key, desc string }{{"e", "Edit issue"}}
+		return []struct{ key, desc string }{
+			{"1-9", "Open numbered child"},
+			{"n", "Next sibling beyond 9 (tree)"},
+			{"p", "Previous sibling (tree)"},
+			{"backspace", "Return after opening child"},
+			{"e", "Edit issue"},
+		}
 	case focusHelp:
 		return []struct{ key, desc string }{{"ctrl+s", "Search this help"}}
 	}
