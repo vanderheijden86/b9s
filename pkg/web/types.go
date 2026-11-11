@@ -48,9 +48,10 @@ type IssueMemoryLink struct {
 // change here that is not regenerated fails TestGeneratedTypesAreCurrent.
 
 // Issue is one issue as the browser shows it. A snapshot leaves out
-// Description, Design, Acceptance, Notes and Comments, which make up most of
-// its size, and the detail view reads them from GET api/issue. Blocked, Ready and ClosedLike
-// are derived on the server with the TUI's rules, so both UIs count alike.
+// Description, Design, Acceptance, Notes, CloseReason, Metadata and Comments,
+// which make up most of its size, and the detail view reads them from GET
+// api/issue. Blocked, Ready and ClosedLike are derived on the server with the
+// TUI's rules, so both UIs count alike.
 type Issue struct {
 	MemoryAvailable bool              `json:"memory_available"`
 	MemoryLoading   bool              `json:"memory_loading"`
@@ -61,6 +62,8 @@ type Issue struct {
 	Design          string            `json:"design"`
 	Acceptance      string            `json:"acceptance"`
 	Notes           string            `json:"notes"`
+	CloseReason     string            `json:"close_reason"`
+	Metadata        string            `json:"metadata"`
 	Status          string            `json:"status"`
 	Priority        int               `json:"priority"`
 	Type            string            `json:"type"`
