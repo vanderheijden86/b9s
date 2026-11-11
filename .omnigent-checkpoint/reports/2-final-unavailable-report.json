@@ -1,0 +1,30 @@
+{
+  "command": [
+    "timeout",
+    "90s",
+    "go",
+    "test",
+    "./internal/datasource",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "endpoint": "127.0.0.1:42515",
+    "server": "TCP accepts connections but withholds MySQL greeting",
+    "credentials": "root, empty password"
+  },
+  "exit_code": 1,
+  "elapsed_seconds": 3.546747342974413,
+  "counts": {
+    "passed": 204,
+    "failed": 2,
+    "skipped": 55,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "diagnostics": 1,
+  "connections": 1,
+  "reproduced_expected_failure": false
+}
