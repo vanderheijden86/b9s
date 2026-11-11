@@ -1,0 +1,29 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestClipboardOSC52AfterY$",
+    "-count=1",
+    "-timeout=120s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64",
+    "script": "util-linux 2.41.5",
+    "TERM": "screen-256color",
+    "CGO_ENABLED": "1"
+  },
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "exit_code": 0,
+  "report": "/tmp/bd-teri.6-green-e2e-3.jsonl"
+}
