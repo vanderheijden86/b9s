@@ -46,7 +46,7 @@ func TestDetailSchedulingDatesE2E(t *testing.T) {
 	writeTreeFixture(t, dir, []treeFixtureIssue{{
 		ID: "schedule-1", Title: "Scheduled issue", Status: "open", Priority: 2, IssueType: "task",
 		CreatedAt: "2026-10-17T12:00:00Z",
-		DueDate: "2026-10-20T23:45:00-07:00", DeferUntil: "2026-10-19T22:30:00-07:00",
+		DueDate:   "2026-10-20T23:45:00-07:00", DeferUntil: "2026-10-19T22:30:00-07:00",
 	}})
 	out, err := runTreeTUI(t, dir, 2500, []keyStep{kd("\r", 200*time.Millisecond)})
 	if err != nil {
@@ -590,6 +590,46 @@ func TestTreeViewCloseConfirmationAsksForComment(t *testing.T) {
 		"Comment: shipped",
 		"[Enter] Comment and close",
 	})
+}
+
+func TestTreeViewCloseConfirmationKeys(t *testing.T) {
+	for _, key := range []struct {
+		name     string
+		input    string
+		confirms bool
+	}{
+		{"enter", "\r", true},
+		{"y", "y", true},
+		{"Y", "Y", true},
+		{"esc", "\x1b", false},
+	} {
+		t.Run(key.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTreeFixture(t, dir, []treeFixtureIssue{{
+				ID: "close-1", Title: "Close from the TUI", Status: "open",
+				Priority: 2, IssueType: "task", CreatedAt: time.Now().Format(time.RFC3339),
+			}})
+			pathEnv, logPath := fakeBd(t)
+			out, err := runTreeTUIWithEnv(t, dir, 2500, []keyStep{k("K"), k(key.input)}, pathEnv)
+			if err != nil {
+				t.Fatalf("run TUI: %v\n%s", err, out)
+			}
+			containsAll(t, out, []string{"Close issue?", "[Enter] Close", "[Y] Close", "[Esc] Cancel"})
+			logged, err := os.ReadFile(logPath)
+			if !key.confirms {
+				if !os.IsNotExist(err) {
+					t.Fatalf("Esc must not call bd, got %q, error %v", logged, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("bd was never called: %v", err)
+			}
+			if string(logged) != "close\nclose-1\n" {
+				t.Fatalf("bd args = %q, want one close call for close-1", logged)
+			}
+		})
+	}
 }
 
 func TestTreeViewCreatedSortNumberedChildren(t *testing.T) {
