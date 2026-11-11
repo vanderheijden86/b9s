@@ -1,0 +1,23 @@
+{
+  "name": "focused-green",
+  "exit_code": 0,
+  "count_basis": "leaf tests (parent subtest containers excluded)",
+  "counts": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_counts": {
+    "pass": 4,
+    "fail": 0,
+    "skip": 0
+  },
+  "packages": {
+    "github.com/vanderheijden86/b9s/pkg/ui": "pass"
+  },
+  "nonpassing": {},
+  "source_report": "/tmp/bd-teri.11-evidence/focused-green.jsonl",
+  "command": "timeout 180s go test ./pkg/ui/ -run '^(TestCloseConfirmation|TestDeleteConfirmationEnter)' -count=1 -timeout=60s -json"
+}
