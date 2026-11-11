@@ -76,7 +76,21 @@ func (m Model) applyIdentities(msg identitiesLoadedMsg) Model {
 func (m *Model) setIdentities(reg *identity.Registry) {
 	m.identities = reg
 	m.tree.identities = reg
+	m.tree.invalidateColumnLayout()
 	m.board.SetIdentities(reg)
+}
+
+// personLabel keeps the stored alias visible when several actors share a name.
+func personLabel(reg *identity.Registry, alias string) string {
+	if alias == "" {
+		return ""
+	}
+	name := reg.DisplayName(alias)
+	label := "@" + name
+	if name != alias {
+		label += " (@" + alias + ")"
+	}
+	return sanitizeTerminalLine(label)
 }
 
 // assigneeMatches reports whether an issue passes the assignee filter. The
