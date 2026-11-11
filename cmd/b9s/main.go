@@ -177,6 +177,7 @@ func main() {
 	// poll.
 	appCfg, cfgErr := config.Load()
 	if cfgErr != nil {
+		fmt.Fprintf(os.Stderr, "b9s: cannot load %s: %v; using defaults (config file unchanged).\n", config.ConfigPath(), cfgErr)
 		appCfg = config.DefaultConfig()
 	}
 	applyMemoryLever(appCfg)
