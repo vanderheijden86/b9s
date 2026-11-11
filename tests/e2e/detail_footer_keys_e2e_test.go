@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,5 +77,49 @@ func TestDetailIgnoresRemovedEditorKeyE2E(t *testing.T) {
 	frame := treeFinalFrame(out)
 	if strings.Contains(frame, "Would open") || !strings.Contains(frame, "Detail issue") {
 		t.Fatalf("O must leave the detail visible without opening an editor:\n%s", frame)
+	}
+}
+
+func TestDetailChildrenBeyondNineE2E(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		keys string
+		want string
+	}{
+		{"tenth", "9n", "BODY-CHILD-10"},
+		{"last", "9" + strings.Repeat("n", 15), "BODY-CHILD-24"},
+		{"return-to-parent", "9n\x7f", "BODY-PARENT"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			now := time.Now()
+			issues := []treeFixtureIssue{{
+				ID: "many-epic", Title: "Many children", Status: "open", Priority: 1,
+				IssueType: "epic", CreatedAt: now.Format(time.RFC3339), Description: "BODY-PARENT",
+			}}
+			for n := 1; n <= 24; n++ {
+				id := fmt.Sprintf("many-child-%02d", n)
+				issues = append(issues, treeFixtureIssue{
+					ID: id, Title: fmt.Sprintf("Child %02d", n), Status: "open", Priority: 2,
+					IssueType: "task", CreatedAt: now.Add(-time.Duration(n) * time.Second).Format(time.RFC3339),
+					Description:  fmt.Sprintf("BODY-CHILD-%02d", n),
+					Dependencies: []*treeFixtureDep{{IssueID: id, DependsOnID: "many-epic", Type: "parent-child"}},
+				})
+			}
+			writeTreeFixture(t, dir, issues)
+			keys := []keyStep{kd("\r", 200*time.Millisecond)}
+			for _, key := range tc.keys {
+				keys = append(keys, kd(string(key), 50*time.Millisecond))
+			}
+			out, err := runTreeTUI(t, dir, 2500, keys)
+			if err != nil {
+				t.Fatalf("child navigation TUI failed: %v\n%s", err, out)
+			}
+			frame := treeFinalFrame(out)
+			if !strings.Contains(frame, tc.want) {
+				t.Fatalf("expected %q in the selected detail:\n%s", tc.want, frame)
+			}
+			t.Logf("terminal final frame:\n%s", frame)
+		})
 	}
 }

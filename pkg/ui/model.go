@@ -4734,7 +4734,13 @@ func viewKeyHelp(view focus) []struct{ key, desc string } {
 			{"enter", "Open selected issue"},
 		}
 	case focusDetail:
-		return []struct{ key, desc string }{{"e", "Edit issue"}}
+		return []struct{ key, desc string }{
+			{"1-9", "Open numbered child"},
+			{"n", "Next sibling beyond 9 (tree)"},
+			{"p", "Previous sibling (tree)"},
+			{"backspace", "Return after opening child"},
+			{"e", "Edit issue"},
+		}
 	case focusHelp:
 		return []struct{ key, desc string }{{"ctrl+s", "Search this help"}}
 	}
