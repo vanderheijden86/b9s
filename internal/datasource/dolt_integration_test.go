@@ -2,20 +2,24 @@ package datasource
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/vanderheijden86/b9s/pkg/model"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 )
 
 // Integration tests for the Dolt backend.
@@ -70,6 +74,218 @@ func loadEnvTestFile() {
 }
 
 const testDBPrefix = "b9s_inttest_"
+
+var doltTestServers sync.Map
+
+type doltTestServer struct {
+	probe  sync.Once
+	report sync.Once
+	err    error
+}
+
+// Each endpoint's setup is shared so an infrastructure failure cannot turn
+// into a connection timeout in every test. No database is selected or written.
+func requireDoltTestServer(t *testing.T, dsn string) {
+	t.Helper()
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		t.Fatalf("Dolt integration setup configuration: %v", err)
+	}
+	cfg.DBName = ""
+	cfg.Timeout = time.Second
+	cfg.ReadTimeout = time.Second
+	cfg.WriteTimeout = time.Second
+	value, _ := doltTestServers.LoadOrStore(cfg.Net+"\x00"+cfg.Addr, &doltTestServer{})
+	server := value.(*doltTestServer)
+	server.probe.Do(func() {
+		connector, err := mysql.NewConnector(cfg)
+		if err != nil {
+			server.err = err
+			return
+		}
+		db := sql.OpenDB(connector)
+		defer db.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		server.err = db.PingContext(ctx)
+	})
+	if server.err != nil {
+		server.report.Do(func() {
+			t.Fatalf("Dolt integration infrastructure unavailable at %s: %v", cfg.Addr, server.err)
+		})
+		t.Skip("Dolt integration setup failed, see first infrastructure error")
+	}
+}
+
+func TestDoltServerSetupUnavailable(t *testing.T) {
+	if os.Getenv("B9S_TEST_DOLT_SETUP_HELPER") == "1" {
+		for i := range 3 {
+			t.Run(fmt.Sprintf("case%d", i), func(t *testing.T) {
+				addr := os.Getenv(scratchAddrEnv)
+				if i == 1 {
+					skipIfNoDolt(t)
+				} else {
+					addr = requireScratchServer(t)
+				}
+				db, err := sql.Open("mysql", buildDSN("root", "", addr, ""))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer db.Close()
+				if err := db.Ping(); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+		return
+	}
+
+	// A TCP listener without a MySQL greeting reproduces a server that cannot
+	// complete setup, without depending on routing or a live Dolt database.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var connections atomic.Int32
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			connections.Add(1)
+			t.Cleanup(func() { conn.Close() })
+		}
+	}()
+	t.Cleanup(func() {
+		listener.Close()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Error("listener did not stop")
+		}
+	})
+	t.Setenv(scratchAddrEnv, listener.Addr().String())
+	t.Setenv("B9S_TEST_DOLT_DSN", buildDSN("root", "", listener.Addr().String(), ""))
+	t.Setenv("BEADS_DOLT_PASSWORD", "")
+	t.Setenv("B9S_TEST_DOLT_SETUP_HELPER", "1")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestDoltServerSetupUnavailable$", "-test.v", "-test.timeout=5s")
+	start := time.Now()
+	output, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		t.Fatalf("Dolt setup repeated connection waits: %v\n%s", ctx.Err(), output)
+	}
+	if err == nil {
+		t.Fatalf("unavailable infrastructure must fail the run\n%s", output)
+	}
+	if got := strings.Count(string(output), "Dolt integration infrastructure unavailable"); got != 1 {
+		t.Errorf("infrastructure diagnostics = %d, want 1\n%s", got, output)
+	}
+	failed := strings.Count(string(output), "--- FAIL: TestDoltServerSetupUnavailable/case")
+	if failed != 1 {
+		t.Errorf("failed cases = %d, want 1\n%s", failed, output)
+	}
+	skipped := strings.Count(string(output), "--- SKIP: TestDoltServerSetupUnavailable/case")
+	if skipped != 2 {
+		t.Errorf("skipped cases = %d, want 2\n%s", skipped, output)
+	}
+	if got := connections.Load(); got != 1 {
+		t.Errorf("connections = %d, want 1", got)
+	}
+	if elapsed := time.Since(start); elapsed >= 4*time.Second {
+		t.Errorf("setup took %s, want less than 4s", elapsed)
+	}
+	t.Logf("setup child: failed=%d skipped=%d connections=%d elapsed=%s", failed, skipped, connections.Load(), time.Since(start))
+}
+
+func TestDoltServerSetupAvailable(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	result := make(chan error, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			result <- err
+			return
+		}
+		defer conn.Close()
+		conn.SetDeadline(time.Now().Add(3 * time.Second))
+		writePacket := func(sequence byte, payload []byte) error {
+			packet := append([]byte{byte(len(payload)), 0, 0, sequence}, payload...)
+			_, err := conn.Write(packet)
+			return err
+		}
+		readPacket := func() ([]byte, error) {
+			header := make([]byte, 4)
+			if _, err := io.ReadFull(conn, header); err != nil {
+				return nil, err
+			}
+			size := int(header[0]) | int(header[1])<<8 | int(header[2])<<16
+			if size > 4096 {
+				return nil, fmt.Errorf("unexpected packet size %d", size)
+			}
+			payload := make([]byte, size)
+			_, err := io.ReadFull(conn, payload)
+			return payload, err
+		}
+		// Protocol 4.1 with native password authentication lets the real driver
+		// finish setup without a Dolt process or access to any database.
+		greeting := append([]byte{10}, []byte("5.7.0\x00")...)
+		greeting = append(greeting, 1, 0, 0, 0)
+		greeting = append(greeting, []byte("12345678\x00")...)
+		greeting = append(greeting, 1, 130, 33, 2, 0, 0, 0, 0)
+		greeting = append(greeting, make([]byte, 10)...)
+		greeting = append(greeting, []byte("abcdefghijkl\x00")...)
+		if err := writePacket(0, greeting); err != nil {
+			result <- err
+			return
+		}
+		login, err := readPacket()
+		if err == nil && (len(login) < 4 || login[0]&8 != 0) {
+			err = fmt.Errorf("setup login selected a database")
+		}
+		if err != nil {
+			result <- err
+			return
+		}
+		ok := []byte{0, 0, 0, 2, 0, 0, 0}
+		if err := writePacket(2, ok); err != nil {
+			result <- err
+			return
+		}
+		ping, err := readPacket()
+		if err == nil && (len(ping) != 1 || ping[0] != 14) {
+			err = fmt.Errorf("command = %v, want COM_PING without SQL", ping)
+		}
+		if err == nil {
+			err = writePacket(1, ok)
+		}
+		result <- err
+	}()
+	dsn := buildDSN("root", "", listener.Addr().String(), "unused_database")
+	for range 3 {
+		requireDoltTestServer(t, dsn)
+	}
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(4 * time.Second):
+		t.Fatal("MySQL protocol server did not finish")
+	}
+}
 
 // doltIntegrationDSN builds a DSN for integration tests from env vars.
 // Returns "" if no Dolt server is configured.
