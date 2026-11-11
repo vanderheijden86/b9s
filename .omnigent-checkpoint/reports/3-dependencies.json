@@ -1,0 +1,14 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "mod",
+    "download"
+  ],
+  "cwd": "/home/omnigent/workspace/b9s",
+  "elapsed_seconds": 8.047,
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": ""
+}

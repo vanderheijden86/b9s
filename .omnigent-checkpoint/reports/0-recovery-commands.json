@@ -1,0 +1,263 @@
+[
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "show",
+      "origin/omnigent-checkpoints/bd-i8ag:.omnigent-checkpoint/manifest.json"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0063,
+    "exit_code": 0,
+    "stdout": "{\"base_ref\": \"origin/main\", \"base_sha\": \"eb77cef9f8e68e9854f3c1b6ec6a6074b812830a\", \"branch\": \"omnigent/bd-i8ag\", \"evidence\": {\"command\": [\"timeout\", \"720s\", \"env\", \"GOFLAGS=-v\", \"make\", \"-C\", \"/home/omnigent/workspace/b9s\", \"test-stable\"], \"counts\": {\"failed\": 0, \"interrupted\": 0, \"passed\": 2125, \"skipped\": 18, \"unrun\": 0}, \"environment\": {\"GOFLAGS\": \"-v\", \"bd\": \"1.3.0-rc.1 (9c6a69ec1: HEAD@9c6a69ec1235)\", \"host\": \"Linux 6.8.0-149-generic x86_64 GNU/Linux\", \"runtime\": \"go version go1.25.5 linux/amd64\"}}, \"origin_sha256\": \"48205f11877bbcc3a84995d4554b8fe6bb31e76ee672b92cf328366266c784c4\", \"reports\": [\".omnigent-checkpoint/reports/0-implementation-report.md\"], \"schema\": 1, \"source_head\": \"eb77cef9f8e68e9854f3c1b6ec6a6074b812830a\", \"source_tree\": \"8b5986b3dc6b17baf55dabeab174eafdd4d9f121\", \"task\": \"bd-i8ag\"}",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "show",
+      "origin/omnigent-checkpoints/bd-i8ag:.omnigent-checkpoint/reports/0-implementation-report.md"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0046,
+    "exit_code": 0,
+    "stdout": "# bd-i8ag implementation report: blocked\n\nNo repository files changed. No delivery commit, delivery push or PR was made.\nThe diagnostic checkpoint is unapproved and uses a separate checkpoint ref.\n\n## Git preflight\n\n- Shared repository: /home/omnigent/workspace/b9s.\n- Assigned base and PR target: main.\n- Actual branch: omnigent/bd-i8ag.\n- HEAD: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a.\n- Fetched origin/main: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a.\n- `timeout 60s git -C /home/omnigent/workspace/b9s fetch origin main` exited 0.\n- `git -C /home/omnigent/workspace/b9s rev-parse --verify refs/remotes/origin/main` found the assigned base.\n- `timeout 60s git -C /home/omnigent/workspace/b9s ls-remote --exit-code --heads origin refs/heads/omnigent/bd-i8ag` exited 2: absent.\n- Local delivery branch was absent. Created with `git switch -c omnigent/bd-i8ag origin/main`.\n- Required commits and ancestry checks: none.\n- Initial and final worktree: clean, no unrelated work.\n- Initial `lane-checkpoint inspect` exited 2: no checkpoint exists.\n\n## Diagnostic evidence\n\nThe repository's generated `.beads/hooks/post-checkout` delegates to the external\n`bd hooks run post-checkout`. Its 300-second timeout is a limit, not an idle delay.\nThis repository does not implement that command or contain the repair diagnostic.\n\nUpstream v0.63.3 resolves to `884cc1171e3eb3ee44c1762973dfb8da6b56cdcc`.\nThe source was read at that exact tag, not inferred from current documentation:\n\n- [Hook handler](https://github.com/gastownhall/beads/blob/884cc1171e3eb3ee44c1762973dfb8da6b56cdcc/cmd/bd/hooks.go): `runPostCheckoutHook` only runs a chained `post-checkout.old` when present. `hooksRunCmd` exits through `os.Exit`, bypassing the root post-command auto-push path.\n- [Startup](https://github.com/gastownhall/beads/blob/884cc1171e3eb3ee44c1762973dfb8da6b56cdcc/cmd/bd/main.go): the `hooks` parent skips full database initialization.\n- Searching the complete extracted upstream release source found no `beads: repair:` diagnostic.\n- The Pod has no configured `core.hooksPath` and no incident `post-checkout.old`.\n- The shim version marker does not establish which executable or shell wrapper ran during the incident.\n\nThe Pod's installed bd is `1.3.0-rc.1 (9c6a69ec1: HEAD@9c6a69ec1235)`.\nA direct hook probe against isolated server-mode metadata targeting unreachable\n`127.0.0.1:1`, without shared credentials, exited 0 in 0.2446 seconds.\nIt printed a directory-permission warning and no Dolt-remote advice.\nThis different executable is not a reproduction or proof of an incident fix.\n\nThe official Linux v0.63.3 archive matches the release's SHA-256:\n`5f4efd2e010209b3f381dbcd783b2a3a652f50ea72f40ef04c8ba434d408bf9e`.\nIts embedded build revision matches the source tag. The binary cannot start in\nthis image because `libicui18n.so.74` is missing. Version, direct hook and shim\nattempts all exited 127 at the dynamic loader. No CLI check ran in those attempts.\nThe three attempts each had a 15-second subprocess deadline. No system packages,\nDolt remotes or shared-server experiments were used.\n\nReports:\n\n- `/tmp/bd-i8ag-reports/preflight.txt`\n- `/tmp/bd-i8ag-reports/diagnosis.txt`\n- `/tmp/bd-i8ag-reports/isolated-hook.json`: exact argv, isolated environment, loader errors.\n- `/tmp/bd-i8ag-reports/current-hook.json`: exact current-binary probe and measured duration.\n- `/tmp/bd-i8ag-reports/stock-runtime.txt`: loader dependencies and binary build revision.\n\n## Required checks\n\nCommands ran from `/home/omnigent/workspace/b9s` unless `-C` is explicit.\nDependencies were installed before any check using the committed go.mod/go.sum.\nNo lockfile changed. Go: go1.25.5 linux/amd64. Host: Linux 6.8.0-149-generic x86_64.\nContainer image digest is unavailable.\n\n| Command | Exit | Observed result |\n| --- | --- | --- |\n| `timeout 180s go mod download` | 0 | Dependencies installed |\n| `timeout 720s env GOFLAGS=-v make -C /home/omnigent/workspace/b9s test-stable` | 0 | 2125 top-level passed, 0 failed, 18 skipped, 0 interrupted, 0 unrun within the selected suite |\n| `timeout 180s go build ./...` | 0 | Build completed, test counts not applicable |\n| `timeout 180s go vet ./...` | 0 | Vet completed, test counts not applicable |\n| Focused bug RED/GREEN | Not run | Required blocker bd-i8ag: no causal reproduction or owned fix |\n\nThe stable target ran alone, with its declared 10-minute Go package deadline\nand a 720-second outer deadline. Compiler progress was observed during the cold\nbuild. No timeout occurred. GOFLAGS=-v records test outcomes without changing the\nselected suite. The selected suite includes 22 packages.\n\nIncluding nested subtests, stable results are 3769 passed, 0 failed, 20 skipped.\nThese are alternative counting scopes, not additive totals. Property iterations\nand console sequence numbers were not counted as Go tests. No retry ran, so no\nflaky outcome was identified. A single run does not establish absence of flakes.\n\nThe 18 top-level skips are declared opt-in tests: real bd capability (1), S3 (3),\nDolt DSN (7), Memory preview/research fixtures (4), and PERF_TEST stress tests (3).\nMakefile exclusions and tests/e2e are outside the selected stable suite and are\nnot represented as reported skips. No browser/UI changes or browser suite ran.\n\nRaw completed output: `test-stable.txt`, `build.txt`, `vet.txt` in the report folder.\nMeasured stable summary: `/tmp/bd-i8ag-reports/test-stable-summary.json`.\n\n## Unresolved required blockers\n\nAll unresolved required acceptance failures belong to **bd-i8ag**:\n\n1. The actual cause of the two-minute wait remains unproved. The incident's resolved executable, shell wrapper, chained hooks and sanitized startup configuration are absent.\n2. The reported repair hint's emitter is unidentified. Its absence from this repository and inspected stock source prevents an evidence-based server-mode fix.\n3. The stock incident-version probe is incomplete: missing `libicui18n.so.74`, loader exit 127. This is a runtime prerequisite failure, not a successful hook check.\n4. Focused RED/GREEN and a regression guard remain unrun because there is no causal reproduction or repository-owned fix to exercise.\n5. Safe behavior for the incident path and an affected documentation change have not been established. No claim of acceptance success is made.\n\nPolly needs the incident executable/wrapper provenance and matching isolated runtime\nbefore resuming the diagnosis. No source workaround was made, as dispatched.\nNo separate issue was created because these are unresolved parts of bd-i8ag.\n\nUnrelated follow-up work: none implemented or filed. The existing metadata-port\ndeprecation warning was observed during bd progress comments and left unchanged.\n\n## Handoff\n\nReturn for review of this blocked diagnosis. The evidence narrows ownership and\nrecords the unavailable prerequisites, but does not identify the delay's root cause.\nNo repository diff is ready for approval. Delivery remains unapproved.\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "origin/omnigent-checkpoints/bd-i8ag",
+      "--",
+      ".omnigent-checkpoint"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0051,
+    "exit_code": 0,
+    "stdout": ".omnigent-checkpoint/manifest.json\n.omnigent-checkpoint/reports/0-implementation-report.md\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "config",
+      "--show-origin",
+      "--get",
+      "core.hooksPath"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0032,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "log",
+      "--all",
+      "--format=%H %aI %s",
+      "--",
+      ".beads/hooks/post-checkout",
+      ".beads/hooks/post-checkout.old"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0612,
+    "exit_code": 0,
+    "stdout": "3b12b5aa5f0769b55aa4c5287fbc4337c57fb44a 2026-03-31T13:42:10+02:00 bd init: initialize beads issue tracking\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "show",
+      "6e05818d5c4980949fb98c2008a8a8949785da10:.beads/hooks/post-checkout"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0075,
+    "exit_code": 0,
+    "stdout": "#!/usr/bin/env sh\n# --- BEGIN BEADS INTEGRATION v0.63.3 ---\n# This section is managed by beads. Do not remove these markers.\nif command -v bd >/dev/null 2>&1; then\n  export BD_GIT_HOOK=1\n  _bd_timeout=${BEADS_HOOK_TIMEOUT:-300}\n  if command -v timeout >/dev/null 2>&1; then\n    timeout \"$_bd_timeout\" bd hooks run post-checkout \"$@\"\n    _bd_exit=$?\n    if [ $_bd_exit -eq 124 ]; then\n      echo >&2 \"beads: hook 'post-checkout' timed out after ${_bd_timeout}s \u2014 continuing without beads\"\n      _bd_exit=0\n    fi\n  else\n    bd hooks run post-checkout \"$@\"\n    _bd_exit=$?\n  fi\n  if [ $_bd_exit -eq 3 ]; then\n    echo >&2 \"beads: database not initialized \u2014 skipping hook 'post-checkout'\"\n    _bd_exit=0\n  fi\n  if [ $_bd_exit -ne 0 ]; then exit $_bd_exit; fi\nfi\n# --- END BEADS INTEGRATION v0.63.3 ---\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "show",
+      "6e05818d5c4980949fb98c2008a8a8949785da10:.beads/config.yaml"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0057,
+    "exit_code": 0,
+    "stdout": "# Beads Configuration File\n# This file configures default behavior for all bd commands in this repository\n# All settings can also be set via environment variables (BD_* prefix)\n# or overridden with command-line flags\n\n# Issue prefix for this repository (used by bd init)\n# If not set, bd init will auto-detect from directory name\n# Example: issue-prefix: \"myproject\" creates issues like \"myproject-1\", \"myproject-2\", etc.\n# issue-prefix: \"\"\n\n# Use no-db mode: load from JSONL, no SQLite, write back after each command\n# When true, bd will use .beads/issues.jsonl as the source of truth\n# instead of SQLite database\n# no-db: false\n\n# Disable daemon for RPC communication (forces direct database access)\n# no-daemon: false\n\n# Disable auto-flush of database to JSONL after mutations\n# no-auto-flush: false\n\n# Disable auto-import from JSONL when it's newer than database\n# no-auto-import: false\n\n# Enable JSON output by default\n# json: false\n\n# Default actor for audit trails (overridden by BD_ACTOR or --actor)\n# actor: \"\"\n\n# Path to database (overridden by BEADS_DB or --db)\n# db: \"\"\n\n# Auto-start daemon if not running (can also use BEADS_AUTO_START_DAEMON)\n# auto-start-daemon: true\n\n# Debounce interval for auto-flush (can also use BEADS_FLUSH_DEBOUNCE)\n# flush-debounce: \"5s\"\n\n# Multi-repo configuration (experimental - bd-307)\n# Allows hydrating from multiple repositories and routing writes to the correct JSONL\n# repos:\n#   primary: \".\"  # Primary repo (where this database lives)\n#   additional:   # Additional repos to hydrate from (read-only)\n#     - ~/beads-planning  # Personal planning repo\n#     - ~/work-planning   # Work planning repo\n\n# Dolt connection is configured in metadata.json (written by bd init --server).\n# b9s reads metadata.json directly so bd and b9s always use the same connection.\n# Password is in env var BEADS_DOLT_PASSWORD.\n\n# Integration settings (access with 'bd config get/set')\n# These are stored in the database, not in this file:\n# - jira.url\n# - jira.project\n# - linear.url\n# - linear.api-key\n# - github.org\n# - github.repo\n# - sync.branch - Git branch for beads commits (use BEADS_SYNC_BRANCH env var or bd config set)\n\n# Disabled because this project connects as its own scoped SQL user\n# (issue-project-credentials.sh). Registering a Dolt backup remote is a\n# server-admin operation, so bd's auto-backup fails with \"command denied\" on\n# every command otherwise.\nbackup:\n  enabled: false\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "6e05818d5c4980949fb98c2008a8a8949785da10",
+      "--",
+      ".beads/hooks",
+      ".beads/metadata.json"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0056,
+    "exit_code": 0,
+    "stdout": ".beads/hooks/post-checkout\n.beads/hooks/post-merge\n.beads/hooks/pre-commit\n.beads/hooks/pre-push\n.beads/hooks/prepare-commit-msg\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "log",
+      "--all",
+      "-1",
+      "--format=%H %aI %s",
+      "--",
+      ".beads/metadata.json"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0183,
+    "exit_code": 0,
+    "stdout": "430e6217dcac329dddce93b843f028ba275abdc4 2026-07-07T15:21:59+02:00 chore(beads): untrack machine-specific metadata.json\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "grep",
+      "-n",
+      "-F",
+      "beads: repair:",
+      "6e05818d5c4980949fb98c2008a8a8949785da10",
+      "--",
+      ".beads",
+      "scripts"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0514,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "git",
+      "-C",
+      "/home/omnigent/workspace/b9s",
+      "grep",
+      "-n",
+      "-F",
+      "beads: repair:",
+      "HEAD",
+      "--",
+      ".beads",
+      "scripts"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0411,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "go",
+      "version"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.015,
+    "exit_code": 0,
+    "stdout": "go version go1.25.5 linux/amd64\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "uname",
+      "-srm"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0039,
+    "exit_code": 0,
+    "stdout": "Linux 6.8.0-149-generic x86_64\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "ldd",
+      "/usr/local/libexec/beads/bd"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0125,
+    "exit_code": 0,
+    "stdout": "\tlinux-vdso.so.1 (0x00007ffc2efd8000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000071a024202000)\n\t/lib64/ld-linux-x86-64.so.2 (0x000071a024403000)\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "timeout",
+      "30s",
+      "go",
+      "version",
+      "-m",
+      "/usr/local/libexec/beads/bd"
+    ],
+    "cwd": "/home/omnigent/workspace/b9s",
+    "elapsed_seconds": 0.0081,
+    "exit_code": 0,
+    "stdout": "/usr/local/libexec/beads/bd: go1.26.7\n\tpath\tgithub.com/steveyegge/beads/cmd/bd\n\tmod\tgithub.com/steveyegge/beads\tv1.3.0-rc.1\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-ldflags=\"-s -w -X main.Version=1.3.0-rc.1 -X main.Build=9c6a69ec1 -X main.Commit=9c6a69ec12350959ec8c495c74eeb02902d629b6 -X main.Branch=HEAD\"\n\tbuild\t-tags=gms_pure_go\n\tbuild\tCGO_ENABLED=1\n\tbuild\tCGO_CFLAGS=\n\tbuild\tCGO_CPPFLAGS=\n\tbuild\tCGO_CXXFLAGS=\n\tbuild\tCGO_LDFLAGS=\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=9c6a69ec12350959ec8c495c74eeb02902d629b6\n\tbuild\tvcs.time=2026-08-31T07:47:46Z\n\tbuild\tvcs.modified=false\n",
+    "stderr": ""
+  }
+]
