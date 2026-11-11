@@ -1,0 +1,24 @@
+{
+  "source_report": "/tmp/bd-teri.5/focused-final.json",
+  "exit_code": 0,
+  "count_basis": "leaf Go test cases, excluding parent containers",
+  "counts": {
+    "passed": 42,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "named_nodes": {
+    "pass": 46
+  },
+  "packages": {
+    "pass": 1
+  },
+  "skips": [],
+  "failures": [],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64"
+  }
+}
