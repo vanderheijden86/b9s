@@ -1,0 +1,31 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./pkg/ui/",
+    "-run",
+    "^TestSearch",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 0,
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "counts": {
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "top_level_counts": {
+    "pass": 19
+  },
+  "failed": [],
+  "skipped": []
+}
