@@ -1,0 +1,75 @@
+diff --git a/tests/e2e/tree_view_e2e_test.go b/tests/e2e/tree_view_e2e_test.go
+index 6442604a..a8d3a723 100644
+--- a/tests/e2e/tree_view_e2e_test.go
++++ b/tests/e2e/tree_view_e2e_test.go
+@@ -46,7 +46,7 @@ func TestDetailSchedulingDatesE2E(t *testing.T) {
+ 	writeTreeFixture(t, dir, []treeFixtureIssue{{
+ 		ID: "schedule-1", Title: "Scheduled issue", Status: "open", Priority: 2, IssueType: "task",
+ 		CreatedAt: "2026-10-17T12:00:00Z",
+-		DueDate: "2026-10-20T23:45:00-07:00", DeferUntil: "2026-10-19T22:30:00-07:00",
++		DueDate:   "2026-10-20T23:45:00-07:00", DeferUntil: "2026-10-19T22:30:00-07:00",
+ 	}})
+ 	out, err := runTreeTUI(t, dir, 2500, []keyStep{kd("\r", 200*time.Millisecond)})
+ 	if err != nil {
+@@ -873,23 +873,47 @@ func TestTreeViewNavigation(t *testing.T) {
+ 	containsAll(t, out, []string{"Epic One", "Task One"})
+ }
+ 
+-// TestTreeViewJumpTopBottom verifies g/G jump to top/bottom of the tree.
++// TestTreeViewJumpTopBottom verifies Home/G select the first/last tree row.
+ func TestTreeViewJumpTopBottom(t *testing.T) {
+-	tempDir := t.TempDir()
+-	writeTreeFixture(t, tempDir, makeTreeHierarchy(t))
++	// The selected row is identified by its background, so colour is forced on.
++	t.Setenv("NO_COLOR", "")
++	t.Setenv("CLICOLOR_FORCE", "1")
++	t.Setenv("COLORTERM", "truecolor")
++	for _, tc := range []struct {
++		name  string
++		keys  []keyStep
++		title string
++	}{
++		{name: "bottom", keys: []keyStep{k("\x1b[H"), k("G")}, title: "Standalone Task"},
++		{name: "top", keys: []keyStep{k("G"), k("\x1b[H")}, title: "Epic One"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			tempDir := t.TempDir()
++			issues := makeTreeHierarchy(t)
++			// Created descending puts epic-1 first and standalone-1 last.
++			created := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
++			for i := range issues {
++				issues[i].CreatedAt = created.Add(-time.Duration(i) * time.Hour).Format(time.RFC3339)
++			}
++			writeTreeFixture(t, tempDir, issues)
++			keys := append([]keyStep{k("X")}, tc.keys...)
++			out, err := runTreeTUI(t, tempDir, 3000, keys)
++			if err != nil {
++				t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
++			}
+ 
+-	out, err := runTreeTUI(t, tempDir, 3000, []keyStep{
+-		// Tree view is the default on launch (bd-dxc)
+-		k("X"), // Expand all to have many nodes
+-		k("G"), // Jump to bottom
+-		k("g"), // Jump to top
+-	})
+-	if err != nil {
+-		t.Fatalf("TUI run failed: %v\noutput:\n%s", err, out)
++			frame := treeFinalFrame(out)
++			selected := false
++			for _, row := range strings.Split(frame, "\n") {
++				if titleHasBackground(row, tc.title) {
++					selected = true
++				}
++			}
++			if !selected {
++				t.Fatalf("expected %s to be highlighted as selected; final frame:\n%s", tc.title, frame)
++			}
++		})
+ 	}
+-
+-	// Should show the full tree
+-	containsAll(t, out, []string{"Epic One", "Standalone Task"})
+ }
+ 
+ // TestTreeViewCollapseOrJumpToParent verifies h key collapses expanded nodes
