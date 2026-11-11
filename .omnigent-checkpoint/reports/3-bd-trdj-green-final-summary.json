@@ -1,0 +1,23 @@
+{
+  "report": "/tmp/bd-trdj-green-final.jsonl",
+  "exit_code": 0,
+  "counts_including_subtests_and_parents": {
+    "passed": 115,
+    "failed": 0,
+    "skipped": 0
+  },
+  "leaf_test_counts": {
+    "passed": 101,
+    "failed": 0,
+    "skipped": 0
+  },
+  "top_level_counts": {
+    "pass": 63
+  },
+  "package_outcomes": {
+    "pass": 2
+  },
+  "failed_tests": [],
+  "skipped_tests": [],
+  "started_without_outcome": []
+}

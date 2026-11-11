@@ -1,0 +1,55 @@
+{
+  "report": "/tmp/bd-trdj-stable.txt",
+  "exit_code": 0,
+  "counts_including_subtests_and_parents": {
+    "passed": 3804,
+    "failed": 0,
+    "skipped": 20
+  },
+  "leaf_test_counts": {
+    "passed": 3586,
+    "failed": 0,
+    "skipped": 20
+  },
+  "top_level_counts": {
+    "pass": 2128,
+    "skip": 18
+  },
+  "package_outcomes": {
+    "pass": 22
+  },
+  "failed_tests": [],
+  "skipped_tests": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "started_without_outcome": [],
+  "outcomes_without_start": [],
+  "skip_reasons": {
+    "real_bd_binaries_not_configured": 1,
+    "s3_endpoint_not_configured": 3,
+    "dolt_test_dsn_not_configured": 7,
+    "isolated_memory_preview_or_research_not_configured": 4,
+    "optional_real_issue_fixtures_not_present": 2,
+    "opt_in_perf_stress_disabled": 3
+  },
+  "makefile_exclusions": "tests/e2e package and STABLE_SKIP patterns are excluded by make test-stable. They are not counted as runtime skips."
+}

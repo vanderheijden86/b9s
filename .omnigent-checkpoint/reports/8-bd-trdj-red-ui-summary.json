@@ -1,0 +1,26 @@
+{
+  "report": "/tmp/bd-trdj-red-ui.jsonl",
+  "exit_code": 1,
+  "counts_including_subtests_and_parents": {
+    "passed": 0,
+    "failed": 2,
+    "skipped": 0
+  },
+  "leaf_test_counts": {
+    "passed": 0,
+    "failed": 2,
+    "skipped": 0
+  },
+  "top_level_counts": {
+    "fail": 2
+  },
+  "package_outcomes": {
+    "fail": 1
+  },
+  "failed_tests": [
+    "TestSortFieldCount",
+    "TestSortPopupRendering"
+  ],
+  "skipped_tests": [],
+  "started_without_outcome": []
+}

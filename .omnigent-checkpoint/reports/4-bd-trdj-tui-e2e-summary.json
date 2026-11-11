@@ -1,0 +1,23 @@
+{
+  "report": "/tmp/bd-trdj-tui-e2e.jsonl",
+  "exit_code": 0,
+  "counts_including_subtests_and_parents": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "leaf_test_counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "top_level_counts": {
+    "pass": 1
+  },
+  "package_outcomes": {
+    "pass": 1
+  },
+  "failed_tests": [],
+  "skipped_tests": [],
+  "started_without_outcome": []
+}
