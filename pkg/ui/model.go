@@ -2435,7 +2435,10 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			m = m.handleQueryKey(msg)
-			return m, tea.Batch(cmds...)
+			// An accepted arrow belongs to the results' normal key handler.
+			if m.queryState.Mode() == QueryEditing || (msg.String() != "up" && msg.String() != "down") {
+				return m, tea.Batch(cmds...)
+			}
 		}
 		// The ':' prompt sits after the query guard, so ':' typed into a query
 		// stays query text, and before the Escape handler below, so Escape
@@ -5332,9 +5335,14 @@ func (m Model) handleQueryKey(msg tea.KeyMsg) Model {
 	case "enter":
 		m.queryState.saveHistory()
 		m.queryState.Accept()
-	case "up", "down":
+	case "up", "down", "alt+up", "alt+down":
+		if !msg.Alt && strings.TrimSpace(m.queryState.Text()) != "" && m.queryState.historyCursor == len(m.queryState.history) {
+			m.queryState.saveHistory()
+			m.queryState.Accept()
+			break
+		}
 		selectedID := m.tree.GetSelectedID()
-		m.queryState.recallHistory(msg.String() == "up")
+		m.queryState.recallHistory(msg.Type == tea.KeyUp)
 		m.setQueryText(m.queryState.Text())
 		if m.tree.SelectByID(selectedID) {
 			m.tree.ensureCursorVisible()

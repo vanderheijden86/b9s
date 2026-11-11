@@ -38,7 +38,7 @@ It is also what keeps the matching honest. A SQL `LIKE` and a Go fuzzy matcher w
 
 The other half of decision record 0002 is about focus. While the query field is being edited, it takes every key. That was covered in the last chapter as a routing rule, but it is worth seeing why it is a query decision as much as a keys decision.
 
-k9s filters the same way: `/` opens a field, typing filters, `Enter` keeps the filter and returns focus to the table, `Esc` clears it. Users who arrive from k9s expect exactly that, and users who do not arrive from k9s still expect that typing a word does not fire actions. The rule that makes both true is the simplest one: while the field has focus, the field has every key.
+k9s filters the same way: `/` opens a field, typing filters, `Enter` keeps the filter and returns focus to the table, `Esc` clears it. In b9s, `Up` and `Down` also keep a typed filter and move directly into the results. An empty field gives these keys to query history, and they keep browsing history until the newest entry's draft is restored. `Alt-Up` and `Alt-Down` recall history from a typed draft. Query letters belong to the field, so typing a word never fires actions.
 
 ## What the query is not
 
