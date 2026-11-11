@@ -196,6 +196,9 @@ const contextHelpDetail = `## Detail View
   Esc       Return to list
   Tab       Switch to split view
 
+In tree detail, open any numbered child, then use n/p
+to reach every sibling, including children beyond 9.
+
 **Actions**
   c         Copy full ticket Markdown
   s         Reverse comment order (newest first by default)
