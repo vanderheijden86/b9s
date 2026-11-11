@@ -1,0 +1,36 @@
+{"Time":"2026-11-11T04:51:37.13554208Z","Action":"start","Package":"github.com/vanderheijden86/b9s/scripts/preview"}
+{"Time":"2026-11-11T04:51:37.138096766Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness"}
+{"Time":"2026-11-11T04:51:37.138124289Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness","Output":"=== RUN   TestPreviewReadiness\n"}
+{"Time":"2026-11-11T04:51:37.162211939Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy"}
+{"Time":"2026-11-11T04:51:37.162260861Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy","Output":"=== RUN   TestPreviewReadiness/healthy\n"}
+{"Time":"2026-11-11T04:51:37.170952481Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy","Output":"--- PASS: TestPreviewReadiness/healthy (0.01s)\n"}
+{"Time":"2026-11-11T04:51:37.171000403Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/healthy","Elapsed":0.01}
+{"Time":"2026-11-11T04:51:37.171026458Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down"}
+{"Time":"2026-11-11T04:51:37.171033448Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down","Output":"=== RUN   TestPreviewReadiness/identity-down\n"}
+{"Time":"2026-11-11T04:51:37.173834716Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down","Output":"--- PASS: TestPreviewReadiness/identity-down (0.00s)\n"}
+{"Time":"2026-11-11T04:51:37.173859249Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/identity-down","Elapsed":0}
+{"Time":"2026-11-11T04:51:37.173865132Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down"}
+{"Time":"2026-11-11T04:51:37.173868365Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Output":"=== RUN   TestPreviewReadiness/web-down\n"}
+{"Time":"2026-11-11T04:51:37.178577115Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Output":"--- PASS: TestPreviewReadiness/web-down (0.00s)\n"}
+{"Time":"2026-11-11T04:51:37.179172376Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-down","Elapsed":0}
+{"Time":"2026-11-11T04:51:37.179188435Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused"}
+{"Time":"2026-11-11T04:51:37.179195158Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Output":"=== RUN   TestPreviewReadiness/viewer-refused\n"}
+{"Time":"2026-11-11T04:51:37.183026878Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Output":"--- PASS: TestPreviewReadiness/viewer-refused (0.00s)\n"}
+{"Time":"2026-11-11T04:51:37.183059468Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/viewer-refused","Elapsed":0}
+{"Time":"2026-11-11T04:51:37.183067597Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing"}
+{"Time":"2026-11-11T04:51:37.183072382Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Output":"=== RUN   TestPreviewReadiness/tui-missing\n"}
+{"Time":"2026-11-11T04:51:37.186944573Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Output":"--- PASS: TestPreviewReadiness/tui-missing (0.00s)\n"}
+{"Time":"2026-11-11T04:51:37.187015987Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-missing","Elapsed":0}
+{"Time":"2026-11-11T04:51:37.187027664Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank"}
+{"Time":"2026-11-11T04:51:37.187031575Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Output":"=== RUN   TestPreviewReadiness/tui-blank\n"}
+{"Time":"2026-11-11T04:51:37.192512509Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Output":"--- PASS: TestPreviewReadiness/tui-blank (0.01s)\n"}
+{"Time":"2026-11-11T04:51:37.192563826Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/tui-blank","Elapsed":0.01}
+{"Time":"2026-11-11T04:51:37.192584047Z","Action":"run","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers"}
+{"Time":"2026-11-11T04:51:37.192588292Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Output":"=== RUN   TestPreviewReadiness/web-recovers\n"}
+{"Time":"2026-11-11T04:51:37.200268948Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Output":"--- PASS: TestPreviewReadiness/web-recovers (0.01s)\n"}
+{"Time":"2026-11-11T04:51:37.200307121Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness/web-recovers","Elapsed":0.01}
+{"Time":"2026-11-11T04:51:37.200470173Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness","Output":"--- PASS: TestPreviewReadiness (0.06s)\n"}
+{"Time":"2026-11-11T04:51:37.200530735Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Test":"TestPreviewReadiness","Elapsed":0.06}
+{"Time":"2026-11-11T04:51:37.200541542Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Output":"PASS\n"}
+{"Time":"2026-11-11T04:51:37.201240638Z","Action":"output","Package":"github.com/vanderheijden86/b9s/scripts/preview","Output":"ok  \tgithub.com/vanderheijden86/b9s/scripts/preview\t0.065s\n"}
+{"Time":"2026-11-11T04:51:37.201282627Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/scripts/preview","Elapsed":0.066}
