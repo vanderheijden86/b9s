@@ -1,0 +1,40 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./pkg/clipboard",
+    "./pkg/config",
+    "./pkg/ui",
+    "-run",
+    "Test(WriteModes|OSC52|AutoPreserves|Clipboard|DetailCKeyCopiesSelectedIssue|TreeLowercaseCCopiesSelectedIDAndTitle)",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 0,
+  "counts": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "leaf_counts": {
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "count_scope": "top-level Go tests; nested leaf cases reported separately",
+  "completed_packages": [
+    "github.com/vanderheijden86/b9s/pkg/clipboard",
+    "github.com/vanderheijden86/b9s/pkg/config",
+    "github.com/vanderheijden86/b9s/pkg/ui"
+  ]
+}
