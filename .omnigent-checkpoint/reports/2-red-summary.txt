@@ -1,0 +1,12 @@
+Focused footer RED: exit 1
+Leaf cases: {'fail': 9}
+Parent tests: 1 failed
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Title is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Status is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Defer until is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Description is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Priority is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Type is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Assignee is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Labels is focused:
+    edit_modal_test.go:608: footer must advertise ctrl+s save while Notes is focused:

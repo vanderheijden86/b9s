@@ -1,0 +1,21 @@
+{
+  "command": [
+    "python3",
+    "/tmp/bd-teri.8/terminal-preview.py"
+  ],
+  "terminal": {
+    "rows": 100,
+    "columns": 100
+  },
+  "binary": "/tmp/bd-teri.8/b9s",
+  "fixture": "/tmp/bd-teri.8/preview-fixture",
+  "footer_below_notes": true,
+  "exit_code": 0,
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  }
+}

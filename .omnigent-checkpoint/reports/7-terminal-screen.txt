@@ -1,0 +1,56 @@
+╭────────────────────────────────────────────────────────────────────────────────╮
+         │                                                                                │
+         │  Edit Issue: footer-1                                                          │
+         │  enter or ctrl+s save · esc cancel · tab next field                            │
+         │                                                                                │
+         │  ┃ Title                                                                       │
+         │  ┃ > CtrlS footer fixture                                                      │
+         │                                                                                │
+         │    Status                                                                      │
+         │    > open                                                                      │
+         │      in_progress                                                               │
+         │      blocked                                                                   │
+         │      deferred                                                                  │
+         │      review                                                                    │
+         │      closed                                                                    │
+         │                                                                                │
+         │    Defer until (e.g. tomorrow, next monday, +3d)                               │
+         │    > leave empty for indefinite defer                                          │
+         │                                                                                │
+         │    Description                                                                 │
+         │                                                                                │
+         │                                                                                │
+         │                                                                                │
+         │                                                                                │
+         │                                                                                │
+         │                                                                                │
+         │    Priority                                                                    │
+         │      P0                                                                        │
+         │      P1                                                                        │
+         │    > P2                                                                        │
+         │      P3                                                                        │
+         │      P4                                                                        │
+         │                                                                                │
+         │    Type                                                                        │
+         │      bug                                                                       │
+         │      feature                                                                   │
+         │    > task                                                                      │
+         │      epic                                                                      │
+         │      chore                                                                     │
+         │                                                                                │
+         │    Assignee                                                                    │
+         │    >                                                                           │
+         │                                                                                │
+         │    Labels                                                                      │
+         │    >                                                                           │
+         │                                                                                │
+         │    Notes                                                                       │
+         │                                                                                │
+         │                                                                                │
+         │                                                                                │
+         │                                                                                │
+         │  tab next                                                                      │
+         │                                                                                │
+         │  ctrl+s save                                                                   │
+         │                                                                                │
+         ╰────────────────────────────────────────────────────────────────────────────────╯

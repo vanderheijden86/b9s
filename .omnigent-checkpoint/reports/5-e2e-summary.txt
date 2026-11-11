@@ -1,0 +1,5 @@
+Command: timeout 180s go test ./tests/e2e/ -run '^TestEdit(EnterOnStatus|CtrlS)SavesE2E$' -count=1 -timeout=120s -json
+Exit: 0
+Passed: 2, failed: 0, skipped: 0
+TestEditEnterOnStatusSavesE2E PASS
+TestEditCtrlSSavesE2E PASS

@@ -1,0 +1,5 @@
+Command: timeout 120s go test ./pkg/ui/ -run '^(TestEditModal_|TestCreateModal_)' -count=1 -timeout=60s -json
+Exit: 0
+Leaf cases: {'pass': 29}
+Top-level tests: {'pass': 21}
+Footer regression: 9 passed, 0 failed, 0 skipped

@@ -1,0 +1,46 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "top_level": {
+    "PASS": 2125,
+    "SKIP": 18
+  },
+  "leaf_cases": {
+    "PASS": 3561,
+    "SKIP": 20
+  },
+  "all_result_records_including_parents": {
+    "PASS": 3769,
+    "SKIP": 20
+  },
+  "skipped_names": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "packages_passed": 22
+}
