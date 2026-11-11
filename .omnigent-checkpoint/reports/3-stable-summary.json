@@ -1,0 +1,170 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "GOFLAGS": "-v",
+    "runtime": "go1.25.5 linux/amd64",
+    "CGO_CFLAGS": "-DSQLITE_ENABLE_FTS5"
+  },
+  "exit_code": 0,
+  "count_scope": "top-level test functions. Nested subtest outcomes are recorded separately. Makefile exclusions are outside this selected suite.",
+  "counts": {
+    "passed": 2127,
+    "failed": 0,
+    "skipped": 18,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "including_subtests": {
+    "PASS": 3771,
+    "SKIP": 20
+  },
+  "skipped_tests": [
+    {
+      "test": "TestProbeMemory_RealBinaries",
+      "context": [
+        "=== RUN   TestProbeMemory_RealBinaries",
+        "    capability_test.go:223: set B9S_TEST_STOCK_BD and/or B9S_TEST_PREVIEW_BD to probe real binaries"
+      ]
+    },
+    {
+      "test": "TestS3StoreContract",
+      "context": [
+        "=== RUN   TestS3StoreContract",
+        "    s3_test.go:23: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+      ]
+    },
+    {
+      "test": "TestS3PutRejectsShortRead",
+      "context": [
+        "=== RUN   TestS3PutRejectsShortRead",
+        "    s3_test.go:79: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+      ]
+    },
+    {
+      "test": "TestS3PutRejectsLongRead",
+      "context": [
+        "=== RUN   TestS3PutRejectsLongRead",
+        "    s3_test.go:98: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+      ]
+    },
+    {
+      "test": "TestDoltReader_NewAndClose",
+      "context": [
+        "=== RUN   TestDoltReader_NewAndClose",
+        "    dolt_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestDoltReader_LoadIssues",
+      "context": [
+        "=== RUN   TestDoltReader_LoadIssues",
+        "    dolt_test.go:64: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestDoltReader_GetHeadHash",
+      "context": [
+        "=== RUN   TestDoltReader_GetHeadHash",
+        "    dolt_test.go:91: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestDoltWatcher_NewAndStop",
+      "context": [
+        "=== RUN   TestDoltWatcher_NewAndStop",
+        "    dolt_watcher_test.go:28: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestDoltWatcher_StartIsIdempotent",
+      "context": [
+        "=== RUN   TestDoltWatcher_StartIsIdempotent",
+        "    dolt_watcher_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "context": [
+        "=== RUN   TestDoltWatcher_DetectsNoChangeOnPoll",
+        "    dolt_watcher_test.go:71: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "context": [
+        "=== RUN   TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+        "    dolt_watcher_test.go:100: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+      ]
+    },
+    {
+      "test": "TestMemoryPreviewGraphReadTiming",
+      "context": [
+        "=== RUN   TestMemoryPreviewGraphReadTiming",
+        "    memory_graph_test.go:37: set B9S_MEMORY_PREVIEW_WORKSPACE to an isolated embedded graph preview"
+      ]
+    },
+    {
+      "test": "TestMemoryReadResearchStages",
+      "context": [
+        "=== RUN   TestMemoryReadResearchStages",
+        "    memory_read_research_test.go:62: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+      ]
+    },
+    {
+      "test": "TestMemoryReadResearchTransportParity",
+      "context": [
+        "=== RUN   TestMemoryReadResearchTransportParity",
+        "    memory_read_research_test.go:165: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+      ]
+    },
+    {
+      "test": "TestMemoryReadResearchConcurrentWriter",
+      "context": [
+        "=== RUN   TestMemoryReadResearchConcurrentWriter",
+        "    memory_read_research_test.go:398: set B9S_MEMORY_RESEARCH_MUTATE=1 to add one probe Memory and Link in the isolated copy"
+      ]
+    },
+    {
+      "test": "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "context": [
+        "    loader_test.go:987: Test file ../../tests/testdata/cass_issues.jsonl not found, skipping",
+        "--- PASS: TestLoadRealIssues (0.00s)"
+      ]
+    },
+    {
+      "test": "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "context": [
+        "--- PASS: TestLoadRealIssues (0.00s)",
+        "    --- SKIP: TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)"
+      ]
+    },
+    {
+      "test": "TestStress_SustainedWrites",
+      "context": [
+        "=== RUN   TestStress_SustainedWrites",
+        "    background_worker_test.go:1297: set PERF_TEST=1 to run 10+ minute stress tests"
+      ]
+    },
+    {
+      "test": "TestStress_BurstWrites",
+      "context": [
+        "=== RUN   TestStress_BurstWrites",
+        "    background_worker_test.go:1414: set PERF_TEST=1 to run 10+ minute stress tests"
+      ]
+    },
+    {
+      "test": "TestStress_MemoryPressure",
+      "context": [
+        "=== RUN   TestStress_MemoryPressure",
+        "    background_worker_test.go:1514: set PERF_TEST=1 to run 10+ minute stress tests"
+      ]
+    }
+  ],
+  "packages": 22,
+  "log": "/tmp/bd-rz2i/stable.log"
+}

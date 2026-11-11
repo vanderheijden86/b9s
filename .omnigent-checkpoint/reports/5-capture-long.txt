@@ -1,0 +1,2 @@
+{"counts": {"passed": 4, "failed": 0, "skipped": 0, "interrupted": 0, "unrun": 0}, "checks": ["top borders and original hotkey", "scroll to bottom", "filtered hotkey containment and alignment", "bounded normal exit"], "binary": "/tmp/bd-rz2i/b9s-after", "size": [160, 40], "exit_code": 0, "captures": ["top", "bottom", "hotkey"]}
+exit_code=0
