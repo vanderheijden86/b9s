@@ -1,0 +1,7 @@
+Implementer review: passed.
+git diff --check: exit 0.
+Diff scope: identity display helper, detail renderer registry plumbing, tree person widths/cache, regression coverage and user guide.
+Rendered detail, board detail and tree screens inspected with canonical aliases, email aliases, Unicode names, unknown identities and empty fields.
+No new ADR: ADR 0014 already requires this identity resolution.
+No data-read/write changes. No new files or deletions. No unresolved required-check failures.
+Independent reviewer and tester have not yet reported.

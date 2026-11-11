@@ -1,0 +1,56 @@
+Command: env GOFLAGS=-v timeout 720s make -C /home/omnigent/workspace/b9s test-stable
+Package test deadline: committed -timeout 10m
+Exit: 0
+Leaf counts: {"passed": 3587, "failed": 0, "skipped": 20, "interrupted": 0, "unrun": 0}
+Top-level counts: {"pass": 2129, "skip": 18}
+All test outcomes including parent tests: {"pass": 3797, "skip": 20}
+
+Package results:
+ok  	github.com/vanderheijden86/b9s/cmd/b9s	1.497s
+ok  	github.com/vanderheijden86/b9s/internal/attach	0.293s
+ok  	github.com/vanderheijden86/b9s/internal/attachref	0.017s
+ok  	github.com/vanderheijden86/b9s/internal/bdrun	8.906s
+ok  	github.com/vanderheijden86/b9s/internal/blobstore	1.229s
+ok  	github.com/vanderheijden86/b9s/internal/control	0.010s
+ok  	github.com/vanderheijden86/b9s/internal/datasource	0.779s
+ok  	github.com/vanderheijden86/b9s/pkg/config	0.063s
+ok  	github.com/vanderheijden86/b9s/pkg/debug	0.006s
+ok  	github.com/vanderheijden86/b9s/pkg/identity	0.005s
+ok  	github.com/vanderheijden86/b9s/pkg/loader	18.381s
+ok  	github.com/vanderheijden86/b9s/pkg/model	0.018s
+ok  	github.com/vanderheijden86/b9s/pkg/testutil	0.016s
+ok  	github.com/vanderheijden86/b9s/pkg/testutil/proptest	0.008s
+ok  	github.com/vanderheijden86/b9s/pkg/ui	47.346s
+ok  	github.com/vanderheijden86/b9s/pkg/updater	0.995s
+ok  	github.com/vanderheijden86/b9s/pkg/util/topk	0.012s
+ok  	github.com/vanderheijden86/b9s/pkg/version	0.009s
+ok  	github.com/vanderheijden86/b9s/pkg/watcher	1.388s
+ok  	github.com/vanderheijden86/b9s/pkg/web	2.222s
+ok  	github.com/vanderheijden86/b9s/scripts/web	0.085s
+ok  	github.com/vanderheijden86/b9s/tests/docs	0.065s
+
+Runtime skips:
+TestProbeMemory_RealBinaries
+TestS3StoreContract
+TestS3PutRejectsShortRead
+TestS3PutRejectsLongRead
+TestDoltReader_NewAndClose
+TestDoltReader_LoadIssues
+TestDoltReader_GetHeadHash
+TestDoltWatcher_NewAndStop
+TestDoltWatcher_StartIsIdempotent
+TestDoltWatcher_DetectsNoChangeOnPoll
+TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB
+TestMemoryPreviewGraphReadTiming
+TestMemoryReadResearchStages
+TestMemoryReadResearchTransportParity
+TestMemoryReadResearchConcurrentWriter
+TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl
+TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl
+TestStress_SustainedWrites
+TestStress_BurstWrites
+TestStress_MemoryPressure
+
+Configured exclusions: tests/e2e and Makefile STABLE_SKIP (DoltIntegration and declared host-sensitive tests). Excluded tests are not runtime skips.
+
+Skip review: 1 opt-in real-binary probe, 3 opt-in S3 tests, 7 Dolt DSN tests, 1 opt-in embedded-preview timing test, 3 opt-in Memory research tests, 2 absent legacy fixture cases, 3 opt-in long stress tests. No affected-view regression was skipped.
