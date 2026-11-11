@@ -350,9 +350,8 @@ func (m EditModal) View() string {
 		boxWidth = 80
 	}
 
-	// The hint sits under the title rather than in huh's footer: a form taller
-	// than the terminal clips the footer, and huh hides help for bindings with
-	// no keys, which the Submit bindings deliberately are.
+	// A form taller than the terminal can clip the footer, so the header also
+	// names the save and cancel keys.
 	hint := "enter or ctrl+s save · esc cancel · tab next field"
 	if m.focusIsTextArea() {
 		hint = "ctrl+s save · esc cancel · tab next field · enter new line"
@@ -365,6 +364,9 @@ func (m EditModal) View() string {
 	content.WriteString(hintStyle.Render(hint))
 	content.WriteString("\n\n")
 	content.WriteString(formView)
+	// Huh hides the keyless Submit bindings handled by EditModal.Update.
+	content.WriteString("\n\n")
+	content.WriteString(hintStyle.Render("ctrl+s save"))
 
 	boxStyle := r.NewStyle().
 		Border(lipgloss.RoundedBorder()).

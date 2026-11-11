@@ -587,3 +587,26 @@ func TestEditModal_ViewNamesTheSaveAndCancelKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestEditModal_FooterAdvertisesCtrlSFromEveryField(t *testing.T) {
+	fields := []string{"Title", "Status", "Defer until", "Description", "Priority", "Type", "Assignee", "Labels", "Notes"}
+	for tabs, field := range fields {
+		t.Run(field, func(t *testing.T) {
+			theme := DefaultTheme(lipgloss.DefaultRenderer())
+			modal := NewEditModal(&model.Issue{ID: "x-1", Title: "t", Status: model.StatusOpen, Priority: 2, IssueType: model.TypeTask}, theme)
+			modal.SetSize(100, 100)
+			for i := 0; i < tabs; i++ {
+				modal = sendEditKey(t, modal, tea.KeyMsg{Type: tea.KeyTab})
+			}
+
+			view := modal.View()
+			lastField := strings.LastIndex(view, "Notes")
+			if lastField < 0 {
+				t.Fatal("rendered form has no Notes field")
+			}
+			if !strings.Contains(view[lastField:], "ctrl+s save") {
+				t.Errorf("footer must advertise ctrl+s save while %s is focused:\n%s", field, view[lastField:])
+			}
+		})
+	}
+}
