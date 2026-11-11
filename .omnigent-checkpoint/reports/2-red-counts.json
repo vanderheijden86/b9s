@@ -1,0 +1,26 @@
+{
+  "leaf_test_counts": {
+    "passed": 5,
+    "failed": 8,
+    "skipped": 0
+  },
+  "top_level_test_counts": {
+    "passed": 1,
+    "failed": 2,
+    "skipped": 0
+  },
+  "package_outcomes": {
+    "github.com/vanderheijden86/b9s/pkg/ui": "fail"
+  },
+  "failed_tests": [
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailSiblingKeysSkipFilteredChildren/forward-gap",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailSiblingKeysSkipFilteredChildren/reverse-gap",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailSiblingKeysSkipFilteredChildren/forward-multiple",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailSiblingKeysSkipFilteredChildren/reverse-multiple",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailSiblingKeysSkipFilteredChildren/reordered-forward",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailSiblingKeysSkipFilteredChildren/reordered-reverse",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailTreeEntryWhenNumberedChildrenAreFiltered/reverse=false/folded=false",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestDetailTreeEntryWhenNumberedChildrenAreFiltered/reverse=false/folded=true"
+  ],
+  "skipped_tests": []
+}
