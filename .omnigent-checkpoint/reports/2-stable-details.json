@@ -1,0 +1,32 @@
+{
+  "command": [
+    "make",
+    "-C",
+    "/home/omnigent/workspace/b9s",
+    "test-stable"
+  ],
+  "environment": {
+    "GOFLAGS": "-v"
+  },
+  "exit_code": 0,
+  "counts_including_subtests": {
+    "passed": 3769,
+    "failed": 0,
+    "skipped": 20
+  },
+  "package_passed": 22,
+  "package_failed": 0,
+  "top_level_counts": {
+    "passed": 2125,
+    "failed": 0,
+    "skipped": 18
+  },
+  "skip_categories": {
+    "stock_preview_bd_probe": 1,
+    "S3_service": 3,
+    "Dolt_DSN": 7,
+    "memory_research_opt_in": 4,
+    "private_fixture_subtests": 2,
+    "stress_opt_in": 3
+  }
+}
