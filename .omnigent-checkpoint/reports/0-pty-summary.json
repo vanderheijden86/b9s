@@ -1,0 +1,37 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e/",
+    "-run",
+    "^TestSearch(ArrowsNavigateResults|History)E2E$",
+    "-count=1",
+    "-timeout=120s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "counts": {
+    "passed": 3,
+    "failed": 4,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "top_level_counts": {
+    "pass": 1,
+    "fail": 1
+  },
+  "failed": [
+    "github.com/vanderheijden86/b9s/tests/e2e/TestSearchArrowsNavigateResultsE2E/tree/up",
+    "github.com/vanderheijden86/b9s/tests/e2e/TestSearchArrowsNavigateResultsE2E/tree/down",
+    "github.com/vanderheijden86/b9s/tests/e2e/TestSearchArrowsNavigateResultsE2E/flat_tree/up",
+    "github.com/vanderheijden86/b9s/tests/e2e/TestSearchArrowsNavigateResultsE2E/flat_tree/down"
+  ],
+  "skipped": []
+}
