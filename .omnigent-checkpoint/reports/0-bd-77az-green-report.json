@@ -1,0 +1,71 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestStartupConfig(LoadWarning|WithoutWarning)E2E$",
+    "-count=1",
+    "-timeout=90s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "linux\namd64",
+    "terminal": "script from util-linux 2.41.5"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "counting": "Go terminal test events including parents and subtests; 6 passing leaf cases, 2 passing parents",
+  "results": [
+    {
+      "Test": "TestStartupConfigLoadWarningE2E/sort_field",
+      "Action": "pass",
+      "Elapsed": 4.2
+    },
+    {
+      "Test": "TestStartupConfigLoadWarningE2E/sort_direction",
+      "Action": "pass",
+      "Elapsed": 4.2
+    },
+    {
+      "Test": "TestStartupConfigLoadWarningE2E/poll_interval",
+      "Action": "pass",
+      "Elapsed": 4.2
+    },
+    {
+      "Test": "TestStartupConfigLoadWarningE2E/malformed_yaml",
+      "Action": "pass",
+      "Elapsed": 4.2
+    },
+    {
+      "Test": "TestStartupConfigLoadWarningE2E",
+      "Action": "pass",
+      "Elapsed": 16.81
+    },
+    {
+      "Test": "TestStartupConfigWithoutWarningE2E/existing=false",
+      "Action": "pass",
+      "Elapsed": 4.2
+    },
+    {
+      "Test": "TestStartupConfigWithoutWarningE2E/existing=true",
+      "Action": "pass",
+      "Elapsed": 4.2
+    },
+    {
+      "Test": "TestStartupConfigWithoutWarningE2E",
+      "Action": "pass",
+      "Elapsed": 8.41
+    }
+  ],
+  "source_report": "/tmp/bd-77az-green.jsonl"
+}

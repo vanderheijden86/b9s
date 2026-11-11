@@ -1,0 +1,42 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e",
+    "-run",
+    "^TestStartupConfigLoadWarningE2E$",
+    "-count=1",
+    "-timeout=90s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "counts": {
+    "passed": 0,
+    "failed": 5,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "counting": "Go terminal test events including parent and subtests; 4 failing leaf cases, 1 failing parent",
+  "failures": [
+    "open_failure_e2e_test.go:140: startup output lacks \"b9s:\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"/tmp/TestStartupConfigLoadWarningE2Esort_field3774928421/001/b9s/config.yaml\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"invalid ui.sort.field \\\"unknown\\\"\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"using defaults\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"b9s:\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"/tmp/TestStartupConfigLoadWarningE2Esort_direction2174390851/001/b9s/config.yaml\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"invalid ui.sort.direction \\\"sideways\\\"\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"using defaults\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"b9s:\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"/tmp/TestStartupConfigLoadWarningE2Epoll_interval4243118469/001/b9s/config.yaml\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"refresh poll interval must be at least 100ms\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"using defaults\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"b9s:\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"/tmp/TestStartupConfigLoadWarningE2Emalformed_yaml2843158914/001/b9s/config.yaml\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"parsing config:\":",
+    "open_failure_e2e_test.go:140: startup output lacks \"using defaults\":"
+  ],
+  "source_report": "/tmp/bd-77az-red.jsonl"
+}
