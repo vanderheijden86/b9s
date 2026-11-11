@@ -107,6 +107,8 @@ sequenceDiagram
 
 A Dolt server always wins. If the connection fails, `cmd/b9s` falls back to SQLite and then JSONL and records the error for the `D` health popup.
 
+`SQLiteReader` reads `defer_until` when the column exists. NULL and empty dates leave `Issue.DeferUntil` unset. A schema without the column keeps its other fields through the same read.
+
 `loader.FindJSONLPath` picks the JSONL file. It takes a non-empty file under a canonical name (`beads.jsonl`, `issues.jsonl`, `beads.base.jsonl`) first. A file under another name counts only when its first record is one the loader accepts as an issue, because bd keeps other journals in `.beads` (prefix routes, interactions) and a Dolt project keeps no export at all. An empty file counts only under a canonical name. With no file left, there is no JSONL fallback, and a Dolt project whose server refuses the connection opens as server down instead of as an empty project.
 
 Embedded Dolt ranks with a Dolt server. b9s never opens the store: it runs `bd export` with `BEADS_DIR` set and parses stdout only, because `bd` holds the store's lock for as long as a process has it open. When the export fails, `OpenProject` reports it (`OpenNoBD` when `bd` is missing) and does not fall back to an `issues.jsonl` beside the store. See [ADR 0025](adr/0025-read-embedded-dolt-through-bd-export.md).
