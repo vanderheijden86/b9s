@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -106,6 +107,31 @@ var (
 // BADGE RENDERING - Polished, consistent badge styles
 // ══════════════════════════════════════════════════════════════════════════════
 
+func badgeForeground(r *lipgloss.Renderer, fg, bg lipgloss.AdaptiveColor) lipgloss.TerminalColor {
+	profile := r.ColorProfile()
+	if profile == termenv.Ascii {
+		return lipgloss.NoColor{}
+	}
+	text, fill := fg.Light, bg.Light
+	if r.HasDarkBackground() {
+		text, fill = fg.Dark, bg.Dark
+	}
+	// Contrast must use the emitted palette colours because quantization can
+	// turn a readable RGB pair into two similar ANSI colours.
+	luminance := func(hex string) float64 {
+		r, g, b := termenv.ConvertToRGB(profile.Color(hex)).LinearRgb()
+		return 0.2126*r + 0.7152*g + 0.0722*b
+	}
+	textL, fillL := luminance(text), luminance(fill)
+	if (max(textL, fillL)+0.05)/(min(textL, fillL)+0.05) >= 4.5 {
+		return lipgloss.Color(text)
+	}
+	if (fillL+0.05)/0.05 >= 1.05/(fillL+0.05) {
+		return lipgloss.Color("#000000")
+	}
+	return lipgloss.Color("#FFFFFF")
+}
+
 // RenderPriorityBadge returns a styled priority badge
 // Priority values: 0=Critical, 1=High, 2=Medium, 3=Low, 4=Backlog
 func RenderPriorityBadge(priority int) string {
@@ -128,7 +154,7 @@ func RenderPriorityBadge(priority int) string {
 	}
 
 	return lipgloss.NewStyle().
-		Foreground(fg).
+		Foreground(badgeForeground(lipgloss.DefaultRenderer(), fg, bg)).
 		Background(bg).
 		Bold(true).
 		Padding(0, 0).
@@ -164,7 +190,7 @@ func RenderStatusBadge(status string) string {
 	}
 
 	return lipgloss.NewStyle().
-		Foreground(fg).
+		Foreground(badgeForeground(lipgloss.DefaultRenderer(), fg, bg)).
 		Background(bg).
 		Padding(0, 0).
 		Render(label)

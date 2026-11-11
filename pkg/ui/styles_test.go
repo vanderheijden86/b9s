@@ -1,12 +1,106 @@
 package ui
 
 import (
+	"fmt"
+	"image/color"
 	"io"
+	"math"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/cellbuf"
+	"github.com/muesli/termenv"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestBadgeContrast(t *testing.T) {
+	saved := lipgloss.DefaultRenderer()
+	t.Cleanup(func() { lipgloss.SetDefaultRenderer(saved) })
+	statuses := []string{
+		"open", "in_progress", "blocked", "deferred", "pinned",
+		"hooked", "review", "closed", "tombstone", "unknown",
+	}
+	for _, profile := range []termenv.Profile{termenv.TrueColor, termenv.ANSI256, termenv.ANSI, termenv.Ascii} {
+		for _, dark := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/dark=%t", profile.Name(), dark), func(t *testing.T) {
+				r := lipgloss.NewRenderer(io.Discard)
+				r.SetColorProfile(profile)
+				r.SetHasDarkBackground(dark)
+				lipgloss.SetDefaultRenderer(r)
+				theme := DefaultTheme(r)
+				for _, status := range statuses {
+					t.Run(status+"/compact", func(t *testing.T) {
+						assertBadgeContrast(t, RenderStatusBadge(status), profile)
+					})
+					t.Run(status+"/detail", func(t *testing.T) {
+						issue := model.Issue{ID: "badge-1", Title: "Contrast", Status: model.Status(status)}
+						out := renderIssueDetail(issue, nil, theme, 100, nil, nil, nil, false)
+						label := strings.ToUpper(strings.ReplaceAll(status, "_", " "))
+						for _, line := range strings.Split(out, "\n") {
+							if strings.Contains(stripANSI(line), label) {
+								assertBadgeContrast(t, line, profile)
+								return
+							}
+						}
+						t.Fatalf("detail status badge %q missing", label)
+					})
+				}
+				for _, priority := range []int{0, 1, 2, 3, 4, 99} {
+					t.Run(fmt.Sprintf("priority=%d", priority), func(t *testing.T) {
+						assertBadgeContrast(t, RenderPriorityBadge(priority), profile)
+					})
+				}
+			})
+		}
+	}
+}
+
+func assertBadgeContrast(t *testing.T, out string, profile termenv.Profile) {
+	t.Helper()
+	if profile == termenv.Ascii {
+		if strings.Contains(out, "\x1b[") {
+			t.Fatalf("monochrome badge must use terminal defaults: %q", out)
+		}
+		return
+	}
+	buf := cellbuf.NewBuffer(lipgloss.Width(out), 1)
+	cellbuf.SetContent(buf, out)
+	checked := 0
+	for x := 0; x < buf.Width(); x++ {
+		cell := buf.Cell(x, 0)
+		if cell == nil || cell.Rune == ' ' || cell.Style.Bg == nil {
+			continue
+		}
+		if cell.Style.Fg == nil {
+			t.Fatal("filled badge must have an explicit text colour")
+		}
+		light, dark := badgeTestLuminance(cell.Style.Fg), badgeTestLuminance(cell.Style.Bg)
+		if light < dark {
+			light, dark = dark, light
+		}
+		ratio := (light + 0.05) / (dark + 0.05)
+		if ratio < 4.5 {
+			t.Fatalf("badge contrast %.2f:1 < 4.5:1, foreground=%v background=%v", ratio, cell.Style.Fg, cell.Style.Bg)
+		}
+		checked++
+	}
+	if checked == 0 {
+		t.Fatal("no filled badge text checked")
+	}
+}
+
+func badgeTestLuminance(c color.Color) float64 {
+	r, g, b, _ := c.RGBA()
+	linear := func(v uint32) float64 {
+		s := float64(v) / 65535
+		if s <= 0.04045 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	return 0.2126*linear(r) + 0.7152*linear(g) + 0.0722*linear(b)
+}
 
 func TestRenderPriorityBadge(t *testing.T) {
 	tests := []struct {
