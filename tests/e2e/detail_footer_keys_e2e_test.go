@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestDetailCommentOrderE2E(t *testing.T) {
@@ -45,6 +47,22 @@ func detailFooterFixture(t *testing.T) string {
 		CreatedAt: time.Now().Format(time.RFC3339), Description: "Some description.",
 	}})
 	return dir
+}
+
+func TestDetailHeaderShowsFullIDE2E(t *testing.T) {
+	dir := detailFooterFixture(t)
+	out, err := runTreeTUIWithEnv(t, dir, 3000, []keyStep{
+		kd("\r", 300*time.Millisecond),
+	}, "B9S_TEST_MODE=1")
+	if err != nil {
+		t.Fatalf("TUI run failed: %v\n%s", err, out)
+	}
+	frame := ansi.Strip(treeFinalFrame(out))
+	for _, want := range []string{"detail-1", "Detail issue", "Some description."} {
+		if !strings.Contains(frame, want) {
+			t.Errorf("detail screen missing %q:\n%s", want, frame)
+		}
+	}
 }
 
 func TestDetailEKeyOpensEditModalE2E(t *testing.T) {
