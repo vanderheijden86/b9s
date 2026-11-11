@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor User
+    participant App as b9s
+    participant Source as Guarded source access
+    participant View as Browser or native opener
+    participant Blob as Attachment backend
+    participant Bd as Stock bd
+    User->>App: Explicit action on Specification
+    alt Open reference
+        App->>Source: Check project, root containment or HTTPS scheme
+        Source-->>App: Checked URL or bounded private view copy, or refusal
+        alt Reference allowed and reachable
+            App->>View: Open checked link or allowlisted view copy
+            Note over App,Bd: No backend upload or Beads write
+        else Refused or unavailable
+            App-->>User: Show reason without importing
+        end
+    else Import snapshot
+        App->>App: Require configured backend and project policy
+        App->>Source: Read confined file or approved HTTPS origin under limits
+        Source-->>App: Snapshot bytes or refusal
+        alt Source refused, unavailable or over deadline
+            App-->>User: Show failure without uploading or writing a comment
+        else Snapshot obtained
+            App->>App: Validate and hash bytes, recheck project and spec
+            App->>Blob: Put content hash if absent
+            alt Upload fails
+                Blob-->>App: Failure
+                App-->>User: Show failure without writing a comment
+            else Blob stored
+                Blob-->>App: Stored or reused
+                Note over App,Blob: Crash before comment can orphan the blob until GC grace expires
+                App->>Bd: Add missing reference with bd comments add
+                alt Comment succeeds
+                    Bd-->>App: Success
+                    App-->>User: Show retained snapshot
+                else Comment fails
+                    Bd-->>App: Failure
+                    App-->>User: Show failure, manual retry reuses hash
+                    Note over Blob,Bd: Unreferenced blob waits for GC grace
+                end
+            end
+        end
+    end
