@@ -1,0 +1,10 @@
+Revision 2 implementer review: passed.
+Required finding bd-yacz (logic-error, prior tree.go:2237): resolved. Default-column RED had 5 failing cases. GREEN has 12 passing cases at 80/96/120/160 cells.
+Both original reviewer probes have six passing acceptance cases. Headers and issue rows retain one physical line each.
+All affected views rendered again. Complete metadata, gaps, actual header/row prefixes and minimum title width constrain person columns. Wide labels retain names and raw aliases.
+Expanded focused checks: 63 passed, 0 failed, 0 skipped.
+Required build/vet: exit 0. Stable: 3599 passed, 0 failed, 20 runtime skips, 22 packages passed.
+git diff --check: exit 0. All changed comments reviewed against current code. User guide describes constrained widths.
+Unresolved required failures: none. Unrelated findings/follow-up issues: none.
+Long labels remain subject to documented clipping. Live Dolt and full PTY E2E were outside these required checks. Independent re-review remains with Polly.
+No new files or deletions. No delivery commits, delivery pushes or PR.

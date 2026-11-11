@@ -1,0 +1,14 @@
+Revision 2 GREEN exit 0
+Leaf outcomes: {'pass': 12}
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/80/short: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/80/long_raw: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/80/resolved_aliases: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/96/short: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/96/long_raw: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/96/resolved_aliases: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/120/short: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/120/long_raw: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/120/resolved_aliases: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/160/short: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/160/long_raw: pass
+TestTreePersonColumnsDefaultMetadataStayOnOneLine/160/resolved_aliases: pass

@@ -1,0 +1,11 @@
+Reviewed all added/changed comments against the current code. Comments describe current constraints, column preferences, and shared budget/render semantics. No change-history or agent signatures were added.
+
+pkg/ui/identities.go: // personLabel keeps the stored alias visible when several actors share a name.
+pkg/ui/tree.go: // The sort badge sits beside the Issue label rather than over a column,
+pkg/ui/tree.go: // because the sort field and the column contents are independent.
+pkg/ui/tree.go: // renderNodePrefix is shared with column sizing so decorations and hierarchy
+pkg/ui/tree.go: // consume the same space in the budget and in the rendered row.
+pkg/ui/tree.go: // The spare terminal cell prevents wrapping at the right edge.
+pkg/ui/tree.go: // Viewport budgets assume one line per unwrapped issue. Person columns
+pkg/ui/tree.go: // share the space left by the header, row prefix and minimum title.
+pkg/ui/tree.go: // treePersonColumnWidth is the preferred width before labels need more room.

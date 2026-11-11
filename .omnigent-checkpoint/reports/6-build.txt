@@ -1,0 +1,3 @@
+Command: timeout 300s go -C /home/omnigent/workspace/b9s build ./...
+
+exit_code=0
