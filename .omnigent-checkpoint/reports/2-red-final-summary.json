@@ -1,0 +1,38 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./pkg/ui/",
+    "-run",
+    "^TestSearchArrowsNavigateTypedResults$",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "counts": {
+    "passed": 0,
+    "failed": 6,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "top_level_counts": {
+    "fail": 1
+  },
+  "failed": [
+    "github.com/vanderheijden86/b9s/pkg/ui/TestSearchArrowsNavigateTypedResults/tree/up",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestSearchArrowsNavigateTypedResults/tree/down",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestSearchArrowsNavigateTypedResults/flat_tree/up",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestSearchArrowsNavigateTypedResults/flat_tree/down",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestSearchArrowsNavigateTypedResults/board/up",
+    "github.com/vanderheijden86/b9s/pkg/ui/TestSearchArrowsNavigateTypedResults/board/down"
+  ],
+  "skipped": []
+}

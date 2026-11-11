@@ -1,0 +1,112 @@
+bd-teri.3 implementation report
+2026-11-11 02:40 CET
+
+Status: required implementation checks passed. Independent review and testing remain with Polly.
+Delivery: no delivery commits, delivery pushes or pull request. Approval has not been given.
+
+Git preflight
+Repository: /home/omnigent/workspace/b9s
+Origin: https://github.com/vanderheijden86/b9s.git
+Actual branch: omnigent/bd-teri.3
+HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Fetched origin/main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+PR target: main
+Initial tree: clean main. Local delivery branch absent.
+Exact remote delivery probe: absent, exit 2, no transport/authentication error.
+Created delivery branch with git switch -c omnigent/bd-teri.3 origin/main.
+Required commits: none. Required ancestry checks against fetched base and HEAD: not applicable.
+Checkpoint inspection before implementation: absent.
+Preflight evidence: /tmp/bd-teri.3-evidence/preflight.txt
+Commands:
+  timeout 60s git -C /home/omnigent/workspace/b9s fetch origin main
+  git -C /home/omnigent/workspace/b9s show-ref --verify refs/remotes/origin/main
+  timeout 60s git -C /home/omnigent/workspace/b9s ls-remote --exit-code --heads origin refs/heads/omnigent/bd-teri.3
+
+Scope and behavior
+Read GitHub #40 and #22, including comments (none) and both attached screenshots.
+Read global/project instructions, docs/testing.md, executable guards and ADRs 0001/0002/0004/0035/0057.
+Main did not meet the requested arrow behavior. The final six-case regression failed on its unchanged handler.
+Nonblank typed query: Up/Down saves and accepts the query, then the existing result handler moves selection.
+Blank or whitespace-only query: Up/Down recalls history and keeps editing.
+During history browsing, arrows continue recalling entries until the draft is restored.
+Alt-Up/Alt-Down recalls history with a typed draft. Enter accepts a recalled query.
+Alt navigation keys are registered as reserved navigation keys.
+Existing idle/editing query states and view navigation handlers are retained. No new state or ADR is needed.
+Guard: regression tests cover both arrows, continued navigation, saved accepted queries, empty history entry, unmatched queries, draft recall, Escape and checkout persistence.
+PTY proof drives tree, flat tree and board, then Enter opens the selected detail. History proof recalls a typed draft and survives a process restart.
+This dispatch covers result navigation from #40/#22 first bullet. Future PR body must contain Refs #40.
+
+Changed files
+  pkg/ui/model.go: accept typed-query arrows and route them through normal result navigation.
+  pkg/ui/hotkeys.go: reserve Alt-Up/Alt-Down in the key collision contract.
+  pkg/ui/query_bar_test.go: navigation, history and empty-result regression cases.
+  tests/e2e/tree_search_filter_e2e_test.go: real terminal navigation proof and typed-draft history recall.
+  README.md: search key precedence.
+  docs/USER_GUIDE.md: complete arrow/history rules and accepted-query persistence.
+  docs/book/06-one-query.md: match the documented search interaction.
+
+Dependencies and toolchain
+Observed runtime: go version go1.25.5 linux/amd64, matching go.mod toolchain.
+timeout 180s go mod download: exit 0. Committed go.mod/go.sum unchanged.
+No shared-server Dolt writes. Terminal checks use isolated JSONL fixtures and isolated configuration.
+
+Required check results
+Counts below are leaf test cases, excluding their parent containers. Each final selected suite completed.
+Focused RED on main:
+  Command: timeout 120s go test ./pkg/ui/ -run ^TestSearchArrowsNavigateTypedResults$ -count=1 -timeout=60s -json
+  Exit: 1
+  Counts: passed=0, failed=6, skipped=0, interrupted=0, unrun=0
+  Top-level containers: {"fail": 1}
+  Evidence: /tmp/bd-teri.3-evidence/red-final-summary.json
+Focused GREEN plus key registry:
+  Command: timeout 120s go test ./pkg/ui/ -run ^Test(Search|EveryHandledKey) -count=1 -timeout=60s -json
+  Exit: 0
+  Counts: passed=28, failed=0, skipped=0, interrupted=0, unrun=0
+  Top-level containers: {"pass": 20}
+  Evidence: /tmp/bd-teri.3-evidence/focused-final-summary.json
+Stable suite:
+  Command: timeout 720s env GOFLAGS=-v make test-stable
+  Exit: 0
+  Counts: passed=3561, failed=0, skipped=20, interrupted=0, unrun=0
+  Top-level containers: {"pass": 2127, "skip": 18}
+  Evidence: /tmp/bd-teri.3-evidence/stable-delivery-summary.json
+Real PTY proof:
+  Command: timeout 180s go test ./tests/e2e/ -run ^TestSearch(ArrowsNavigateResults|History)E2E$ -count=1 -timeout=120s -json
+  Exit: 0
+  Counts: passed=7, failed=0, skipped=0, interrupted=0, unrun=0
+  Top-level containers: {"pass": 2}
+  Evidence: /tmp/bd-teri.3-evidence/pty-final-summary.json
+RED is the expected reproduction, not an unresolved failure.
+Stable target ran alone, with no base worktree or comparison. GOFLAGS=-v supplies measured counts.
+Go reported cached results for unchanged packages in the last stable run. Focused and PTY runs use -count=1.
+The 20 stable skips are opt-in checks or missing external fixtures: 1 real-binary capability, 3 S3, 7 Dolt DSN, 1 Memory timing, 3 Memory research, 2 external JSONL fixtures, 3 performance stress.
+The stable summary lists every skipped case. Target exclusions are defined by the committed Makefile.
+No required search/history check was skipped. No flaky outcome was observed.
+timeout 180s go build ./...: exit 0. Build check passed, test counts not applicable.
+timeout 180s go vet ./...: exit 0. Vet check passed, test counts not applicable.
+Build evidence: /tmp/bd-teri.3-evidence/build-final.txt
+Vet evidence: /tmp/bd-teri.3-evidence/vet-final.txt
+git diff --check: exit 0.
+gofmt -l on all four changed Go files: empty output.
+Browser/Playwright: not applicable to this terminal-only change. PTY proof was executed locally.
+
+Resolved findings
+First focused attempt assumed legacy list focus supported slash. Current TUI supports tree/flat tree/board, so the final regression uses those views.
+Tree defaults to newest-first. Final tests use active tree order in unit assertions and fixture dates consistent with board priority order in terminal assertions.
+Initial stable failure: TestEveryHandledKeyIsKnownToCollisionCheck. Registered Alt arrows and reran successfully.
+Initial PTY attempt: 3 passed / 4 failed / 0 skipped, caused by reversed fixture dates. Fixed fixture dates, retained assertions and reran successfully.
+Earlier focused diagnostics and their exact counts/commands remain in red-summary.json, green.jsonl, diagnostic.txt and green-final-summary.json.
+
+Checkpoint and delivery
+Initial checkpoint save was remotely rejected. Exact error: remote rejected omnigent-checkpoints/bd-teri.3 (failed).
+Later checkpoint saves succeeded. No current checkpoint transport failure remains.
+After source edits, compare returned compatible=false, so no stale checkpoint evidence was reused. All final checks ran on the final tree.
+Final source and selected reports are saved to refs/heads/omnigent-checkpoints/bd-teri.3, an unapproved checkpoint only.
+Final checkpoint command output is in checkpoint-final.txt.
+Delivery branch HEAD is unchanged. No task status, assignee, dependencies or lane labels were changed.
+
+Residual risks and blockers
+Unresolved required-check failures: none. No failure issue was filed because all in-scope failures were fixed.
+Optional environment/fixture skips are separate from required checks and are listed above.
+Independent reviewer/tester verdict and delivery approval are pending with Polly.
+No browser preview URL applies to this terminal feature.

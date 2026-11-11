@@ -1,0 +1,31 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./tests/e2e/",
+    "-run",
+    "^TestSearch(ArrowsNavigateResults|History)E2E$",
+    "-count=1",
+    "-timeout=120s",
+    "-json"
+  ],
+  "exit_code": 0,
+  "environment": {
+    "runtime": "go1.25.5 linux/amd64"
+  },
+  "counts": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "top_level_counts": {
+    "pass": 2
+  },
+  "failed": [],
+  "skipped": []
+}
