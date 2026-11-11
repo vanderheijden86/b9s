@@ -23,7 +23,7 @@ func TestDetailSchedulingDates(t *testing.T) {
 			}
 			want := date.Local().Format("2006-01-02 15:04")
 			theme := DefaultTheme(lipgloss.NewRenderer(nil))
-			out := stripANSI(renderIssueDetail(issue, nil, theme, 70, nil, nil, nil, false))
+			out := stripANSI(renderIssueDetail(issue, nil, nil, theme, 70, nil, nil, nil, false))
 			if !strings.Contains(out, label+want) {
 				t.Errorf("detail missing local scheduling date %q:\n%s", label+want, out)
 			}
@@ -37,7 +37,7 @@ func TestDetailSchedulingDates(t *testing.T) {
 func TestDetailOmitsUnsetSchedulingDates(t *testing.T) {
 	issue := model.Issue{ID: "x-1", Title: "Unscheduled issue", Status: model.StatusDeferred}
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
-	out := stripANSI(renderIssueDetail(issue, nil, theme, 70, nil, nil, nil, false))
+	out := stripANSI(renderIssueDetail(issue, nil, nil, theme, 70, nil, nil, nil, false))
 	for _, label := range []string{"due ", "deferred until "} {
 		if strings.Contains(out, label) {
 			t.Errorf("detail shows unset scheduling field %q:\n%s", label, out)
