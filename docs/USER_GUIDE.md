@@ -169,13 +169,15 @@ Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with
 
 ## Search
 
-Press `/` to query the loaded issues. The query field appears only while you type. Results update with every keystroke, and while the field is focused every key goes into the query, so a query letter never triggers an action.
+Press `/` to query the loaded issues. The query field appears only while you type. Results update with every keystroke. Query letters never trigger actions.
 
 | Keys | Action |
 |------|--------|
 | `Enter` | Hide the field and keep the query |
 | `/` | Edit the query again |
-| `Up`, `Down` while editing | Recall the previous or next submitted query. Down past the newest restores your draft |
+| `Up`, `Down` with a typed query | Hide the field, keep the query and move to the previous or next result |
+| `Up`, `Down` with an empty query or while browsing history | Recall the previous or next submitted query. Down past the newest restores your draft |
+| `Alt-Up`, `Alt-Down` while editing | Recall history even with a typed draft |
 | `Esc` | Clear the query |
 | `Tab` | Complete a field name, a value, a label or a word from the loaded issues |
 | `n`, `N` | Go to the next or previous match |
@@ -184,7 +186,9 @@ Press `/` to query the loaded issues. The query field appears only while you typ
 
 `/` filters, as it does in a k9s table: issues without a hit leave the view. `Ctrl-F` makes the same query find, as `/` does in a k9s YAML view: every issue stays, `n` and `N` step through the hits and unfold the branch around each one. With no query, `Ctrl-F` opens the field in find mode, so you can type straight away. The mode lasts until you press `Ctrl-F` again, also through `Esc` and new queries. Status and type keys write into the query, so in find mode they mark issues instead of hiding the rest. `&` is the occur key from `less`. See [ADR 0057](adr/0057-find-with-ctrl-f-and-occur-on-ampersand.md).
 
-History keeps the latest 100 nonempty queries submitted with `Enter`, without consecutive repeats.
+Result navigation takes precedence over history for a nonblank typed query. A blank or whitespace-only query keeps the field open for history recall. After recall starts, plain `Up` and `Down` continue through history, even though a recalled query contains text. `Enter` keeps a recalled query and returns to the results. `Alt-Up` and `Alt-Down` provide history recall from any draft. After you return to the results, plain arrows continue moving through results and `/` edits the query again.
+
+History keeps the latest 100 nonempty queries accepted with `Enter` or a result-navigation arrow, without consecutive repeats.
 Each checkout saves its history in `.beads/search-history.json` for later sessions.
 Without a checkout, history lasts for the current session. `Esc` discards a query without adding it to history.
 
