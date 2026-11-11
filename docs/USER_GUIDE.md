@@ -154,6 +154,13 @@ The flat layout stays on `t` (ADR 0027). Backtick opens the tutorial.
 
 The pane opens with a card framed in the issue's status colour: type, ID and last update (its age, with the exact local time below it), the title, then status, priority, creator and assignee. Below the card come the created date, owner, scheduling dates and labels, then the description, design, acceptance and notes as Markdown. Due and deferred-until dates include the local time in both terminal and web details, and in copied terminal Markdown. Unset scheduling dates are omitted. An issue with children lists them with a done count and a progress bar. A relations list shows the parent, blockers and the issues it blocks, then the [attachments](#attachments), and the comments come last.
 
+Status and priority badges keep their background colours in light and dark
+terminals. Badge text keeps its theme colour when its contrast against the fill
+is at least 4.5:1, otherwise it uses black or white, whichever has more contrast.
+This includes the status chip in the detail card and accounts for the terminal's
+colour depth. Monochrome terminals use their default text and background.
+Custom ANSI palettes can change the colours a terminal actually displays.
+
 Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with TD, TB or LR direction, and for `sequenceDiagram` ([ADR 0030](adr/0030-render-mermaid-as-terminal-text-in-the-detail-view.md)). Other types, diagrams that fail to render, and diagrams wider than the pane stay as code. Widen the pane to retry a wide diagram. Copying an issue keeps the Mermaid source.
 
 | Keys | Action |
