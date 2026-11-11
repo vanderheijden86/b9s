@@ -1,0 +1,200 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "GOFLAGS": "-v",
+    "go": "go version go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "outer_timeout_seconds": 660,
+  "package_timeout_seconds": 600,
+  "counts": {
+    "passed": 3563,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf Go test cases",
+  "top_level_counts": {
+    "pass": 2130,
+    "skip": 18
+  },
+  "packages": [
+    {
+      "package": "github.com/vanderheijden86/b9s/cmd/b9s",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attach",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/attachref",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/control",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/config",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/debug",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/identity",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/model",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/testutil/proptest",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/updater",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/util/topk",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/version",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/watcher",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/web",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/scripts/web",
+      "outcome": "ok"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/docs",
+      "outcome": "ok"
+    }
+  ],
+  "optional_skips": [
+    {
+      "test": "TestProbeMemory_RealBinaries",
+      "reason": "capability_test.go:223: set B9S_TEST_STOCK_BD and/or B9S_TEST_PREVIEW_BD to probe real binaries"
+    },
+    {
+      "test": "TestS3StoreContract",
+      "reason": "s3_test.go:23: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "test": "TestS3PutRejectsShortRead",
+      "reason": "s3_test.go:79: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "test": "TestS3PutRejectsLongRead",
+      "reason": "s3_test.go:98: set B9S_TEST_S3_ENDPOINT (see scripts/attachments-s3.sh)"
+    },
+    {
+      "test": "TestDoltReader_NewAndClose",
+      "reason": "dolt_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltReader_LoadIssues",
+      "reason": "dolt_test.go:64: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltReader_GetHeadHash",
+      "reason": "dolt_test.go:91: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_NewAndStop",
+      "reason": "dolt_watcher_test.go:28: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_StartIsIdempotent",
+      "reason": "dolt_watcher_test.go:50: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_DetectsNoChangeOnPoll",
+      "reason": "dolt_watcher_test.go:71: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+      "reason": "dolt_watcher_test.go:100: B9S_TEST_DOLT_DSN not set, skipping Dolt integration test"
+    },
+    {
+      "test": "TestMemoryPreviewGraphReadTiming",
+      "reason": "memory_graph_test.go:37: set B9S_MEMORY_PREVIEW_WORKSPACE to an isolated embedded graph preview"
+    },
+    {
+      "test": "TestMemoryReadResearchStages",
+      "reason": "memory_read_research_test.go:62: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+    },
+    {
+      "test": "TestMemoryReadResearchTransportParity",
+      "reason": "memory_read_research_test.go:165: set B9S_MEMORY_RESEARCH_ROOT to the isolated investigation directory"
+    },
+    {
+      "test": "TestMemoryReadResearchConcurrentWriter",
+      "reason": "memory_read_research_test.go:398: set B9S_MEMORY_RESEARCH_MUTATE=1 to add one probe Memory and Link in the isolated copy"
+    },
+    {
+      "test": "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+      "reason": "--- PASS: TestLoadRealIssues (0.00s)"
+    },
+    {
+      "test": "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+      "reason": "--- SKIP: TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl (0.00s)"
+    },
+    {
+      "test": "TestStress_SustainedWrites",
+      "reason": "background_worker_test.go:1297: set PERF_TEST=1 to run 10+ minute stress tests"
+    },
+    {
+      "test": "TestStress_BurstWrites",
+      "reason": "background_worker_test.go:1414: set PERF_TEST=1 to run 10+ minute stress tests"
+    },
+    {
+      "test": "TestStress_MemoryPressure",
+      "reason": "background_worker_test.go:1514: set PERF_TEST=1 to run 10+ minute stress tests"
+    }
+  ],
+  "report": "/tmp/bd-teri.7/stable.log"
+}
