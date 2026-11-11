@@ -318,15 +318,17 @@ func main() {
 }
 
 func runTUIProgram(m ui.Model) error {
-	p := tea.NewProgram(
-		m,
+	options := []tea.ProgramOption{
 		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
 		// Focus reports let the Dolt watchers back off while the terminal
 		// is in the background. Terminals without them stay "focused".
 		tea.WithReportFocus(),
 		tea.WithoutSignalHandler(),
-	)
+	}
+	if m.MouseCaptured() {
+		options = append(options, tea.WithMouseCellMotion())
+	}
+	p := tea.NewProgram(m, options...)
 
 	if srv := startControl(p); srv != nil {
 		defer srv.Close()
