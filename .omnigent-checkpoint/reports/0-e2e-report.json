@@ -1,0 +1,42 @@
+{
+  "source_report": "/tmp/bd-teri.5/e2e.json",
+  "exit_code": 1,
+  "count_basis": "leaf Go test cases, excluding parent containers",
+  "counts": {
+    "passed": 2,
+    "failed": 4,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": null
+  },
+  "named_nodes": {
+    "fail": 5,
+    "pass": 2
+  },
+  "packages": {
+    "fail": 1
+  },
+  "skips": [],
+  "failures": [
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/e2e",
+      "test": "TestQuickViewE2E/row-preview"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/e2e",
+      "test": "TestQuickViewE2E/related-preview"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/e2e",
+      "test": "TestQuickViewE2E/sibling-cycle"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/tests/e2e",
+      "test": "TestQuickViewE2E/read-only"
+    }
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64"
+  }
+}
