@@ -12,6 +12,49 @@ import (
 	"time"
 )
 
+func TestSearchCaretEditingE2E(t *testing.T) {
+	for _, paste := range []bool{false, true} {
+		name := "typed"
+		if paste {
+			name = "pasted"
+		}
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTreeFixture(t, dir, makeLabelSearchFixture(t))
+			steps := []keyStep{k("/")}
+			if paste {
+				steps = append(steps, k("\x1b[200~alXha\x1b[201~"))
+			} else {
+				for _, r := range "alXha" {
+					steps = append(steps, k(string(r)))
+				}
+			}
+			steps = append(steps, k("\x1b[D"), k("\x1b[D"), k("\x1b[D"),
+				k("\x1b[C"), k("\x7f"), k("p"))
+			out, err := runTreeTUI(t, dir, 3000, steps)
+			if err != nil {
+				t.Fatalf("caret TUI failed: %v\n%s", err, out)
+			}
+			// Bubble Tea omits unchanged rows, so the last caret-only update
+			// cannot contain the results drawn by the preceding edit.
+			frame := finalSearchFrame(t, out, "alXha")
+			if !strings.Contains(frame, "/ alp█ha") {
+				t.Fatalf("query did not render the edited text and caret\n%s", frame)
+			}
+			for _, want := range []string{"Alpha bug work", "Alpha feature work"} {
+				if !strings.Contains(frame, want) {
+					t.Errorf("edited query lost matching issue %q\n%s", want, frame)
+				}
+			}
+			for _, hidden := range []string{"Beta bug work", "Gamma bug work", "Beta feature work"} {
+				if strings.Contains(frame, hidden) {
+					t.Errorf("edited query retained unrelated issue %q\n%s", hidden, frame)
+				}
+			}
+		})
+	}
+}
+
 func TestSearchHistoryE2E(t *testing.T) {
 	tempDir := t.TempDir()
 	writeTreeFixture(t, tempDir, makeLabelSearchFixture(t))

@@ -48,6 +48,30 @@ test.describe("tree filters", () => {
     await expect(page.locator("#vSearch")).toBeVisible();
   });
 
+  test("search arrows edit at the caret without navigating", async ({ page, project }) => {
+    await open(page, project);
+    await page.keyboard.press("/");
+    const input = page.locator("#sIn");
+    await expect(input).toBeFocused();
+    for (const pasted of [false, true]) {
+      await input.fill("");
+      if (pasted) await page.keyboard.insertText("alXha");
+      else await page.keyboard.type("alXha");
+      await page.keyboard.press("ArrowLeft");
+      await page.keyboard.press("ArrowLeft");
+      await page.keyboard.press("ArrowLeft");
+      await expect(input).toHaveJSProperty("selectionStart", 2);
+      await page.keyboard.press("ArrowRight");
+      await expect(input).toHaveJSProperty("selectionStart", 3);
+      await page.keyboard.press("Backspace");
+      await page.keyboard.type("p");
+      await expect(input).toHaveValue("alpha");
+      await expect(input).toHaveJSProperty("selectionStart", 3);
+      await expect(input).toBeFocused();
+      await expect(page.locator("#vSearch")).toBeVisible();
+    }
+  });
+
   test("Esc leaves the search view and gives the keys back", async ({ page, project }) => {
     await open(page, project);
     await page.keyboard.press("/");
