@@ -497,3 +497,122 @@ func TestMouseCommandTwiceRestoresWheelScroll(t *testing.T) {
 		t.Error("MouseCaptured() = false after second :mouse, want true")
 	}
 }
+
+func TestMouseConfigAtStartup(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		body     string
+		captured bool
+	}{
+		{"default", "ui:\n  default_view: tree\n", true},
+		{"enabled", "ui:\n  mouse: true\n", true},
+		{"disabled", "ui:\n  mouse: false\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := os.WriteFile(path, []byte(tc.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := config.LoadFrom(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			m := newSearchFilterModel(t, "").WithConfig(cfg, "", "")
+			if got := m.MouseCaptured(); got != tc.captured {
+				t.Errorf("startup MouseCaptured() = %v, want %v", got, tc.captured)
+			}
+		})
+	}
+}
+
+func TestMouseCommandPersistsAcrossRestart(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	path := config.ConfigPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const original = `# personal settings
+ui:
+  mouse: true # wheel preference
+  columns:
+    priority: hide
+  sort:
+    field: title
+  custom_ui: keep
+refresh:
+  poll_interval: 2s
+custom:
+  token: keep-me
+`
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, wantCaptured := range []bool{false, true} {
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := newSearchFilterModel(t, "").WithConfig(cfg, "", "")
+		m, _ = runMouseCommand(t, m)
+		if m.MouseCaptured() != wantCaptured {
+			t.Fatalf("toggle MouseCaptured() = %v, want %v", m.MouseCaptured(), wantCaptured)
+		}
+		cfg, err = config.Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		restarted := newSearchFilterModel(t, "").WithConfig(cfg, "", "")
+		if restarted.MouseCaptured() != wantCaptured {
+			t.Errorf("restart MouseCaptured() = %v, want persisted %v", restarted.MouseCaptured(), wantCaptured)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"# personal settings", "# wheel preference", "priority: hide", "field: title", "custom_ui: keep", "poll_interval: 2s", "token: keep-me"} {
+			if !strings.Contains(string(data), want) {
+				t.Errorf("saving mouse lost %q:\n%s", want, data)
+			}
+		}
+	}
+}
+
+func TestMouseCommandCreatesConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	m := newSearchFilterModel(t, "").WithConfig(config.DefaultConfig(), "", "")
+	m, _ = runMouseCommand(t, m)
+	data, err := os.ReadFile(config.ConfigPath())
+	if err != nil {
+		t.Fatalf("toggle did not create config: %v", err)
+	}
+	if !strings.Contains(string(data), "mouse: false") {
+		t.Errorf("config = %s, want explicit mouse: false", data)
+	}
+}
+
+func TestMouseCommandReportsSaveFailure(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	path := config.ConfigPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const invalid = "ui: [broken"
+	if err := os.WriteFile(path, []byte(invalid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m := newSearchFilterModel(t, "").WithConfig(config.DefaultConfig(), "", "")
+	m, msg := runMouseCommand(t, m)
+	if msg != tea.DisableMouse() || m.MouseCaptured() {
+		t.Error("saving failure prevented the runtime mouse toggle")
+	}
+	if !m.statusIsError || !strings.Contains(m.statusMsg, "Saving mouse") {
+		t.Errorf("save failure status = %q, error = %v", m.statusMsg, m.statusIsError)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != invalid {
+		t.Errorf("invalid config overwritten: %s", data)
+	}
+}
