@@ -324,6 +324,40 @@ func TestLoadFrom_UISortRejectsUnknownField(t *testing.T) {
 	}
 }
 
+func TestLoadFrom_UISortRejectsPageRank(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("ui:\n  sort:\n    field: pagerank\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadFrom(path)
+	if err == nil {
+		t.Fatal("expected unsupported pagerank sort to fail config loading")
+	}
+	want := `parsing config: invalid ui.sort.field "pagerank": want one of priority, created, updated, title, status, type, deps, deferred`
+	if err.Error() != want {
+		t.Fatalf("LoadFrom error = %q, want %q", err, want)
+	}
+}
+
+func TestLoadFrom_UISortAcceptsSupportedFields(t *testing.T) {
+	for _, field := range []string{"priority", "created", "updated", "title", "status", "type", "deps", "deferred"} {
+		t.Run(field, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if err := os.WriteFile(path, []byte("ui:\n  sort:\n    field: "+field+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := LoadFrom(path)
+			if err != nil {
+				t.Fatalf("LoadFrom: %v", err)
+			}
+			if cfg.UI.Sort.Field != field {
+				t.Fatalf("sort field = %q, want %q", cfg.UI.Sort.Field, field)
+			}
+		})
+	}
+}
+
 func TestLoadFrom_UISortRejectsUnknownDirection(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
