@@ -1,0 +1,32 @@
+{
+  "command": [
+    "timeout",
+    "90s",
+    "go",
+    "test",
+    "./internal/datasource",
+    "-run",
+    "DoltIntegration",
+    "-count=1",
+    "-timeout=30s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "endpoint": "127.0.0.1:53081",
+    "server": "TCP accepts connections but withholds MySQL greeting",
+    "credentials": "root, empty password"
+  },
+  "exit_code": 1,
+  "elapsed_seconds": 2.1261162929586135,
+  "counts": {
+    "passed": 0,
+    "failed": 1,
+    "skipped": 44,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "diagnostics": 1,
+  "connections": 1,
+  "reproduced_expected_failure": true
+}
