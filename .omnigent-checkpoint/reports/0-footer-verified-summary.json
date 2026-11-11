@@ -1,0 +1,33 @@
+{
+  "exit_code": 0,
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64"
+  },
+  "counts": {
+    "passed": 491,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_counts": {
+    "pass": 17
+  },
+  "package_counts": {
+    "pass": 1
+  },
+  "skipped_tests": [],
+  "failed_tests": [],
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./pkg/ui",
+    "-run",
+    "Footer",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ]
+}
