@@ -1,0 +1,468 @@
+{"Time":"2026-11-11T07:39:34.965972172Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/config"}
+{"Time":"2026-11-11T07:39:34.972189199Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestDefaultConfig_SortsNewestCreatedFirst"}
+{"Time":"2026-11-11T07:39:34.972614599Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestDefaultConfig_SortsNewestCreatedFirst","Output":"=== RUN   TestDefaultConfig_SortsNewestCreatedFirst\n"}
+{"Time":"2026-11-11T07:39:34.972642754Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestDefaultConfig_SortsNewestCreatedFirst","Output":"--- PASS: TestDefaultConfig_SortsNewestCreatedFirst (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.972652143Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestDefaultConfig_SortsNewestCreatedFirst","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.972661901Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISort"}
+{"Time":"2026-11-11T07:39:34.972669117Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISort","Output":"=== RUN   TestLoadFrom_UISort\n"}
+{"Time":"2026-11-11T07:39:34.97357472Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISort","Output":"--- PASS: TestLoadFrom_UISort (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.973663901Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISort","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.973674444Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortFieldWithoutDirection"}
+{"Time":"2026-11-11T07:39:34.973681731Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortFieldWithoutDirection","Output":"=== RUN   TestLoadFrom_UISortFieldWithoutDirection\n"}
+{"Time":"2026-11-11T07:39:34.974238001Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortFieldWithoutDirection","Output":"--- PASS: TestLoadFrom_UISortFieldWithoutDirection (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.974252803Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortFieldWithoutDirection","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.974260445Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownField"}
+{"Time":"2026-11-11T07:39:34.974265414Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownField","Output":"=== RUN   TestLoadFrom_UISortRejectsUnknownField\n"}
+{"Time":"2026-11-11T07:39:34.974851389Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownField","Output":"--- PASS: TestLoadFrom_UISortRejectsUnknownField (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.975534335Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownField","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.975554801Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsPageRank"}
+{"Time":"2026-11-11T07:39:34.975561201Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsPageRank","Output":"=== RUN   TestLoadFrom_UISortRejectsPageRank\n"}
+{"Time":"2026-11-11T07:39:34.97557012Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsPageRank","Output":"--- PASS: TestLoadFrom_UISortRejectsPageRank (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.975576717Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsPageRank","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.975583402Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields"}
+{"Time":"2026-11-11T07:39:34.975606252Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields\n"}
+{"Time":"2026-11-11T07:39:34.975621507Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/priority"}
+{"Time":"2026-11-11T07:39:34.975627642Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/priority","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/priority\n"}
+{"Time":"2026-11-11T07:39:34.976167061Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/priority","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/priority (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.976317199Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/priority","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.976330652Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/created"}
+{"Time":"2026-11-11T07:39:34.97633743Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/created","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/created\n"}
+{"Time":"2026-11-11T07:39:34.977263579Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/created","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/created (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.980508675Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/created","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.980542052Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/updated"}
+{"Time":"2026-11-11T07:39:34.980549876Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/updated","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/updated\n"}
+{"Time":"2026-11-11T07:39:34.980561357Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/updated","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/updated (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.980567694Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/updated","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.980580287Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/title"}
+{"Time":"2026-11-11T07:39:34.980586177Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/title","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/title\n"}
+{"Time":"2026-11-11T07:39:34.981020907Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/title","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/title (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.981039184Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/title","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.981045961Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/status"}
+{"Time":"2026-11-11T07:39:34.981050611Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/status","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/status\n"}
+{"Time":"2026-11-11T07:39:34.98105656Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/status","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/status (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.981075512Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/status","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.981083263Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/type"}
+{"Time":"2026-11-11T07:39:34.981088577Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/type","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/type\n"}
+{"Time":"2026-11-11T07:39:34.982926192Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/type","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/type (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.983055736Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/type","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.983117702Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deps"}
+{"Time":"2026-11-11T07:39:34.983125677Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deps","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/deps\n"}
+{"Time":"2026-11-11T07:39:34.983674619Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deps","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/deps (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.983693935Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deps","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.983705287Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deferred"}
+{"Time":"2026-11-11T07:39:34.983711117Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deferred","Output":"=== RUN   TestLoadFrom_UISortAcceptsSupportedFields/deferred\n"}
+{"Time":"2026-11-11T07:39:34.984356796Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deferred","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields/deferred (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.984389014Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields/deferred","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.984399584Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields","Output":"--- PASS: TestLoadFrom_UISortAcceptsSupportedFields (0.01s)\n"}
+{"Time":"2026-11-11T07:39:34.984411855Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortAcceptsSupportedFields","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:34.984420433Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownDirection"}
+{"Time":"2026-11-11T07:39:34.984426505Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownDirection","Output":"=== RUN   TestLoadFrom_UISortRejectsUnknownDirection\n"}
+{"Time":"2026-11-11T07:39:34.98458435Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownDirection","Output":"--- PASS: TestLoadFrom_UISortRejectsUnknownDirection (0.00s)\n"}
+{"Time":"2026-11-11T07:39:34.98460973Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Test":"TestLoadFrom_UISortRejectsUnknownDirection","Elapsed":0}
+{"Time":"2026-11-11T07:39:34.986679453Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Output":"PASS\n"}
+{"Time":"2026-11-11T07:39:34.986875098Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/config","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.021s\n"}
+{"Time":"2026-11-11T07:39:34.986893732Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/config","Elapsed":0.021}
+{"Time":"2026-11-11T07:39:46.450204634Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/ui"}
+{"Time":"2026-11-11T07:39:46.493069711Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRWithSortPopupOpenDoesNotOpenAttachmentPicker"}
+{"Time":"2026-11-11T07:39:46.493158175Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRWithSortPopupOpenDoesNotOpenAttachmentPicker","Output":"=== RUN   TestRWithSortPopupOpenDoesNotOpenAttachmentPicker\n"}
+{"Time":"2026-11-11T07:39:46.500983596Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRWithSortPopupOpenDoesNotOpenAttachmentPicker","Output":"--- PASS: TestRWithSortPopupOpenDoesNotOpenAttachmentPicker (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.501028994Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestRWithSortPopupOpenDoesNotOpenAttachmentPicker","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.501045422Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren"}
+{"Time":"2026-11-11T07:39:46.501050152Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren","Output":"=== RUN   TestBoardHierarchy_ParentsSortAboveTheirChildren\n"}
+{"Time":"2026-11-11T07:39:46.501055383Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/epic_lanes"}
+{"Time":"2026-11-11T07:39:46.501058965Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/epic_lanes","Output":"=== RUN   TestBoardHierarchy_ParentsSortAboveTheirChildren/epic_lanes\n"}
+{"Time":"2026-11-11T07:39:46.501066506Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/epic_lanes","Output":"--- PASS: TestBoardHierarchy_ParentsSortAboveTheirChildren/epic_lanes (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.501070843Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/epic_lanes","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.50107506Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/no_epic"}
+{"Time":"2026-11-11T07:39:46.501078571Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/no_epic","Output":"=== RUN   TestBoardHierarchy_ParentsSortAboveTheirChildren/no_epic\n"}
+{"Time":"2026-11-11T07:39:46.501088907Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/no_epic","Output":"--- PASS: TestBoardHierarchy_ParentsSortAboveTheirChildren/no_epic (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.501093523Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren/no_epic","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.501097767Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren","Output":"--- PASS: TestBoardHierarchy_ParentsSortAboveTheirChildren (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.501101809Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestBoardHierarchy_ParentsSortAboveTheirChildren","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.50181272Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeTimeColumns_HeadersNameTheirFieldNotTheSort"}
+{"Time":"2026-11-11T07:39:46.501848486Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeTimeColumns_HeadersNameTheirFieldNotTheSort","Output":"=== RUN   TestTreeTimeColumns_HeadersNameTheirFieldNotTheSort\n"}
+{"Time":"2026-11-11T07:39:46.502296472Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeTimeColumns_HeadersNameTheirFieldNotTheSort","Output":"--- PASS: TestTreeTimeColumns_HeadersNameTheirFieldNotTheSort (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.502313739Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeTimeColumns_HeadersNameTheirFieldNotTheSort","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.502323644Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeader_SortBadgeFollowsIssueLabel"}
+{"Time":"2026-11-11T07:39:46.502330496Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeader_SortBadgeFollowsIssueLabel","Output":"=== RUN   TestTreeHeader_SortBadgeFollowsIssueLabel\n"}
+{"Time":"2026-11-11T07:39:46.502381323Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeader_SortBadgeFollowsIssueLabel","Output":"--- PASS: TestTreeHeader_SortBadgeFollowsIssueLabel (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.502391321Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeader_SortBadgeFollowsIssueLabel","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.502474605Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortDeferred_UndatedIssuesGoLast"}
+{"Time":"2026-11-11T07:39:46.502482659Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortDeferred_UndatedIssuesGoLast","Output":"=== RUN   TestTreeSortDeferred_UndatedIssuesGoLast\n"}
+{"Time":"2026-11-11T07:39:46.502543545Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortDeferred_UndatedIssuesGoLast","Output":"--- PASS: TestTreeSortDeferred_UndatedIssuesGoLast (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.502551548Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortDeferred_UndatedIssuesGoLast","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.502561527Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDeferred_LabelDirectionAndConfig"}
+{"Time":"2026-11-11T07:39:46.502568118Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDeferred_LabelDirectionAndConfig","Output":"=== RUN   TestSortFieldDeferred_LabelDirectionAndConfig\n"}
+{"Time":"2026-11-11T07:39:46.502574121Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDeferred_LabelDirectionAndConfig","Output":"--- PASS: TestSortFieldDeferred_LabelDirectionAndConfig (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.502579337Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDeferred_LabelDirectionAndConfig","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.504148101Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeKeyTSortsAcrossTheHierarchy"}
+{"Time":"2026-11-11T07:39:46.504169933Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeKeyTSortsAcrossTheHierarchy","Output":"=== RUN   TestListModeKeyTSortsAcrossTheHierarchy\n"}
+{"Time":"2026-11-11T07:39:46.512342688Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeKeyTSortsAcrossTheHierarchy","Output":"--- PASS: TestListModeKeyTSortsAcrossTheHierarchy (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.512370218Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeKeyTSortsAcrossTheHierarchy","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.514737926Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortCreatedRanksRootsByNewestDescendant"}
+{"Time":"2026-11-11T07:39:46.514779478Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortCreatedRanksRootsByNewestDescendant","Output":"=== RUN   TestTreeSortCreatedRanksRootsByNewestDescendant\n"}
+{"Time":"2026-11-11T07:39:46.515656156Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortCreatedRanksRootsByNewestDescendant","Output":"--- PASS: TestTreeSortCreatedRanksRootsByNewestDescendant (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515684267Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortCreatedRanksRootsByNewestDescendant","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515699385Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksRootsByNewestDescendant"}
+{"Time":"2026-11-11T07:39:46.515705858Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksRootsByNewestDescendant","Output":"=== RUN   TestTreeSortUpdatedRanksRootsByNewestDescendant\n"}
+{"Time":"2026-11-11T07:39:46.515715649Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksRootsByNewestDescendant","Output":"--- PASS: TestTreeSortUpdatedRanksRootsByNewestDescendant (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51572241Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksRootsByNewestDescendant","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515729944Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortAscendingUsesNewestDescendantToo"}
+{"Time":"2026-11-11T07:39:46.51574044Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortAscendingUsesNewestDescendantToo","Output":"=== RUN   TestTreeSortAscendingUsesNewestDescendantToo\n"}
+{"Time":"2026-11-11T07:39:46.515747686Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortAscendingUsesNewestDescendantToo","Output":"--- PASS: TestTreeSortAscendingUsesNewestDescendantToo (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515754093Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortAscendingUsesNewestDescendantToo","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515760384Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksNestedSiblingsBySubtree"}
+{"Time":"2026-11-11T07:39:46.515765826Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksNestedSiblingsBySubtree","Output":"=== RUN   TestTreeSortUpdatedRanksNestedSiblingsBySubtree\n"}
+{"Time":"2026-11-11T07:39:46.515775991Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksNestedSiblingsBySubtree","Output":"--- PASS: TestTreeSortUpdatedRanksNestedSiblingsBySubtree (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515781704Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortUpdatedRanksNestedSiblingsBySubtree","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515788328Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatListSortsByOwnDate"}
+{"Time":"2026-11-11T07:39:46.515793519Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatListSortsByOwnDate","Output":"=== RUN   TestFlatListSortsByOwnDate\n"}
+{"Time":"2026-11-11T07:39:46.515801521Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatListSortsByOwnDate","Output":"--- PASS: TestFlatListSortsByOwnDate (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51580766Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatListSortsByOwnDate","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515813829Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildChildSorting"}
+{"Time":"2026-11-11T07:39:46.515819092Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildChildSorting","Output":"=== RUN   TestTreeBuildChildSorting\n"}
+{"Time":"2026-11-11T07:39:46.515838521Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildChildSorting","Output":"--- PASS: TestTreeBuildChildSorting (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515848143Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildChildSorting","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515854784Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues"}
+{"Time":"2026-11-11T07:39:46.515860838Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues","Output":"=== RUN   TestSortFieldValues\n"}
+{"Time":"2026-11-11T07:39:46.515867411Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Priority"}
+{"Time":"2026-11-11T07:39:46.515873044Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Priority","Output":"=== RUN   TestSortFieldValues/Priority\n"}
+{"Time":"2026-11-11T07:39:46.515880176Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Priority","Output":"--- PASS: TestSortFieldValues/Priority (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515886664Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Priority","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515893092Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Created"}
+{"Time":"2026-11-11T07:39:46.515898394Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Created","Output":"=== RUN   TestSortFieldValues/Created\n"}
+{"Time":"2026-11-11T07:39:46.515904896Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Created","Output":"--- PASS: TestSortFieldValues/Created (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515911346Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Created","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515917091Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Updated"}
+{"Time":"2026-11-11T07:39:46.515922102Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Updated","Output":"=== RUN   TestSortFieldValues/Updated\n"}
+{"Time":"2026-11-11T07:39:46.515929195Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Updated","Output":"--- PASS: TestSortFieldValues/Updated (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515935632Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Updated","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515941698Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Title"}
+{"Time":"2026-11-11T07:39:46.515946647Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Title","Output":"=== RUN   TestSortFieldValues/Title\n"}
+{"Time":"2026-11-11T07:39:46.51595283Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Title","Output":"--- PASS: TestSortFieldValues/Title (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51595855Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Title","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515963914Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Status"}
+{"Time":"2026-11-11T07:39:46.515969374Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Status","Output":"=== RUN   TestSortFieldValues/Status\n"}
+{"Time":"2026-11-11T07:39:46.515975035Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Status","Output":"--- PASS: TestSortFieldValues/Status (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.515987147Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Status","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.515992746Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Type"}
+{"Time":"2026-11-11T07:39:46.515999097Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Type","Output":"=== RUN   TestSortFieldValues/Type\n"}
+{"Time":"2026-11-11T07:39:46.516005436Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Type","Output":"--- PASS: TestSortFieldValues/Type (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516011519Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Type","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516017284Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deps"}
+{"Time":"2026-11-11T07:39:46.516022178Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deps","Output":"=== RUN   TestSortFieldValues/Deps\n"}
+{"Time":"2026-11-11T07:39:46.516028443Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deps","Output":"--- PASS: TestSortFieldValues/Deps (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516034904Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deps","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516040794Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deferred"}
+{"Time":"2026-11-11T07:39:46.516046582Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deferred","Output":"=== RUN   TestSortFieldValues/Deferred\n"}
+{"Time":"2026-11-11T07:39:46.516054145Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deferred","Output":"--- PASS: TestSortFieldValues/Deferred (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516067349Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues/Deferred","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516074658Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues","Output":"--- PASS: TestSortFieldValues (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516080894Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldValues","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516086372Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionValues"}
+{"Time":"2026-11-11T07:39:46.516091756Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionValues","Output":"=== RUN   TestSortDirectionValues\n"}
+{"Time":"2026-11-11T07:39:46.516099687Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionValues","Output":"--- PASS: TestSortDirectionValues (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516106057Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionValues","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516113022Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionIndicator"}
+{"Time":"2026-11-11T07:39:46.516118388Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionIndicator","Output":"=== RUN   TestSortDirectionIndicator\n"}
+{"Time":"2026-11-11T07:39:46.516125636Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionIndicator","Output":"--- PASS: TestSortDirectionIndicator (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516132757Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionIndicator","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516138503Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionToggle"}
+{"Time":"2026-11-11T07:39:46.516149397Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionToggle","Output":"=== RUN   TestSortDirectionToggle\n"}
+{"Time":"2026-11-11T07:39:46.516157446Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionToggle","Output":"--- PASS: TestSortDirectionToggle (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516164979Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortDirectionToggle","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516171262Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDefaultDirection"}
+{"Time":"2026-11-11T07:39:46.516176466Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDefaultDirection","Output":"=== RUN   TestSortFieldDefaultDirection\n"}
+{"Time":"2026-11-11T07:39:46.516182982Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDefaultDirection","Output":"--- PASS: TestSortFieldDefaultDirection (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516189944Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldDefaultDirection","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516195805Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSetSortFieldDirection"}
+{"Time":"2026-11-11T07:39:46.516200852Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSetSortFieldDirection","Output":"=== RUN   TestTreeSetSortFieldDirection\n"}
+{"Time":"2026-11-11T07:39:46.516207724Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSetSortFieldDirection","Output":"--- PASS: TestTreeSetSortFieldDirection (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516213746Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSetSortFieldDirection","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516221562Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByCreated"}
+{"Time":"2026-11-11T07:39:46.516226896Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByCreated","Output":"=== RUN   TestTreeSortByCreated\n"}
+{"Time":"2026-11-11T07:39:46.516241404Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByCreated","Output":"--- PASS: TestTreeSortByCreated (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516249104Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByCreated","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516255018Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByPriority"}
+{"Time":"2026-11-11T07:39:46.516260297Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByPriority","Output":"=== RUN   TestTreeSortByPriority\n"}
+{"Time":"2026-11-11T07:39:46.516267787Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByPriority","Output":"--- PASS: TestTreeSortByPriority (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51627423Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByPriority","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516287046Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByDepsCount"}
+{"Time":"2026-11-11T07:39:46.5162929Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByDepsCount","Output":"=== RUN   TestTreeSortByDepsCount\n"}
+{"Time":"2026-11-11T07:39:46.516299369Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByDepsCount","Output":"--- PASS: TestTreeSortByDepsCount (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516306312Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortByDepsCount","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516312003Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortModeBackwardsCompatibility"}
+{"Time":"2026-11-11T07:39:46.516323138Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortModeBackwardsCompatibility","Output":"=== RUN   TestSortModeBackwardsCompatibility\n"}
+{"Time":"2026-11-11T07:39:46.516331749Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortModeBackwardsCompatibility","Output":"--- PASS: TestSortModeBackwardsCompatibility (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516339325Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortModeBackwardsCompatibility","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516345878Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldCount"}
+{"Time":"2026-11-11T07:39:46.516351053Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldCount","Output":"=== RUN   TestSortFieldCount\n"}
+{"Time":"2026-11-11T07:39:46.516357491Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldCount","Output":"--- PASS: TestSortFieldCount (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516363712Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortFieldCount","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516369525Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields"}
+{"Time":"2026-11-11T07:39:46.516374651Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields","Output":"=== RUN   TestTreeSortSupportedFields\n"}
+{"Time":"2026-11-11T07:39:46.516380909Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority"}
+{"Time":"2026-11-11T07:39:46.516386085Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority","Output":"=== RUN   TestTreeSortSupportedFields/Priority\n"}
+{"Time":"2026-11-11T07:39:46.516393168Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/ascending"}
+{"Time":"2026-11-11T07:39:46.516398303Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Priority/ascending\n"}
+{"Time":"2026-11-11T07:39:46.516405372Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Priority/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516411446Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516417177Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/descending"}
+{"Time":"2026-11-11T07:39:46.516421891Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/descending","Output":"=== RUN   TestTreeSortSupportedFields/Priority/descending\n"}
+{"Time":"2026-11-11T07:39:46.516429974Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/descending","Output":"--- PASS: TestTreeSortSupportedFields/Priority/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51643701Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516444011Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority","Output":"--- PASS: TestTreeSortSupportedFields/Priority (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516451394Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Priority","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516457555Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created"}
+{"Time":"2026-11-11T07:39:46.516468742Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created","Output":"=== RUN   TestTreeSortSupportedFields/Created\n"}
+{"Time":"2026-11-11T07:39:46.516475987Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/ascending"}
+{"Time":"2026-11-11T07:39:46.516481278Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Created/ascending\n"}
+{"Time":"2026-11-11T07:39:46.516497365Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Created/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516505921Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516512295Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/descending"}
+{"Time":"2026-11-11T07:39:46.516517412Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/descending","Output":"=== RUN   TestTreeSortSupportedFields/Created/descending\n"}
+{"Time":"2026-11-11T07:39:46.51652426Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/descending","Output":"--- PASS: TestTreeSortSupportedFields/Created/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516531177Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.51653962Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created","Output":"--- PASS: TestTreeSortSupportedFields/Created (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516545956Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Created","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516551823Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated"}
+{"Time":"2026-11-11T07:39:46.516556871Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated","Output":"=== RUN   TestTreeSortSupportedFields/Updated\n"}
+{"Time":"2026-11-11T07:39:46.516563574Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/ascending"}
+{"Time":"2026-11-11T07:39:46.516569091Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Updated/ascending\n"}
+{"Time":"2026-11-11T07:39:46.516576073Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Updated/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516582414Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516589724Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/descending"}
+{"Time":"2026-11-11T07:39:46.516621833Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/descending","Output":"=== RUN   TestTreeSortSupportedFields/Updated/descending\n"}
+{"Time":"2026-11-11T07:39:46.516631297Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/descending","Output":"--- PASS: TestTreeSortSupportedFields/Updated/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516644385Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516653045Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated","Output":"--- PASS: TestTreeSortSupportedFields/Updated (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516663198Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Updated","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516670381Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title"}
+{"Time":"2026-11-11T07:39:46.51667593Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title","Output":"=== RUN   TestTreeSortSupportedFields/Title\n"}
+{"Time":"2026-11-11T07:39:46.516683956Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/ascending"}
+{"Time":"2026-11-11T07:39:46.516689416Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Title/ascending\n"}
+{"Time":"2026-11-11T07:39:46.516696186Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Title/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516703471Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516711537Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/descending"}
+{"Time":"2026-11-11T07:39:46.516717369Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/descending","Output":"=== RUN   TestTreeSortSupportedFields/Title/descending\n"}
+{"Time":"2026-11-11T07:39:46.516724031Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/descending","Output":"--- PASS: TestTreeSortSupportedFields/Title/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.5167303Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516736679Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title","Output":"--- PASS: TestTreeSortSupportedFields/Title (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516752962Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Title","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516763929Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status"}
+{"Time":"2026-11-11T07:39:46.516770802Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status","Output":"=== RUN   TestTreeSortSupportedFields/Status\n"}
+{"Time":"2026-11-11T07:39:46.516777133Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/ascending"}
+{"Time":"2026-11-11T07:39:46.516782667Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Status/ascending\n"}
+{"Time":"2026-11-11T07:39:46.516789365Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Status/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516795442Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516807965Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/descending"}
+{"Time":"2026-11-11T07:39:46.516814633Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/descending","Output":"=== RUN   TestTreeSortSupportedFields/Status/descending\n"}
+{"Time":"2026-11-11T07:39:46.516824766Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/descending","Output":"--- PASS: TestTreeSortSupportedFields/Status/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516831725Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516838888Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status","Output":"--- PASS: TestTreeSortSupportedFields/Status (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516846105Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Status","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516854798Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type"}
+{"Time":"2026-11-11T07:39:46.516861551Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type","Output":"=== RUN   TestTreeSortSupportedFields/Type\n"}
+{"Time":"2026-11-11T07:39:46.516867648Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/ascending"}
+{"Time":"2026-11-11T07:39:46.516872484Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Type/ascending\n"}
+{"Time":"2026-11-11T07:39:46.516940256Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Type/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.516952453Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.516963464Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/descending"}
+{"Time":"2026-11-11T07:39:46.516969139Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/descending","Output":"=== RUN   TestTreeSortSupportedFields/Type/descending\n"}
+{"Time":"2026-11-11T07:39:46.516998568Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/descending","Output":"--- PASS: TestTreeSortSupportedFields/Type/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517010375Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517015489Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type","Output":"--- PASS: TestTreeSortSupportedFields/Type (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517020839Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Type","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.51702645Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps"}
+{"Time":"2026-11-11T07:39:46.51703029Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps","Output":"=== RUN   TestTreeSortSupportedFields/Deps\n"}
+{"Time":"2026-11-11T07:39:46.517035161Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/ascending"}
+{"Time":"2026-11-11T07:39:46.517043528Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Deps/ascending\n"}
+{"Time":"2026-11-11T07:39:46.517070491Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Deps/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517077071Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517086191Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/descending"}
+{"Time":"2026-11-11T07:39:46.517089411Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/descending","Output":"=== RUN   TestTreeSortSupportedFields/Deps/descending\n"}
+{"Time":"2026-11-11T07:39:46.517119597Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/descending","Output":"--- PASS: TestTreeSortSupportedFields/Deps/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517125793Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517130303Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps","Output":"--- PASS: TestTreeSortSupportedFields/Deps (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517134739Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deps","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517156794Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred"}
+{"Time":"2026-11-11T07:39:46.517161226Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred","Output":"=== RUN   TestTreeSortSupportedFields/Deferred\n"}
+{"Time":"2026-11-11T07:39:46.517179628Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/ascending"}
+{"Time":"2026-11-11T07:39:46.517188955Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/ascending","Output":"=== RUN   TestTreeSortSupportedFields/Deferred/ascending\n"}
+{"Time":"2026-11-11T07:39:46.517226181Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/ascending","Output":"--- PASS: TestTreeSortSupportedFields/Deferred/ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51723313Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517237208Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/descending"}
+{"Time":"2026-11-11T07:39:46.517240006Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/descending","Output":"=== RUN   TestTreeSortSupportedFields/Deferred/descending\n"}
+{"Time":"2026-11-11T07:39:46.517266753Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/descending","Output":"--- PASS: TestTreeSortSupportedFields/Deferred/descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.51727282Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred/descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517277742Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred","Output":"--- PASS: TestTreeSortSupportedFields/Deferred (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517282392Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields/Deferred","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517290955Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields","Output":"--- PASS: TestTreeSortSupportedFields (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517294419Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSupportedFields","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517359697Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupOpenClose"}
+{"Time":"2026-11-11T07:39:46.517364579Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupOpenClose","Output":"=== RUN   TestSortPopupOpenClose\n"}
+{"Time":"2026-11-11T07:39:46.517410113Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupOpenClose","Output":"--- PASS: TestSortPopupOpenClose (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517416995Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupOpenClose","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517420516Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorNavigation"}
+{"Time":"2026-11-11T07:39:46.517423855Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorNavigation","Output":"=== RUN   TestSortPopupCursorNavigation\n"}
+{"Time":"2026-11-11T07:39:46.517775008Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorNavigation","Output":"--- PASS: TestSortPopupCursorNavigation (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517791479Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorNavigation","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517796496Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupSelectField"}
+{"Time":"2026-11-11T07:39:46.517800652Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupSelectField","Output":"=== RUN   TestSortPopupSelectField\n"}
+{"Time":"2026-11-11T07:39:46.517804598Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupSelectField","Output":"--- PASS: TestSortPopupSelectField (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517807869Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupSelectField","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.51781114Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupToggleDirection"}
+{"Time":"2026-11-11T07:39:46.51781387Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupToggleDirection","Output":"=== RUN   TestSortPopupToggleDirection\n"}
+{"Time":"2026-11-11T07:39:46.51781751Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupToggleDirection","Output":"--- PASS: TestSortPopupToggleDirection (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517820691Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupToggleDirection","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517823804Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupRendering"}
+{"Time":"2026-11-11T07:39:46.517826517Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupRendering","Output":"=== RUN   TestSortPopupRendering\n"}
+{"Time":"2026-11-11T07:39:46.517829874Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupRendering","Output":"--- PASS: TestSortPopupRendering (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517834104Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupRendering","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517837227Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorWrapsAtBottom"}
+{"Time":"2026-11-11T07:39:46.51784967Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorWrapsAtBottom","Output":"=== RUN   TestSortPopupCursorWrapsAtBottom\n"}
+{"Time":"2026-11-11T07:39:46.517855515Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorWrapsAtBottom","Output":"--- PASS: TestSortPopupCursorWrapsAtBottom (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.517858722Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortPopupCursorWrapsAtBottom","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.517870106Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatModePreservesSortMode"}
+{"Time":"2026-11-11T07:39:46.517873326Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatModePreservesSortMode","Output":"=== RUN   TestFlatModePreservesSortMode\n"}
+{"Time":"2026-11-11T07:39:46.518620975Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatModePreservesSortMode","Output":"--- PASS: TestFlatModePreservesSortMode (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.518640221Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestFlatModePreservesSortMode","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.518838706Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDesc"}
+{"Time":"2026-11-11T07:39:46.518847549Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDesc","Output":"=== RUN   TestTreeDefaultSortCreatedDesc\n"}
+{"Time":"2026-11-11T07:39:46.519021654Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDesc","Output":"--- PASS: TestTreeDefaultSortCreatedDesc (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519033629Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDesc","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.519052435Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDescWithHierarchy"}
+{"Time":"2026-11-11T07:39:46.519059078Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDescWithHierarchy","Output":"=== RUN   TestTreeDefaultSortCreatedDescWithHierarchy\n"}
+{"Time":"2026-11-11T07:39:46.519182049Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDescWithHierarchy","Output":"--- PASS: TestTreeDefaultSortCreatedDescWithHierarchy (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519193096Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeDefaultSortCreatedDescWithHierarchy","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.519197763Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle"}
+{"Time":"2026-11-11T07:39:46.519200986Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle","Output":"=== RUN   TestTreeCreatedSortEpicChildrenNaturalTitle\n"}
+{"Time":"2026-11-11T07:39:46.519796837Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Ascending"}
+{"Time":"2026-11-11T07:39:46.519817496Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Ascending","Output":"=== RUN   TestTreeCreatedSortEpicChildrenNaturalTitle/Ascending\n"}
+{"Time":"2026-11-11T07:39:46.519828689Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Ascending","Output":"--- PASS: TestTreeCreatedSortEpicChildrenNaturalTitle/Ascending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519836794Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Ascending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.519843973Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Descending"}
+{"Time":"2026-11-11T07:39:46.519859213Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Descending","Output":"=== RUN   TestTreeCreatedSortEpicChildrenNaturalTitle/Descending\n"}
+{"Time":"2026-11-11T07:39:46.519868317Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Descending","Output":"--- PASS: TestTreeCreatedSortEpicChildrenNaturalTitle/Descending (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519875153Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle/Descending","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.519889756Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle","Output":"--- PASS: TestTreeCreatedSortEpicChildrenNaturalTitle (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519897312Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeCreatedSortEpicChildrenNaturalTitle","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.519905977Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeaderShowsSortIndicator"}
+{"Time":"2026-11-11T07:39:46.519911935Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeaderShowsSortIndicator","Output":"=== RUN   TestTreeHeaderShowsSortIndicator\n"}
+{"Time":"2026-11-11T07:39:46.51991948Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeaderShowsSortIndicator","Output":"--- PASS: TestTreeHeaderShowsSortIndicator (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519925363Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeHeaderShowsSortIndicator","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.51993121Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildIgnoresPersistedSort"}
+{"Time":"2026-11-11T07:39:46.519941693Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildIgnoresPersistedSort","Output":"=== RUN   TestTreeBuildIgnoresPersistedSort\n"}
+{"Time":"2026-11-11T07:39:46.519952509Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildIgnoresPersistedSort","Output":"--- PASS: TestTreeBuildIgnoresPersistedSort (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.519959529Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeBuildIgnoresPersistedSort","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.519966279Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSurvivesRebuild"}
+{"Time":"2026-11-11T07:39:46.519974646Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSurvivesRebuild","Output":"=== RUN   TestTreeSortSurvivesRebuild\n"}
+{"Time":"2026-11-11T07:39:46.520219367Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSurvivesRebuild","Output":"--- PASS: TestTreeSortSurvivesRebuild (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.520232756Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSortSurvivesRebuild","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.52024036Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSaveStateOmitsSort"}
+{"Time":"2026-11-11T07:39:46.520246176Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSaveStateOmitsSort","Output":"=== RUN   TestTreeSaveStateOmitsSort\n"}
+{"Time":"2026-11-11T07:39:46.520531085Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSaveStateOmitsSort","Output":"--- PASS: TestTreeSaveStateOmitsSort (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.520544173Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeSaveStateOmitsSort","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521109599Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys"}
+{"Time":"2026-11-11T07:39:46.521124159Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys","Output":"=== RUN   TestSortedRepoKeys\n"}
+{"Time":"2026-11-11T07:39:46.52113091Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/nil_map"}
+{"Time":"2026-11-11T07:39:46.521134049Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/nil_map","Output":"=== RUN   TestSortedRepoKeys/nil_map\n"}
+{"Time":"2026-11-11T07:39:46.521160026Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/nil_map","Output":"--- PASS: TestSortedRepoKeys/nil_map (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521168421Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/nil_map","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521177009Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/empty_map"}
+{"Time":"2026-11-11T07:39:46.521182187Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/empty_map","Output":"=== RUN   TestSortedRepoKeys/empty_map\n"}
+{"Time":"2026-11-11T07:39:46.521187792Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/empty_map","Output":"--- PASS: TestSortedRepoKeys/empty_map (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521193888Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/empty_map","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521199784Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_selected_key"}
+{"Time":"2026-11-11T07:39:46.521204313Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_selected_key","Output":"=== RUN   TestSortedRepoKeys/single_selected_key\n"}
+{"Time":"2026-11-11T07:39:46.521212593Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_selected_key","Output":"--- PASS: TestSortedRepoKeys/single_selected_key (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521217909Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_selected_key","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.5212234Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_unselected_key"}
+{"Time":"2026-11-11T07:39:46.521228079Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_unselected_key","Output":"=== RUN   TestSortedRepoKeys/single_unselected_key\n"}
+{"Time":"2026-11-11T07:39:46.521234461Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_unselected_key","Output":"--- PASS: TestSortedRepoKeys/single_unselected_key (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521238083Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/single_unselected_key","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521242935Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/multiple_selected_keys"}
+{"Time":"2026-11-11T07:39:46.521245955Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/multiple_selected_keys","Output":"=== RUN   TestSortedRepoKeys/multiple_selected_keys\n"}
+{"Time":"2026-11-11T07:39:46.521250248Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/multiple_selected_keys","Output":"--- PASS: TestSortedRepoKeys/multiple_selected_keys (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521253396Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/multiple_selected_keys","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521264821Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/mixed_selected_and_unselected"}
+{"Time":"2026-11-11T07:39:46.521268017Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/mixed_selected_and_unselected","Output":"=== RUN   TestSortedRepoKeys/mixed_selected_and_unselected\n"}
+{"Time":"2026-11-11T07:39:46.521271737Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/mixed_selected_and_unselected","Output":"--- PASS: TestSortedRepoKeys/mixed_selected_and_unselected (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521274998Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/mixed_selected_and_unselected","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521279491Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/all_unselected"}
+{"Time":"2026-11-11T07:39:46.521282155Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/all_unselected","Output":"=== RUN   TestSortedRepoKeys/all_unselected\n"}
+{"Time":"2026-11-11T07:39:46.521286025Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/all_unselected","Output":"--- PASS: TestSortedRepoKeys/all_unselected (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521289077Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/all_unselected","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521292061Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/keys_sorted_alphabetically"}
+{"Time":"2026-11-11T07:39:46.521294729Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/keys_sorted_alphabetically","Output":"=== RUN   TestSortedRepoKeys/keys_sorted_alphabetically\n"}
+{"Time":"2026-11-11T07:39:46.521298006Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/keys_sorted_alphabetically","Output":"--- PASS: TestSortedRepoKeys/keys_sorted_alphabetically (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521301042Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys/keys_sorted_alphabetically","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521304498Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys","Output":"--- PASS: TestSortedRepoKeys (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521307632Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortedRepoKeys","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.52133117Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortingByPriorityAndDate"}
+{"Time":"2026-11-11T07:39:46.521336214Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortingByPriorityAndDate","Output":"=== RUN   TestSortingByPriorityAndDate\n"}
+{"Time":"2026-11-11T07:39:46.521375933Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortingByPriorityAndDate","Output":"--- PASS: TestSortingByPriorityAndDate (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.521381635Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestSortingByPriorityAndDate","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.521535591Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigAppliesConfiguredTreeSort"}
+{"Time":"2026-11-11T07:39:46.52153959Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigAppliesConfiguredTreeSort","Output":"=== RUN   TestWithConfigAppliesConfiguredTreeSort\n"}
+{"Time":"2026-11-11T07:39:46.523971847Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigAppliesConfiguredTreeSort","Output":"--- PASS: TestWithConfigAppliesConfiguredTreeSort (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.523999265Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigAppliesConfiguredTreeSort","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.524017152Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigUsesFieldDirectionWhenDirectionOmitted"}
+{"Time":"2026-11-11T07:39:46.524023202Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigUsesFieldDirectionWhenDirectionOmitted","Output":"=== RUN   TestWithConfigUsesFieldDirectionWhenDirectionOmitted\n"}
+{"Time":"2026-11-11T07:39:46.529827199Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigUsesFieldDirectionWhenDirectionOmitted","Output":"--- PASS: TestWithConfigUsesFieldDirectionWhenDirectionOmitted (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.529878707Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigUsesFieldDirectionWhenDirectionOmitted","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.529888783Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigWithoutSortShowsNewestCreatedFirst"}
+{"Time":"2026-11-11T07:39:46.529894424Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigWithoutSortShowsNewestCreatedFirst","Output":"=== RUN   TestWithConfigWithoutSortShowsNewestCreatedFirst\n"}
+{"Time":"2026-11-11T07:39:46.532679347Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigWithoutSortShowsNewestCreatedFirst","Output":"--- PASS: TestWithConfigWithoutSortShowsNewestCreatedFirst (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.532789671Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfigWithoutSortShowsNewestCreatedFirst","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.532849101Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestConfigSortFieldNamesMatchTreeSortFields"}
+{"Time":"2026-11-11T07:39:46.532857598Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestConfigSortFieldNamesMatchTreeSortFields","Output":"=== RUN   TestConfigSortFieldNamesMatchTreeSortFields\n"}
+{"Time":"2026-11-11T07:39:46.54601675Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestConfigSortFieldNamesMatchTreeSortFields","Output":"--- PASS: TestConfigSortFieldNamesMatchTreeSortFields (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.546045781Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestConfigSortFieldNamesMatchTreeSortFields","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.546831645Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysFollowStoredRecentOrder"}
+{"Time":"2026-11-11T07:39:46.546847882Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysFollowStoredRecentOrder","Output":"=== RUN   TestWithConfig_NumberKeysFollowStoredRecentOrder\n"}
+{"Time":"2026-11-11T07:39:46.561371021Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysFollowStoredRecentOrder","Output":"--- PASS: TestWithConfig_NumberKeysFollowStoredRecentOrder (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.561406103Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysFollowStoredRecentOrder","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.561421526Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_PrependsStartupProjectMissingFromRecent"}
+{"Time":"2026-11-11T07:39:46.561427989Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_PrependsStartupProjectMissingFromRecent","Output":"=== RUN   TestWithConfig_PrependsStartupProjectMissingFromRecent\n"}
+{"Time":"2026-11-11T07:39:46.577752131Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_PrependsStartupProjectMissingFromRecent","Output":"--- PASS: TestWithConfig_PrependsStartupProjectMissingFromRecent (0.02s)\n"}
+{"Time":"2026-11-11T07:39:46.577801218Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_PrependsStartupProjectMissingFromRecent","Elapsed":0.02}
+{"Time":"2026-11-11T07:39:46.577815197Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout"}
+{"Time":"2026-11-11T07:39:46.577822279Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout","Output":"=== RUN   TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout\n"}
+{"Time":"2026-11-11T07:39:46.583377932Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout","Output":"--- PASS: TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.583412086Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_SwitchCarriesDatabaseOfProjectWithoutCheckout","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.583442131Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout"}
+{"Time":"2026-11-11T07:39:46.583448837Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout","Output":"=== RUN   TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout\n"}
+{"Time":"2026-11-11T07:39:46.591552832Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout","Output":"--- PASS: TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.591579538Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_NumberKeysDeduplicateSymlinkedCheckout","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.591588729Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath"}
+{"Time":"2026-11-11T07:39:46.591602707Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath","Output":"=== RUN   TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath\n"}
+{"Time":"2026-11-11T07:39:46.595943907Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath","Output":"--- PASS: TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.595976814Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestWithConfig_ListsDoltStartupOnceWhenItsRecentEntryHasNoPath","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.596004686Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupOpensOnS"}
+{"Time":"2026-11-11T07:39:46.596011819Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupOpensOnS","Output":"=== RUN   TestTreeViewSortPopupOpensOnS\n"}
+{"Time":"2026-11-11T07:39:46.597951718Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupOpensOnS","Output":"--- PASS: TestTreeViewSortPopupOpensOnS (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.597995626Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupOpensOnS","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.598004448Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupEscCloses"}
+{"Time":"2026-11-11T07:39:46.598009236Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupEscCloses","Output":"=== RUN   TestTreeViewSortPopupEscCloses\n"}
+{"Time":"2026-11-11T07:39:46.602248355Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupEscCloses","Output":"--- PASS: TestTreeViewSortPopupEscCloses (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.602313011Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupEscCloses","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.602325931Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSKeyCloses"}
+{"Time":"2026-11-11T07:39:46.602331464Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSKeyCloses","Output":"=== RUN   TestTreeViewSortPopupSKeyCloses\n"}
+{"Time":"2026-11-11T07:39:46.604819653Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSKeyCloses","Output":"--- PASS: TestTreeViewSortPopupSKeyCloses (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.604851143Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSKeyCloses","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.604862179Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSelectChangesSort"}
+{"Time":"2026-11-11T07:39:46.604865669Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSelectChangesSort","Output":"=== RUN   TestTreeViewSortPopupSelectChangesSort\n"}
+{"Time":"2026-11-11T07:39:46.611057363Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSelectChangesSort","Output":"--- PASS: TestTreeViewSortPopupSelectChangesSort (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.611109442Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupSelectChangesSort","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.611121576Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupToggleDirection"}
+{"Time":"2026-11-11T07:39:46.611126877Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupToggleDirection","Output":"=== RUN   TestTreeViewSortPopupToggleDirection\n"}
+{"Time":"2026-11-11T07:39:46.61458299Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupToggleDirection","Output":"--- PASS: TestTreeViewSortPopupToggleDirection (0.00s)\n"}
+{"Time":"2026-11-11T07:39:46.614645245Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupToggleDirection","Elapsed":0}
+{"Time":"2026-11-11T07:39:46.614653745Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupDoesNotAffectNavigation"}
+{"Time":"2026-11-11T07:39:46.614657569Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupDoesNotAffectNavigation","Output":"=== RUN   TestTreeViewSortPopupDoesNotAffectNavigation\n"}
+{"Time":"2026-11-11T07:39:46.620104157Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupDoesNotAffectNavigation","Output":"--- PASS: TestTreeViewSortPopupDoesNotAffectNavigation (0.01s)\n"}
+{"Time":"2026-11-11T07:39:46.620155658Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestTreeViewSortPopupDoesNotAffectNavigation","Elapsed":0.01}
+{"Time":"2026-11-11T07:39:46.620308156Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"PASS\n"}
+{"Time":"2026-11-11T07:39:46.624137281Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t0.174s\n"}
+{"Time":"2026-11-11T07:39:46.624174006Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Elapsed":0.174}
