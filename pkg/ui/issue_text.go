@@ -154,6 +154,7 @@ func (m *Model) restoreIssueTexts() {
 
 // resetIssueTexts forgets every text and request of the previous project.
 func (m *Model) resetIssueTexts() {
+	m.quickView = nil
 	m.issueTexts = nil
 	m.issueTextLoading = nil
 	m.issueTextErr = nil
