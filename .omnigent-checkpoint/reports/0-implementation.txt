@@ -1,0 +1,16 @@
+bd-teri.1 implementation, unapproved
+Current main already reaches every visible child from tree detail: open any numbered child with 1-9, then n/p navigates siblings without a nine-child limit. Sibling tree order can differ from child numbering. Backspace returns to parent.
+No navigation logic, data reads/writes, or states changed.
+Changed files:
+docs/USER_GUIDE.md: explicit path, tree scope, ordering, Backspace and board/graph return instructions.
+pkg/ui/context_help.go: same path in context help.
+pkg/ui/model.go: searchable detail help for digits, n/p including beyond 9, Backspace.
+pkg/ui/detail_child_keys_test.go: all digits 1-9 plus all 24 children in both title orders, nested child isolation, rendered detail and parent return.
+pkg/ui/help_search_test.go: rendered searchable help regression.
+pkg/ui/k9s_keys_test.go: route newly advertised existing keys through the help guard.
+tests/e2e/detail_footer_keys_e2e_test.go: real terminal proof for tenth child, last child (24), Backspace to parent.
+Valid RED: focused-red-corrected.jsonl, exit 1, leaf 11 passed / 1 failed / 0 skipped. Only help regression fails. Main navigation proofs pass.
+Focused GREEN: focused-green-final.jsonl, exit 0, leaf 190 passed / 0 failed / 0 skipped. Top-level 36 passed / 0 failed / 0 skipped.
+Initial fixture assertion failed to strip ANSI and was corrected before product edits. First GREEN exposed wrapped help wording; wording corrected, original regression unchanged.
+Guard decision: behavioral regression and existing help routing guard cover the class. No new abstraction or architecture decision, so no new ADR.
+Browser checks do not apply to this terminal-only change. Applicable running UI checks use built binary under script with isolated JSONL fixtures and 15-second PTY deadlines. No shared Dolt test writes.
