@@ -207,6 +207,9 @@ func (r *SQLiteReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]mod
 	}
 
 	applyCreators(r.db, issues)
+	if err := applyIssueDetails(r.db, issues); err != nil {
+		return nil, err
+	}
 	return issues, commentsErr
 }
 
@@ -283,6 +286,9 @@ func (r *SQLiteReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model
 	}
 
 	applyCreators(r.db, issues)
+	if err := applyIssueDetails(r.db, issues); err != nil {
+		return nil, err
+	}
 	return issues, commentsErr
 }
 

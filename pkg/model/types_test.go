@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+func TestIssueCloneKeepsMetadataIndependent(t *testing.T) {
+	issue := Issue{Metadata: json.RawMessage(`{"branch":"main"}`)}
+	clone := issue.Clone()
+	clone.Metadata[11] = 'x'
+	if string(issue.Metadata) != `{"branch":"main"}` {
+		t.Fatalf("clone mutated source metadata: %s", issue.Metadata)
+	}
+}
+
 func TestBuildReleases_State(t *testing.T) {
 	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
 	past, future, zero := now.Add(-time.Hour), now.Add(time.Hour), time.Time{}

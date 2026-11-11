@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -52,6 +53,8 @@ type IssueText struct {
 	Design             string
 	AcceptanceCriteria string
 	Notes              string
+	CloseReason        string
+	Metadata           json.RawMessage
 	Comments           []*model.Comment
 }
 
@@ -61,6 +64,8 @@ func (t IssueText) ApplyTo(issue *model.Issue) {
 	issue.Design = t.Design
 	issue.AcceptanceCriteria = t.AcceptanceCriteria
 	issue.Notes = t.Notes
+	issue.CloseReason = t.CloseReason
+	issue.Metadata = append(json.RawMessage(nil), t.Metadata...)
 	issue.Comments = t.Comments
 	issue.Abridged = false
 }
@@ -258,7 +263,20 @@ func (r *DoltReader) loadWholeIssueText(ids []string) (map[string]IssueText, err
 		text.AcceptanceCriteria, text.Notes = acceptance.String, notes.String
 		texts[id] = text
 	}
-	return texts, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	in, args = idFilter("id", ids)
+	details, err := loadIssueDetailsWhere(r.db, " AND "+firstPageCondition+in, args...)
+	if err != nil {
+		return nil, err
+	}
+	for id, text := range texts {
+		text.CloseReason, text.Metadata = details[id].CloseReason, details[id].Metadata
+		texts[id] = text
+	}
+	return texts, nil
 }
 
 // LoadIssueText reads the text columns and comments of one issue.
@@ -273,6 +291,11 @@ func (r *DoltReader) LoadIssueText(id string) (IssueText, error) {
 	}
 	text.Description, text.Design = description.String, design.String
 	text.AcceptanceCriteria, text.Notes = acceptance.String, notes.String
+	details, err := loadIssueDetailsWhere(r.db, " AND id = ?", id)
+	if err != nil {
+		return IssueText{}, err
+	}
+	text.CloseReason, text.Metadata = details[id].CloseReason, details[id].Metadata
 
 	rows, err := r.db.Query(
 		`SELECT id, issue_id, author, text, created_at FROM comments WHERE issue_id = ? ORDER BY created_at`, id)
