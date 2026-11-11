@@ -192,6 +192,11 @@ if [[ $fail -eq 0 ]]; then
   fi
   contains "identity endpoint is exposed" "name: identity" "$rendered"
   contains "preview has a clickable hostname" "host: b9s-bd-b6jw.previews.example.test" "$rendered"
+  readiness_probe="$(awk '/^          readinessProbe:/{probe=1;next} /^          livenessProbe:/{probe=0} probe' <<<"$rendered")"
+  contains "readiness waits for the web session endpoint" 'path: /api/session' "$readiness_probe"
+  contains "readiness checks the web listener" 'port: web' "$readiness_probe"
+  contains "readiness uses the configured viewer header" 'name: "X-Example-Viewer"' "$readiness_probe"
+  contains "readiness authenticates as the configured viewer" 'value: "viewer@example.invalid"' "$readiness_probe"
 
   set +e
   invalid="$(B9S_PREVIEW_KUBECONFIG="$kubeconfig" B9S_PREVIEW_CONTEXT=preview \

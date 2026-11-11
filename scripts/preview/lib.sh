@@ -300,7 +300,12 @@ spec:
             - {name: web, containerPort: 7681}
             - {name: identity, containerPort: 7682}
           readinessProbe:
-            httpGet: {path: /__preview, port: identity}
+            httpGet:
+              path: /api/session
+              port: web
+              httpHeaders:
+                - name: "${PREVIEW_VIEWER_HEADER}"
+                  value: "${PREVIEW_VIEWER}"
             initialDelaySeconds: 2
             periodSeconds: 3
             timeoutSeconds: 2
