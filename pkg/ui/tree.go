@@ -324,17 +324,19 @@ func (c TreeColumn) String() string {
 }
 
 type treeColumnLayout struct {
-	dispatch   bool
-	priority   bool
-	creator    bool
-	assignee   bool
-	created    bool
-	updated    bool
-	deferred   bool
-	due        bool
-	decisions  bool
-	id         bool
-	maxIDWidth int
+	dispatch      bool
+	priority      bool
+	creator       bool
+	assignee      bool
+	created       bool
+	updated       bool
+	deferred      bool
+	due           bool
+	decisions     bool
+	id            bool
+	maxIDWidth    int
+	creatorWidth  int
+	assigneeWidth int
 }
 
 // IssueTreeNode represents a node in the hierarchical issue tree
@@ -381,7 +383,7 @@ type TreeModel struct {
 	currentFilter      string                  // "all", "open", "closed", "ready"
 	labelFilter        string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
 	assigneeFilter     string                  // "" = no assignee filter (bd-gs45.1)
-	identities         *identity.Registry      // resolves assignee aliases for the filter
+	identities         *identity.Registry      // resolves people and assignee filters
 	issueQuery         IssueQuery              // Shared ID/title/facet query owned by Model
 	findMode           bool                    // The query marks hits and filters nothing
 	filterMatches      map[string]bool         // Issue IDs that match the filter
@@ -1883,10 +1885,10 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 		rightParts = append(rightParts, fmt.Sprintf("%-12s", strings.ToUpper(dispatchColumnName)))
 	}
 	if layout.creator {
-		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "CREATOR"))
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.creatorWidth, "CREATOR"))
 	}
 	if layout.assignee {
-		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "ASSIGNEE"))
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.assigneeWidth, "ASSIGNEE"))
 	}
 	for _, column := range layout.timeColumns() {
 		rightParts = append(rightParts, fmt.Sprintf("%*s", treeTimeColumnWidth, strings.ToUpper(column.String())))
@@ -2044,10 +2046,10 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 		personStyle = r.NewStyle().Foreground(darkFg)
 	}
 	if layout.creator {
-		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.CreatedBy)))
+		rightParts = append(rightParts, personStyle.Render(formatPersonCell(personLabel(t.identities, rawIssue.CreatedBy), layout.creatorWidth)))
 	}
 	if layout.assignee {
-		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.Assignee)))
+		rightParts = append(rightParts, personStyle.Render(formatPersonCell(personLabel(t.identities, rawIssue.Assignee), layout.assigneeWidth)))
 	}
 	timeStyle := t.theme.MutedText
 	if isSelected {
@@ -2229,6 +2231,23 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 	if layout.id {
 		layout.maxIDWidth = t.displayedMaxIDWidth()
 	}
+	layout.creatorWidth, layout.assigneeWidth = treePersonColumnWidth, treePersonColumnWidth
+	// Beyond the minimum width, each person column gets at most a quarter of
+	// the terminal, leaving room for the title and the other metadata.
+	personLimit := max(treePersonColumnWidth, effectiveWidth/4)
+	if layout.creator || layout.assignee {
+		for _, node := range t.flatList {
+			if node == nil || node.Issue == nil {
+				continue
+			}
+			if layout.creator {
+				layout.creatorWidth = min(personLimit, max(layout.creatorWidth, lipgloss.Width(personLabel(t.identities, node.Issue.CreatedBy))))
+			}
+			if layout.assignee {
+				layout.assigneeWidth = min(personLimit, max(layout.assigneeWidth, lipgloss.Width(personLabel(t.identities, node.Issue.Assignee))))
+			}
+		}
+	}
 	t.columnLayoutCache = layout
 	t.columnLayoutValid = true
 	return layout
@@ -2289,15 +2308,15 @@ func formatPriorityCell(priority int) string {
 	return fmt.Sprintf("%-*s", treePriorityColumnWidth, fmt.Sprintf("P%d", priority))
 }
 
-// treePersonColumnWidth fits "@" plus an eleven-rune name; longer names end in "…".
+// treePersonColumnWidth is the minimum width of a person column.
 const treePersonColumnWidth = 12
 
-func formatPersonCell(name string) string {
-	if name == "" {
-		return strings.Repeat(" ", treePersonColumnWidth)
+func formatPersonCell(label string, width int) string {
+	if label == "" {
+		return strings.Repeat(" ", width)
 	}
-	cell := truncateRunesHelper("@"+name, treePersonColumnWidth, "…")
-	return fmt.Sprintf("%-*s", treePersonColumnWidth, cell)
+	cell := truncateRunesHelper(label, width, "…")
+	return cell + strings.Repeat(" ", max(0, width-lipgloss.Width(cell)))
 }
 
 // The absolute layouts show the date and the time to the minute in local time.
