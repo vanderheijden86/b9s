@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +11,78 @@ import (
 	"github.com/vanderheijden86/b9s/internal/attachref"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestIssueDetailExtraSections(t *testing.T) {
+	for _, tc := range []struct{ name, field, value, heading string }{
+		{"close reason", "close_reason", `"Finished after review"`, "Close Reason"},
+		{"metadata", "metadata", `{"branch":"feature/planning","worktree":"/tmp/planning","nested":{"count":9007199254740993}}`, "Metadata"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var issue model.Issue
+			if err := json.Unmarshal([]byte(`{"id":"bd-39","title":"Planning","status":"closed","`+tc.field+`":`+tc.value+`}`), &issue); err != nil {
+				t.Fatal(err)
+			}
+			theme := DefaultTheme(lipgloss.NewRenderer(nil))
+			outputs := map[string]string{
+				"TUI":      stripANSI(renderIssueDetail(issue, nil, theme, 100, NewMarkdownRendererWithTheme(100, theme), nil, nil, false)),
+				"Markdown": formatIssueMarkdown(issue, nil),
+			}
+			for name, out := range outputs {
+				heading := tc.heading
+				if name == "TUI" {
+					heading = strings.ToUpper(heading)
+				}
+				if !strings.Contains(out, heading) {
+					t.Errorf("%s missing %q:\n%s", name, heading, out)
+				}
+				wants := []string{"Finished after review"}
+				if tc.field == "metadata" {
+					wants = []string{"feature/planning", "/tmp/planning", "9007199254740993"}
+				}
+				for _, want := range wants {
+					if !strings.Contains(out, want) {
+						t.Errorf("%s missing %q:\n%s", name, want, out)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestIssueDetailOmitsEmptyExtraSections(t *testing.T) {
+	for _, metadata := range []string{"null", "{}"} {
+		var issue model.Issue
+		if err := json.Unmarshal([]byte(`{"id":"bd-39","metadata":`+metadata+`}`), &issue); err != nil {
+			t.Fatal(err)
+		}
+		theme := DefaultTheme(lipgloss.NewRenderer(nil))
+		for _, out := range []string{
+			renderIssueDetail(issue, nil, theme, 80, nil, nil, nil, false),
+			formatIssueMarkdown(issue, nil),
+		} {
+			if strings.Contains(strings.ToLower(out), "close reason") || strings.Contains(strings.ToLower(out), "metadata") {
+				t.Errorf("empty sections rendered:\n%s", out)
+			}
+		}
+	}
+}
+
+func TestDetailCopyIncludesExtraDetailSections(t *testing.T) {
+	var issue model.Issue
+	if err := json.Unmarshal([]byte(`{"id":"bd-39","title":"Planning","status":"open","close_reason":"Finished after review","metadata":{"branch":"feature/planning"}}`), &issue); err != nil {
+		t.Fatal(err)
+	}
+	m := NewModel([]model.Issue{issue}, "")
+	m.focused = focusDetail
+	var copied string
+	m.clipboardWrite = func(text string) error { copied = text; return nil }
+	m = pressTreeKey(m, 'c')
+	for _, want := range []string{"### Close Reason", "Finished after review", "### Metadata", "feature/planning"} {
+		if !strings.Contains(copied, want) {
+			t.Errorf("detail copy missing %q:\n%s", want, copied)
+		}
+	}
+}
 
 func detailFixture() (model.Issue, map[string]*model.Issue) {
 	parent := &model.Issue{ID: "bd-e5u3", Title: "Epic: Redesign the board TUI", Status: model.StatusOpen, IssueType: model.TypeEpic}

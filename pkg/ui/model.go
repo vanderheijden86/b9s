@@ -5915,6 +5915,11 @@ func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) str
 		sb.WriteString(fmt.Sprintf("**Labels:** %s\n\n", strings.Join(item.Labels, ", ")))
 	}
 
+	if strings.TrimSpace(item.CloseReason) != "" {
+		sb.WriteString("### Close Reason\n")
+		sb.WriteString(item.CloseReason + "\n\n")
+	}
+
 	// Description
 	if item.Description != "" {
 		sb.WriteString("### Description\n")
@@ -5937,6 +5942,11 @@ func formatIssueMarkdown(item model.Issue, issueMap map[string]*model.Issue) str
 	if item.Notes != "" {
 		sb.WriteString("### Notes\n")
 		sb.WriteString(item.Notes + "\n\n")
+	}
+
+	if metadata := item.MetadataJSON(); metadata != "" {
+		sb.WriteString("### Metadata\n\n    ")
+		sb.WriteString(strings.ReplaceAll(sanitizeTerminalText(metadata), "\n", "\n    ") + "\n\n")
 	}
 
 	// Dependency Graph (Tree)

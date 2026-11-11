@@ -141,10 +141,14 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 		}
 		blocks = append(blocks, section(label), rendered, "")
 	}
+	markdownSection("CLOSE REASON", item.CloseReason)
 	markdownSection("DESCRIPTION", item.Description)
 	markdownSection("DESIGN", item.Design)
 	markdownSection("ACCEPTANCE", item.AcceptanceCriteria)
 	markdownSection("NOTES", item.Notes)
+	if metadata := item.MetadataJSON(); metadata != "" {
+		markdownSection("METADATA", "    "+strings.ReplaceAll(sanitizeTerminalText(metadata), "\n", "\n    "))
+	}
 
 	if len(decisions) > 0 {
 		blocks = append(blocks, section("MEMORY LINKS"))
