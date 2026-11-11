@@ -259,7 +259,9 @@ Every change goes through the `bd` CLI, so b9s and `bd` always agree on what is 
 | `K` | Close, after confirmation. For one issue, `C` in the dialog (Comment and close) asks for a comment, adds it, then closes | `bd close`, `bd comments add` |
 | `Delete` | Delete, after confirmation | `bd delete --force` |
 
-The edit form has the fields Title, Status, Description, Priority, Type, Assignee, Labels, Defer until and Notes, and shows the Creator in its title. `Tab` and `Shift-Tab` move between fields, and `Enter` starts a new line in Description and Notes. `→` at the end of the typed text completes an assignee or label. `Ctrl-E` opens Description or Notes in `$EDITOR` and reads the text back when the editor exits. `Esc` cancels. `Ctrl-S` saves from any field, and `Enter` saves from every field except Description and Notes. The line under the form title names these keys. A value in Defer until, such as `tomorrow` or `+3d`, runs `bd defer`.
+The edit form has the fields Title, Status, Description, Priority, Type, Assignee, Labels, Defer until and Notes, and shows the Creator in its title. `Tab` and `Shift-Tab` move between fields, and `Enter` starts a new line in Description and Notes. `→` at the end of the typed text completes an assignee or label. `Ctrl-E` opens Description or Notes in `$EDITOR` and reads the text back when the editor exits. `Esc` cancels. `Ctrl-S` saves from any field, and `Enter` saves from every field except Description and Notes. The line under the form title names these keys.
+
+Defer until shows the existing timestamp. Entering or changing a date, such as `tomorrow` or `+3d`, runs `bd defer --until` and sets the status to deferred, even if another status is selected. Clearing an existing date clears the schedule and returns a deferred issue to open, unless you select another status. Leaving the date unchanged preserves the schedule. Selecting deferred with no date defers an issue indefinitely.
 
 The view reloads by itself once `bd` has written, because b9s watches the data source. The all-projects view (`0`) is read-only.
 
