@@ -1,0 +1,63 @@
+{
+  "command": [
+    "timeout",
+    "240s",
+    "env",
+    "PATH=/tmp/bd-teri.13-evidence/bin:/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path:/opt/venv/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games",
+    "PUPPETEER_SKIP_DOWNLOAD=1",
+    "lane-browser",
+    "run",
+    "--project",
+    "/home/omnigent/workspace/b9s/web",
+    "--seconds",
+    "220",
+    "--",
+    "npx",
+    "-y",
+    "@mermaid-js/mermaid-cli",
+    "-i",
+    "/tmp/bd-teri.13-evidence/revision-2-sequence.mmd",
+    "-o",
+    "/tmp/bd-teri.13-evidence/revision-2-sequence.svg",
+    "-p",
+    "/tmp/bd-teri.13-evidence/revision-2-puppeteer.json",
+    "-b",
+    "transparent",
+    "-t",
+    "dark"
+  ],
+  "exit_code": 0,
+  "input": "/tmp/bd-teri.13-evidence/revision-2-sequence.mmd",
+  "output": "/tmp/bd-teri.13-evidence/revision-2-sequence.svg",
+  "input_sha256": "9ecb946ae6a02fc17878839120eb079ca1204be441b9c0bc79a7a8cd24cfa25b",
+  "output_sha256": "ade5047d289440783a731aefe8a1f484edc3820e42629e0483ea6fc83b2c7feb",
+  "output_bytes": 41445,
+  "svg_viewbox": "-50 -10 1809 1784",
+  "versions": {
+    "@mermaid-js/mermaid-cli": "12.2.0",
+    "mermaid": "12.3.0",
+    "puppeteer": "25.17.0"
+  },
+  "environment": {
+    "architecture": "x86_64",
+    "browser_sandbox": "pod-boundary",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "graphics_threads": 2,
+    "kernel": "6.8.0-149-generic",
+    "native_runtime_sha256": "a32868da82a4a7bf3f0a736c570c8d28d79faba858fde32c43b6c2f9faa6b9a6",
+    "node": "v22.23.4",
+    "playwright": "1.63.0"
+  },
+  "counts": {
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  }
+}

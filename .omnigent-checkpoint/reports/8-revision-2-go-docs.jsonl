@@ -1,0 +1,16 @@
+{"Time":"2026-11-11T04:25:40.433827577Z","Action":"start","Package":"github.com/vanderheijden86/b9s/tests/docs"}
+{"Time":"2026-11-11T04:25:40.436173259Z","Action":"run","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeStaysAFrontPage"}
+{"Time":"2026-11-11T04:25:40.436201487Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeStaysAFrontPage","Output":"=== RUN   TestReadmeStaysAFrontPage\n"}
+{"Time":"2026-11-11T04:25:40.436318511Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeStaysAFrontPage","Output":"--- PASS: TestReadmeStaysAFrontPage (0.00s)\n"}
+{"Time":"2026-11-11T04:25:40.436328946Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeStaysAFrontPage","Elapsed":0}
+{"Time":"2026-11-11T04:25:40.43633439Z","Action":"run","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeHasNoEmDashes"}
+{"Time":"2026-11-11T04:25:40.436337387Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeHasNoEmDashes","Output":"=== RUN   TestReadmeHasNoEmDashes\n"}
+{"Time":"2026-11-11T04:25:40.437369384Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeHasNoEmDashes","Output":"--- PASS: TestReadmeHasNoEmDashes (0.00s)\n"}
+{"Time":"2026-11-11T04:25:40.437384836Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestReadmeHasNoEmDashes","Elapsed":0}
+{"Time":"2026-11-11T04:25:40.437393884Z","Action":"run","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestRelativeLinksResolve"}
+{"Time":"2026-11-11T04:25:40.437397971Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestRelativeLinksResolve","Output":"=== RUN   TestRelativeLinksResolve\n"}
+{"Time":"2026-11-11T04:25:40.468353778Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestRelativeLinksResolve","Output":"--- PASS: TestRelativeLinksResolve (0.03s)\n"}
+{"Time":"2026-11-11T04:25:40.46842419Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/docs","Test":"TestRelativeLinksResolve","Elapsed":0.03}
+{"Time":"2026-11-11T04:25:40.468447752Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Output":"PASS\n"}
+{"Time":"2026-11-11T04:25:40.469312398Z","Action":"output","Package":"github.com/vanderheijden86/b9s/tests/docs","Output":"ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.035s\n"}
+{"Time":"2026-11-11T04:25:40.469354608Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/tests/docs","Elapsed":0.036}

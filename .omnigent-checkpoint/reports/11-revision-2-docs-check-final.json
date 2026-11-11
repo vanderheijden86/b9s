@@ -1,0 +1,132 @@
+{
+  "command": [
+    "python3",
+    "/tmp/bd-teri.13-evidence/revision-2-check-docs.py"
+  ],
+  "checks": [
+    {
+      "name": "frontmatter",
+      "passed": true,
+      "detail": "YAML parsed with required ADR fields"
+    },
+    {
+      "name": "number",
+      "passed": true,
+      "detail": "new=66 previous maximum=65"
+    },
+    {
+      "name": "sections",
+      "passed": true,
+      "detail": [
+        "Context",
+        "Decision",
+        "Reference interpretation and cross-VM access",
+        "Safe opening",
+        "Explicit snapshot import",
+        "Options considered",
+        "Consequences",
+        "Follow-up tasks",
+        "Advice"
+      ]
+    },
+    {
+      "name": "toc",
+      "passed": true,
+      "detail": "9 headers, TOC required only above 10"
+    },
+    {
+      "name": "local_links",
+      "passed": true,
+      "detail": [
+        "../../pkg/model/types.go",
+        "../../pkg/loader/loader.go",
+        "../../internal/datasource/dolt.go",
+        "../../internal/datasource/sqlite.go",
+        "../../pkg/ui/attachments.go",
+        "../../internal/attach/list.go",
+        "../../internal/blobstore/open.go",
+        "0024-attach-files-through-reference-comments.md",
+        "../ARCHITECTURE.md",
+        "../../pkg/ui/attachments.go"
+      ]
+    },
+    {
+      "name": "issue_content",
+      "passed": true,
+      "detail": "REST issue and complete comments inspected, 0 comments, no image references"
+    },
+    {
+      "name": "followups",
+      "passed": true,
+      "detail": "Four existing deferred tickets, each linked discovered-from:bd-teri.13"
+    },
+    {
+      "name": "text_rules",
+      "passed": true,
+      "detail": "No em dashes or trailing whitespace, final newline present"
+    },
+    {
+      "name": "interaction_diagram",
+      "passed": true,
+      "detail": {
+        "participants": [
+          "User",
+          "App",
+          "Source",
+          "View",
+          "Blob",
+          "Bd"
+        ],
+        "contracts": "Explicit open versus import, guarded access, upload before comment, visible failures and orphan GC"
+      }
+    },
+    {
+      "name": "diagram_label_rules",
+      "passed": true,
+      "detail": "No semicolons, HTML entities or hardcoded fills in diagram"
+    },
+    {
+      "name": "mermaid_render_evidence",
+      "passed": true,
+      "detail": {
+        "command": [
+          "timeout",
+          "240s",
+          "env",
+          "PATH=/tmp/bd-teri.13-evidence/bin:/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/codex-path:/opt/venv/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games",
+          "PUPPETEER_SKIP_DOWNLOAD=1",
+          "lane-browser",
+          "run",
+          "--project",
+          "/home/omnigent/workspace/b9s/web",
+          "--seconds",
+          "220",
+          "--",
+          "npx",
+          "-y",
+          "@mermaid-js/mermaid-cli",
+          "-i",
+          "/tmp/bd-teri.13-evidence/revision-2-sequence.mmd",
+          "-o",
+          "/tmp/bd-teri.13-evidence/revision-2-sequence.svg",
+          "-p",
+          "/tmp/bd-teri.13-evidence/revision-2-puppeteer.json",
+          "-b",
+          "transparent",
+          "-t",
+          "dark"
+        ],
+        "input_sha256": "9ecb946ae6a02fc17878839120eb079ca1204be441b9c0bc79a7a8cd24cfa25b",
+        "output_sha256": "ade5047d289440783a731aefe8a1f484edc3820e42629e0483ea6fc83b2c7feb",
+        "bytes": 41445
+      }
+    }
+  ],
+  "counts": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  }
+}

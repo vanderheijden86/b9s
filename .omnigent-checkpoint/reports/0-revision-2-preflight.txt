@@ -1,0 +1,14 @@
+Revision 2 branch: omnigent/bd-teri.13. Existing untracked ADR preserved.
+HEAD: c2fccef8b537ed034ebd360ea7cf31c02250e083.
+timeout 60s git fetch origin main: exit 0.
+Fetched origin/main: 873e74381482d2d7f73bccbc739d2c559daea050.
+timeout 60s git ls-remote --exit-code --heads origin refs/heads/omnigent/bd-teri.13: exit 2, absent.
+Required commits: none. Required-commit ancestry against base and HEAD: not applicable.
+origin/main ancestor of HEAD: exit 1. HEAD ancestor of origin/main: exit 0.
+Base advanced one commit: 873e7438 fix(ui): show Ctrl+S in edit form footer (#73).
+Changes upstream: pkg/ui/edit_modal.go, pkg/ui/edit_modal_test.go, tests/e2e/edit_enter_saves_e2e_test.go. No ADR or spec-resolution change.
+Existing delivery branch was preserved, without merging, rebasing, resetting or changing HEAD.
+Checkpoint inspect reports base_sha mismatch. No restore attempted.
+Reviewed saved ADR via checkpoint commit 4649ae33cefad7b1d3d29bc9aa7c19ae6f5c6ba1. cmp with worktree ADR exits 0. This is the exact saved source.
+Initial attempt to read a nonexistent remote-tracking checkpoint ref failed. Reading the checkpoint commit succeeded.
+No prerequisite missing. Original source evidence remains attributed to old main SHA, not claimed against new main.

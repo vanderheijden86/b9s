@@ -1,0 +1,25 @@
+{
+  "command": [
+    "timeout",
+    "90s",
+    "go",
+    "test",
+    "./tests/docs",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 0,
+  "counts": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "completed": [
+    "TestReadmeStaysAFrontPage",
+    "TestReadmeHasNoEmDashes",
+    "TestRelativeLinksResolve"
+  ]
+}

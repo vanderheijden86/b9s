@@ -1,0 +1,3 @@
+Generating single mermaid chart
+
+exit_code=0
