@@ -39,6 +39,102 @@ func closeRunes(s string) []tea.KeyMsg {
 	return keys
 }
 
+func TestCloseConfirmationKeys(t *testing.T) {
+	for _, selection := range []string{"single", "bulk"} {
+		for _, key := range []struct {
+			name string
+			msg  tea.KeyMsg
+		}{
+			{"enter", tea.KeyMsg{Type: tea.KeyEnter}},
+			{"y", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}},
+			{"Y", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Y")}},
+		} {
+			t.Run(selection+"/"+key.name, func(t *testing.T) {
+				m, recordPath := closeCommentModel(t, 0)
+				wantIDs := []string{"bd-123"}
+				if selection == "bulk" {
+					m = newBulkMarkModel(t)
+					m.issueWriter = &IssueWriter{bdPath: writeFakeBdRecorder(t, recordPath, 0), available: true, checkout: testCheckout(t)}
+					m, _ = closeKeys(t, m, closeRunes("m")...)
+					m.tree.SelectByID("bd-3")
+					m, _ = closeKeys(t, m, closeRunes("m")...)
+					wantIDs = []string{"bd-1", "bd-3"}
+				}
+				m, cmd := closeKeys(t, m, closeRunes("K")...)
+				if cmd != nil || len(readBdCallsUI(t, recordPath)) != 0 {
+					t.Fatal("K must wait for confirmation before running bd")
+				}
+				m, cmd = closeKeys(t, m, key.msg)
+				if cmd == nil {
+					t.Fatalf("%s must confirm close", key.name)
+				}
+				result, ok := cmd().(BdResultMsg)
+				if !ok || result.Operation != BdOpClose || !result.Success {
+					t.Fatalf("unexpected close result: %#v", result)
+				}
+				want := [][]string{append([]string{"close"}, wantIDs...)}
+				if got := readBdCallsUI(t, recordPath); !reflect.DeepEqual(got, want) {
+					t.Fatalf("bd calls = %q, want %q", got, want)
+				}
+				if m.issueConfirm.action != issueConfirmNone {
+					t.Fatal("confirmation must dismiss after closing")
+				}
+				if got := m.tree.MarkedCount(); got != 0 {
+					t.Fatalf("closed issues must be unmarked, got %d marks", got)
+				}
+			})
+		}
+	}
+}
+
+func TestCloseConfirmationEscDoesNotClose(t *testing.T) {
+	m, recordPath := closeCommentModel(t, 0)
+	m, _ = closeKeys(t, m, closeRunes("K")...)
+	m, cmd := closeKeys(t, m, tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd != nil {
+		t.Fatal("Esc must not run a command")
+	}
+	if m.issueConfirm.action != issueConfirmNone || m.showQuitConfirm {
+		t.Fatal("Esc must dismiss only the close confirmation")
+	}
+	if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
+		t.Fatalf("Esc must not run bd, got %q", calls)
+	}
+}
+
+func TestDeleteConfirmationEnterDoesNotDelete(t *testing.T) {
+	m, recordPath := closeCommentModel(t, 0)
+	m, _ = closeKeys(t, m, tea.KeyMsg{Type: tea.KeyDelete})
+	_, cmd := closeKeys(t, m, tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		t.Fatal("Enter must not confirm deletion")
+	}
+	if calls := readBdCallsUI(t, recordPath); len(calls) != 0 {
+		t.Fatalf("Enter must not run bd delete, got %q", calls)
+	}
+}
+
+func TestCloseConfirmationShowsEnter(t *testing.T) {
+	for _, selection := range []string{"single", "bulk"} {
+		t.Run(selection, func(t *testing.T) {
+			m, _ := closeCommentModel(t, 0)
+			if selection == "bulk" {
+				m = newBulkMarkModel(t)
+				m, _ = closeKeys(t, m, closeRunes("m")...)
+				m.tree.SelectByID("bd-3")
+				m, _ = closeKeys(t, m, closeRunes("m")...)
+			}
+			m, _ = closeKeys(t, m, closeRunes("K")...)
+			view := m.View()
+			for _, hint := range []string{"[Enter] Close", "[Y] Close", "[Esc] Cancel"} {
+				if !strings.Contains(view, hint) {
+					t.Fatalf("confirmation must show %q, got:\n%s", hint, view)
+				}
+			}
+		})
+	}
+}
+
 func TestCloseDialogOffersCommentForSingleIssue(t *testing.T) {
 	m, _ := closeCommentModel(t, 0)
 	m, _ = closeKeys(t, m, closeRunes("K")...)
