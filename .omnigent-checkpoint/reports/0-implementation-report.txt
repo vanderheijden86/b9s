@@ -1,0 +1,87 @@
+Implementation report: bd-teri.3, attempt 2
+LOCAL_IMPLEMENTATION_CHECKS_PASSED. Required revised-preview delivery proof remains blocked under bd-1si3.
+
+Git preflight (published before source edits)
+Repository /home/omnigent/workspace/b9s
+Actual branch omnigent/bd-teri.3
+HEAD and fetched remote delivery a81b5b081ce310763ce7dc25da351e8c2362130e
+Fetched origin/main and PR target main: c2fccef8b537ed034ebd360ea7cf31c02250e083
+Exact remote delivery ls-remote exit 0, present. Resumed remote delivery rather than creating from bootstrap.
+No required commits. Required-commit ancestry N/A. Base-is-ancestor-of-HEAD exit 0.
+Initial local branch absent, initial tree clean. Tracking checkout failed because origin fetch refspec only named main.
+Explicit no-track checkout succeeded, exact delivery source tree and clean index/worktree confirmed.
+Checkpoint inspected: old source_head differs, source_tree exactly matches delivery. No restore or stale run reuse.
+
+Scope and behavior
+Read instructions, task, parent, all recent comments, history feature bd-v5q1, GitHub #40/#22 including their screenshots and empty comment lists.
+Read testing guide and ADRs 0001/0002/0004/0057/0058. Main remains incorrect: all query Up/Down keys recall history.
+Existing delivery already includes reviewed query fix, regression tests, per-project history and key precedence documentation.
+Typed arrows accept the query and navigate results. Empty queries and active history browsing retain arrows. Alt arrows recall typed drafts.
+No application source change was needed in this attempt.
+
+Changed in this attempt (three tracked files, no new source file)
+- scripts/preview/preview-verify: retry only Service connection refusal, at most three attempts one second apart within existing ten-second request budget. Remaining budget caps each request. Other transport/HTTP/identity failures retain existing fallback and mismatch rules.
+- tests/preview_contract_test.sh: reproduce refusal recovery, exhausted budget and bounded request sequence with real verifier and JSON parser.
+- docs/preview-contract.md: document bounded Service refusal handling.
+No dependencies, architecture decision, preview probe deadlines or shared database data changed.
+Guard: deterministic contract regressions make refusal recovery and request-budget handling executable.
+
+Test-first and checks (counts are separate because suites overlap)
+Contract RED: timeout 180s bash tests/preview_contract_test.sh
+  exit 1, 223 passed / 4 failed assertions. Failure reproduces premature fallback before Service recovers.
+Contract GREEN, same command:
+  exit 0, 231 passed / 0 failed assertions. Runner does not report skip counts.
+Focused: timeout 120s go test ./pkg/ui/ -run '^Test(Search|EveryHandledKey)' -count=1 -timeout=60s -json
+  exit 0, 28 passed / 0 failed / 0 skipped leaf cases.
+Stable alone: timeout 720s env GOFLAGS=-v make test-stable
+  exit 0, 3561 passed / 0 failed / 20 optional skipped leaf cases. Committed exclusions retained, no baseline worktree or comparison.
+Build: timeout 180s go build ./...
+  exit 0. Go build provides type checking.
+Lint: timeout 180s go vet ./...
+  exit 0.
+Terminal E2E: timeout 180s go test ./tests/e2e/ -run '^TestSearch(ArrowsNavigateResults|History)E2E$' -count=1 -timeout=120s -json
+  exit 0, 7 passed / 0 failed / 0 skipped leaf cases.
+Completed final Go suites have zero interrupted/unrun cases and no flaky outcomes observed.
+Dependency install: timeout 180s go mod download, exit 0, before any tests. Go 1.25.5 linux/amd64. Committed go.mod/go.sum unchanged.
+Additional checks: bash -n on both changed shell files, git diff --check, timeout 30s gofmt -l on four delivery Go files. All exit 0, formatting output empty.
+No browser suite applies to this terminal behavior and shell verifier change. ADR 0058 requires a real terminal, not browser terminal emulation.
+
+Live diagnosis and behavior proof (existing deployed application)
+No lane-preview rerun, deployment, restart, cluster apply or deadline increase.
+Pod b9s-84cc48bc55-2dbkv, zero restarts, image digest sha256:dd48c4dec21fc8c3bf1df70c1eb6336ddc9e0a2be4e8128696575cfa36605ac8.
+Identity Service HTTP 200 returned exact a81b5b081ce310763ce7dc25da351e8c2362130e, task bd-teri.3 and namespace b9s-bd-teri-3.
+Baked /app/.commit-sha matched. Binary SHA256 448badfea152e71bad3ea45831921574cc0852be552fd0428a0dabe24cb5c7bd.
+Authenticated Service /api/session HTTP 200. Its commit field is empty, identity pins the image.
+Existing Pod readiness is authenticated /api/session on web port. This proves the revised readiness manifest is deployed and presently answers.
+Both endpoints presently answer from the same zero-restart Pod. Precise network root cause of prior transient refusal is not established. No external prerequisite established.
+Final dedicated bounded terminal sequence: 5 passed / 0 failed / 0 skipped, no Enter before either arrow.
+Typed Down selected bd-teri.4 from bd-teri.3, typed Up selected bd-teri.3 from bd-teri.4. Empty Up recalled history, Down restored empty draft, Alt arrows recalled and restored typed draft.
+Every screen had an eight-second hard deadline. Local history files only, SELECT-only database identity. Session quit after checks.
+Earlier ad hoc Up attempts failed harness screen deadlines while returning from detail, then auto-exit ended that session. Fresh root-only sequence passed all checks without timeout increases or product edits.
+See live-proof-report.txt, live-keyboard-summary.json and live-image-fingerprint.txt. Only scrubbed reports selected for checkpoint, no raw session response or credentials.
+
+All unresolved required-check failures
+- bd-1si3: prior required preview round 1 verifier 7 passed / 1 failed (web connection refused), round 2 verifier 2 passed / 1 failed (identity connection refused and ingress DNS failed).
+  Current live checks prove exact deployed SHA, web readiness and keyboard behavior for existing application.
+  New verifier source remains uncommitted and undeployed. Required revised lane-preview execution remains pending independent review/testing and delivery approval.
+No other unresolved required-check failure, new issue or unrelated follow-up. No issue status, dependencies, assignee or lane labels changed.
+
+Delivery and risks
+No delivery commit, delivery push or PR. No merges, force operations, deletion, resets or other agents' changes disturbed.
+Future PR target main and body must include Refs #40.
+New verifier needs independent review/testing, approved delivery and a required live preview run. Existing five live checks are not a substitute for that run.
+Stable optional skip names and Makefile exclusions remain in stable-summary.json and Makefile. No cross-terminal emulator matrix or browser claim.
+Full branch scope relative to main (includes prior approved remote implementation):
+README.md
+docs/USER_GUIDE.md
+docs/book/06-one-query.md
+docs/preview-contract.md
+pkg/ui/hotkeys.go
+pkg/ui/model.go
+pkg/ui/query_bar_test.go
+scripts/preview/lib.sh
+scripts/preview/preview-verify
+tests/e2e/tree_search_filter_e2e_test.go
+tests/preview_contract_test.sh
+
+Evidence directory: /tmp/bd-teri.3-attempt2

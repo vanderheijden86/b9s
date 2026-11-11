@@ -1,0 +1,6 @@
+## omnigent/bd-teri.3
+a81b5b081ce310763ce7dc25da351e8c2362130e
+c2fccef8b537ed034ebd360ea7cf31c02250e083
+base_ancestor_exit=0
+required_commits=none
+remote_delivery=present and resumed

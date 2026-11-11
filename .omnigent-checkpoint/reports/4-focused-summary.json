@@ -1,0 +1,24 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./pkg/ui/",
+    "-run",
+    "^Test(Search|EveryHandledKey)",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 0,
+  "counts": {
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test cases",
+  "skips": []
+}

@@ -1,0 +1,35 @@
+Observed existing live deployment, no redeploy or preview command retry.
+Served identity: {"commit": "a81b5b081ce310763ce7dc25da351e8c2362130e", "databaseCount": 41, "namespace": "b9s-bd-teri-3", "taskId": "bd-teri.3"}
+Pod: b9s-84cc48bc55-2dbkv
+Image: registry.registry.svc.cluster.local:5000/b9s-preview@sha256:dd48c4dec21fc8c3bf1df70c1eb6336ddc9e0a2be4e8128696575cfa36605ac8
+Restarts: 0
+Readiness: authenticated /api/session on web port.
+Authenticated web session HTTP request exited 0. Session response commit field empty, image identity pins requested SHA.
+Keyboard proof on existing application: 5 passed / 0 failed / 0 skipped. Each screen deadline 8 seconds.
+No Enter sent in final live sequence. Both arrows accepted typed query and changed highlighted issue.
+
+live2-typed.ansi
+SELECTED │   ├──   ✔ PROG     [teri.3] Up and Down move from the search field into the results without submitting               P2   RUNNING            6h ago  teri.3
+
+live2-down.ansi
+SELECTED │   ├──   ✔ DONE     [teri.4] Show CLOSE REASON and METADATA in the detail view                                        P2   DELIVERED          6h ago  teri.4
+
+live2-up-editing.ansi
+SELECTED │   ├──   ✔ DONE     [teri.4] Show CLOSE REASON and METADATA in the detail view                                        P2   DELIVERED          6h ago  teri.4
+
+live2-up.ansi
+SELECTED │   ├──   ✔ PROG     [teri.3] Up and Down move from the search field into the results without submitting               P2   RUNNING            6h ago  teri.3
+
+live2-history-up.ansi
+SELECTED │   ├──   ✔ PROG     [teri.3] Up and Down move from the search field into the results without submitting               P2   RUNNING            6h ago  teri.3
+
+live2-history-down.ansi
+SELECTED │   ├──   ✔ PROG     [teri.3] Up and Down move from the search field into the results without submitting             P2   RUNNING            6h ago  teri.3
+
+live2-alt-up.ansi
+SELECTED │   ├──   ✔ PROG     [teri.3] Up and Down move from the search field into the results without submitting               P2   RUNNING            6h ago  teri.3
+
+live2-alt-down.ansi
+
+Limits: revised verifier is uncommitted and not live. Required bd-1si3 preview failure remains until approved delivery and new required preview proof.
+Earlier ad hoc live harness failed screen deadlines while returning from detail. Corrected final root-only sequence passed. No timeout raised.
