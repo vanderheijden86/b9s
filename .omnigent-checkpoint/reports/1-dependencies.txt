@@ -1,0 +1,2 @@
+timeout 180s npm --prefix /home/omnigent/workspace/b9s/web ci: exit 0. 122 packages installed from package-lock.json. Audit reported 2 low severity vulnerabilities. No dependency changes.
+timeout 180s go -C /home/omnigent/workspace/b9s mod download: exit 0. go.mod/go.sum unchanged.

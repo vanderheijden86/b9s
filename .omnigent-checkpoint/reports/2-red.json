@@ -1,0 +1,820 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/omnigent/workspace/b9s/web/node_modules/.bin/playwright",
+      "test",
+      "tests/read.spec.ts",
+      "tests/keys.spec.ts",
+      "--project",
+      "desktop",
+      "-g",
+      "flat list:",
+      "--workers=1",
+      "--reporter=list,json"
+    ],
+    "configFile": "/home/omnigent/workspace/b9s/web/playwright.config.ts",
+    "rootDir": "/home/omnigent/workspace/b9s/web/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/home/omnigent/workspace/b9s/web/tests/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tokens",
+        "name": "tokens",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/tokens\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel",
+        "name": "pixel",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone",
+        "name": "iphone",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-safari",
+        "name": "desktop-safari",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-firefox",
+        "name": "desktop-firefox",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "ipad",
+        "name": "ipad",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-360",
+        "name": "phone-360",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-412",
+        "name": "phone-412",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-768",
+        "name": "tablet-768",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-1024",
+        "name": "tablet-1024",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1440",
+        "name": "desktop-1440",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1920",
+        "name": "desktop-1920",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "wide-2560",
+        "name": "wide-2560",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel-perf",
+        "name": "pixel-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone-perf",
+        "name": "iphone-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-perf",
+        "name": "tablet-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-perf",
+        "name": "desktop-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "keys.spec.ts",
+      "file": "keys.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "view keys",
+          "file": "keys.spec.ts",
+          "line": 428,
+          "column": 6,
+          "specs": [
+            {
+              "title": "flat list: fold keys preserve the tree fold state",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 5751,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#treeRows .row[data-id=\"t-1\"]')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#treeRows .row[data-id=\"t-1\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-1\"]')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#treeRows .row[data-id=\"t-1\"]')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#treeRows .row[data-id=\"t-1\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-1\"]')\u001b[22m\n\n    at /home/omnigent/workspace/b9s/web/tests/keys.spec.ts:434:36",
+                        "location": {
+                          "file": "/home/omnigent/workspace/b9s/web/tests/keys.spec.ts",
+                          "column": 36,
+                          "line": 434
+                        },
+                        "snippet": "  432 |     await page.keyboard.press(\"Shift+Z\");\n  433 |     await page.keyboard.press(\"t\");\n> 434 |     await expect(row(page, \"t-1\")).toBeVisible();\n      |                                    ^\n  435 |     await cursorTo(page, \"t-epic\");\n  436 |     await page.keyboard.press(\"Tab\");\n  437 |     await expect(row(page, \"t-1\")).toHaveCount(0);"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/omnigent/workspace/b9s/web/tests/keys.spec.ts",
+                            "column": 36,
+                            "line": 434
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#treeRows .row[data-id=\"t-1\"]')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#treeRows .row[data-id=\"t-1\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-1\"]')\u001b[22m\n\n\n  432 |     await page.keyboard.press(\"Shift+Z\");\n  433 |     await page.keyboard.press(\"t\");\n> 434 |     await expect(row(page, \"t-1\")).toBeVisible();\n      |                                    ^\n  435 |     await cursorTo(page, \"t-epic\");\n  436 |     await page.keyboard.press(\"Tab\");\n  437 |     await expect(row(page, \"t-1\")).toHaveCount(0);\n    at /home/omnigent/workspace/b9s/web/tests/keys.spec.ts:434:36"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T07:46:42.453Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "bd-calls",
+                          "contentType": "text/plain",
+                          "body": "KG5vbmUp"
+                        },
+                        {
+                          "name": "b9s-web-log",
+                          "contentType": "text/plain",
+                          "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLVhaV2xFVwoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6NDI5MjUvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/keys-view-keys-flat-list-f-8a5fc-reserve-the-tree-fold-state-desktop/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/keys-view-keys-flat-list-f-8a5fc-reserve-the-tree-fold-state-desktop/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/keys.spec.ts",
+                        "column": 36,
+                        "line": 434
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "561ddba2ab8d26122b17-373a1c6f1cfd74695a43",
+              "file": "keys.spec.ts",
+              "line": 429,
+              "column": 3
+            },
+            {
+              "title": "flat list: t changes the saved choice while type queries keep the list visible",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 6099,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row')\nExpected: \u001b[32m3\u001b[39m\nReceived: \u001b[31m4\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row')\u001b[22m\n\u001b[2m    14 × locator resolved to 4 elements\u001b[22m\n\u001b[2m       - unexpected value \"4\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row')\nExpected: \u001b[32m3\u001b[39m\nReceived: \u001b[31m4\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row')\u001b[22m\n\u001b[2m    14 × locator resolved to 4 elements\u001b[22m\n\u001b[2m       - unexpected value \"4\"\u001b[22m\n\n    at /home/omnigent/workspace/b9s/web/tests/keys.spec.ts:447:50",
+                        "location": {
+                          "file": "/home/omnigent/workspace/b9s/web/tests/keys.spec.ts",
+                          "column": 50,
+                          "line": 447
+                        },
+                        "snippet": "  445 |     await open(page, project);\n  446 |     await page.locator('[data-chip=\"type:task\"]').click();\n> 447 |     await expect(page.locator(\"#treeRows .row\")).toHaveCount(3);\n      |                                                  ^\n  448 |     await page.keyboard.press(\"t\");\n  449 |     await page.keyboard.press(\"t\");\n  450 |     await expect(row(page, \"t-epic\")).toHaveCount(0);"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/omnigent/workspace/b9s/web/tests/keys.spec.ts",
+                            "column": 50,
+                            "line": 447
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row')\nExpected: \u001b[32m3\u001b[39m\nReceived: \u001b[31m4\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row')\u001b[22m\n\u001b[2m    14 × locator resolved to 4 elements\u001b[22m\n\u001b[2m       - unexpected value \"4\"\u001b[22m\n\n\n  445 |     await open(page, project);\n  446 |     await page.locator('[data-chip=\"type:task\"]').click();\n> 447 |     await expect(page.locator(\"#treeRows .row\")).toHaveCount(3);\n      |                                                  ^\n  448 |     await page.keyboard.press(\"t\");\n  449 |     await page.keyboard.press(\"t\");\n  450 |     await expect(row(page, \"t-epic\")).toHaveCount(0);\n    at /home/omnigent/workspace/b9s/web/tests/keys.spec.ts:447:50"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T07:46:49.165Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "bd-calls",
+                          "contentType": "text/plain",
+                          "body": "KG5vbmUp"
+                        },
+                        {
+                          "name": "b9s-web-log",
+                          "contentType": "text/plain",
+                          "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLVZUVUdqVQoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6MzYwOTMvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/keys-view-keys-flat-list-t-cb10e-eries-keep-the-list-visible-desktop/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/keys-view-keys-flat-list-t-cb10e-eries-keep-the-list-visible-desktop/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/keys.spec.ts",
+                        "column": 50,
+                        "line": 447
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "561ddba2ab8d26122b17-f0322690c0088a161102",
+              "file": "keys.spec.ts",
+              "line": 444,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "read.spec.ts",
+      "file": "read.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "reading",
+          "file": "read.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "flat list: type queries exclude parent context and sort across the hierarchy",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 6066,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row')\nExpected: \u001b[32m3\u001b[39m\nReceived: \u001b[31m4\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row')\u001b[22m\n\u001b[2m    14 × locator resolved to 4 elements\u001b[22m\n\u001b[2m       - unexpected value \"4\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row')\nExpected: \u001b[32m3\u001b[39m\nReceived: \u001b[31m4\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row')\u001b[22m\n\u001b[2m    14 × locator resolved to 4 elements\u001b[22m\n\u001b[2m       - unexpected value \"4\"\u001b[22m\n\n    at /home/omnigent/workspace/b9s/web/tests/read.spec.ts:10:50",
+                        "location": {
+                          "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                          "column": 50,
+                          "line": 10
+                        },
+                        "snippet": "   8 |     await open(page, project);\n   9 |     await page.locator('[data-chip=\"type:task\"]').click();\n> 10 |     await expect(page.locator(\"#treeRows .row\")).toHaveCount(3);\n     |                                                  ^\n  11 |     await expect(row(page, \"t-epic\")).toHaveCount(0);\n  12 |     await expect(page.locator(\"#treeRows [data-chev]\")).toHaveCount(0);\n  13 |     await expect(row(page, \"t-1\").locator(\".rc\")).toHaveAttribute(\"style\", \"--d:0\");"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                            "column": 50,
+                            "line": 10
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row')\nExpected: \u001b[32m3\u001b[39m\nReceived: \u001b[31m4\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row')\u001b[22m\n\u001b[2m    14 × locator resolved to 4 elements\u001b[22m\n\u001b[2m       - unexpected value \"4\"\u001b[22m\n\n\n   8 |     await open(page, project);\n   9 |     await page.locator('[data-chip=\"type:task\"]').click();\n> 10 |     await expect(page.locator(\"#treeRows .row\")).toHaveCount(3);\n     |                                                  ^\n  11 |     await expect(row(page, \"t-epic\")).toHaveCount(0);\n  12 |     await expect(page.locator(\"#treeRows [data-chev]\")).toHaveCount(0);\n  13 |     await expect(row(page, \"t-1\").locator(\".rc\")).toHaveAttribute(\"style\", \"--d:0\");\n    at /home/omnigent/workspace/b9s/web/tests/read.spec.ts:10:50"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T07:46:56.268Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "bd-calls",
+                          "contentType": "text/plain",
+                          "body": "KG5vbmUp"
+                        },
+                        {
+                          "name": "b9s-web-log",
+                          "contentType": "text/plain",
+                          "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLUUxNTlrZQoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6NDE1ODkvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/read-reading-flat-list-typ-d2dd2-d-sort-across-the-hierarchy-desktop/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/read-reading-flat-list-typ-d2dd2-d-sort-across-the-hierarchy-desktop/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                        "column": 50,
+                        "line": 10
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-bdaa126d2e7650f3fc40",
+              "file": "read.spec.ts",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "flat list: negated type queries force the list",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 6189,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row[data-id=\"t-epic\"]')\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m1\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row[data-id=\"t-epic\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-epic\"]')\u001b[22m\n\u001b[2m    14 × locator resolved to 1 element\u001b[22m\n\u001b[2m       - unexpected value \"1\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row[data-id=\"t-epic\"]')\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m1\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row[data-id=\"t-epic\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-epic\"]')\u001b[22m\n\u001b[2m    14 × locator resolved to 1 element\u001b[22m\n\u001b[2m       - unexpected value \"1\"\u001b[22m\n\n    at /home/omnigent/workspace/b9s/web/tests/read.spec.ts:25:39",
+                        "location": {
+                          "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                          "column": 39,
+                          "line": 25
+                        },
+                        "snippet": "  23 |     await page.locator(\"#sIn\").fill(\"!type:epic\");\n  24 |     await page.locator(\"#sApply\").click();\n> 25 |     await expect(row(page, \"t-epic\")).toHaveCount(0);\n     |                                       ^\n  26 |     await expect(page.locator(\"#treeRows .row\")).toHaveCount(4);\n  27 |     await expect(row(page, \"t-1\").locator(\".rc\")).toHaveAttribute(\"style\", \"--d:0\");\n  28 |   });"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                            "column": 39,
+                            "line": 25
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row[data-id=\"t-epic\"]')\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m1\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('#treeRows .row[data-id=\"t-epic\"]') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-epic\"]')\u001b[22m\n\u001b[2m    14 × locator resolved to 1 element\u001b[22m\n\u001b[2m       - unexpected value \"1\"\u001b[22m\n\n\n  23 |     await page.locator(\"#sIn\").fill(\"!type:epic\");\n  24 |     await page.locator(\"#sApply\").click();\n> 25 |     await expect(row(page, \"t-epic\")).toHaveCount(0);\n     |                                       ^\n  26 |     await expect(page.locator(\"#treeRows .row\")).toHaveCount(4);\n  27 |     await expect(row(page, \"t-1\").locator(\".rc\")).toHaveAttribute(\"style\", \"--d:0\");\n  28 |   });\n    at /home/omnigent/workspace/b9s/web/tests/read.spec.ts:25:39"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T07:47:03.507Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "bd-calls",
+                          "contentType": "text/plain",
+                          "body": "KG5vbmUp"
+                        },
+                        {
+                          "name": "b9s-web-log",
+                          "contentType": "text/plain",
+                          "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLXNQU255dwoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6NDU1OTcvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/read-reading-flat-list-negated-type-queries-force-the-list-desktop/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/read-reading-flat-list-negated-type-queries-force-the-list-desktop/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                        "column": 39,
+                        "line": 25
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-30fbb78b7698d7ccf664",
+              "file": "read.spec.ts",
+              "line": 20,
+              "column": 3
+            },
+            {
+              "title": "flat list: a type lookup preserves the saved list choice",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 885,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T07:47:10.710Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-6728c0f8a06c7c00d2e7",
+              "file": "read.spec.ts",
+              "line": 30,
+              "column": 3
+            },
+            {
+              "title": "flat list: layout choices are saved per project",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 6583,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveAttribute\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc')\nExpected: \u001b[32m\"--d:\u001b[7m1\u001b[27m\"\u001b[39m\nReceived: \u001b[31m\"--d:\u001b[7m0\u001b[27m\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveAttribute\" locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc')\u001b[22m\n\u001b[2m    14 × locator resolved to <div class=\"rc\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"--d:0\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveAttribute\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc')\nExpected: \u001b[32m\"--d:\u001b[7m1\u001b[27m\"\u001b[39m\nReceived: \u001b[31m\"--d:\u001b[7m0\u001b[27m\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveAttribute\" locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc')\u001b[22m\n\u001b[2m    14 × locator resolved to <div class=\"rc\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"--d:0\"\u001b[22m\n\n    at /home/omnigent/workspace/b9s/web/tests/read.spec.ts:56:51",
+                        "location": {
+                          "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                          "column": 51,
+                          "line": 56
+                        },
+                        "snippet": "  54 |     await page.reload();\n  55 |     await settled(page);\n> 56 |     await expect(row(page, \"t-1\").locator(\".rc\")).toHaveAttribute(\"style\", \"--d:1\");\n     |                                                   ^\n  57 |     key = \"project-a\";\n  58 |     await page.reload();\n  59 |     await settled(page);"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                            "column": 51,
+                            "line": 56
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveAttribute\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc')\nExpected: \u001b[32m\"--d:\u001b[7m1\u001b[27m\"\u001b[39m\nReceived: \u001b[31m\"--d:\u001b[7m0\u001b[27m\"\u001b[39m\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveAttribute\" locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#treeRows .row[data-id=\"t-1\"]').locator('.rc')\u001b[22m\n\u001b[2m    14 × locator resolved to <div class=\"rc\">…</div>\u001b[22m\n\u001b[2m       - unexpected value \"--d:0\"\u001b[22m\n\n\n  54 |     await page.reload();\n  55 |     await settled(page);\n> 56 |     await expect(row(page, \"t-1\").locator(\".rc\")).toHaveAttribute(\"style\", \"--d:1\");\n     |                                                   ^\n  57 |     key = \"project-a\";\n  58 |     await page.reload();\n  59 |     await settled(page);\n    at /home/omnigent/workspace/b9s/web/tests/read.spec.ts:56:51"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T07:47:11.800Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "bd-calls",
+                          "contentType": "text/plain",
+                          "body": "KG5vbmUp"
+                        },
+                        {
+                          "name": "b9s-web-log",
+                          "contentType": "text/plain",
+                          "body": "YjlzIHdlYiBpcyBzZXJ2aW5nIGI5cy13ZWItZTJlLUpOSDRQYQoKICBUaGlzIG1hY2hpbmUgIGh0dHA6Ly8xMjcuMC4wLjE6NDE3MDUvCgpQcmVzcyBDdHJsK0MgdG8gc3RvcC4K"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/read-reading-flat-list-layout-choices-are-saved-per-project-desktop/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/omnigent/workspace/b9s/web/test-results/read-reading-flat-list-layout-choices-are-saved-per-project-desktop/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/omnigent/workspace/b9s/web/tests/read.spec.ts",
+                        "column": 51,
+                        "line": 56
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-db75027e724b3625bba4",
+              "file": "read.spec.ts",
+              "line": 40,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-11T07:44:42.950Z",
+    "duration": 155578.175,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 5,
+    "flaky": 0
+  }
+}
