@@ -1,0 +1,71 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "GOFLAGS": "-v"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 3760,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf test result lines (parent subtest groups excluded)",
+  "result_lines": {
+    "PASS": 3976,
+    "FAIL": 0,
+    "SKIP": 20
+  },
+  "package_summaries": [
+    "ok  \tgithub.com/vanderheijden86/b9s/cmd/b9s\t1.636s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attach\t0.313s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/attachref\t0.030s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/bdrun\t9.133s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/blobstore\t1.179s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/control\t0.023s",
+    "ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t1.215s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/config\t0.110s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/debug\t0.010s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/identity\t0.016s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/loader\t19.374s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/model\t0.040s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil\t0.043s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/testutil/proptest\t0.016s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/ui\t41.174s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/updater\t0.994s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/util/topk\t0.053s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/version\t0.012s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/watcher\t1.491s",
+    "ok  \tgithub.com/vanderheijden86/b9s/pkg/web\t2.095s",
+    "ok  \tgithub.com/vanderheijden86/b9s/scripts/web\t0.128s",
+    "ok  \tgithub.com/vanderheijden86/b9s/tests/docs\t0.206s"
+  ],
+  "skipped_tests": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ]
+}

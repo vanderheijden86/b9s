@@ -1,0 +1,26 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./pkg/ui/",
+    "-run",
+    "^TestBadgeContrast$",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "counts": {
+    "passed": 128,
+    "failed": 80,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "count_unit": "leaf tests (parent subtest groups excluded)",
+  "packages": {
+    "github.com/vanderheijden86/b9s/pkg/ui": "fail"
+  }
+}

@@ -1,0 +1,2 @@
+command: gofmt -l /home/omnigent/workspace/b9s/pkg/ui/styles.go /home/omnigent/workspace/b9s/pkg/ui/styles_test.go /home/omnigent/workspace/b9s/pkg/ui/issue_detail.go
+exit=0

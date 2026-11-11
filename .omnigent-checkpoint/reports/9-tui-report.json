@@ -1,0 +1,1745 @@
+{
+  "command": [
+    "python3",
+    "/tmp/bd-teri.9/tui-proof.py"
+  ],
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "terminal_emulator": "pyte /opt/venv/lib/python3.12/site-packages/pyte/__init__.py",
+    "dimensions": [
+      180,
+      40
+    ]
+  },
+  "counts": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "runs": [
+    {
+      "name": "truecolor-light",
+      "command": [
+        "script",
+        "-q",
+        "-e",
+        "-c",
+        "stty rows 40 cols 180; exec /tmp/bd-teri.9/b9s --no-fallback",
+        "/tmp/bd-teri.9/truecolor-light.terminal"
+      ],
+      "exit_code": 0,
+      "seconds": 4.09,
+      "screens": [
+        {
+          "screen": "truecolor-light-list.png",
+          "labels": [
+            "DONE",
+            "OPEN",
+            "PROG",
+            "BLKD",
+            "DEFR",
+            "PIN",
+            "HOOK",
+            "REVW",
+            "TOMB"
+          ],
+          "minimum_contrast": 4.596336510103338,
+          "colours": [
+            {
+              "label": "DONE",
+              "fg": "555555",
+              "bg": "e2e3e5",
+              "contrast": 5.805386997100758
+            },
+            {
+              "label": "DONE",
+              "fg": "555555",
+              "bg": "e2e3e5",
+              "contrast": 5.805386997100758
+            },
+            {
+              "label": "DONE",
+              "fg": "555555",
+              "bg": "e2e3e5",
+              "contrast": 5.805386997100758
+            },
+            {
+              "label": "DONE",
+              "fg": "555555",
+              "bg": "e2e3e5",
+              "contrast": 5.805386997100758
+            },
+            {
+              "label": "OPEN",
+              "fg": "007700",
+              "bg": "d3edda",
+              "contrast": 4.64333465624396
+            },
+            {
+              "label": "OPEN",
+              "fg": "007700",
+              "bg": "d3edda",
+              "contrast": 4.64333465624396
+            },
+            {
+              "label": "OPEN",
+              "fg": "007700",
+              "bg": "d3edda",
+              "contrast": 4.64333465624396
+            },
+            {
+              "label": "OPEN",
+              "fg": "007700",
+              "bg": "d3edda",
+              "contrast": 4.64333465624396
+            },
+            {
+              "label": "PROG",
+              "fg": "006080",
+              "bg": "d1ecf1",
+              "contrast": 5.688531102101343
+            },
+            {
+              "label": "PROG",
+              "fg": "006080",
+              "bg": "d1ecf1",
+              "contrast": 5.688531102101343
+            },
+            {
+              "label": "PROG",
+              "fg": "006080",
+              "bg": "d1ecf1",
+              "contrast": 5.688531102101343
+            },
+            {
+              "label": "PROG",
+              "fg": "006080",
+              "bg": "d1ecf1",
+              "contrast": 5.688531102101343
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "f8d7da",
+              "contrast": 15.723858334985927
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "f8d7da",
+              "contrast": 15.723858334985927
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "f8d7da",
+              "contrast": 15.723858334985927
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "f8d7da",
+              "contrast": 15.723858334985927
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffe8cc",
+              "contrast": 17.66657177100808
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffe8cc",
+              "contrast": 17.66657177100808
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffe8cc",
+              "contrast": 17.66657177100808
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffe8cc",
+              "contrast": 17.66657177100808
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "cce5ff",
+              "contrast": 16.219198414803568
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "cce5ff",
+              "contrast": 16.219198414803568
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "cce5ff",
+              "contrast": 16.219198414803568
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "ccffff",
+              "contrast": 19.315473844812896
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "ccffff",
+              "contrast": 19.315473844812896
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "ccffff",
+              "contrast": 19.315473844812896
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "ccffff",
+              "contrast": 19.315473844812896
+            },
+            {
+              "label": "REVW",
+              "fg": "6b47d9",
+              "bg": "e8ddff",
+              "contrast": 4.596336510103338
+            },
+            {
+              "label": "REVW",
+              "fg": "6b47d9",
+              "bg": "e8ddff",
+              "contrast": 4.596336510103338
+            },
+            {
+              "label": "REVW",
+              "fg": "6b47d9",
+              "bg": "e8ddff",
+              "contrast": 4.596336510103338
+            },
+            {
+              "label": "REVW",
+              "fg": "6b47d9",
+              "bg": "e8ddff",
+              "contrast": 4.596336510103338
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d0d0d0",
+              "contrast": 13.615142726922937
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d0d0d0",
+              "contrast": 13.615142726922937
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d0d0d0",
+              "contrast": 13.615142726922937
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d0d0d0",
+              "contrast": 13.615142726922937
+            }
+          ]
+        },
+        {
+          "screen": "truecolor-light-detail.png",
+          "labels": [
+            "CLOSED"
+          ],
+          "minimum_contrast": 7.455177810447525,
+          "colours": [
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "555555",
+              "contrast": 7.455177810447525
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "555555",
+              "contrast": 7.455177810447525
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "555555",
+              "contrast": 7.455177810447525
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "555555",
+              "contrast": 7.455177810447525
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "555555",
+              "contrast": 7.455177810447525
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "555555",
+              "contrast": 7.455177810447525
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "truecolor-dark",
+      "command": [
+        "script",
+        "-q",
+        "-e",
+        "-c",
+        "stty rows 40 cols 180; exec /tmp/bd-teri.9/b9s --no-fallback",
+        "/tmp/bd-teri.9/truecolor-dark.terminal"
+      ],
+      "exit_code": 0,
+      "seconds": 4.08,
+      "screens": [
+        {
+          "screen": "truecolor-dark-list.png",
+          "labels": [
+            "DONE",
+            "OPEN",
+            "PROG",
+            "BLKD",
+            "DEFR",
+            "PIN",
+            "HOOK",
+            "REVW",
+            "TOMB"
+          ],
+          "minimum_contrast": 4.93249681742357,
+          "colours": [
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "2a2a3c",
+              "contrast": 14.047924570212288
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "2a2a3c",
+              "contrast": 14.047924570212288
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "2a2a3c",
+              "contrast": 14.047924570212288
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "2a2a3c",
+              "contrast": 14.047924570212288
+            },
+            {
+              "label": "OPEN",
+              "fg": "50fa7b",
+              "bg": "1a3c2a",
+              "contrast": 8.87704096669329
+            },
+            {
+              "label": "OPEN",
+              "fg": "50fa7b",
+              "bg": "1a3c2a",
+              "contrast": 8.87704096669329
+            },
+            {
+              "label": "OPEN",
+              "fg": "50fa7b",
+              "bg": "1a3c2a",
+              "contrast": 8.87704096669329
+            },
+            {
+              "label": "OPEN",
+              "fg": "50fa7b",
+              "bg": "1a3c2a",
+              "contrast": 8.87704096669329
+            },
+            {
+              "label": "PROG",
+              "fg": "8be9fd",
+              "bg": "1a3344",
+              "contrast": 9.476857347611107
+            },
+            {
+              "label": "PROG",
+              "fg": "8be9fd",
+              "bg": "1a3344",
+              "contrast": 9.476857347611107
+            },
+            {
+              "label": "PROG",
+              "fg": "8be9fd",
+              "bg": "1a3344",
+              "contrast": 9.476857347611107
+            },
+            {
+              "label": "PROG",
+              "fg": "8be9fd",
+              "bg": "1a3344",
+              "contrast": 9.476857347611107
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5555",
+              "bg": "3c1a1a",
+              "contrast": 4.93249681742357
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5555",
+              "bg": "3c1a1a",
+              "contrast": 4.93249681742357
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5555",
+              "bg": "3c1a1a",
+              "contrast": 4.93249681742357
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5555",
+              "bg": "3c1a1a",
+              "contrast": 4.93249681742357
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffb86c",
+              "bg": "3c2a1a",
+              "contrast": 8.012265881554505
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffb86c",
+              "bg": "3c2a1a",
+              "contrast": 8.012265881554505
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffb86c",
+              "bg": "3c2a1a",
+              "contrast": 8.012265881554505
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffb86c",
+              "bg": "3c2a1a",
+              "contrast": 8.012265881554505
+            },
+            {
+              "label": "PIN",
+              "fg": "6699ff",
+              "bg": "1a2a44",
+              "contrast": 5.186862136231674
+            },
+            {
+              "label": "PIN",
+              "fg": "6699ff",
+              "bg": "1a2a44",
+              "contrast": 5.186862136231674
+            },
+            {
+              "label": "PIN",
+              "fg": "6699ff",
+              "bg": "1a2a44",
+              "contrast": 5.186862136231674
+            },
+            {
+              "label": "HOOK",
+              "fg": "00ced1",
+              "bg": "1a3c3c",
+              "contrast": 6.123111485823164
+            },
+            {
+              "label": "HOOK",
+              "fg": "00ced1",
+              "bg": "1a3c3c",
+              "contrast": 6.123111485823164
+            },
+            {
+              "label": "HOOK",
+              "fg": "00ced1",
+              "bg": "1a3c3c",
+              "contrast": 6.123111485823164
+            },
+            {
+              "label": "HOOK",
+              "fg": "00ced1",
+              "bg": "1a3c3c",
+              "contrast": 6.123111485823164
+            },
+            {
+              "label": "REVW",
+              "fg": "bd93f9",
+              "bg": "2a1a44",
+              "contrast": 6.546824352665866
+            },
+            {
+              "label": "REVW",
+              "fg": "bd93f9",
+              "bg": "2a1a44",
+              "contrast": 6.546824352665866
+            },
+            {
+              "label": "REVW",
+              "fg": "bd93f9",
+              "bg": "2a1a44",
+              "contrast": 6.546824352665866
+            },
+            {
+              "label": "REVW",
+              "fg": "bd93f9",
+              "bg": "2a1a44",
+              "contrast": 6.546824352665866
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "1e1f28",
+              "contrast": 16.382716478507135
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "1e1f28",
+              "contrast": 16.382716478507135
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "1e1f28",
+              "contrast": 16.382716478507135
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "1e1f28",
+              "contrast": 16.382716478507135
+            }
+          ]
+        },
+        {
+          "screen": "truecolor-dark-detail.png",
+          "labels": [
+            "CLOSED"
+          ],
+          "minimum_contrast": 4.773598395846164,
+          "colours": [
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "6171a3",
+              "contrast": 4.773598395846164
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "6171a3",
+              "contrast": 4.773598395846164
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "6171a3",
+              "contrast": 4.773598395846164
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "6171a3",
+              "contrast": 4.773598395846164
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "6171a3",
+              "contrast": 4.773598395846164
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "6171a3",
+              "contrast": 4.773598395846164
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ansi256-light",
+      "command": [
+        "script",
+        "-q",
+        "-e",
+        "-c",
+        "stty rows 40 cols 180; exec /tmp/bd-teri.9/b9s --no-fallback",
+        "/tmp/bd-teri.9/ansi256-light.terminal"
+      ],
+      "exit_code": 0,
+      "seconds": 4.09,
+      "screens": [
+        {
+          "screen": "ansi256-light-list.png",
+          "labels": [
+            "DONE",
+            "OPEN",
+            "PROG",
+            "BLKD",
+            "DEFR",
+            "PIN",
+            "HOOK",
+            "REVW",
+            "TOMB"
+          ],
+          "minimum_contrast": 6.574871208594838,
+          "colours": [
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "d7ffd7",
+              "contrast": 19.1746739070301
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "d7ffd7",
+              "contrast": 19.1746739070301
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "d7ffd7",
+              "contrast": 19.1746739070301
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "d7ffd7",
+              "contrast": 19.1746739070301
+            },
+            {
+              "label": "PROG",
+              "fg": "005f87",
+              "bg": "d7ffff",
+              "contrast": 6.574871208594838
+            },
+            {
+              "label": "PROG",
+              "fg": "005f87",
+              "bg": "d7ffff",
+              "contrast": 6.574871208594838
+            },
+            {
+              "label": "PROG",
+              "fg": "005f87",
+              "bg": "d7ffff",
+              "contrast": 6.574871208594838
+            },
+            {
+              "label": "PROG",
+              "fg": "005f87",
+              "bg": "d7ffff",
+              "contrast": 6.574871208594838
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ffd7d7",
+              "contrast": 15.95343481178196
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "d7ffff",
+              "contrast": 19.637414580879913
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "d7ffff",
+              "contrast": 19.637414580879913
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "d7ffff",
+              "contrast": 19.637414580879913
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "d7ffff",
+              "contrast": 19.637414580879913
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "d7d7ff",
+              "contrast": 15.053590066511688
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "d7d7d7",
+              "contrast": 14.590849392661877
+            }
+          ]
+        },
+        {
+          "screen": "ansi256-light-detail.png",
+          "labels": [
+            "CLOSED"
+          ],
+          "minimum_contrast": 6.3854873532556145,
+          "colours": [
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5f5f",
+              "contrast": 6.3854873532556145
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5f5f",
+              "contrast": 6.3854873532556145
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5f5f",
+              "contrast": 6.3854873532556145
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5f5f",
+              "contrast": 6.3854873532556145
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5f5f",
+              "contrast": 6.3854873532556145
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5f5f",
+              "contrast": 6.3854873532556145
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ansi256-dark",
+      "command": [
+        "script",
+        "-q",
+        "-e",
+        "-c",
+        "stty rows 40 cols 180; exec /tmp/bd-teri.9/b9s --no-fallback",
+        "/tmp/bd-teri.9/ansi256-dark.terminal"
+      ],
+      "exit_code": 0,
+      "seconds": 4.09,
+      "screens": [
+        {
+          "screen": "ansi256-dark-list.png",
+          "labels": [
+            "DONE",
+            "OPEN",
+            "PROG",
+            "BLKD",
+            "DEFR",
+            "PIN",
+            "HOOK",
+            "REVW",
+            "TOMB"
+          ],
+          "minimum_contrast": 4.708690524132714,
+          "colours": [
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "00005f",
+              "contrast": 18.02196599901538
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "00005f",
+              "contrast": 18.02196599901538
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "00005f",
+              "contrast": 18.02196599901538
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "00005f",
+              "contrast": 18.02196599901538
+            },
+            {
+              "label": "OPEN",
+              "fg": "5fff87",
+              "bg": "005f00",
+              "contrast": 6.121026058402028
+            },
+            {
+              "label": "OPEN",
+              "fg": "5fff87",
+              "bg": "005f00",
+              "contrast": 6.121026058402028
+            },
+            {
+              "label": "OPEN",
+              "fg": "5fff87",
+              "bg": "005f00",
+              "contrast": 6.121026058402028
+            },
+            {
+              "label": "OPEN",
+              "fg": "5fff87",
+              "bg": "005f00",
+              "contrast": 6.121026058402028
+            },
+            {
+              "label": "PROG",
+              "fg": "87d7ff",
+              "bg": "005f5f",
+              "contrast": 4.708690524132714
+            },
+            {
+              "label": "PROG",
+              "fg": "87d7ff",
+              "bg": "005f5f",
+              "contrast": 4.708690524132714
+            },
+            {
+              "label": "PROG",
+              "fg": "87d7ff",
+              "bg": "005f5f",
+              "contrast": 4.708690524132714
+            },
+            {
+              "label": "PROG",
+              "fg": "87d7ff",
+              "bg": "005f5f",
+              "contrast": 4.708690524132714
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5f5f",
+              "bg": "080808",
+              "contrast": 6.727415905907415
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5f5f",
+              "bg": "080808",
+              "contrast": 6.727415905907415
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5f5f",
+              "bg": "080808",
+              "contrast": 6.727415905907415
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff5f5f",
+              "bg": "080808",
+              "contrast": 6.727415905907415
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffaf5f",
+              "bg": "5f0000",
+              "contrast": 7.768999774428751
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffaf5f",
+              "bg": "5f0000",
+              "contrast": 7.768999774428751
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffaf5f",
+              "bg": "5f0000",
+              "contrast": 7.768999774428751
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffaf5f",
+              "bg": "5f0000",
+              "contrast": 7.768999774428751
+            },
+            {
+              "label": "PIN",
+              "fg": "5f87ff",
+              "bg": "00005f",
+              "contrast": 5.489120436339305
+            },
+            {
+              "label": "PIN",
+              "fg": "5f87ff",
+              "bg": "00005f",
+              "contrast": 5.489120436339305
+            },
+            {
+              "label": "PIN",
+              "fg": "5f87ff",
+              "bg": "00005f",
+              "contrast": 5.489120436339305
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "005f5f",
+              "contrast": 7.494303614544813
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "005f5f",
+              "contrast": 7.494303614544813
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "005f5f",
+              "contrast": 7.494303614544813
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "005f5f",
+              "contrast": 7.494303614544813
+            },
+            {
+              "label": "REVW",
+              "fg": "af87ff",
+              "bg": "00005f",
+              "contrast": 6.635843356638182
+            },
+            {
+              "label": "REVW",
+              "fg": "af87ff",
+              "bg": "00005f",
+              "contrast": 6.635843356638182
+            },
+            {
+              "label": "REVW",
+              "fg": "af87ff",
+              "bg": "00005f",
+              "contrast": 6.635843356638182
+            },
+            {
+              "label": "REVW",
+              "fg": "af87ff",
+              "bg": "00005f",
+              "contrast": 6.635843356638182
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "080808",
+              "contrast": 20.027383778150874
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "080808",
+              "contrast": 20.027383778150874
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "080808",
+              "contrast": 20.027383778150874
+            },
+            {
+              "label": "TOMB",
+              "fg": "ffffff",
+              "bg": "080808",
+              "contrast": 20.027383778150874
+            }
+          ]
+        },
+        {
+          "screen": "ansi256-dark-detail.png",
+          "labels": [
+            "CLOSED"
+          ],
+          "minimum_contrast": 5.6112346286624,
+          "colours": [
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5faf",
+              "contrast": 5.6112346286624
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5faf",
+              "contrast": 5.6112346286624
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5faf",
+              "contrast": 5.6112346286624
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5faf",
+              "contrast": 5.6112346286624
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5faf",
+              "contrast": 5.6112346286624
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "5f5faf",
+              "contrast": 5.6112346286624
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ansi-light",
+      "command": [
+        "script",
+        "-q",
+        "-e",
+        "-c",
+        "stty rows 40 cols 180; exec /tmp/bd-teri.9/b9s --no-fallback",
+        "/tmp/bd-teri.9/ansi-light.terminal"
+      ],
+      "exit_code": 0,
+      "seconds": 4.1,
+      "screens": [
+        {
+          "screen": "ansi-light-list.png",
+          "labels": [
+            "DONE",
+            "OPEN",
+            "PROG",
+            "BLKD",
+            "DEFR",
+            "PIN",
+            "HOOK",
+            "REVW",
+            "TOMB"
+          ],
+          "minimum_contrast": 5.252,
+          "colours": [
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "DONE",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "00ff00",
+              "contrast": 15.303999999999998
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "00ff00",
+              "contrast": 15.303999999999998
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "00ff00",
+              "contrast": 15.303999999999998
+            },
+            {
+              "label": "OPEN",
+              "fg": "000000",
+              "bg": "00ff00",
+              "contrast": 15.303999999999998
+            },
+            {
+              "label": "PROG",
+              "fg": "0000ff",
+              "bg": "00ffff",
+              "contrast": 6.852700490998363
+            },
+            {
+              "label": "PROG",
+              "fg": "0000ff",
+              "bg": "00ffff",
+              "contrast": 6.852700490998363
+            },
+            {
+              "label": "PROG",
+              "fg": "0000ff",
+              "bg": "00ffff",
+              "contrast": 6.852700490998363
+            },
+            {
+              "label": "PROG",
+              "fg": "0000ff",
+              "bg": "00ffff",
+              "contrast": 6.852700490998363
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "BLKD",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "DEFR",
+              "fg": "000000",
+              "bg": "ff0000",
+              "contrast": 5.252
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "PIN",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "00ffff",
+              "contrast": 16.748
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "00ffff",
+              "contrast": 16.748
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "00ffff",
+              "contrast": 16.748
+            },
+            {
+              "label": "HOOK",
+              "fg": "000000",
+              "bg": "00ffff",
+              "contrast": 16.748
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "REVW",
+              "fg": "000000",
+              "bg": "ff00ff",
+              "contrast": 6.696
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            },
+            {
+              "label": "TOMB",
+              "fg": "000000",
+              "bg": "c0c0c0",
+              "contrast": 11.542302514116262
+            }
+          ]
+        },
+        {
+          "screen": "ansi-light-detail.png",
+          "labels": [
+            "CLOSED"
+          ],
+          "minimum_contrast": 5.317210002277985,
+          "colours": [
+            {
+              "label": "CLOSED",
+              "fg": "000000",
+              "bg": "808080",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "CLOSED",
+              "fg": "000000",
+              "bg": "808080",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "CLOSED",
+              "fg": "000000",
+              "bg": "808080",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "CLOSED",
+              "fg": "000000",
+              "bg": "808080",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "CLOSED",
+              "fg": "000000",
+              "bg": "808080",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "CLOSED",
+              "fg": "000000",
+              "bg": "808080",
+              "contrast": 5.317210002277985
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ansi-dark",
+      "command": [
+        "script",
+        "-q",
+        "-e",
+        "-c",
+        "stty rows 40 cols 180; exec /tmp/bd-teri.9/b9s --no-fallback",
+        "/tmp/bd-teri.9/ansi-dark.terminal"
+      ],
+      "exit_code": 0,
+      "seconds": 4.11,
+      "screens": [
+        {
+          "screen": "ansi-dark-list.png",
+          "labels": [
+            "DONE",
+            "OPEN",
+            "PROG",
+            "BLKD",
+            "DEFR",
+            "PIN",
+            "HOOK",
+            "REVW",
+            "TOMB"
+          ],
+          "minimum_contrast": 4.7734094842951285,
+          "colours": [
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "DONE",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "OPEN",
+              "fg": "ffffff",
+              "bg": "008000",
+              "contrast": 5.137402780824574
+            },
+            {
+              "label": "OPEN",
+              "fg": "ffffff",
+              "bg": "008000",
+              "contrast": 5.137402780824574
+            },
+            {
+              "label": "OPEN",
+              "fg": "ffffff",
+              "bg": "008000",
+              "contrast": 5.137402780824574
+            },
+            {
+              "label": "OPEN",
+              "fg": "ffffff",
+              "bg": "008000",
+              "contrast": 5.137402780824574
+            },
+            {
+              "label": "PROG",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "PROG",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "PROG",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "PROG",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff0000",
+              "bg": "000000",
+              "contrast": 5.252
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff0000",
+              "bg": "000000",
+              "contrast": 5.252
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff0000",
+              "bg": "000000",
+              "contrast": 5.252
+            },
+            {
+              "label": "BLKD",
+              "fg": "ff0000",
+              "bg": "000000",
+              "contrast": 5.252
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffffff",
+              "bg": "800000",
+              "contrast": 10.949825131812458
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffffff",
+              "bg": "800000",
+              "contrast": 10.949825131812458
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffffff",
+              "bg": "800000",
+              "contrast": 10.949825131812458
+            },
+            {
+              "label": "DEFR",
+              "fg": "ffffff",
+              "bg": "800000",
+              "contrast": 10.949825131812458
+            },
+            {
+              "label": "PIN",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "PIN",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "PIN",
+              "fg": "ffffff",
+              "bg": "000080",
+              "contrast": 16.009727056831707
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "HOOK",
+              "fg": "ffffff",
+              "bg": "008080",
+              "contrast": 4.7734094842951285
+            },
+            {
+              "label": "REVW",
+              "fg": "ff00ff",
+              "bg": "000080",
+              "contrast": 5.104815827264052
+            },
+            {
+              "label": "REVW",
+              "fg": "ff00ff",
+              "bg": "000080",
+              "contrast": 5.104815827264052
+            },
+            {
+              "label": "REVW",
+              "fg": "ff00ff",
+              "bg": "000080",
+              "contrast": 5.104815827264052
+            },
+            {
+              "label": "REVW",
+              "fg": "ff00ff",
+              "bg": "000080",
+              "contrast": 5.104815827264052
+            },
+            {
+              "label": "TOMB",
+              "fg": "808080",
+              "bg": "000000",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "TOMB",
+              "fg": "808080",
+              "bg": "000000",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "TOMB",
+              "fg": "808080",
+              "bg": "000000",
+              "contrast": 5.317210002277985
+            },
+            {
+              "label": "TOMB",
+              "fg": "808080",
+              "bg": "000000",
+              "contrast": 5.317210002277985
+            }
+          ]
+        },
+        {
+          "screen": "ansi-dark-detail.png",
+          "labels": [
+            "CLOSED"
+          ],
+          "minimum_contrast": 8.592471358428805,
+          "colours": [
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "0000ff",
+              "contrast": 8.592471358428805
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "0000ff",
+              "contrast": 8.592471358428805
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "0000ff",
+              "contrast": 8.592471358428805
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "0000ff",
+              "contrast": 8.592471358428805
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "0000ff",
+              "contrast": 8.592471358428805
+            },
+            {
+              "label": "CLOSED",
+              "fg": "ffffff",
+              "bg": "0000ff",
+              "contrast": 8.592471358428805
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

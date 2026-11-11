@@ -1,0 +1,80 @@
+TestBadgeContrast/TrueColor/dark=false/blocked/compact: styles_test.go:34: badge contrast 4.41:1 < 4.5:1, foreground={204 0 0 255} background={248 215 218 255}
+TestBadgeContrast/TrueColor/dark=false/deferred/compact: styles_test.go:34: badge contrast 3.66:1 < 4.5:1, foreground={176 104 0 255} background={255 232 204 255}
+TestBadgeContrast/TrueColor/dark=false/deferred/detail: styles_test.go:42: badge contrast 4.35:1 < 4.5:1, foreground={255 255 255 255} background={176 104 0 255}
+TestBadgeContrast/TrueColor/dark=false/pinned/compact: styles_test.go:34: badge contrast 4.30:1 < 4.5:1, foreground={0 102 204 255} background={204 229 255 255}
+TestBadgeContrast/TrueColor/dark=false/hooked/compact: styles_test.go:34: badge contrast 4.39:1 < 4.5:1, foreground={0 128 128 255} background={204 255 255 255}
+TestBadgeContrast/TrueColor/dark=false/tombstone/compact: styles_test.go:34: badge contrast 2.30:1 < 4.5:1, foreground={136 136 136 255} background={208 208 208 255}
+TestBadgeContrast/TrueColor/dark=false/tombstone/detail: styles_test.go:42: badge contrast 3.54:1 < 4.5:1, foreground={255 255 255 255} background={136 136 136 255}
+TestBadgeContrast/TrueColor/dark=false/priority=0: styles_test.go:51: badge contrast 4.41:1 < 4.5:1, foreground={204 0 0 255} background={248 215 218 255}
+TestBadgeContrast/TrueColor/dark=false/priority=1: styles_test.go:51: badge contrast 3.66:1 < 4.5:1, foreground={176 104 0 255} background={255 232 204 255}
+TestBadgeContrast/TrueColor/dark=false/priority=2: styles_test.go:51: badge contrast 3.79:1 < 4.5:1, foreground={128 128 0 255} background={255 243 205 255}
+TestBadgeContrast/TrueColor/dark=true/closed/compact: styles_test.go:34: badge contrast 2.94:1 < 4.5:1, foreground={97 113 163 255} background={42 42 60 255}
+TestBadgeContrast/TrueColor/dark=true/closed/detail: styles_test.go:42: badge contrast 2.98:1 < 4.5:1, foreground={40 42 54 255} background={97 113 163 255}
+TestBadgeContrast/TrueColor/dark=true/tombstone/compact: styles_test.go:34: badge contrast 1.79:1 < 4.5:1, foreground={68 71 89 255} background={30 31 40 255}
+TestBadgeContrast/TrueColor/dark=true/tombstone/detail: styles_test.go:42: badge contrast 1.55:1 < 4.5:1, foreground={40 42 54 255} background={68 71 89 255}
+TestBadgeContrast/TrueColor/dark=true/unknown/compact: styles_test.go:34: badge contrast 2.42:1 < 4.5:1, foreground={97 113 163 255} background={54 56 73 255}
+TestBadgeContrast/TrueColor/dark=true/priority=4: styles_test.go:51: badge contrast 2.42:1 < 4.5:1, foreground={97 113 163 255} background={54 56 73 255}
+TestBadgeContrast/TrueColor/dark=true/priority=99: styles_test.go:51: badge contrast 2.42:1 < 4.5:1, foreground={97 113 163 255} background={54 56 73 255}
+TestBadgeContrast/ANSI256/dark=false/open/compact: styles_test.go:34: badge contrast 4.29:1 < 4.5:1, foreground=28 background=194
+TestBadgeContrast/ANSI256/dark=false/blocked/compact: styles_test.go:34: badge contrast 4.10:1 < 4.5:1, foreground=160 background=224
+TestBadgeContrast/ANSI256/dark=false/deferred/compact: styles_test.go:34: badge contrast 3.58:1 < 4.5:1, foreground=130 background=224
+TestBadgeContrast/ANSI256/dark=false/pinned/compact: styles_test.go:34: badge contrast 4.16:1 < 4.5:1, foreground=26 background=189
+TestBadgeContrast/ANSI256/dark=false/hooked/compact: styles_test.go:34: badge contrast 4.08:1 < 4.5:1, foreground=30 background=195
+TestBadgeContrast/ANSI256/dark=false/hooked/detail: styles_test.go:42: badge contrast 4.36:1 < 4.5:1, foreground=231 background=30
+TestBadgeContrast/ANSI256/dark=false/review/compact: styles_test.go:34: badge contrast 3.67:1 < 4.5:1, foreground=62 background=189
+TestBadgeContrast/ANSI256/dark=false/closed/compact: styles_test.go:34: badge contrast 4.44:1 < 4.5:1, foreground=59 background=188
+TestBadgeContrast/ANSI256/dark=false/tombstone/compact: styles_test.go:34: badge contrast 2.50:1 < 4.5:1, foreground=102 background=188
+TestBadgeContrast/ANSI256/dark=false/tombstone/detail: styles_test.go:42: badge contrast 3.59:1 < 4.5:1, foreground=231 background=102
+TestBadgeContrast/ANSI256/dark=false/unknown/compact: styles_test.go:34: badge contrast 4.44:1 < 4.5:1, foreground=59 background=188
+TestBadgeContrast/ANSI256/dark=false/priority=0: styles_test.go:51: badge contrast 4.10:1 < 4.5:1, foreground=160 background=224
+TestBadgeContrast/ANSI256/dark=false/priority=1: styles_test.go:51: badge contrast 3.58:1 < 4.5:1, foreground=130 background=224
+TestBadgeContrast/ANSI256/dark=false/priority=2: styles_test.go:51: badge contrast 3.74:1 < 4.5:1, foreground=100 background=230
+TestBadgeContrast/ANSI256/dark=false/priority=3: styles_test.go:51: badge contrast 4.29:1 < 4.5:1, foreground=28 background=194
+TestBadgeContrast/ANSI256/dark=false/priority=4: styles_test.go:51: badge contrast 4.44:1 < 4.5:1, foreground=59 background=188
+TestBadgeContrast/ANSI256/dark=false/priority=99: styles_test.go:51: badge contrast 4.44:1 < 4.5:1, foreground=59 background=188
+TestBadgeContrast/ANSI256/dark=true/hooked/compact: styles_test.go:34: badge contrast 4.18:1 < 4.5:1, foreground=44 background=23
+TestBadgeContrast/ANSI256/dark=true/closed/compact: styles_test.go:34: badge contrast 3.21:1 < 4.5:1, foreground=61 background=17
+TestBadgeContrast/ANSI256/dark=true/closed/detail: styles_test.go:42: badge contrast 3.21:1 < 4.5:1, foreground=17 background=61
+TestBadgeContrast/ANSI256/dark=true/tombstone/compact: styles_test.go:34: badge contrast 3.14:1 < 4.5:1, foreground=59 background=232
+TestBadgeContrast/ANSI256/dark=true/tombstone/detail: styles_test.go:42: badge contrast 2.82:1 < 4.5:1, foreground=17 background=59
+TestBadgeContrast/ANSI256/dark=true/unknown/compact: styles_test.go:34: badge contrast 1.14:1 < 4.5:1, foreground=61 background=59
+TestBadgeContrast/ANSI256/dark=true/priority=4: styles_test.go:51: badge contrast 1.14:1 < 4.5:1, foreground=61 background=59
+TestBadgeContrast/ANSI256/dark=true/priority=99: styles_test.go:51: badge contrast 1.14:1 < 4.5:1, foreground=61 background=59
+TestBadgeContrast/ANSI/dark=false/open/compact: styles_test.go:34: badge contrast 3.74:1 < 4.5:1, foreground=2 background=10
+TestBadgeContrast/ANSI/dark=false/blocked/compact: styles_test.go:34: badge contrast 1.00:1 < 4.5:1, foreground=9 background=9
+TestBadgeContrast/ANSI/dark=false/blocked/detail: styles_test.go:42: badge contrast 4.00:1 < 4.5:1, foreground=15 background=9
+TestBadgeContrast/ANSI/dark=false/deferred/compact: styles_test.go:34: badge contrast 1.00:1 < 4.5:1, foreground=9 background=9
+TestBadgeContrast/ANSI/dark=false/deferred/detail: styles_test.go:42: badge contrast 4.00:1 < 4.5:1, foreground=15 background=9
+TestBadgeContrast/ANSI/dark=false/pinned/compact: styles_test.go:34: badge contrast 2.74:1 < 4.5:1, foreground=12 background=13
+TestBadgeContrast/ANSI/dark=false/hooked/compact: styles_test.go:34: badge contrast 3.81:1 < 4.5:1, foreground=6 background=14
+TestBadgeContrast/ANSI/dark=false/review/compact: styles_test.go:34: badge contrast 2.74:1 < 4.5:1, foreground=12 background=13
+TestBadgeContrast/ANSI/dark=false/review/detail: styles_test.go:42: badge contrast 3.95:1 < 4.5:1, foreground=15 background=8
+TestBadgeContrast/ANSI/dark=false/closed/compact: styles_test.go:34: badge contrast 2.17:1 < 4.5:1, foreground=8 background=7
+TestBadgeContrast/ANSI/dark=false/closed/detail: styles_test.go:42: badge contrast 3.95:1 < 4.5:1, foreground=15 background=8
+TestBadgeContrast/ANSI/dark=false/tombstone/compact: styles_test.go:34: badge contrast 2.17:1 < 4.5:1, foreground=8 background=7
+TestBadgeContrast/ANSI/dark=false/tombstone/detail: styles_test.go:42: badge contrast 3.95:1 < 4.5:1, foreground=15 background=8
+TestBadgeContrast/ANSI/dark=false/unknown/compact: styles_test.go:34: badge contrast 2.17:1 < 4.5:1, foreground=8 background=7
+TestBadgeContrast/ANSI/dark=false/unknown/detail: styles_test.go:42: badge contrast 3.95:1 < 4.5:1, foreground=15 background=8
+TestBadgeContrast/ANSI/dark=false/priority=0: styles_test.go:51: badge contrast 1.00:1 < 4.5:1, foreground=9 background=9
+TestBadgeContrast/ANSI/dark=false/priority=1: styles_test.go:51: badge contrast 1.00:1 < 4.5:1, foreground=9 background=9
+TestBadgeContrast/ANSI/dark=false/priority=2: styles_test.go:51: badge contrast 3.91:1 < 4.5:1, foreground=3 background=11
+TestBadgeContrast/ANSI/dark=false/priority=3: styles_test.go:51: badge contrast 3.74:1 < 4.5:1, foreground=2 background=10
+TestBadgeContrast/ANSI/dark=false/priority=4: styles_test.go:51: badge contrast 2.17:1 < 4.5:1, foreground=8 background=7
+TestBadgeContrast/ANSI/dark=false/priority=99: styles_test.go:51: badge contrast 2.17:1 < 4.5:1, foreground=8 background=7
+TestBadgeContrast/ANSI/dark=true/open/compact: styles_test.go:34: badge contrast 3.74:1 < 4.5:1, foreground=10 background=2
+TestBadgeContrast/ANSI/dark=true/in_progress/compact: styles_test.go:34: badge contrast 3.81:1 < 4.5:1, foreground=14 background=6
+TestBadgeContrast/ANSI/dark=true/blocked/detail: styles_test.go:42: badge contrast 4.00:1 < 4.5:1, foreground=4 background=9
+TestBadgeContrast/ANSI/dark=true/deferred/compact: styles_test.go:34: badge contrast 2.74:1 < 4.5:1, foreground=9 background=1
+TestBadgeContrast/ANSI/dark=true/deferred/detail: styles_test.go:42: badge contrast 4.00:1 < 4.5:1, foreground=4 background=9
+TestBadgeContrast/ANSI/dark=true/pinned/compact: styles_test.go:34: badge contrast 1.86:1 < 4.5:1, foreground=12 background=4
+TestBadgeContrast/ANSI/dark=true/pinned/detail: styles_test.go:42: badge contrast 1.86:1 < 4.5:1, foreground=4 background=12
+TestBadgeContrast/ANSI/dark=true/hooked/compact: styles_test.go:34: badge contrast 3.81:1 < 4.5:1, foreground=14 background=6
+TestBadgeContrast/ANSI/dark=true/closed/compact: styles_test.go:34: badge contrast 1.86:1 < 4.5:1, foreground=12 background=4
+TestBadgeContrast/ANSI/dark=true/closed/detail: styles_test.go:42: badge contrast 1.86:1 < 4.5:1, foreground=4 background=12
+TestBadgeContrast/ANSI/dark=true/tombstone/detail: styles_test.go:42: badge contrast 4.05:1 < 4.5:1, foreground=4 background=8
+TestBadgeContrast/ANSI/dark=true/unknown/compact: styles_test.go:34: badge contrast 2.18:1 < 4.5:1, foreground=12 background=8
+TestBadgeContrast/ANSI/dark=true/priority=1: styles_test.go:51: badge contrast 2.74:1 < 4.5:1, foreground=9 background=1
+TestBadgeContrast/ANSI/dark=true/priority=2: styles_test.go:51: badge contrast 3.91:1 < 4.5:1, foreground=11 background=3
+TestBadgeContrast/ANSI/dark=true/priority=3: styles_test.go:51: badge contrast 3.74:1 < 4.5:1, foreground=10 background=2
+TestBadgeContrast/ANSI/dark=true/priority=4: styles_test.go:51: badge contrast 2.18:1 < 4.5:1, foreground=12 background=8
+TestBadgeContrast/ANSI/dark=true/priority=99: styles_test.go:51: badge contrast 2.18:1 < 4.5:1, foreground=12 background=8
