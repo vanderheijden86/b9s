@@ -711,6 +711,7 @@ b9s polls the Dolt working-set hash every 500 ms by default, so changes from `bd
 b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Every key is optional:
 
 ```yaml
+clipboard: auto         # auto, system or osc52
 ui:
   board_epics: rail       # rail or rows; v switches
   date_order: auto        # auto, dmy or mdy: day or month first in dates (T)
@@ -728,6 +729,17 @@ recent_projects:        # b9s maintains this list; edit it to remove an entry
     path: /Users/me/src/b9s   # empty for a database without a local checkout
 # attachments:          # absent by default; see Attachments
 ```
+
+`clipboard: auto` tries the system clipboard utility first and falls back to
+OSC 52 when that utility returns an error. `system` uses only the system utility.
+`osc52` sends copies directly to the terminal, which can reach your local
+clipboard through SSH or a container. The choice does not depend on `DISPLAY`.
+Existing configurations without this key use `auto`.
+
+OSC 52 requires stdout to be a terminal and `TERM` to differ from `dumb`.
+Your terminal must support OSC 52 and permit clipboard writes. GNU screen
+receives DCS-wrapped chunks. The base64 payload is limited to 74,994 bytes.
+Larger copies report an error without writing a partial clipboard.
 
 The TUI polls at `poll_interval` while you use it. After two minutes without a key or mouse event, or while the terminal reports that it has lost focus, it polls at `idle_poll_interval`. After fifteen minutes it polls every 30 seconds, or at `idle_poll_interval` when that is longer. The first key after an idle period polls at once, so the screen is current before you act on it. Changes made by others while you are idle therefore show up after up to 30 seconds. `b9s web` always polls at `poll_interval`. See [ADR 0061](adr/0061-back-off-the-dolt-poll-while-the-user-is-idle.md).
 
