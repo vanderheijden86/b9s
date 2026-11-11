@@ -2230,7 +2230,7 @@ func TestSortFieldValues(t *testing.T) {
 		{SortFieldStatus, "Status"},
 		{SortFieldType, "Type"},
 		{SortFieldDepsCount, "Deps"},
-		{SortFieldPageRank, "PageRank"},
+		{SortFieldDeferred, "Deferred"},
 	}
 
 	for _, tt := range fields {
@@ -2663,9 +2663,9 @@ func TestSortFieldDefaultDirection(t *testing.T) {
 	if SortFieldTitle.DefaultDirection() != SortAscending {
 		t.Error("Title default should be ascending")
 	}
-	// PageRank: descending (highest first)
-	if SortFieldPageRank.DefaultDirection() != SortDescending {
-		t.Error("PageRank default should be descending")
+	// Deferred: ascending (soonest first)
+	if SortFieldDeferred.DefaultDirection() != SortAscending {
+		t.Error("Deferred default should be ascending")
 	}
 }
 
@@ -2829,8 +2829,52 @@ func TestSortModeBackwardsCompatibility(t *testing.T) {
 
 // TestSortFieldCount verifies the total number of sort fields
 func TestSortFieldCount(t *testing.T) {
-	if NumSortFields != 9 {
-		t.Errorf("expected 9 sort fields, got %d", NumSortFields)
+	if NumSortFields != 8 {
+		t.Errorf("expected 8 sort fields, got %d", NumSortFields)
+	}
+}
+
+func TestTreeSortSupportedFields(t *testing.T) {
+	early := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	late := early.Add(time.Hour)
+	for _, tc := range []struct {
+		field SortField
+		a, b  model.Issue
+	}{
+		{SortFieldPriority, model.Issue{Priority: 3}, model.Issue{Priority: 1}},
+		{SortFieldCreated, model.Issue{CreatedAt: late}, model.Issue{CreatedAt: early}},
+		{SortFieldUpdated, model.Issue{UpdatedAt: late}, model.Issue{UpdatedAt: early}},
+		{SortFieldTitle, model.Issue{Title: "Zulu"}, model.Issue{Title: "Alpha"}},
+		{SortFieldStatus, model.Issue{Status: model.StatusClosed}, model.Issue{Status: model.StatusOpen}},
+		{SortFieldType, model.Issue{IssueType: model.TypeChore}, model.Issue{IssueType: model.TypeEpic}},
+		{
+			SortFieldDepsCount,
+			model.Issue{Dependencies: []*model.Dependency{
+				{IssueID: "a", DependsOnID: "missing-1", Type: model.DepBlocks},
+				{IssueID: "a", DependsOnID: "missing-2", Type: model.DepBlocks},
+			}},
+			model.Issue{},
+		},
+		{SortFieldDeferred, model.Issue{DeferUntil: &late}, model.Issue{DeferUntil: &early}},
+	} {
+		t.Run(tc.field.String(), func(t *testing.T) {
+			tc.a.ID, tc.b.ID = "a", "b"
+			for _, direction := range []struct {
+				name string
+				dir  SortDirection
+				want []string
+			}{
+				{"ascending", SortAscending, []string{"b", "a"}},
+				{"descending", SortDescending, []string{"a", "b"}},
+			} {
+				t.Run(direction.name, func(t *testing.T) {
+					tree := NewTreeModel(newTreeTestTheme())
+					tree.Build([]model.Issue{tc.a, tc.b})
+					tree.SetSort(tc.field, direction.dir)
+					assertOrder(t, treeRootIDs(&tree), direction.want...)
+				})
+			}
+		})
 	}
 }
 
@@ -2976,10 +3020,13 @@ func TestSortPopupRendering(t *testing.T) {
 	view := tree.RenderSortPopup()
 
 	// Should contain all field names
-	for _, name := range []string{"Priority", "Created", "Updated", "Title", "Status", "Type", "Deps", "PageRank"} {
+	for _, name := range []string{"Priority", "Created", "Updated", "Title", "Status", "Type", "Deps", "Deferred"} {
 		if !strings.Contains(view, name) {
 			t.Errorf("popup should contain field name %q, got:\n%s", name, view)
 		}
+	}
+	if strings.Contains(view, "PageRank") {
+		t.Errorf("popup contains unsupported PageRank sort:\n%s", view)
 	}
 
 	// Should contain a direction indicator for the current sort
