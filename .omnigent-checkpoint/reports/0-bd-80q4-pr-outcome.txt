@@ -1,0 +1,32 @@
+Task bd-80q4. Role implementer. Final PR step.
+Repository /home/omnigent/workspace/b9s.
+Head branch: omnigent/bd-80q4. Assigned base: main.
+Delivery and tested HEAD: 873e74381482d2d7f73bccbc739d2c559daea050.
+
+Exact-branch reuse check:
+timeout 60s gh pr list --repo vanderheijden86/b9s --head omnigent/bd-80q4 --state open --json url,baseRefName,headRefName
+Exit 0. Result: []. No existing open PR for this delivery branch was available to reuse.
+Evidence: /tmp/bd-80q4-pr-list.json, /tmp/bd-80q4-pr-list.stderr, /tmp/bd-80q4-pr-list.exit.
+
+Prepared truthful body before creation: /tmp/bd-80q4-pr-body.md.
+Body names bd-80q4, existing fix on main through merged upstream PR #59, unchanged delivery tree, exact measured verification counts and commands, reviewer APPROVED, residual risks and exact-SHA preview URL.
+Existing upstream fix PR: https://github.com/vanderheijden86/b9s/pull/59. This is not a PR for the current delivery branch and was not reused as one.
+
+Creation command:
+timeout 60s gh pr create --repo vanderheijden86/b9s --base main --head omnigent/bd-80q4 --title 'bd-80q4: verify existing project tree-state isolation' --body-file /tmp/bd-80q4-pr-body.md
+Exit 1. Exact stderr:
+pull request create failed: GraphQL: No commits between main and omnigent/bd-80q4 (createPullRequest)
+Evidence: /tmp/bd-80q4-pr-create.stdout, /tmp/bd-80q4-pr-create.stderr, /tmp/bd-80q4-pr-create.exit.
+
+No PR URL was returned. No artificial change, empty commit, workaround, issue/PR comment or review was made. No further source edits. No branch merge or force push.
+Final PR deliverable for bd-80q4 is blocked by GitHub's no-commits rejection. No unresolved required test/check failures or separate blocker issue IDs exist. No unrelated follow-up work was identified.
+
+Preserved verification results:
+Reviewer APPROVED. Independent tester TESTS_PASSED.
+Stable: 3561 passed, 0 failed, 20 optional skipped leaf cases, 0 interrupted/unrun.
+Focused persistence/sort: 48 passed, 0 failed/skipped/interrupted/unrun.
+Build and vet each exit 0.
+Preview: 21 passed, 0 failed, 0 skipped (build 4, deploy 5, status 4, verify 8), exact tested SHA.
+Preview URL: http://b9s-bd-80q4.previews.osenco.test:8081
+Preview evidence: /home/omnigent/workspace/b9s/.git/lane-preview/bd-80q4/c0edf18492a94c029205c1e10166f979/result.json.
+Preview does not exercise interactive switching. Stable declared exclusions, optional external integrations, no race/browser/full Dolt, and unassessed repeated-run flakiness remain coverage limits.
