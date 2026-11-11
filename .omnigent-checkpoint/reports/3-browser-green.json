@@ -1,0 +1,785 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/omnigent/workspace/b9s/web/node_modules/.bin/playwright",
+      "test",
+      "tests/read.spec.ts",
+      "-g",
+      "detail shows (close reason|literal metadata)|detail omits absent extra sections|Markdown copy keeps extra detail sections",
+      "--project",
+      "pixel",
+      "--project",
+      "iphone",
+      "--project",
+      "desktop",
+      "--workers=1",
+      "--reporter=list,json"
+    ],
+    "configFile": "/home/omnigent/workspace/b9s/web/playwright.config.ts",
+    "rootDir": "/home/omnigent/workspace/b9s/web/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/home/omnigent/workspace/b9s/web/tests/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tokens",
+        "name": "tokens",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/tokens\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel",
+        "name": "pixel",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone",
+        "name": "iphone",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [
+          "/(wide|keys|perf|measure|tokens|shell|desktop|accessibility)\\.spec/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-safari",
+        "name": "desktop-safari",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-firefox",
+        "name": "desktop-firefox",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys|read|write|memory|desktop)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "ipad",
+        "name": "ipad",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(wide|keys)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-360",
+        "name": "phone-360",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-412",
+        "name": "phone-412",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-768",
+        "name": "tablet-768",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-1024",
+        "name": "tablet-1024",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1440",
+        "name": "desktop-1440",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1920",
+        "name": "desktop-1920",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "wide-2560",
+        "name": "wide-2560",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/(shell|desktop|board-detail|accessibility)\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "pixel-perf",
+        "name": "pixel-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "iphone-perf",
+        "name": "iphone-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-perf",
+        "name": "tablet-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/home/omnigent/workspace/b9s/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-perf",
+        "name": "desktop-perf",
+        "testDir": "/home/omnigent/workspace/b9s/web/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/perf\\.spec/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "read.spec.ts",
+      "file": "read.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "reading",
+          "file": "read.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "detail shows close reason",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "pixel",
+                  "projectName": "pixel",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1056,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:39.428Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-7c953bad1420f9acd5aa",
+              "file": "read.spec.ts",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "detail shows literal metadata",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "pixel",
+                  "projectName": "pixel",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1152,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:40.653Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-ffdd3fb0b3ee2533889a",
+              "file": "read.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "detail omits absent extra sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "pixel",
+                  "projectName": "pixel",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 481,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:41.825Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-bc2b2b6fc5af5c778905",
+              "file": "read.spec.ts",
+              "line": 33,
+              "column": 3
+            },
+            {
+              "title": "Markdown copy keeps extra detail sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "pixel",
+                  "projectName": "pixel",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 535,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:42.329Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-582f5ff881faadda2a80",
+              "file": "read.spec.ts",
+              "line": 39,
+              "column": 3
+            },
+            {
+              "title": "detail shows close reason",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iphone",
+                  "projectName": "iphone",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1347,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:43.764Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-9ea8066bc12ec719cd73",
+              "file": "read.spec.ts",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "detail shows literal metadata",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iphone",
+                  "projectName": "iphone",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1560,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:45.568Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-e0418f30c404266e57e3",
+              "file": "read.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "detail omits absent extra sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iphone",
+                  "projectName": "iphone",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1017,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:47.149Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-387a3988e1232f28e940",
+              "file": "read.spec.ts",
+              "line": 33,
+              "column": 3
+            },
+            {
+              "title": "Markdown copy keeps extra detail sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iphone",
+                  "projectName": "iphone",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1067,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:48.199Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-78caee8dd5ca6e915d5f",
+              "file": "read.spec.ts",
+              "line": 39,
+              "column": 3
+            },
+            {
+              "title": "detail shows close reason",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 959,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:50.351Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-e9991ad3b19fc7cb772d",
+              "file": "read.spec.ts",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "detail shows literal metadata",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 899,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:51.535Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-b84e4da2efb78fe1b2d3",
+              "file": "read.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "detail omits absent extra sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 551,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:52.470Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-1a04dec2ccb5bc178f58",
+              "file": "read.spec.ts",
+              "line": 33,
+              "column": 3
+            },
+            {
+              "title": "Markdown copy keeps extra detail sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop",
+                  "projectName": "desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 609,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T01:45:53.043Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "89caab7b9386318747fc-2be97d65f56d62bfbc96",
+              "file": "read.spec.ts",
+              "line": 39,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-11T01:45:25.579Z",
+    "duration": 28180.719,
+    "expected": 12,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
