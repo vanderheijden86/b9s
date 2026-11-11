@@ -118,6 +118,17 @@ mismatch fails verification without selecting another boundary. The board's
 `/api/session` request uses the same selected boundary, so identity from the
 Service cannot approve a board reached through ingress, or the reverse.
 
+Kubernetes readiness requests `/api/session` on the web port with the configured
+viewer header and viewer. The identity endpoint starts before the web listener,
+so its response alone cannot establish readiness. The probe keeps its bounded
+timeouts and failure threshold. Identity remains the liveness endpoint.
+
+Startup diagnosis (bd-1si3, 2026-11-11): an identity-only probe marked the Pod
+ready before port 7681 accepted connections. Compare the Pod's Ready transition,
+the failed verifier's timestamp and the web-listening log. If verification fails
+between those events and the same Pod later answers an authenticated session
+request without a restart, the startup readiness contract admitted it too early.
+
 The web process runs with `--projects-root /data/projects --discover-dolt`.
 Project-list and project-open requests refresh readable Beads databases through
 the same SELECT-only account. Discovery creates only local checkout metadata,
