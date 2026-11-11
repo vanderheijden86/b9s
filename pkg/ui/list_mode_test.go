@@ -46,6 +46,62 @@ func newListModeModel(t *testing.T) Model {
 	return m
 }
 
+func TestListModeFooterOmitsFoldingKeys(t *testing.T) {
+	for _, mode := range []string{"toggle", "type query"} {
+		t.Run(mode, func(t *testing.T) {
+			m := newListModeModel(t)
+			if mode == "toggle" {
+				m = typeKeys(m, "t")
+			} else {
+				m.setQueryText("type:task")
+			}
+			for _, key := range footerHintKeys(t, m) {
+				if key == "tab" || key == "⇧tab" {
+					t.Errorf("flat list advertises %q folding with no children to fold", key)
+				}
+			}
+		})
+	}
+}
+
+func TestListModeLabelHintUsesWorkingKey(t *testing.T) {
+	m := newListModeModel(t)
+	m = typeKeys(m, "t")
+	if !contains(footerHintKeys(t, m), "L") {
+		t.Fatal("list footer must advertise L for labels")
+	}
+	m = typeKeys(m, "L")
+	if m.pickerMode != pickerModeLabels {
+		t.Fatal("advertised L must open label filters from the list")
+	}
+}
+
+func TestListModeAdvertisedActionsTargetSelectedRow(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	for _, key := range []string{"e", "K", "del"} {
+		t.Run(key, func(t *testing.T) {
+			m := newListModeModel(t)
+			m = typeKeys(m, "t")
+			if !contains(footerHintKeys(t, m), key) {
+				t.Fatalf("list footer must advertise %q", key)
+			}
+			m.tree.SelectByID("lm-epic.1.1")
+			press := runeKey(key)
+			if key == "del" {
+				press = tea.KeyMsg{Type: tea.KeyDelete}
+			}
+			m = pressKeys(m, press)
+			if key == "e" {
+				if !m.showEditModal || !strings.Contains(stripANSI(m.View()), "Edit Issue: lm-epic.1.1") {
+					t.Fatal("edit must target the selected list row")
+				}
+			} else if m.issueConfirm.id != "lm-epic.1.1" || len(m.issueConfirm.ids) != 0 {
+				t.Fatalf("%q must target only the selected list row, got %#v", key, m.issueConfirm)
+			}
+		})
+	}
+}
+
 func TestListModeKeyTSortsAcrossTheHierarchy(t *testing.T) {
 	m := newListModeModel(t)
 	if got := treeVisibleIDs(&m.tree); got[0] == "lm-epic.1.1" {

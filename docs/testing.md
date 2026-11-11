@@ -91,6 +91,15 @@ The tests in `tests/e2e` build the binary once, then run it under the Unix `scri
 
 The fixtures live in `tests/testdata`. `minimal.jsonl` and `synthetic_complex.jsonl` are the common ones. A test that needs a Dolt server uses the same rules as the integration tests.
 
+`TestListViewAdvertisedShortcutsE2E` checks the flat list footer, `L` label
+filters, and `e`, `K` and Delete on the selected row. Close and Delete stop at
+confirmation. The test uses isolated JSONL fixtures and makes no Beads writes.
+Flat lists omit folding hints because they have no children to fold (ADR 0027).
+
+```bash
+go test ./tests/e2e -run '^TestListViewAdvertisedShortcutsE2E$' -count=1 -timeout=120s -v
+```
+
 `TestAttachmentsStockBDLocalBackendE2E` creates an isolated embedded project with
 stock `bd`, attaches a file through the TUI's `I` form, checks the detail and
 `R` picker, and opens it with `B9S_TEST_MODE`. It checks the persisted reference,

@@ -5014,21 +5014,24 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"0-9", "project"},
 			{"^R", "refresh"},
-			{"tab", "fold"},
-			{"⇧tab", "fold all"},
-			{"enter", "detail"},
-			{"g", "deps"},
-			{"j/k", "nav"},
-			{"s", "sort"},
-			{"c", "copy"},
-			{"|", "columns"},
-			{"/", "search"},
-			{"f", "branch"},
-			{"e", "edit"},
-			{"K", "close"},
-			{"del", "delete"},
-			{"esc", "back"},
 		}
+		if !m.tree.IsListView() {
+			hints = append(hints, hint{"tab", "fold"}, hint{"⇧tab", "fold all"})
+		}
+		hints = append(hints,
+			hint{"enter", "detail"},
+			hint{"g", "deps"},
+			hint{"j/k", "nav"},
+			hint{"s", "sort"},
+			hint{"c", "copy"},
+			hint{"|", "columns"},
+			hint{"/", "search"},
+			hint{"f", "branch"},
+			hint{"e", "edit"},
+			hint{"K", "close"},
+			hint{"del", "delete"},
+			hint{"esc", "back"},
+		)
 	case "board":
 		hints = []hint{
 			{"1-9", "project"},
