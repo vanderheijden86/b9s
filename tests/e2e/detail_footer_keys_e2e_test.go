@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,5 +77,64 @@ func TestDetailIgnoresRemovedEditorKeyE2E(t *testing.T) {
 	frame := treeFinalFrame(out)
 	if strings.Contains(frame, "Would open") || !strings.Contains(frame, "Detail issue") {
 		t.Fatalf("O must leave the detail visible without opening an editor:\n%s", frame)
+	}
+}
+
+func TestDetailChildrenBeyondNineE2E(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		keys   string
+		want   string
+		hidden []int
+	}{
+		{"tenth", "9n", "BODY-CHILD-10", nil},
+		{"last", "9" + strings.Repeat("n", 15), "BODY-CHILD-24", nil},
+		{"return-to-parent", "9n\x7f", "BODY-PARENT", nil},
+		{"filtered-forward", "9n", "BODY-CHILD-11", []int{10}},
+		{"filtered-reverse", "9p", "BODY-CHILD-07", []int{8}},
+		{"filtered-entry", "\rl\r", "BODY-CHILD-10", []int{1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		{"filtered-last", "\rl\r" + strings.Repeat("n", 14), "BODY-CHILD-24", []int{1, 2, 3, 4, 5, 6, 7, 8, 9}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			now := time.Now()
+			issues := []treeFixtureIssue{{
+				ID: "many-epic", Title: "Many children", Status: "open", Priority: 1,
+				IssueType: "epic", CreatedAt: now.Format(time.RFC3339), Description: "BODY-PARENT",
+			}}
+			for n := 1; n <= 24; n++ {
+				id := fmt.Sprintf("many-child-%02d", n)
+				status := "open"
+				for _, hidden := range tc.hidden {
+					if n == hidden {
+						status = "closed"
+					}
+				}
+				issues = append(issues, treeFixtureIssue{
+					ID: id, Title: fmt.Sprintf("Child %02d", n), Status: status, Priority: 2,
+					IssueType: "task", CreatedAt: now.Add(-time.Duration(n) * time.Second).Format(time.RFC3339),
+					Description:  fmt.Sprintf("BODY-CHILD-%02d", n),
+					Dependencies: []*treeFixtureDep{{IssueID: id, DependsOnID: "many-epic", Type: "parent-child"}},
+				})
+			}
+			writeTreeFixture(t, dir, issues)
+			var keys []keyStep
+			if len(tc.hidden) > 0 {
+				keys = append(keys, kd("o", 200*time.Millisecond))
+			}
+			keys = append(keys, kd("\r", 200*time.Millisecond))
+			for _, key := range tc.keys {
+				keys = append(keys, kd(string(key), 50*time.Millisecond))
+			}
+			out, err := runTreeTUI(t, dir, 2500, keys)
+			if err != nil {
+				t.Fatalf("child navigation TUI failed: %v\n%s", err, out)
+			}
+			frame := treeFinalFrame(out)
+			if !strings.Contains(frame, tc.want) {
+				t.Fatalf("expected %q in the selected detail:\n%s", tc.want, frame)
+			}
+			t.Logf("terminal final frame:\n%s", frame)
+		})
 	}
 }

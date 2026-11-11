@@ -196,6 +196,13 @@ const contextHelpDetail = `## Detail View
   Esc       Return to list
   Tab       Switch to split view
 
+Open a visible numbered child, then use n/p in tree
+detail to reach every visible sibling, including beyond 9.
+If all numbered children are hidden, Enter returns to
+the tree. Use l to expand a folded parent, then l on the
+expanded parent selects its first visible child.
+Enter opens that child. Filters and numbers stay intact.
+
 **Actions**
   c         Copy full ticket Markdown
   s         Reverse comment order (newest first by default)
