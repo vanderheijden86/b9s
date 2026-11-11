@@ -1,0 +1,256 @@
+TestListViewAdvertisedShortcutsE2E/footer
+                                    O   P   R                                                          o Open     P Projects   Types         __________  ________       
+        <1> 001                     4   0   4                                                          C Closed   L Labels     F1 ♦ Epic     \______   \/   __   \______
+        <2> bv-e2e-tui-cap-17...    0   0   0                                                          r Ready    A Assignees  F2 ▲ Feature   |    |  _/\____    /  ___/
+        <0> All                                                                                        a All      H Hide/Show  F3 ✔ Task      |    |   \   /    /\___ \ 
+                                                                                                       b Board    [] Scroll    F4 ● Bug       |______  /  /____//____  >
+                                                                                                       / Search   esc Back        ○ Chore            \/              \/ 
+        [LIST]       Issue [Created ▼]                                                                                            PRI  DISPATCH          CREATED  ID    
+          ✔ OPEN     Cheetah task                                                                                                 P2                         now  deep  
+          ● OPEN     Dingo root bug                                                                                               P1                      1h ago  bug   
+          ✔ OPEN     Bison task                                                                                                   P2                      2h ago  task  
+          ♦ OPEN     Aardvark epic                                                                                                P2                      3h ago  epic  
+                                                                                                                                                                        
+         0-9:project  ^R:refresh  enter:detail  g:deps  j/k:nav  s:sort  c:copy  |:columns  /:search  f:branch  e:edit  K:close  del:delete  esc:back  L:labels  F1-4:ty
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+
+
+TestListViewAdvertisedShortcutsE2E/labels
+              Label               Count                                                                                                o Open     P Projects  Types     
+         <1> shortcut-label         1                                                                                                  C Closed   L Labels    F1 ♦ Epic 
+         <0> all                                                                                                                       r Ready    A Assignees  F2 ▲ Feat
+                                                                                                                                       a All      H Hide/Show  F3 ✔ Task
+                                                                                                                                       b Board    [] Scroll   F4 ● Bug  
+                                                                                                                                       / Search   esc Back       ○ Chore
+        [LIST]       Issue [Created ▼]                                                                                            PRI  DISPATCH          CREATED  ID    
+          ✔ OPEN     Cheetah task                                                                                                 P2                         now  deep  
+          ● OPEN     Dingo root bug                                                                                               P1                      1h ago  bug   
+          ✔ OPEN     Bison task                                                                                                   P2                      2h ago  task  
+          ♦ OPEN     Aardvark epic                                                                                                P2                      3h ago  epic  
+                                                                                                                                                                        
+         0-9:label  ^R:refresh  enter:detail  g:deps  j/k:nav  s:sort  c:copy  |:columns  /:search  f:branch  e:edit  K:close  del:delete  esc:back  P:projects  F1-4:ty
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+
+
+TestListViewAdvertisedShortcutsE2E/assignees
+              Assignee            Count                                                                                                o Open     P Projects  Types     
+         <1> shortcut-actor         1                                                                                                  C Closed   L Labels    F1 ♦ Epic 
+         <0> all                                                                                                                       r Ready    A Assignees  F2 ▲ Feat
+                                                                                                                                       a All      H Hide/Show  F3 ✔ Task
+                                                                                                                                       b Board    [] Scroll   F4 ● Bug  
+                                                                                                                                       / Search   esc Back       ○ Chore
+        [LIST]       Issue [Created ▼]                                                                                            PRI  DISPATCH          CREATED  ID    
+          ✔ OPEN     Cheetah task                                                                                                 P2                         now  deep  
+          ● OPEN     Dingo root bug                                                                                               P1                      1h ago  bug   
+          ✔ OPEN     Bison task                                                                                                   P2                      2h ago  task  
+          ♦ OPEN     Aardvark epic                                                                                                P2                      3h ago  epic  
+                                                                                                                                                                        
+         0-9:assignee  ^R:refresh  enter:detail  g:deps  j/k:nav  s:sort  c:copy  |:columns  /:search  f:branch  e:edit  K:close  del:delete  esc:back  L:labels  F1-4:t
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+
+
+TestListViewAdvertisedShortcutsE2E/edit
+                                               ╭────────────────────────────────────────────────────────────────────────────────╮                                       
+                                               │                                                                                │                                       
+                                               │  Edit Issue: lv-deep                                                           │                                       
+                                               │  enter or ctrl+s save · esc cancel · tab next field                            │                                       
+                                               │                                                                                │                                       
+                                               │  ┃ Title                                                                       │                                       
+                                               │  ┃ > Cheetah task                                                              │                                       
+                                               │                                                                                │                                       
+                                               │    Status                                                                      │                                       
+                                               │    > open                                                                      │                                       
+                                               │      in_progress                                                               │                                       
+                                               │      blocked                                                                   │                                       
+                                               │      deferred                                                                  │                                       
+                                               │      review                                                                    │                                       
+                                               │      closed                                                                    │                                       
+                                               │                                                                                │                                       
+                                               │    Defer until (e.g. tomorrow, next monday, +3d)                               │                                       
+                                               │    > leave empty for indefinite defer                                          │                                       
+                                               │                                                                                │                                       
+                                               │    Description                                                                 │                                       
+                                               │                                                                                │                                       
+                                               │                                                                                │                                       
+                                               │                                                                                │                                       
+                                               │                                                                                │                                       
+                                               │                                                                                │                                       
+                                               │                                                                                │                                       
+                                               │    Priority                                                                    │                                       
+                                               │      P0                                                                        │                                       
+                                               │      P1                                                                        │                                       
+                                               │    > P2                                                                        │                                       
+                                               │      P3                                                                        │                                       
+                                               │      P4                                                                        │                                       
+                                               │                                                                                │                                       
+                                               │    Type                                                                        │                                       
+                                               │      bug                                                                       │                                       
+                                               │      feature                                                                   │                                       
+                                               │    > task                                                                      │                                       
+                                               │      epic                                                                      │                                       
+                                               │      chore                                                                     │                                       
+                                               │                                                                                │                                       
+
+
+TestListViewAdvertisedShortcutsE2E/close
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                             ┌────────────────────────────────────────────────────┐                                                     
+                                                             │                                                    │                                                     
+                                                             │                    Close issue?                    │                                                     
+                                                             │                                                    │                                                     
+                                                             │                      lv-deep                       │                                                     
+                                                             │                    Cheetah task                    │                                                     
+                                                             │                                                    │                                                     
+                                                             │   The issue remains available in closed history.   │                                                     
+                                                             │                                                    │                                                     
+                                                             │   [Y] Close  [C] Comment and close  [Esc] Cancel   │                                                     
+                                                             │                                                    │                                                     
+                                                             └────────────────────────────────────────────────────┘                                                     
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+         0-9:project  ^R:refresh  enter:detail  g:deps  j/k:nav  s:sort  c:copy  |:columns  /:search  f:branch  e:edit  K:close  del:delete  esc:back  L:labels  F1-4:ty
+
+
+TestListViewAdvertisedShortcutsE2E/delete
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                ┌─────────────────────────────────────────────┐                                                         
+                                                                │                                             │                                                         
+                                                                │                Delete issue?                │                                                         
+                                                                │                                             │                                                         
+                                                                │                   lv-deep                   │                                                         
+                                                                │                Cheetah task                 │                                                         
+                                                                │                                             │                                                         
+                                                                │   This is permanent and cannot be undone.   │                                                         
+                                                                │                                             │                                                         
+                                                                │          [Y] Delete  [Esc] Cancel           │                                                         
+                                                                │                                             │                                                         
+                                                                └─────────────────────────────────────────────┘                                                         
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+         0-9:project  ^R:refresh  enter:detail  g:deps  j/k:nav  s:sort  c:copy  |:columns  /:search  f:branch  e:edit  K:close  del:delete  esc:back  L:labels  F1-4:ty

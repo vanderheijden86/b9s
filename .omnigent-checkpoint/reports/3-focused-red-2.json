@@ -1,0 +1,40 @@
+{"Time":"2026-11-11T03:24:06.182202289Z","Action":"start","Package":"github.com/vanderheijden86/b9s/pkg/ui"}
+{"Time":"2026-11-11T03:24:06.231921577Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys"}
+{"Time":"2026-11-11T03:24:06.231964522Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys","Output":"=== RUN   TestListModeFooterOmitsFoldingKeys\n"}
+{"Time":"2026-11-11T03:24:06.232024855Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/toggle"}
+{"Time":"2026-11-11T03:24:06.232029571Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/toggle","Output":"=== RUN   TestListModeFooterOmitsFoldingKeys/toggle\n"}
+{"Time":"2026-11-11T03:24:06.24112613Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/toggle","Output":"    list_mode_test.go:60: flat list advertises \"tab\" folding with no children to fold\n"}
+{"Time":"2026-11-11T03:24:06.241161238Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/toggle","Output":"    list_mode_test.go:60: flat list advertises \"⇧tab\" folding with no children to fold\n"}
+{"Time":"2026-11-11T03:24:06.241386295Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/toggle","Output":"--- FAIL: TestListModeFooterOmitsFoldingKeys/toggle (0.01s)\n"}
+{"Time":"2026-11-11T03:24:06.24139665Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/toggle","Elapsed":0.01}
+{"Time":"2026-11-11T03:24:06.241404386Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/type_query"}
+{"Time":"2026-11-11T03:24:06.241407511Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/type_query","Output":"=== RUN   TestListModeFooterOmitsFoldingKeys/type_query\n"}
+{"Time":"2026-11-11T03:24:06.248057167Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/type_query","Output":"    list_mode_test.go:60: flat list advertises \"tab\" folding with no children to fold\n"}
+{"Time":"2026-11-11T03:24:06.248092375Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/type_query","Output":"    list_mode_test.go:60: flat list advertises \"⇧tab\" folding with no children to fold\n"}
+{"Time":"2026-11-11T03:24:06.248359611Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/type_query","Output":"--- FAIL: TestListModeFooterOmitsFoldingKeys/type_query (0.01s)\n"}
+{"Time":"2026-11-11T03:24:06.248376555Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys/type_query","Elapsed":0.01}
+{"Time":"2026-11-11T03:24:06.248391507Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys","Output":"--- FAIL: TestListModeFooterOmitsFoldingKeys (0.02s)\n"}
+{"Time":"2026-11-11T03:24:06.248399072Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeFooterOmitsFoldingKeys","Elapsed":0.02}
+{"Time":"2026-11-11T03:24:06.24840688Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeLabelHintUsesWorkingKey"}
+{"Time":"2026-11-11T03:24:06.248412567Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeLabelHintUsesWorkingKey","Output":"=== RUN   TestListModeLabelHintUsesWorkingKey\n"}
+{"Time":"2026-11-11T03:24:06.25415845Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeLabelHintUsesWorkingKey","Output":"--- PASS: TestListModeLabelHintUsesWorkingKey (0.01s)\n"}
+{"Time":"2026-11-11T03:24:06.254197923Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeLabelHintUsesWorkingKey","Elapsed":0.01}
+{"Time":"2026-11-11T03:24:06.254207245Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow"}
+{"Time":"2026-11-11T03:24:06.25421034Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow","Output":"=== RUN   TestListModeAdvertisedActionsTargetSelectedRow\n"}
+{"Time":"2026-11-11T03:24:06.254214552Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/e"}
+{"Time":"2026-11-11T03:24:06.25421723Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/e","Output":"=== RUN   TestListModeAdvertisedActionsTargetSelectedRow/e\n"}
+{"Time":"2026-11-11T03:24:06.269396493Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/e","Output":"--- PASS: TestListModeAdvertisedActionsTargetSelectedRow/e (0.02s)\n"}
+{"Time":"2026-11-11T03:24:06.269432147Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/e","Elapsed":0.02}
+{"Time":"2026-11-11T03:24:06.269445836Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/K"}
+{"Time":"2026-11-11T03:24:06.269450827Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/K","Output":"=== RUN   TestListModeAdvertisedActionsTargetSelectedRow/K\n"}
+{"Time":"2026-11-11T03:24:06.277344936Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/K","Output":"--- PASS: TestListModeAdvertisedActionsTargetSelectedRow/K (0.01s)\n"}
+{"Time":"2026-11-11T03:24:06.277375648Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/K","Elapsed":0.01}
+{"Time":"2026-11-11T03:24:06.277385577Z","Action":"run","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/del"}
+{"Time":"2026-11-11T03:24:06.277389027Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/del","Output":"=== RUN   TestListModeAdvertisedActionsTargetSelectedRow/del\n"}
+{"Time":"2026-11-11T03:24:06.283263711Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/del","Output":"--- PASS: TestListModeAdvertisedActionsTargetSelectedRow/del (0.01s)\n"}
+{"Time":"2026-11-11T03:24:06.28330047Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow/del","Elapsed":0.01}
+{"Time":"2026-11-11T03:24:06.283311013Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow","Output":"--- PASS: TestListModeAdvertisedActionsTargetSelectedRow (0.03s)\n"}
+{"Time":"2026-11-11T03:24:06.283315576Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/pkg/ui","Test":"TestListModeAdvertisedActionsTargetSelectedRow","Elapsed":0.03}
+{"Time":"2026-11-11T03:24:06.283545486Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"FAIL\n"}
+{"Time":"2026-11-11T03:24:06.288327509Z","Action":"output","Package":"github.com/vanderheijden86/b9s/pkg/ui","Output":"FAIL\tgithub.com/vanderheijden86/b9s/pkg/ui\t0.106s\n"}
+{"Time":"2026-11-11T03:24:06.288390739Z","Action":"fail","Package":"github.com/vanderheijden86/b9s/pkg/ui","Elapsed":0.106}

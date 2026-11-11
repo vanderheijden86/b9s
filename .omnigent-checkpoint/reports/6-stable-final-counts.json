@@ -1,0 +1,12 @@
+{
+  "name": "stable-final",
+  "exit_code": 0,
+  "leaf_counts": {
+    "pass": 3560,
+    "skip": 20
+  },
+  "all_test_event_counts": {
+    "pass": 3770,
+    "skip": 20
+  }
+}

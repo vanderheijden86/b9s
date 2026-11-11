@@ -1,0 +1,76 @@
+{
+  "cwd": "/home/omnigent/workspace/b9s",
+  "commands": {
+    "focused_red": [
+      "timeout",
+      "120s",
+      "go",
+      "test",
+      "./pkg/ui",
+      "-run",
+      "^TestListMode(FooterOmitsFoldingKeys|LabelHintUsesWorkingKey|AdvertisedActionsTargetSelectedRow)$",
+      "-count=1",
+      "-timeout=60s",
+      "-json"
+    ],
+    "picker_red": [
+      "timeout",
+      "120s",
+      "go",
+      "test",
+      "./pkg/ui",
+      "-run",
+      "^TestListModePickerNumberHints$",
+      "-count=1",
+      "-timeout=60s",
+      "-json"
+    ],
+    "focused_final": [
+      "timeout",
+      "120s",
+      "go",
+      "test",
+      "./pkg/ui",
+      "-run",
+      "^TestListMode(FooterOmitsFoldingKeys|LabelHintUsesWorkingKey|PickerNumberHints|AdvertisedActionsTargetSelectedRow)$",
+      "-count=1",
+      "-timeout=60s",
+      "-json"
+    ],
+    "build_final": [
+      "timeout",
+      "180s",
+      "go",
+      "build",
+      "./..."
+    ],
+    "stable_final": [
+      "timeout",
+      "660s",
+      "make",
+      "test-stable"
+    ],
+    "vet_final": [
+      "timeout",
+      "180s",
+      "go",
+      "vet",
+      "./..."
+    ],
+    "tui_final": [
+      "timeout",
+      "180s",
+      "go",
+      "test",
+      "./tests/e2e",
+      "-run",
+      "^TestListViewAdvertisedShortcutsE2E$",
+      "-count=1",
+      "-timeout=120s",
+      "-json"
+    ]
+  },
+  "stable_environment": {
+    "GOFLAGS": "-v"
+  }
+}
