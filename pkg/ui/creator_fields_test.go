@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vanderheijden86/b9s/pkg/identity"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
@@ -95,5 +97,81 @@ func TestTreeAssigneeColumn_ShowRendersAssignee(t *testing.T) {
 	view := stripANSI(tree.View())
 	if !strings.Contains(view, "ASSIGNEE") || !strings.Contains(view, "@BrownBear") {
 		t.Fatalf("assignee column not rendered:\n%s", view)
+	}
+}
+
+func TestIdentityNamesInPersonViews(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	reg, err := identity.Parse(`[
+		{"name":"Al","kind":"human","aliases":["a","a_b"]},
+		{"name":"Bo","kind":"agent","aliases":["b","b_b"]},
+		{"name":"André","kind":"human","aliases":["andre@example.invalid"]}
+	]`, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, view := range []string{"detail", "board_detail", "tree_columns"} {
+		for _, tc := range []struct {
+			name, creator, assignee, wantCreator, wantAssignee string
+			registry                                           *identity.Registry
+		}{
+			{"aliases", "a", "b", "@Al (@a)", "@Bo (@b)", reg},
+			{"canonical_aliases", "a.b", "b-b", "@Al (@a.b)", "@Bo (@b-b)", reg},
+			{"email_alias", "andre@example.invalid", "b", "@André (@andre@example.invalid)", "@Bo (@b)", reg},
+			{"same_names", "Al", "Bo", "@Al", "@Bo", reg},
+			{"unknown_names", "guest", "crew", "@guest", "@crew", reg},
+			{"no_registry", "a", "b", "@a", "@b", nil},
+			{"empty_names", "", "", "", "", reg},
+		} {
+			t.Run(view+"/"+tc.name, func(t *testing.T) {
+				issue := creatorFixture()
+				issue.CreatedBy, issue.Assignee, issue.Owner = tc.creator, tc.assignee, ""
+				m := NewModel([]model.Issue{issue}, "")
+				next, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 30})
+				m = next.(Model)
+				m.setIdentities(tc.registry)
+				m.tree.SetColumnPreference(TreeColumnCreator, ColumnShow)
+				m.tree.SetColumnPreference(TreeColumnAssignee, ColumnShow)
+				m.treeViewActive, m.treeDetailHidden = true, true
+				m.isSplitView = false
+				m.focused = focusTree
+				if view == "board_detail" {
+					m.isBoardView = true
+					m.focused = focusBoard
+					m.board.SelectIssueByID(issue.ID)
+				}
+				if view != "tree_columns" {
+					next, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+					m = next.(Model)
+					if m.focused != focusDetail {
+						t.Fatalf("Enter did not open the %s", view)
+					}
+				}
+				out := stripANSI(m.View())
+				t.Logf("Rendered %s:\n%s", view, out)
+				for _, want := range []string{tc.wantCreator, tc.wantAssignee} {
+					if want != "" && !strings.Contains(out, want) {
+						t.Errorf("%s missing %q:\n%s", view, want, out)
+					}
+				}
+				for _, duplicate := range []string{"@Al (@Al)", "@Bo (@Bo)", "@guest (@guest)", "@crew (@crew)"} {
+					if strings.Contains(out, duplicate) {
+						t.Errorf("%s duplicates an unchanged name: %q", view, duplicate)
+					}
+				}
+				if tc.creator == "" && tc.assignee == "" {
+					if strings.Contains(out, "@") {
+						t.Errorf("%s shows a bare @ for an empty person:\n%s", view, out)
+					}
+					if view != "tree_columns" && (!strings.Contains(out, "unknown") || !strings.Contains(out, "none")) {
+						t.Errorf("%s lost the empty-person labels:\n%s", view, out)
+					}
+				}
+				if got := m.issueMap[issue.ID]; got.CreatedBy != tc.creator || got.Assignee != tc.assignee {
+					t.Fatal("rendering changed the stored aliases")
+				}
+			})
+		}
 	}
 }

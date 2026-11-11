@@ -5857,7 +5857,7 @@ func (m *Model) updateViewportContent() {
 		decisions = []string{m.theme.MutedText.Render(memoryGraphProgressText(b.graphDone, b.graphTotal))}
 	}
 	m.detailRenders++
-	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.theme, m.viewport.Width, m.renderer, update, decisions, m.commentsOldestFirst))
+	m.viewport.SetContent(renderIssueDetail(item, m.issueMap, m.identities, m.theme, m.viewport.Width, m.renderer, update, decisions, m.commentsOldestFirst))
 }
 
 // decisionLookupFor returns where the tree finds the Memory graph of source.

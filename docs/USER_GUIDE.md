@@ -352,6 +352,7 @@ bd config set b9s.identities '[
 - `kind` is `human`, `agent` or `pool`. Every name in `bd`'s own `claim.pools` key is a `pool` without further configuration.
 - Names match as `bd`'s claim path compares them: `.`, `_` and `-` count as one separator, so `gastown.mayor` and `gastown_mayor` are the same name.
 - A name without an entry shows as itself.
+- The detail pane, board detail and tree Creator/Assignee columns show the identity name with the stored alias beside it when they differ, for example `@alice (@asmith)`. Identical names appear once. Tree person columns grow to fit, up to a quarter of the terminal width each, and truncate longer labels.
 - The assignee picker (`A`) and the edit form's suggestions list each identity once, with the counts of all its aliases. Humans come first, then agents and pools, tagged `(agent)` and `(pool)`. Filtering on a name shows issues assigned to any of its aliases.
 - An alias listed under two names is a configuration error. The first entry wins, and the health popup (`D`) reports the conflict.
 - The list lives in the project database, so every clone and lane sees the same one, and it reloads with the issues. JSONL projects have no config table and show raw names.
