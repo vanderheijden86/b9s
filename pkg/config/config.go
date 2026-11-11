@@ -98,7 +98,7 @@ type SortConfig struct {
 
 // sortFieldNames must stay in step with ui.SortField; the ui package tests that
 // every name maps to a field, because ui imports config and not the reverse.
-var sortFieldNames = []string{"priority", "created", "updated", "title", "status", "type", "deps", "pagerank", "deferred"}
+var sortFieldNames = []string{"priority", "created", "updated", "title", "status", "type", "deps", "deferred"}
 
 // SortFieldNames returns the accepted ui.sort.field values.
 func SortFieldNames() []string {

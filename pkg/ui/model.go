@@ -143,7 +143,6 @@ const (
 	SortFieldStatus                     // Issue status
 	SortFieldType                       // Issue type (epic, feature, task, ...)
 	SortFieldDepsCount                  // Number of dependencies
-	SortFieldPageRank                   // PageRank score
 	SortFieldDeferred                   // Defer-until date
 	NumSortFields                       // Sentinel: total number of sort fields
 )
@@ -165,8 +164,6 @@ func (f SortField) String() string {
 		return "Type"
 	case SortFieldDepsCount:
 		return "Deps"
-	case SortFieldPageRank:
-		return "PageRank"
 	case SortFieldDeferred:
 		return "Deferred"
 	default:
@@ -188,7 +185,7 @@ func (f SortField) DefaultDirection() SortDirection {
 	case SortFieldDeferred:
 		return SortAscending // the next issue to come back first
 	default:
-		return SortDescending // newest/highest first for dates, counts, scores
+		return SortDescending // newest/highest first for dates and counts
 	}
 }
 
