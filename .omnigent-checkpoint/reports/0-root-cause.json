@@ -1,0 +1,35 @@
+{
+  "task": "bd-teri.3",
+  "issue": "bd-1si3",
+  "pod": "b9s-d64b47869-dksnt",
+  "restarts": 0,
+  "pod_ready": [
+    "2026-11-11T02:00:04Z"
+  ],
+  "deployment_available": [
+    "2026-11-11T02:00:05Z"
+  ],
+  "readiness_probe": {
+    "failureThreshold": 20,
+    "httpGet": {
+      "path": "/__preview",
+      "port": "identity",
+      "scheme": "HTTP"
+    },
+    "initialDelaySeconds": 2,
+    "periodSeconds": 3,
+    "successThreshold": 1,
+    "timeoutSeconds": 2
+  },
+  "web_start_log": [
+    "2026-11-11T03:00:07.613264773+01:00 b9s web is serving b9s on [::]:7681 behind a login proxy"
+  ],
+  "failed_verify_log_mtime": "2026-11-11T02:00:06.954236526Z",
+  "current_board_probe": {
+    "url": "http://b9s.b9s-bd-teri-3.svc.cluster.local:7681/api/session",
+    "status": 200,
+    "commit": "",
+    "credentials_omitted": true
+  },
+  "diagnosis": "Identity readiness marks Pod ready before b9s web listens. Failed verification completed before the web listening log. Same unchanged pod later serves the authenticated session without restarts."
+}
