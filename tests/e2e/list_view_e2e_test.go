@@ -129,3 +129,61 @@ func TestTypeQueryShowsOnlyThatTypeE2E(t *testing.T) {
 	}
 	fmt.Printf("=== TYPE QUERY LIST DONE pass=%d fail=%d ===\n", pass, len(cases)-pass)
 }
+
+func TestListViewAdvertisedShortcutsE2E(t *testing.T) {
+	for _, tc := range []struct {
+		name, key, want string
+	}{
+		{"footer", "", "[LIST]"},
+		{"labels", "L", "shortcut-label"},
+		{"assignees", "A", "shortcut-actor"},
+		{"edit", "e", "Edit Issue: lv-deep"},
+		{"close", "K", "Close issue?"},
+		{"delete", "\x1b[3~", "Delete issue?"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			issues := makeListViewFixture()
+			issues[0].Labels = []string{"shortcut-label"}
+			issues[0].Assignee = "shortcut-actor"
+			writeTreeFixture(t, dir, issues)
+			keys := []keyStep{
+				kd("t", 200*time.Millisecond),
+				kd("\x1b[H", 200*time.Millisecond),
+			}
+			if tc.key != "" {
+				keys = append(keys, kd(tc.key, 200*time.Millisecond))
+			}
+			out, err := runTreeTUI(t, dir, 2500, keys)
+			if err != nil {
+				t.Fatalf("TUI failed: %v\n%s", err, out)
+			}
+			frame := stripTerminalCodes([]byte(treeFinalFrame(out)))
+			t.Logf("Final terminal frame:\n%s", frame)
+			if !strings.Contains(frame, tc.want) {
+				t.Fatalf("shortcut %q did not show %q", tc.key, tc.want)
+			}
+			if tc.name == "footer" {
+				if !strings.Contains(frame, "enter:detail") {
+					t.Fatal("list footer is missing")
+				}
+				if strings.Contains(frame, "tab:fold") || strings.Contains(frame, "⇧tab:fold") {
+					t.Fatal("flat list advertises folding keys")
+				}
+			}
+			if tc.name == "labels" && (!strings.Contains(frame, "Label") || !strings.Contains(frame, "Count")) {
+				t.Fatal("L must show the label filter header")
+			}
+			for name, label := range map[string]string{"labels": "label", "assignees": "assignee"} {
+				if tc.name == name && !strings.Contains(frame, "0-9:"+label) {
+					t.Fatalf("numeric hint must name the active %s picker", label)
+				}
+			}
+			if tc.name == "close" || tc.name == "delete" {
+				if !strings.Contains(frame, "lv-deep") || !strings.Contains(frame, "Cheetah task") {
+					t.Fatal("confirmation must target the selected list row")
+				}
+			}
+		})
+	}
+}
