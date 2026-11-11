@@ -40,6 +40,7 @@ var footerKeyPress = map[string]tea.KeyMsg{
 	"1-9":      {Type: tea.KeyRunes, Runes: []rune("1")},
 	"bksp":     {Type: tea.KeyBackspace},
 	"^R":       {Type: tea.KeyCtrlR},
+	"^o":       {Type: tea.KeyCtrlO},
 	"n/p":      {Type: tea.KeyRunes, Runes: []rune("n")},
 	"e":        {Type: tea.KeyRunes, Runes: []rune("e")},
 	"s":        {Type: tea.KeyRunes, Runes: []rune("s")},
