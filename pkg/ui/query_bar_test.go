@@ -13,6 +13,98 @@ import (
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
+func TestQueryCaretEditing(t *testing.T) {
+	for _, view := range []string{"tree", "flat", "board"} {
+		for _, paste := range []bool{false, true} {
+			name := view + "/typed"
+			if paste {
+				name = view + "/pasted"
+			}
+			t.Run(name, func(t *testing.T) {
+				m := NewModel([]model.Issue{{ID: "alpha", Title: "Alpha βeta", Status: model.StatusOpen}}, "")
+				m.focused = focusTree
+				if view == "flat" {
+					m.tree.ToggleFlatMode()
+				}
+				if view == "board" {
+					m.focused = focusBoard
+					m.isBoardView = true
+				}
+				send := func(msg tea.KeyMsg) {
+					t.Helper()
+					next, _ := m.Update(msg)
+					m = next.(Model)
+				}
+				key := func(k tea.KeyType) { send(tea.KeyMsg{Type: k}) }
+				m = typeInto(m, "/")
+				if paste {
+					send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("alpha βeta"), Paste: true})
+				} else {
+					m = typeInto(m, "alpha βeta")
+				}
+				selected := m.tree.GetSelectedID()
+				boardColumn := m.board.focusedCol
+				key(tea.KeyLeft)
+				key(tea.KeyLeft)
+				if got := stripANSI(m.renderUnifiedTitleBar(80)); !strings.Contains(got, "/ alpha βe█ta") {
+					t.Fatalf("Left must move the visible caret inside the query: %q", got)
+				}
+				key(tea.KeyRight)
+				if m.tree.GetSelectedID() != selected || m.board.focusedCol != boardColumn {
+					t.Fatal("query arrows navigated the results")
+				}
+				m = typeInto(m, "X")
+				if got := m.queryState.Text(); got != "alpha βetXa" {
+					t.Fatalf("insert at caret = %q, want alpha βetXa", got)
+				}
+				key(tea.KeyBackspace)
+				key(tea.KeyLeft)
+				key(tea.KeyBackspace)
+				if got := m.queryState.Text(); got != "alpha βta" {
+					t.Fatalf("backspace at caret = %q, want alpha βta", got)
+				}
+				send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("é界"), Paste: true})
+				if got := m.queryState.Text(); got != "alpha βé界ta" {
+					t.Fatalf("paste at caret corrupted query: %q", got)
+				}
+				if got := m.queryState.Query().Raw(); got != m.queryState.Text() {
+					t.Fatalf("parsed query = %q, text = %q", got, m.queryState.Text())
+				}
+				if m.queryState.Mode() != QueryEditing {
+					t.Fatal("caret editing left query mode")
+				}
+			})
+		}
+	}
+}
+
+func TestQueryCaretBoundaries(t *testing.T) {
+	m := typeInto(NewModel(nil, ""), "/界β")
+	for _, step := range []struct {
+		key  tea.KeyType
+		want string
+	}{
+		{tea.KeyRight, "/ 界β█"},
+		{tea.KeyLeft, "/ 界█β"},
+		{tea.KeyLeft, "/ █界β"},
+		{tea.KeyLeft, "/ █界β"},
+		{tea.KeyBackspace, "/ █界β"},
+		{tea.KeyRight, "/ 界█β"},
+		{tea.KeyBackspace, "/ █β"},
+		{tea.KeyRight, "/ β█"},
+		{tea.KeyRight, "/ β█"},
+		{tea.KeyBackspace, "/█"},
+		{tea.KeyLeft, "/█"},
+		{tea.KeyBackspace, "/█"},
+	} {
+		next, _ := m.Update(tea.KeyMsg{Type: step.key})
+		m = next.(Model)
+		if got := stripANSI(m.renderUnifiedTitleBar(80)); !strings.Contains(got, step.want) {
+			t.Fatalf("key %v: field = %q, want %q", step.key, got, step.want)
+		}
+	}
+}
+
 func TestSearchHistoryKeepsSelectionVisible(t *testing.T) {
 	for _, key := range []tea.KeyType{tea.KeyUp, tea.KeyDown} {
 		t.Run(tea.KeyMsg{Type: key}.String(), func(t *testing.T) {

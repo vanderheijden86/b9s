@@ -5279,7 +5279,10 @@ func (m *Model) passesScopeFilters(issue model.Issue) bool {
 
 // setQueryText is the single write path for the cross-view issue query.
 func (m *Model) setQueryText(text string) {
-	m.queryState.SetText(text)
+	// Synchronizing derived views must preserve the caret of an in-place edit.
+	if text != m.queryState.Text() {
+		m.queryState.SetText(text)
+	}
 	m.applyFilter()
 	m.tree.SetIssueQuery(m.queryState.Query(), m.queryState.Find())
 	m.syncTreeToDetail()
@@ -5343,13 +5346,17 @@ func (m Model) handleQueryKey(msg tea.KeyMsg) Model {
 	case "backspace":
 		m.queryState.Backspace()
 		m.setQueryText(m.queryState.Text())
+	case "left":
+		m.queryState.MoveCaret(-1)
+	case "right":
+		m.queryState.MoveCaret(1)
 	case "tab":
 		m.completeQuery()
 	case "ctrl+f":
 		m.toggleQueryFind()
 	default:
 		if runes := typedRunes(msg); len(runes) > 0 {
-			m.queryState.Append(runes...)
+			m.queryState.Insert(runes...)
 			m.setQueryText(m.queryState.Text())
 		}
 	}
@@ -7007,10 +7014,13 @@ func (m Model) renderUnifiedTitleBar(w int) string {
 		}
 		content += "/"
 		if queryText != "" {
-			content += " " + queryText
+			content += " "
 		}
 		if m.queryState.Mode() == QueryEditing {
-			content += "█"
+			runes := []rune(queryText)
+			content += string(runes[:m.queryState.caret]) + "█" + string(runes[m.queryState.caret:])
+		} else {
+			content += queryText
 		}
 	}
 	contentWidth := w - 4
