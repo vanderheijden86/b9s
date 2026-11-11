@@ -14,6 +14,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/vanderheijden86/b9s/internal/attachref"
 	"github.com/vanderheijden86/b9s/internal/blobstore"
@@ -242,11 +243,16 @@ func runAttachmentOpenCmd(t *testing.T, m Model) Model {
 
 func TestEnterInTestModeRecordsOpenerWithoutRunningIt(t *testing.T) {
 	t.Setenv("B9S_TEST_MODE", "1")
-	t.Setenv("TMPDIR", t.TempDir())
+	tempRoot := filepath.Join(t.TempDir(), strings.Repeat("long-temp-path-", 8))
+	if err := os.Mkdir(tempRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", tempRoot)
 	now := time.Now()
 	content := []byte("plain text content")
 	comment, ref := attachmentFixture(t, "cmt-001", "notes.txt", "text/plain", content, now)
 	m, localDir := attachmentTestModel(t, []*model.Comment{comment}, true)
+	m.width = 160
 	seedBlob(t, localDir, m.activeProjectPath, m.activeProjectName, ref, content)
 
 	m = runAttachmentOpenCmd(t, m)
@@ -269,6 +275,11 @@ func TestEnterInTestModeRecordsOpenerWithoutRunningIt(t *testing.T) {
 	}
 	if filepath.Base(rec.Path) != "notes.txt" {
 		t.Fatalf("recorded path = %q, want it to end in the attachment name notes.txt (macOS `open` picks the opener from the extension)", rec.Path)
+	}
+	// Bubble Tea clips each rendered line to the terminal width.
+	footer := ansi.Truncate(m.renderFooter(), m.width, "")
+	if !strings.Contains(footer, "test mode: opener not run") {
+		t.Fatalf("opener result must remain visible with a long download path: %q", footer)
 	}
 }
 
