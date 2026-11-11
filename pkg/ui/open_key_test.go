@@ -33,6 +33,10 @@ func TestTreeAmpersandTogglesOccur(t *testing.T) {
 	if m.tree.IsOccurMode() {
 		t.Fatal("ctrl+o entered occur mode; occur is on &")
 	}
+	if m.quickView == nil {
+		t.Fatal("ctrl+o must open a read-only preview")
+	}
+	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyEsc})
 
 	m = pressKeys(m, runeKey("&"))
 	if !m.tree.IsOccurMode() {
