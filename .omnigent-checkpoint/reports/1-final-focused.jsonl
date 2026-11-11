@@ -1,0 +1,13 @@
+{"Time":"2026-11-11T06:09:53.424044735Z","Action":"start","Package":"github.com/vanderheijden86/b9s/internal/datasource"}
+{"Time":"2026-11-11T06:09:53.427363386Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupUnavailable"}
+{"Time":"2026-11-11T06:09:53.427408578Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupUnavailable","Output":"=== RUN   TestDoltServerSetupUnavailable\n"}
+{"Time":"2026-11-11T06:09:54.436281369Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupUnavailable","Output":"    dolt_integration_test.go:206: setup child: failed=1 skipped=2 connections=1 elapsed=1.008389872s\n"}
+{"Time":"2026-11-11T06:09:54.436443429Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupUnavailable","Output":"--- PASS: TestDoltServerSetupUnavailable (1.01s)\n"}
+{"Time":"2026-11-11T06:09:54.438135583Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupUnavailable","Elapsed":1.01}
+{"Time":"2026-11-11T06:09:54.438195402Z","Action":"run","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupAvailable"}
+{"Time":"2026-11-11T06:09:54.438205224Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupAvailable","Output":"=== RUN   TestDoltServerSetupAvailable\n"}
+{"Time":"2026-11-11T06:09:54.439245627Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupAvailable","Output":"--- PASS: TestDoltServerSetupAvailable (0.00s)\n"}
+{"Time":"2026-11-11T06:09:54.439297545Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Test":"TestDoltServerSetupAvailable","Elapsed":0}
+{"Time":"2026-11-11T06:09:54.439330222Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Output":"PASS\n"}
+{"Time":"2026-11-11T06:09:54.441256473Z","Action":"output","Package":"github.com/vanderheijden86/b9s/internal/datasource","Output":"ok  \tgithub.com/vanderheijden86/b9s/internal/datasource\t1.017s\n"}
+{"Time":"2026-11-11T06:09:54.441305101Z","Action":"pass","Package":"github.com/vanderheijden86/b9s/internal/datasource","Elapsed":1.017}

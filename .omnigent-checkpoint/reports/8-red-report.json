@@ -1,0 +1,23 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./internal/datasource",
+    "-run",
+    "^TestDoltServerSetupUnavailable$",
+    "-count=1",
+    "-timeout=30s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "counts": {
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "observed": "Regression failed: child stalled at MySQL greeting, hit 5s child deadline, no shared setup diagnostic. Parent elapsed 5.03s."
+}

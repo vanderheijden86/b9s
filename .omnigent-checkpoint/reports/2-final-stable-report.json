@@ -1,0 +1,51 @@
+{
+  "command": [
+    "timeout",
+    "660s",
+    "env",
+    "GOFLAGS=-v",
+    "make",
+    "test-stable"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "GOFLAGS": "-v"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 3771,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_counts": {
+    "PASS": 2127,
+    "SKIP": 18
+  },
+  "skipped": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "package_passes": 22,
+  "cached_packages": 19,
+  "skip_context": "18 opt-in environment/stress tests, 2 missing-fixture subtests tracked by bd-imdz. Stable excludes host-sensitive tests by committed Makefile, including bd-ptmk."
+}
