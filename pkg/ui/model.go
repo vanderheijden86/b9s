@@ -531,13 +531,14 @@ type Model struct {
 	lastForceRefresh time.Time
 
 	// UI Components
-	list     list.Model
-	viewport viewport.Model
-	renderer *MarkdownRenderer
-	board    BoardModel
-	tree     TreeModel // Hierarchical tree view (bv-gllx)
-	graph    GraphModel
-	theme    Theme
+	list      list.Model
+	viewport  viewport.Model
+	renderer  *MarkdownRenderer
+	board     BoardModel
+	tree      TreeModel // Hierarchical tree view (bv-gllx)
+	graph     GraphModel
+	theme     Theme
+	quickView *quickView
 
 	// Update State
 	updateAvailable bool
@@ -1521,6 +1522,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if updated.detailStale && updated.detailVisible() {
 			updated.updateViewportContent()
 		}
+		switch msg.(type) {
+		case tea.KeyMsg, tea.MouseMsg:
+		default:
+			updated.refreshQuickView()
+		}
 		if updated.pendingCmd != nil {
 			cmd = tea.Batch(cmd, updated.pendingCmd)
 			updated.pendingCmd = nil
@@ -1539,6 +1545,18 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.(type) {
 		case tea.KeyMsg:
 			m.backgroundWorker.recordActivity()
+		}
+	}
+
+	if m.quickView != nil {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			return m.handleQuickViewKey(msg)
+		case tea.MouseMsg:
+			if m.quickView.mode == quickViewReading {
+				m.quickView.viewport, _ = m.quickView.viewport.Update(msg)
+			}
+			return m, nil
 		}
 	}
 
@@ -2455,6 +2473,11 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		if hotkey, ok := m.hotkeyFor(msg); ok {
 			next, cmd := m.executeCommand(hotkey.command)
 			return next, tea.Batch(append(cmds, cmd)...)
+		}
+		if msg.String() == "ctrl+o" && m.list.FilterState() != list.Filtering &&
+			(m.focused == focusTree || m.focused == focusList || m.focused == focusBoard || m.focused == focusDetail) {
+			m.openQuickView()
+			return m, tea.Batch(cmds...)
 		}
 		// A view's narrowing mode is left before the shared query is cleared.
 		treePopupOpen := m.tree.IsSortPopupOpen() || m.tree.IsColumnPopupOpen()
@@ -4052,6 +4075,9 @@ func (m Model) View() string {
 	if m.memoryVisible && m.memoryBrowser != nil {
 		return m.memoryBrowser.View()
 	}
+	if m.quickView != nil {
+		return m.renderQuickView()
+	}
 
 	var body string
 	isOverlay := false // Track whether an overlay is active (no global header)
@@ -4734,7 +4760,7 @@ func viewKeyHelp(view focus) []struct{ key, desc string } {
 			{"enter", "Open selected issue"},
 		}
 	case focusDetail:
-		return []struct{ key, desc string }{{"e", "Edit issue"}}
+		return []struct{ key, desc string }{{"e", "Edit issue"}, {"ctrl+o", "Preview another issue"}}
 	case focusHelp:
 		return []struct{ key, desc string }{{"ctrl+s", "Search this help"}}
 	}
@@ -5012,6 +5038,7 @@ func (m *Model) renderFooter() string {
 		}
 	case "tree":
 		hints = []hint{
+			{"^o", "preview"},
 			{"0-9", "project"},
 			{"^R", "refresh"},
 			{"tab", "fold"},
@@ -5031,6 +5058,7 @@ func (m *Model) renderFooter() string {
 		}
 	case "board":
 		hints = []hint{
+			{"^o", "preview"},
 			{"1-9", "project"},
 			{"gg/0", "top"},
 			{"^R", "refresh"},
@@ -5067,6 +5095,7 @@ func (m *Model) renderFooter() string {
 		}
 		hints = []hint{
 			{"enter", "back to " + returnTo},
+			{"^o", "preview issue"},
 			{"j/k", "scroll"},
 			{"home/end", "top/bottom"},
 			{"1-9", "child"},

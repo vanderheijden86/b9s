@@ -163,9 +163,23 @@ Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with
 | `n`, `p` | Open the next or previous sibling |
 | `1`-`9` | Open the child with that number in the CHILDREN list. In the detail pane the digits stand for children, not projects |
 | `Backspace` | Go back to the issue a child's number was pressed on |
+| `Ctrl-O` | Choose another issue by ID or title and preview it in a read-only modal |
 | `c` | Copy the whole issue as Markdown |
 | `d` | Hide the pane |
 | `Enter`, `Esc` | Return to the tree |
+
+`Ctrl-O` on a list or tree row (including the flat list), or on a board card,
+previews the selected issue directly. In the detail pane, it opens a chooser
+with related and mentioned issues first. Type an ID or title to search all
+loaded issues, including those hidden by the current filter. Use `Up` and
+`Down` to select, then `Enter` to preview.
+
+The preview accepts only scrolling (`j`/`k`, arrows, page keys, `Home`/`End`),
+`n`/`p` to cycle a child issue's siblings, `Esc` to close, and `Ctrl-C` to quit.
+Sibling cycling wraps and includes loaded siblings hidden by the original
+filter. It has no issue actions. `Esc` returns directly to the original
+detail or row with its selection, query, scroll position and child history.
+`Ctrl-O` does not replace an existing default binding.
 
 ## Search
 
