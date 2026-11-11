@@ -1,0 +1,12 @@
+{
+  "exit_code": 0,
+  "counts_basis": "leaf tests (parent test groups excluded)",
+  "counts": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "failed_tests": [],
+  "skipped_tests": [],
+  "non_json_output": []
+}
