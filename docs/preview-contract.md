@@ -109,7 +109,11 @@ On a DNS, connection or timeout failure (curl exit 6, 7 or 28), it tries the
 task's ingress URL. This lets a workstation use the configured ingress while
 a runner can use the cluster Service. Each HTTP request has a three-second
 connection timeout and a ten-second total timeout, with at most two identity
-requests. If both fail, the report names the endpoint and curl exit code and
+request budgets. A Service connection refusal can precede routing to a ready
+Pod. The verifier makes at most three Service attempts, one second apart,
+within the same ten-second total budget. It retries only curl exit 7. DNS,
+timeout and other response handling retain the boundary rules above. If both
+budgets fail, the report names the endpoint and curl exit code and
 asks the operator to check preview DNS, ingress access and rollout.
 
 The verifier compares all three identity fields with the requested preview

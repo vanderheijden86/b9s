@@ -14,7 +14,23 @@ session_file="$PREVIEW_EVIDENCE_DIR/session.json"
 pane_file="$PREVIEW_EVIDENCE_DIR/tui-pane.txt"
 identity_url="$(preview_identity_url)"
 web_url="$(preview_web_url)"
-if curl -fsS --connect-timeout 3 --max-time 10 "$identity_url" -o "$identity_file"; then
+fetch_service_identity() {
+  # Rollout readiness can precede Service routing. Only connection refusals
+  # retry, within the same total request budget, before selecting ingress.
+  local deadline=$((SECONDS + 10)) attempt remaining rc
+  for attempt in 1 2 3; do
+    remaining=$((deadline - SECONDS))
+    [[ $remaining -gt 0 ]] || return 28
+    if curl -fsS --connect-timeout 3 --max-time "$remaining" "$identity_url" -o "$identity_file"; then
+      return 0
+    else
+      rc=$?
+    fi
+    [[ $rc -eq 7 && $attempt -lt 3 && $SECONDS -lt $((deadline - 1)) ]] || return "$rc"
+    sleep 1
+  done
+}
+if fetch_service_identity; then
   check_pass identity-http "$identity_url returned 200"
 else
   identity_rc=$?
