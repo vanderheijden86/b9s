@@ -1,0 +1,48 @@
+{
+  "command": [
+    "timeout",
+    "240s",
+    "go",
+    "test",
+    "-overlay",
+    "/tmp/bd-80q4-red-overlay.json",
+    "./pkg/ui",
+    "-run",
+    "^TestProjectSwitchTreePersistence$",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "purpose": "Negative control only. Overlay omits SetBeadsDir in applyProjectSwitch. Delivery source is unchanged.",
+  "counts": {
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_results": {
+    "TestProjectSwitchTreePersistence": "fail"
+  },
+  "leaf_results": {
+    "TestProjectSwitchTreePersistence/bookmarked": "fail",
+    "TestProjectSwitchTreePersistence/empty-bookmarks": "fail",
+    "TestProjectSwitchTreePersistence/missing": "fail"
+  },
+  "failure_output": [
+    "    project_switch_test.go:60: beta has 4 rows, want 1 from its own expansion state\n",
+    "    project_switch_test.go:66: beta's saved bookmark was not loaded\n",
+    "    project_switch_test.go:79: saving beta overwrote alpha's state\n",
+    "    project_switch_test.go:95: return to alpha: rows=4 bookmarks=map[epic:true subtask:true], want 4 rows and subtask bookmark\n",
+    "    project_switch_test.go:60: beta has 4 rows, want 1 from its own expansion state\n",
+    "    project_switch_test.go:70: beta bookmarks = map[subtask:true], want 0 bookmarks\n",
+    "    project_switch_test.go:79: saving beta overwrote alpha's state\n",
+    "    project_switch_test.go:95: return to alpha: rows=4 bookmarks=map[epic:true subtask:true], want 4 rows and subtask bookmark\n",
+    "    project_switch_test.go:60: beta has 4 rows, want 2 from its own expansion state\n",
+    "    project_switch_test.go:70: beta bookmarks = map[subtask:true], want 0 bookmarks\n",
+    "    project_switch_test.go:79: saving beta overwrote alpha's state\n",
+    "    project_switch_test.go:82: beta state was not saved: open /tmp/TestProjectSwitchTreePersistencemissing283507494/002/beta/.beads/tree-state.json: no such file or directory\n",
+    "    project_switch_test.go:95: return to alpha: rows=4 bookmarks=map[epic:true subtask:true], want 4 rows and subtask bookmark\n"
+  ]
+}

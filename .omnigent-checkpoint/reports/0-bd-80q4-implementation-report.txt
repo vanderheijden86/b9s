@@ -1,0 +1,74 @@
+Task: bd-80q4, lane attempt 2. Role: implementer.
+Outcome: Scoped defect already fixed in fetched main. Required checks completed successfully. No repository changes to deliver. Independent reviewer/tester verdict remains Polly's responsibility.
+
+PREFLIGHT
+beads-connect exited 0, connected to b9s as bd_b9s.
+Shared repository: /home/omnigent/workspace/b9s.
+Base and PR target: main. Actual branch: omnigent/bd-80q4.
+HEAD and fetched origin/main: 873e74381482d2d7f73bccbc739d2c559daea050.
+Initial and final worktrees clean. git diff --exit-code and git diff --cached --exit-code both exit 0.
+Required commits: none assigned, so required-commit ancestry checks not applicable.
+Related discovered-from bd-r3l0 is closed. Commit c4297a6b is ancestor of origin/main and HEAD, both merge-base --is-ancestor exits 0. Polly accepted dependency evidence before investigation proceeded.
+Commands:
+  timeout 60s git -C /home/omnigent/workspace/b9s fetch origin refs/heads/main:refs/remotes/origin/main  [exit 0]
+  git -C /home/omnigent/workspace/b9s show-ref --verify refs/remotes/origin/main  [exit 0]
+  timeout 60s git -C /home/omnigent/workspace/b9s ls-remote --exit-code --heads origin refs/heads/omnigent/bd-80q4  [exit 2, absent]
+No local delivery branch existed. Created with git -C /home/omnigent/workspace/b9s switch -c omnigent/bd-80q4 origin/main [exit 0].
+  git -C /home/omnigent/workspace/b9s merge-base --is-ancestor c4297a6b origin/main  [exit 0]
+  git -C /home/omnigent/workspace/b9s merge-base --is-ancestor c4297a6b HEAD  [exit 0]
+  lane-checkpoint inspect --repo /home/omnigent/workspace/b9s --task bd-80q4 --base origin/main  [exit 2, checkpoint absent at preflight]
+Evidence: /tmp/bd-80q4-preflight.txt.
+
+INVESTIGATION AND FILES
+Changed repository files: none. No deletions, delivery commits, delivery pushes or PR creation.
+Existing routing and regression tests reached main in 3a5ed086abe347af005c06efc3fe3f2c7661af12.
+pkg/ui/project_switch.go:367-368 empties the old tree, then assigns the destination beads directory on successful switch.
+pkg/ui/tree.go:75 resets bookmarks/layout when selecting a directory. An empty directory disables persistence for a database without a checkout.
+pkg/ui/model.go:1312 routes configured and resolved startup directories separately from JSONL paths.
+Existing project_switch_test.go covers destination expansion/bookmarks, empty and absent state, saved destination bookmarks, unchanged startup file bytes, return to startup, Dolt-only projects, directory overrides, checkout-free projects, failed switches and database-only transitions.
+Existing bd-r3l0 tests cover legacy sort keys, session override survival on rebuild, omitted saved sort and config wiring. ADR 0010 defines the invariant.
+docs/ARCHITECTURE.md already documents the intended persistence behavior. No documentation change or new ADR is needed.
+Guard: existing behavioral regression rejects the routing omission. No duplicate source-scan guard is justified.
+Evidence: /tmp/bd-80q4-investigation.txt.
+
+DEPENDENCIES AND RUNTIME
+  timeout 180s go mod download  [exit 0]
+Committed go.mod and go.sum unchanged.
+Runtime: go version go1.25.5 linux/amd64. make test-stable supplies CGO_CFLAGS=-DSQLITE_ENABLE_FTS5.
+Evidence: /tmp/bd-80q4-dependencies.txt.
+
+FOCUSED RED / GREEN
+RED is a controlled negative control, not a claim that the current source failed. A Go overlay omits only the successful switch's SetBeadsDir call. No tracked source was edited.
+  timeout 240s go test -overlay /tmp/bd-80q4-red-overlay.json ./pkg/ui -run '^TestProjectSwitchTreePersistence$' -count=1 -timeout=60s -json
+Exit 1, 0 passed, 3 failed, 0 skipped, 0 interrupted, 0 unrun leaf cases. One failed parent test.
+Failures reproduce destination expansion from startup state, leaked bookmarks, startup state overwrites, and absent destination file.
+Evidence: /tmp/bd-80q4-focused-red-report.json, /tmp/bd-80q4-focused-red.jsonl, /tmp/bd-80q4-focused-red.stderr, /tmp/bd-80q4-focused-red.exit.
+Overlay: /tmp/bd-80q4-red-overlay.json and /tmp/bd-80q4-project-switch-without-routing.go.
+
+GREEN runs the unchanged delivery source without an overlay and includes persistence, expansion, and existing sort regressions:
+  timeout 180s go test ./pkg/ui -run 'TreePersistence|TreeState|Tree.*Sort|TreeBuild.*Expansion|WithConfig.*Sort|ConfigSortFieldNames' -count=1 -timeout=60s -json
+Exit 0, 48 passed, 0 failed, 0 skipped, 0 interrupted, 0 unrun leaf cases. 42 passed top-level tests.
+Evidence: /tmp/bd-80q4-focused-green-report.json, /tmp/bd-80q4-focused-green.jsonl, /tmp/bd-80q4-focused-green.stderr, /tmp/bd-80q4-focused-green.exit.
+
+REQUIRED GATES
+  timeout 180s go build ./...
+Exit 0, no diagnostics. Build gate passed. Test counts not applicable.
+Evidence: /tmp/bd-80q4-build.txt.
+
+  timeout 660s env GOFLAGS='-v -count=1' make test-stable
+Ran alone, delivery tree only, no baseline checkout or concurrent check. The target retained its committed 10m Go timeout and skip pattern. GOFLAGS enables fresh verbose results for measured counts.
+Exit 0. Leaf cases: 3561 passed, 0 failed, 20 skipped, 0 interrupted, 0 unrun. Top-level tests: 2125 passed, 0 failed, 18 skipped. All 22 tested packages passed.
+Counts include only selected cases. The Makefile's explicit exclusions are recorded separately, not counted as passes or runtime skips.
+Runtime skips: real bd probe 1, S3 3, unset Dolt DSN 7, Memory preview/research 4, absent external JSONL fixtures 2, opt-in stress tests 3.
+No focused persistence/sort case skipped. No retries requested. Flakiness across repeated runs was not assessed.
+Evidence: /tmp/bd-80q4-stable-report.json, /tmp/bd-80q4-stable.txt, /tmp/bd-80q4-stable.exit.
+
+  timeout 180s go vet ./...
+Exit 0, no diagnostics. Vet gate passed. Test counts not applicable.
+Evidence: /tmp/bd-80q4-vet.txt.
+
+RESIDUAL RISKS AND HANDOFF
+Unresolved required-check failures: none. The expected RED negative-control failures are intentional and do not affect the unmodified delivery tree.
+Optional external-service, missing-fixture and stress cases were skipped as listed. The stable target excludes tests/e2e and its declared host-sensitive tests. No full PTY, browser or real Dolt integration suite was requested or run. No test wrote to the shared Dolt server.
+No new follow-up issue was needed within this scope. No code or documentation delta remains to deliver. Polly can use this evidence for independent review/testing and resolve the already-fixed task without a duplicate fix or empty PR.
+Only the separate unapproved checkpoint ref refs/heads/omnigent-checkpoints/bd-80q4 was pushed to retain evidence. It never changed delivery HEAD or index.
