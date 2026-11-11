@@ -1,0 +1,22 @@
+{
+  "exit_code": 1,
+  "counts_basis": "leaf tests (parent test groups excluded)",
+  "counts": {
+    "passed": 4,
+    "failed": 9,
+    "skipped": 0
+  },
+  "failed_tests": [
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalPopulatesDeferUntil",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/date_alone_defers_open",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/relative_date_defers_blocked",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/date_overrides_conflicting_status_edit",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/reschedule_deferred",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/clear_date_reopens_deferred",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/clear_date_respects_explicit_status",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/clear_date_preserves_active_status",
+    "github.com/vanderheijden86/b9s/pkg/ui:TestEditModalSaveDeferDate/date_with_other_edits"
+  ],
+  "skipped_tests": [],
+  "non_json_output": []
+}
