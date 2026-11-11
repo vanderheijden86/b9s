@@ -1,0 +1,106 @@
+{
+  "source_report": "/tmp/bd-teri.5/stable-final.txt",
+  "exit_code": 0,
+  "count_basis": "leaf Go test cases, excluding parent containers",
+  "counts": {
+    "passed": 3587,
+    "failed": 0,
+    "skipped": 20,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "named_nodes": {
+    "pass": 3797,
+    "skip": 20
+  },
+  "packages": {
+    "pass": 22
+  },
+  "skips": [
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/bdrun",
+      "test": "TestProbeMemory_RealBinaries"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3StoreContract"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3PutRejectsShortRead"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/blobstore",
+      "test": "TestS3PutRejectsLongRead"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_NewAndClose"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_LoadIssues"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltReader_GetHeadHash"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_NewAndStop"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_StartIsIdempotent"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_DetectsNoChangeOnPoll"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryPreviewGraphReadTiming"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchStages"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchTransportParity"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/internal/datasource",
+      "test": "TestMemoryReadResearchConcurrentWriter"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "test": "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/loader",
+      "test": "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_SustainedWrites"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_BurstWrites"
+    },
+    {
+      "package": "github.com/vanderheijden86/b9s/pkg/ui",
+      "test": "TestStress_MemoryPressure"
+    }
+  ],
+  "failures": [],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64",
+    "platform": "Linux x86_64"
+  }
+}
