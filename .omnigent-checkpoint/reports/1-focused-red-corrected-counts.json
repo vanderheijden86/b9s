@@ -1,0 +1,19 @@
+{
+  "leaf_test_counts": {
+    "passed": 11,
+    "failed": 1,
+    "skipped": 0
+  },
+  "top_level_test_counts": {
+    "passed": 2,
+    "failed": 1,
+    "skipped": 0
+  },
+  "package_outcomes": {
+    "github.com/vanderheijden86/b9s/pkg/ui": "fail"
+  },
+  "failed_tests": [
+    "github.com/vanderheijden86/b9s/pkg/ui:TestHelpSearch_FindsChildrenBeyondNine"
+  ],
+  "skipped_tests": []
+}
