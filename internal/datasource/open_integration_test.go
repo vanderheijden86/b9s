@@ -16,7 +16,7 @@ func TestDoltIntegration_OpenProjectReportsDeniedDatabase(t *testing.T) {
 	if other == "" {
 		t.Skip("set B9S_TEST_DOLT_OTHER_DB to a database the test user may not read")
 	}
-	source := integrationSource()
+	source := integrationSource(t)
 	source.Database = other
 	source.Priority = PriorityDolt
 

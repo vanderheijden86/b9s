@@ -78,6 +78,23 @@ The second command runs the E2E test for identity aliases in `tests/e2e/identity
 | `B9S_TEST_DOLT_SCRATCH_ADDR`, `B9S_TEST_DOLT_SCRATCH_USER` | The disposable server for tests that create databases |
 | `BEADS_DOLT_PASSWORD` | The password for both |
 
+The datasource integration tests check each configured endpoint once, before
+using it. The check authenticates and pings without selecting or writing a
+database. Connection, handshake and I/O waits have a one-second setup deadline.
+If setup fails, the first dependent test fails with one infrastructure error.
+Later cases for that endpoint skip without reconnecting. The package still
+exits with failure, so unavailable infrastructure cannot produce a passing run.
+The scratch address guard runs before this check.
+
+The setup regression needs no Dolt server. It uses a local listener that
+withholds the MySQL greeting and checks one failure, two dependent skips and
+one connection. A second test completes the MySQL handshake and ping through
+the real driver, then checks that later setup calls reuse that success.
+
+```bash
+go test ./internal/datasource -run '^TestDoltServerSetup' -count=1 -timeout=30s
+```
+
 ## End-to-end tests
 
 The tests in `tests/e2e` build the binary once, then run it under the Unix `script` command so it sees a real terminal. Keys go in through a pipe on stdin, and the screen comes back as the captured output.
