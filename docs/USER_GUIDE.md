@@ -849,6 +849,8 @@ The database password never reaches the browser. The server reads the store and 
 
 The chips under the header are the status filters and the Ready filter from the TUI, with counts. The type chips, Epic, Feature, Task, Bug and Chore, set `type:<name>` in the shared query. Tap another type to replace the type terms, including negated terms, while keeping other query terms. Tap the sole selected type again to clear it. Typed queries select the same chips, and the query survives a reload. Scroll the chip row sideways on a phone to reach every filter.
 
+The tree pane has tree and flat list layouts. `t`, or a tap on its active tab, switches between them. The browser remembers this choice per project. A positive or negated `type:` predicate forces the flat list without changing that choice. Clearing the predicate restores the saved layout. The list has one row per matching issue, no parent context or indentation, and sorts across the hierarchy. Folding keys do nothing in the list.
+
 The ● dot turns red when the live connection or the data source has a problem, and a banner then says the list shows the last snapshot.
 
 ### Gestures
@@ -933,6 +935,7 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `Enter` `d`, `e`, `S`, `K`, `Delete` or `Cmd-Backspace`, `c` | Open the detail, edit, status, close, delete, copy the ID and title. A Mac keyboard has no `Delete` key, and `Backspace` alone goes back |
 | `Ctrl-N` | Create an issue |
 | `b`, `M`, `g`, `Esc` | Board, Memory graph, dependency graph of the cursor, back |
+| `t` | Open the tree pane, or switch its saved tree/list layout. A `type:` predicate keeps the list visible |
 | `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
 | `F1` `F2` `F3` `F4` | Show only epics, features, tasks or bugs; the same key again shows every type |
 | `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
