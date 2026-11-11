@@ -3,7 +3,137 @@ package datasource
 import (
 	"errors"
 	"testing"
+	"time"
+
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
+
+func TestSQLiteReader_DeferUntil(t *testing.T) {
+	for _, schema := range []struct {
+		name string
+		sql  string
+	}{
+		{"full", sqliteIssuesSchema},
+		{"simple", sqliteSimpleSchema},
+	} {
+		t.Run(schema.name, func(t *testing.T) {
+			for _, date := range []struct {
+				name string
+				sql  string
+				want string
+			}{
+				{"timestamp", "'2026-10-01 09:30:00'", "2026-10-01T09:30:00Z"},
+				{"offset", "'2026-10-01T09:30:00.123456789+02:00'", "2026-10-01T09:30:00.123456789+02:00"},
+				{"null", "NULL", ""},
+				{"empty", "''", ""},
+			} {
+				t.Run(date.name, func(t *testing.T) {
+					path := openSQLiteFixture(t, []string{
+						schema.sql,
+						`ALTER TABLE issues ADD COLUMN defer_until DATETIME`,
+						`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+						`INSERT INTO issues (id, title, status, priority, issue_type, defer_until)
+							VALUES ('bd-1', 'deferred', 'open', 2, 'task', ` + date.sql + `)`,
+					})
+					r, err := NewSQLiteReader(DataSource{Type: SourceTypeSQLite, Path: path})
+					if err != nil {
+						t.Fatal(err)
+					}
+					defer r.Close()
+
+					issues, err := r.LoadIssues()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(issues) != 1 {
+						t.Fatalf("LoadIssues() returned %d issues, want 1", len(issues))
+					}
+					got := issues[0].DeferUntil
+					if date.want == "" {
+						if got != nil {
+							t.Fatalf("DeferUntil = %v, want nil", got)
+						}
+						return
+					}
+					want, err := time.Parse(time.RFC3339Nano, date.want)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got == nil || !got.Equal(want) {
+						t.Fatalf("DeferUntil = %v, want %v", got, want)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestSQLiteReader_WithoutDeferUntilPreservesFullFields(t *testing.T) {
+	path := openSQLiteFixture(t, []string{
+		sqliteIssuesSchema,
+		`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+		`CREATE TABLE dependencies (issue_id TEXT, depends_on_id TEXT, dependency_type TEXT)`,
+		`INSERT INTO issues (id, title, description, status, priority, issue_type, assignee, due_date, labels, notes)
+			VALUES ('bd-1', 'older schema', 'description', 'open', 2, 'task', 'alice', '2026-10-02 00:00:00', '["sqlite"]', 'notes')`,
+		`INSERT INTO comments (id, issue_id, author, text) VALUES ('cmt-1', 'bd-1', 'alice', 'comment')`,
+		`INSERT INTO dependencies (issue_id, depends_on_id, dependency_type) VALUES ('bd-1', 'bd-2', 'blocks')`,
+	})
+	r, err := NewSQLiteReader(DataSource{Type: SourceTypeSQLite, Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	issue, err := r.GetIssueByID("bd-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if issue.DeferUntil != nil {
+		t.Errorf("DeferUntil = %v, want nil without the column", issue.DeferUntil)
+	}
+	if issue.Assignee != "alice" || issue.Description != "description" || issue.Notes != "notes" {
+		t.Errorf("full-schema fields lost: %+v", issue)
+	}
+	wantDue := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
+	if issue.DueDate == nil || !issue.DueDate.Equal(wantDue) {
+		t.Errorf("DueDate = %v, want %v", issue.DueDate, wantDue)
+	}
+	if len(issue.Labels) != 1 || issue.Labels[0] != "sqlite" {
+		t.Errorf("Labels = %v, want [sqlite]", issue.Labels)
+	}
+	if len(issue.Comments) != 1 || issue.Comments[0].ID != "cmt-1" {
+		t.Errorf("Comments = %+v, want cmt-1", issue.Comments)
+	}
+	if len(issue.Dependencies) != 1 || issue.Dependencies[0].DependsOnID != "bd-2" {
+		t.Errorf("Dependencies = %+v, want bd-2", issue.Dependencies)
+	}
+}
+
+func TestSQLiteReader_FilterSeesDeferUntil(t *testing.T) {
+	path := openSQLiteFixture(t, []string{
+		sqliteIssuesSchema,
+		`ALTER TABLE issues ADD COLUMN defer_until DATETIME`,
+		`CREATE TABLE comments (id TEXT, issue_id TEXT, author TEXT, text TEXT, created_at DATETIME)`,
+		`INSERT INTO issues (id, title, status, priority, issue_type, defer_until)
+			VALUES ('bd-1', 'deferred', 'open', 2, 'task', '2026-10-01 09:30:00'),
+			       ('bd-2', 'undated', 'open', 2, 'task', NULL)`,
+	})
+	r, err := NewSQLiteReader(DataSource{Type: SourceTypeSQLite, Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	issues, err := r.LoadIssuesFiltered(func(issue *model.Issue) bool {
+		return issue.DeferUntil != nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 1 || issues[0].ID != "bd-1" {
+		t.Fatalf("filtered issues = %+v, want bd-1", issues)
+	}
+}
 
 // sqliteSimpleSchema is the 8-column shape loadIssuesSimple's fallback query
 // selects. A database with only these columns makes the full-schema query in
