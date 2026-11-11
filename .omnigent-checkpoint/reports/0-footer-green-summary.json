@@ -1,0 +1,28 @@
+{
+  "command": [
+    "timeout",
+    "120s",
+    "go",
+    "test",
+    "./pkg/ui",
+    "-run",
+    "Footer",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "environment": {
+    "runtime": "go version go1.25.5 linux/amd64"
+  },
+  "exit_code": 0,
+  "counts": {
+    "passed": 336,
+    "failed": 0,
+    "skipped": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "top_level_counts": {
+    "pass": 17
+  }
+}
