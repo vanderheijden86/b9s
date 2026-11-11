@@ -1,0 +1,117 @@
+    creator_fields_test.go:152: Rendered detail:
+    creator_fields_test.go:152: Rendered detail:
+=== RUN   TestIdentityNamesInPersonViews/detail/email_alias
+    creator_fields_test.go:152: Rendered detail:
+        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+        ┃ ✔ task · bd-c1                                                                                                                                               ┃
+        ┃ Creator fixture                                                                                                                                              ┃
+        ┃                                                                                                                                                              ┃
+        ┃  OPEN   P2  creator @André (@andre@example.invalid)  assignee @Bo (@b)                                                                                       ┃
+        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+        created 2026-11-11                                                                                                                                              
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+         enter:back to tree  j/k:scroll  home/end:top/bottom  1-9:child  ^R:refresh  n/p:next/prev sibling  s:comment order  e:edit  c:copy  ?:help  esc:back  L:labels 
+--- PASS: TestIdentityNamesInPersonViews/detail/email_alias (0.01s)
+    creator_fields_test.go:152: Rendered detail:
+    creator_fields_test.go:152: Rendered detail:
+    creator_fields_test.go:152: Rendered detail:
+    creator_fields_test.go:152: Rendered detail:
+    creator_fields_test.go:152: Rendered board_detail:
+    creator_fields_test.go:152: Rendered board_detail:
+=== RUN   TestIdentityNamesInPersonViews/board_detail/email_alias
+    creator_fields_test.go:152: Rendered board_detail:
+        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+        ┃ ✔ task · bd-c1                                                                                                                                               ┃
+        ┃ Creator fixture                                                                                                                                              ┃
+        ┃                                                                                                                                                              ┃
+        ┃  OPEN   P2  creator @André (@andre@example.invalid)  assignee @Bo (@b)                                                                                       ┃
+        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+        created 2026-11-11                                                                                                                                              
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+         enter:back to board  j/k:scroll  home/end:top/bottom  1-9:child  ^R:refresh  s:comment order  e:edit  c:copy  ?:help  esc:back  L:labels  F1-4:type            
+--- PASS: TestIdentityNamesInPersonViews/board_detail/email_alias (0.01s)
+    creator_fields_test.go:152: Rendered board_detail:
+    creator_fields_test.go:152: Rendered board_detail:
+    creator_fields_test.go:152: Rendered board_detail:
+    creator_fields_test.go:152: Rendered board_detail:
+    creator_fields_test.go:152: Rendered tree_columns:
+    creator_fields_test.go:152: Rendered tree_columns:
+=== RUN   TestIdentityNamesInPersonViews/tree_columns/email_alias
+    creator_fields_test.go:152: Rendered tree_columns:
+                     Issue [Created ▼]                                               PRI  DISPATCH      CREATOR                          ASSIGNEE          CREATED  ID  
+          ✔ OPEN     Creator fixture                                                 P2                 @André (@andre@example.invalid)  @Bo (@b)              now  c1  
+                                                                                                                                                                        
+         0-9:project  ^R:refresh  tab:fold  ⇧tab:fold all  enter:detail  g:deps  j/k:nav  s:sort  c:copy  |:columns  /:search  f:branch  e:edit  K:close  del:delete  es
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+                                                                                                                                                                        
+--- PASS: TestIdentityNamesInPersonViews/tree_columns/email_alias (0.01s)
+    creator_fields_test.go:152: Rendered tree_columns:
+    creator_fields_test.go:152: Rendered tree_columns:
+    creator_fields_test.go:152: Rendered tree_columns:
+    creator_fields_test.go:152: Rendered tree_columns:
