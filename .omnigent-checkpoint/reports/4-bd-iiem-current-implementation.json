@@ -1,0 +1,41 @@
+{
+  "result": "Existing implementation needs no new source edits",
+  "new_edits": [],
+  "task_paths_vs_merge_base": [
+    "Makefile",
+    "docs/USER_GUIDE.md",
+    "docs/testing.md",
+    "pkg/ui/issue_detail_test.go",
+    "tests/e2e/detail_footer_keys_e2e_test.go"
+  ],
+  "file_sha256": {
+    "Makefile": "da1ff50a980d1ec8953457300e7bdfa66cd9997856b5e742a35ede96986587b2",
+    "docs/USER_GUIDE.md": "a14a74d65221a7a4c42027f0c60094f2dd177b9e47e59a96a36dd29997b130e0",
+    "docs/testing.md": "e5300cdccd0051649816aa2ce2539ef09928a95741d46ae8c2d53bd3d2d681a6",
+    "pkg/ui/issue_detail_test.go": "dad4935afd61d32e20d4e59f51dd2ed400acc19c8f9add7021252570068c9503",
+    "tests/e2e/detail_footer_keys_e2e_test.go": "6f04adaf60c8f2fa16aa65959fddb32871b73316be4f3f4df9c29071ab1f3e95"
+  },
+  "card": "pkg/ui/issue_detail.go:61 renders full item.ID",
+  "viewport": "TestIssueDetailViewportShowsFullID asserts full ID and title within the visible heavy header box for ordinary/nested/long IDs",
+  "web": "web/src/render.ts:906 renders full esc(i.id) in .dtop .id",
+  "docs": "USER_GUIDE explains project prefix. Existing scheduling and installer documentation preserved in integrated output.",
+  "initial_focused": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "mutation": {
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "expected": true,
+    "kind": "short-ID overlay guard-sensitivity check, not reproduction"
+  },
+  "integration_report": "/tmp/bd-iiem-current-integration.json",
+  "limits": [
+    "Original defect remains unreproduced",
+    "No production code change justified",
+    "Preview needs actual visible ID and exact served SHA in its later stage"
+  ],
+  "worktree_status": ""
+}

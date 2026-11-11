@@ -1,0 +1,30 @@
+{
+  "command": [
+    "lane-browser",
+    "run",
+    "--project",
+    "/home/omnigent/workspace/b9s/web",
+    "--seconds",
+    "300",
+    "--",
+    "npm",
+    "--prefix",
+    "/home/omnigent/workspace/b9s/web",
+    "run",
+    "test:e2e",
+    "--",
+    "--config",
+    "/tmp/bd-iiem-current-web-r2.config.ts",
+    "--workers=1"
+  ],
+  "exit_code": 0,
+  "seconds": 28.102,
+  "environment": {
+    "B9S_WEB_BIN": "/tmp/bd-iiem-current-b9s",
+    "B9S_KEEP_TEST_FIXTURES": "1",
+    "B9S_EXPECTED_SHA": "4e3311ef70678f5f6b4e243447541e6f901ac027"
+  },
+  "fingerprint": "/tmp/bd-iiem-current-browser-fingerprint.json",
+  "report": "/tmp/bd-iiem-current-browser-r2-results.json",
+  "log": "/tmp/bd-iiem-current-browser-r2.log"
+}

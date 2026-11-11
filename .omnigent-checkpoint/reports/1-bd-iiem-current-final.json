@@ -1,0 +1,89 @@
+{
+  "verdict": "IMPLEMENTATION_PASSED, ready for independent review and tests",
+  "repo": "/home/omnigent/workspace/b9s",
+  "task": "bd-iiem",
+  "preflight": {
+    "repo": "/home/omnigent/workspace/b9s",
+    "branch": "omnigent/bd-iiem",
+    "head": "4e3311ef70678f5f6b4e243447541e6f901ac027",
+    "base_ref": "origin/main",
+    "base_sha": "eb77cef9f8e68e9854f3c1b6ec6a6074b812830a",
+    "remote_delivery": "exists; fetched",
+    "remote_delivery_sha": "4e3311ef70678f5f6b4e243447541e6f901ac027",
+    "required_commits": [],
+    "required_commit_ancestry": "none required for base or HEAD",
+    "status": "",
+    "checkpoint": {
+      "sha": "acfe08ed0318127c0a84bc0a3a5824d00794f313",
+      "mismatches": [
+        "source_head",
+        "base_sha"
+      ],
+      "restore": "not performed"
+    },
+    "tracking_attempt": "--track failed because remote fetch spec names only main; index matched fetched delivery tree and --no-track switch completed cleanly"
+  },
+  "source_changes_this_attempt": [],
+  "existing_task_paths_vs_merge_base": [
+    "Makefile",
+    "docs/USER_GUIDE.md",
+    "docs/testing.md",
+    "pkg/ui/issue_detail_test.go",
+    "tests/e2e/detail_footer_keys_e2e_test.go"
+  ],
+  "integration_report": "/tmp/bd-iiem-current-integration.json",
+  "test_reports": {
+    "focused": "/tmp/bd-iiem-current-focused.json",
+    "mutation": "/tmp/bd-iiem-current-mutation.json",
+    "stable-verbose": "/tmp/bd-iiem-current-stable-verbose.json",
+    "terminal": "/tmp/bd-iiem-current-terminal.json",
+    "stable-guards": "/tmp/bd-iiem-current-stable-guards.json",
+    "checks": "/tmp/bd-iiem-current-checks.json",
+    "browser-r2-command": "/tmp/bd-iiem-current-browser-r2-command.json"
+  },
+  "browser_report": "/tmp/bd-iiem-current-browser-r2-results.json",
+  "browser_fingerprint": "/tmp/bd-iiem-current-browser-fingerprint.json",
+  "browser_probe_source": "/tmp/bd-iiem-current-browser-tests/header.spec.ts",
+  "browser_probe_config": "/tmp/bd-iiem-current-web-r2.config.ts",
+  "browser_counts": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "interrupted": 0,
+    "unrun": 0
+  },
+  "browser_observation": "Exact served HEAD and modified=false checked in all 12 local browser tests. Visible full ordinary/nested/long ID and title, no unexpected page errors. Inspected ordinary/long-ID phone screenshots. This is local fixture evidence, not deployed preview proof.",
+  "docs": "All three docs guards passed within final stable suite, not a separate rerun. Stable also supplies unmutated GREEN for three focused full-ID guards.",
+  "resolved_invocation_failures": [
+    {
+      "report": "/tmp/bd-iiem-current-stable.json",
+      "reason": "GOFLAGS=-json affected go list; no valid stable coverage. Documented verbose flags resolved this, without source changes."
+    },
+    {
+      "report": "/tmp/bd-iiem-current-browser-command.json",
+      "reason": "Temporary browser test directory lacked ESM metadata, before tests. Added temporary package.json, fresh report path, successful retry. Initial zero-test JSON rejected by progress parser as incomplete."
+    }
+  ],
+  "expected_mutation": "0 passed/3 failed/0 skipped top-level, 0/6/0 with subtests. Full-prefix assertions failed as intended. Not a product defect reproduction.",
+  "unresolved_required_implementation_failures": [],
+  "new_issues": [],
+  "prior_preview_blocker": {
+    "id": "bd-cmjx",
+    "observed_status": "closed",
+    "preview_retest": "Not executed in implementer stage. Later preview must check visible full ID and exact served SHA."
+  },
+  "unrelated_followup": {
+    "id": "bd-ky03",
+    "observed_status": "deferred",
+    "required_blocker": false
+  },
+  "residual_limits": [
+    "Original product defect remains unreproduced; existing correct production renderers retained",
+    "Stable suite intentionally excludes host-sensitive tests and tests/e2e, as declared in Makefile",
+    "Stable optional skips: real-bd 1, S3 3, Dolt DSN 7, Memory 4, stress 3, plus 2 optional loader fixture subtests",
+    "No deployed preview attempt this stage"
+  ],
+  "delivery_actions": "No commit, delivery push or PR. Only unapproved checkpoint pushes.",
+  "final_worktree_status": ""
+}

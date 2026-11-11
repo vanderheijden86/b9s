@@ -1,0 +1,701 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/omnigent/workspace/b9s/web/node_modules/.bin/playwright",
+      "test",
+      "--config",
+      "/tmp/bd-iiem-current-web-r2.config.ts",
+      "--workers=1"
+    ],
+    "configFile": "/tmp/bd-iiem-current-web-r2.config.ts",
+    "rootDir": "/tmp/bd-iiem-current-browser-tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/bd-iiem-current-browser-r2-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "phone-360",
+        "name": "phone-360",
+        "testDir": "/tmp/bd-iiem-current-browser-tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/header\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-iiem-current-browser-r2-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tablet-768",
+        "name": "tablet-768",
+        "testDir": "/tmp/bd-iiem-current-browser-tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/header\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-iiem-current-browser-r2-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1440",
+        "name": "desktop-1440",
+        "testDir": "/tmp/bd-iiem-current-browser-tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/header\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/bd-iiem-current-browser-r2-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "wide-2560",
+        "name": "wide-2560",
+        "testDir": "/tmp/bd-iiem-current-browser-tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/header\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/bd-iiem-current-browser-r2-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "header.spec.ts",
+      "file": "header.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "bd-iiem",
+          "file": "header.spec.ts",
+          "line": 3,
+          "column": 8,
+          "specs": [
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "phone-360",
+                  "projectName": "phone-360",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 925,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:40:47.761Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbSIsInNjcm9sbFdpZHRoIjo1MCwiY2xpZW50V2lkdGgiOjUwfQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-a7de64980cc03e9f36c4",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "tablet-768",
+                  "projectName": "tablet-768",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2218,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:40:52.773Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbSIsInNjcm9sbFdpZHRoIjo1MCwiY2xpZW50V2lkdGgiOjUwfQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-56d0c4d3be619ed40d36",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop-1440",
+                  "projectName": "desktop-1440",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1759,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:41:01.385Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbSIsInNjcm9sbFdpZHRoIjo1MCwiY2xpZW50V2lkdGgiOjUwfQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-96ca3bd262b512a06180",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "wide-2560",
+                  "projectName": "wide-2560",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1892,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:41:07.731Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbSIsInNjcm9sbFdpZHRoIjo1MCwiY2xpZW50V2lkdGgiOjUwfQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-19da1cf793ad0dd7aea7",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "bd-iiem.2.3",
+          "file": "header.spec.ts",
+          "line": 3,
+          "column": 8,
+          "specs": [
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "phone-360",
+                  "projectName": "phone-360",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1624,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:40:48.892Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6NzksImNsaWVudFdpZHRoIjo3OX0="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-c5d14408009a4d079fa4",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "tablet-768",
+                  "projectName": "tablet-768",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2598,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:40:55.484Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6NzksImNsaWVudFdpZHRoIjo3OX0="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-ea5db887807ace209fd1",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop-1440",
+                  "projectName": "desktop-1440",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1494,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:41:03.465Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6NzksImNsaWVudFdpZHRoIjo3OX0="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-e644a0a1ce300796441f",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "wide-2560",
+                  "projectName": "wide-2560",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1056,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:41:09.821Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoiYmQtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6NzksImNsaWVudFdpZHRoIjo3OX0="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-0d2fa1404182fedf8157",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            }
+          ]
+        },
+        {
+          "title": "long-project-name-iiem.2.3",
+          "file": "header.spec.ts",
+          "line": 3,
+          "column": 8,
+          "specs": [
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "phone-360",
+                  "projectName": "phone-360",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1308,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:40:50.571Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoibG9uZy1wcm9qZWN0LW5hbWUtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6MTg3LCJjbGllbnRXaWR0aCI6MTg3fQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-78572cf93e5b4c14096e",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "tablet-768",
+                  "projectName": "tablet-768",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1984,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:40:58.130Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoibG9uZy1wcm9qZWN0LW5hbWUtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6MTg3LCJjbGllbnRXaWR0aCI6MTg3fQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-5d1240d1cf25a3eff4e9",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "desktop-1440",
+                  "projectName": "desktop-1440",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1170,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:41:05.008Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoibG9uZy1wcm9qZWN0LW5hbWUtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6MTg3LCJjbGllbnRXaWR0aCI6MTg3fQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-1f5ba229b2453bb54687",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            },
+            {
+              "title": "full ID and title are visible in the detail header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "wide-2560",
+                  "projectName": "wide-2560",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 987,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-11T05:41:10.915Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "served-identity",
+                          "contentType": "application/json",
+                          "body": "eyJjb21taXQiOiI0ZTMzMTFlZjcwNjc4ZjVmNmI0ZTI0MzQ0NzU0MWU2ZjkwMWFjMDI3IiwibW9kaWZpZWQiOmZhbHNlfQ=="
+                        },
+                        {
+                          "name": "header-observation",
+                          "contentType": "application/json",
+                          "body": "eyJ0ZXh0IjoibG9uZy1wcm9qZWN0LW5hbWUtaWllbS4yLjMiLCJzY3JvbGxXaWR0aCI6MTg3LCJjbGllbnRXaWR0aCI6MTg3fQ=="
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2de9cb50cb022a3f1ddd-419bf626736bbf81a4b0",
+              "file": "header.spec.ts",
+              "line": 5,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-11T05:40:46.779Z",
+    "duration": 25236.714,
+    "expected": 12,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

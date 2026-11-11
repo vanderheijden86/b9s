@@ -1,0 +1,89 @@
+bd-iiem implementer report: IMPLEMENTATION_PASSED
+
+Git preflight:
+repo: /home/omnigent/workspace/b9s
+branch: omnigent/bd-iiem
+head: 4e3311ef70678f5f6b4e243447541e6f901ac027
+base_ref: origin/main
+base_sha: eb77cef9f8e68e9854f3c1b6ec6a6074b812830a
+remote_delivery: exists; fetched
+remote_delivery_sha: 4e3311ef70678f5f6b4e243447541e6f901ac027
+required_commit_ancestry: none required for base or HEAD
+Clean before work and at handoff. Required commits: none.
+Initial automatic tracking failed because origin fetch names only main. No-track switch resumed fetched delivery branch cleanly.
+Checkpoint context differed in source HEAD/base. Saved task-path patch reviewed: identical to current HEAD. No restore or evidence reuse.
+
+Implementation: no new source edits. Existing production header renders full ID. Original defect remains unreproduced.
+Existing task paths relative to integration merge base:
+Makefile
+docs/USER_GUIDE.md
+docs/testing.md
+pkg/ui/issue_detail_test.go
+tests/e2e/detail_footer_keys_e2e_test.go
+Current-base merge-tree exit 0. Integrated tree cee5c4bb3afb5edf18517e18d6a632276151e61a has only four task docs/test paths versus origin/main. Integrated Makefile matches main and parses without warnings.
+
+Exact completed verification commands and measured counts:
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=60s ./pkg/ui/ -run '^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$'
+exit 0. Top-level pass/fail/skip {'pass': 3, 'fail': 0, 'skip': 0}. Including subtests {'pass': 6, 'fail': 0, 'skip': 0}. Packages {'pass': 1}.
+Evidence: /tmp/bd-iiem-current-focused.json
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=60s -overlay=/tmp/bd-iiem-current-overlay.json ./pkg/ui/ -run '^(TestRenderIssueDetail_HeaderShowsMetaWithoutTable|TestRenderIssueDetail_HeaderIsAHeavyBox|TestIssueDetailViewportShowsFullID)$'
+exit 1. Top-level pass/fail/skip {'pass': 0, 'fail': 3, 'skip': 0}. Including subtests {'pass': 0, 'fail': 6, 'skip': 0}. Packages {'fail': 1}.
+Evidence: /tmp/bd-iiem-current-mutation.json
+GOFLAGS='-v -count=1' timeout --kill-after=10s 660s make test-stable
+exit 0. Top-level pass/fail/skip {'pass': 1983, 'fail': 0, 'skip': 18}. Including subtests {'pass': 3262, 'fail': 0, 'skip': 20}. Packages {'pass': 21}.
+Evidence: /tmp/bd-iiem-current-stable-verbose.json
+timeout --kill-after=10s 180s go test -json -count=1 -timeout=120s ./tests/e2e/ -run '^TestDetailHeaderShowsFullIDE2E$'
+exit 0. Top-level pass/fail/skip {'pass': 1, 'fail': 0, 'skip': 0}. Including subtests {'pass': 1, 'fail': 0, 'skip': 0}. Packages {'pass': 1}.
+Evidence: /tmp/bd-iiem-current-terminal.json
+Mutation is expected diagnostic RED. The isolated overlay shortened only the rendered header ID. All failures cite missing full prefixes. It is not a reproduced defect.
+The final stable invocation supplies unmutated GREEN for all three guards.
+Stable ran alone. Its three docs tests passed. Optional skips: real-bd 1, S3 3, Dolt DSN 7, Memory 4, stress 3, plus 2 loader fixture subtests.
+Stable required cases interrupted/unrun: 0/0. Host-sensitive exclusions remain as declared in Makefile.
+timeout --kill-after=10s 240s go build ./...
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-build.json
+timeout --kill-after=10s 180s go vet ./...
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-vet.json
+timeout --kill-after=10s 180s go build -o /tmp/bd-iiem-current-b9s ./cmd/b9s
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-binary.json
+timeout --kill-after=10s 120s npm --prefix /home/omnigent/workspace/b9s/web run typecheck
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-typecheck.json
+timeout --kill-after=10s 120s npm --prefix /home/omnigent/workspace/b9s/web run build -- --out /tmp/bd-iiem-current-web-dist
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-web-build.json
+timeout 20s git -C /home/omnigent/workspace/b9s diff --check
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-diff.json
+timeout 20s gofmt -l /home/omnigent/workspace/b9s/pkg/ui/issue_detail_test.go /home/omnigent/workspace/b9s/tests/e2e/detail_footer_keys_e2e_test.go
+exit 0, case counts not applicable. Report: /tmp/bd-iiem-current-format.json
+lane-browser run --project /home/omnigent/workspace/b9s/web --seconds 300 -- npm --prefix /home/omnigent/workspace/b9s/web run test:e2e -- --config /tmp/bd-iiem-current-web-r2.config.ts --workers=1
+Environment: {"B9S_WEB_BIN": "/tmp/bd-iiem-current-b9s", "B9S_KEEP_TEST_FIXTURES": "1", "B9S_EXPECTED_SHA": "4e3311ef70678f5f6b4e243447541e6f901ac027"}
+Browser measured pass/fail/skip/flaky/interrupted/unrun: 12/0/0/0/0/0, exit 0.
+Four configured size classes, three full-ID fixture variants each. Exact served HEAD and modified=false checked for every case. No unexpected page errors.
+Phone ordinary-ID and long-ID screenshots inspected. Full ID and title visible.
+Fresh Playwright JSON: /tmp/bd-iiem-current-browser-r2-results.json
+Runtime fingerprint: /tmp/bd-iiem-current-browser-fingerprint.json
+Probe config: /tmp/bd-iiem-current-web-r2.config.ts
+Probe source: /tmp/bd-iiem-current-browser-tests/header.spec.ts
+Local browser probe is supplemental fixture evidence. It does not replace the later deployed-preview gate.
+lane-browser smoke --project /home/omnigent/workspace/b9s/web --report /tmp/bd-iiem-current-browser-smoke.json --seconds 90
+Browser smoke exit 0, 3 passed/0 failed/0 skipped.
+lane-browser fingerprint --project /home/omnigent/workspace/b9s/web
+Fingerprint captured in /tmp/bd-iiem-current-browser-fingerprint.json
+Locked dependencies:
+go version -> exit 0
+timeout --kill-after=10s 180s go mod download -> exit 0
+timeout --kill-after=10s 120s go mod verify -> exit 0
+timeout --kill-after=10s 180s npm --prefix /home/omnigent/workspace/b9s/web ci -> exit 0
+
+Resolved invocation failures:
+GOFLAGS=-json affected go list; no valid stable coverage. Documented verbose flags resolved this, without source changes.
+/tmp/bd-iiem-current-stable.json
+Temporary browser test directory lacked ESM metadata, before tests. Added temporary package.json, fresh report path, successful retry. Initial zero-test JSON rejected by progress parser as incomplete.
+/tmp/bd-iiem-current-browser-command.json
+The initial invalid stable invocation recorded incidental standard-library outcomes, not project stable coverage. Those are excluded from required-suite counts.
+The initial zero-test browser JSON was rejected as incomplete evidence. Fresh ESM-configured browser run passed.
+
+Unresolved required implementation-check failures: none. New issues: none.
+Prior preview blocker bd-cmjx is CLOSED. Preview not executed here. Later preview must check visible full ID and exact served SHA.
+Unrelated deferred follow-up bd-ky03 is not a required blocker.
+Residual limits: original production defect unreproduced, stable exclusions, no deployed-preview proof this stage.
+No source edits, commit, delivery-branch push or PR. Only unapproved checkpoint saves. Independent reviewer/tester must execute their assigned checks.
+Full structured report: /tmp/bd-iiem-current-final.json

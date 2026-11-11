@@ -1,0 +1,37 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=10s",
+    "180s",
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-timeout=120s",
+    "./tests/e2e/",
+    "-run",
+    "^TestDetailHeaderShowsFullIDE2E$"
+  ],
+  "exit_code": 0,
+  "seconds": 13.821,
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "GOFLAGS": "",
+    "CGO_CFLAGS": ""
+  },
+  "top_level": {
+    "pass": 1,
+    "fail": 0,
+    "skip": 0
+  },
+  "including_subtests": {
+    "pass": 1,
+    "fail": 0,
+    "skip": 0
+  },
+  "packages": {
+    "pass": 1
+  },
+  "skips": [],
+  "log": "/tmp/bd-iiem-current-terminal.log"
+}

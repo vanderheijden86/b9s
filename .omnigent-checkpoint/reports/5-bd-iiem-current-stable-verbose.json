@@ -1,0 +1,54 @@
+{
+  "command": [
+    "timeout",
+    "--kill-after=10s",
+    "660s",
+    "make",
+    "test-stable"
+  ],
+  "exit_code": 0,
+  "seconds": 105.079,
+  "environment": {
+    "go": "go version go1.25.5 linux/amd64",
+    "GOFLAGS": "-v -count=1",
+    "CGO_CFLAGS": ""
+  },
+  "top_level": {
+    "pass": 1983,
+    "fail": 0,
+    "skip": 18
+  },
+  "including_subtests": {
+    "pass": 3262,
+    "fail": 0,
+    "skip": 20
+  },
+  "packages": {
+    "pass": 21
+  },
+  "skips": [
+    "TestProbeMemory_RealBinaries",
+    "TestS3StoreContract",
+    "TestS3PutRejectsShortRead",
+    "TestS3PutRejectsLongRead",
+    "TestDoltReader_NewAndClose",
+    "TestDoltReader_LoadIssues",
+    "TestDoltReader_GetHeadHash",
+    "TestDoltWatcher_NewAndStop",
+    "TestDoltWatcher_StartIsIdempotent",
+    "TestDoltWatcher_DetectsNoChangeOnPoll",
+    "TestDoltWatcher_SetOnChangeNotCalledOnQuiescentDB",
+    "TestMemoryPreviewGraphReadTiming",
+    "TestMemoryReadResearchStages",
+    "TestMemoryReadResearchTransportParity",
+    "TestMemoryReadResearchConcurrentWriter",
+    "TestLoadRealIssues/../../tests/testdata/srps_issues.jsonl",
+    "TestLoadRealIssues/../../tests/testdata/cass_issues.jsonl",
+    "TestStress_SustainedWrites",
+    "TestStress_BurstWrites",
+    "TestStress_MemoryPressure"
+  ],
+  "log": "/tmp/bd-iiem-current-stable-verbose.log",
+  "effective_make_CGO_CFLAGS": "-DSQLITE_ENABLE_FTS5",
+  "counts_method": "completed verbose PASS/FAIL/SKIP records, package ok/FAIL lines"
+}
