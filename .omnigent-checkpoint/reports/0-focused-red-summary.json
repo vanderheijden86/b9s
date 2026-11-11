@@ -1,0 +1,37 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "./pkg/ui/",
+    "-run",
+    "^(TestCloseConfirmation|TestDeleteConfirmationEnter)",
+    "-count=1",
+    "-timeout=60s",
+    "-json"
+  ],
+  "exit_code": 1,
+  "leaf_counts": {
+    "pass": 6,
+    "fail": 4,
+    "skip": 0
+  },
+  "top_level_counts": {
+    "pass": 2,
+    "fail": 2,
+    "skip": 0
+  },
+  "results": {
+    "TestCloseConfirmationKeys/single/enter": "fail",
+    "TestCloseConfirmationKeys/single/y": "pass",
+    "TestCloseConfirmationKeys/single/Y": "pass",
+    "TestCloseConfirmationKeys/bulk/enter": "fail",
+    "TestCloseConfirmationKeys/bulk/y": "pass",
+    "TestCloseConfirmationKeys/bulk/Y": "pass",
+    "TestCloseConfirmationEscDoesNotClose": "pass",
+    "TestDeleteConfirmationEnterDoesNotDelete": "pass",
+    "TestCloseConfirmationShowsEnter/single": "fail",
+    "TestCloseConfirmationShowsEnter/bulk": "fail"
+  }
+}
