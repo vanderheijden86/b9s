@@ -4800,8 +4800,8 @@ func (m *Model) renderHelpOverlay() string {
 		content.WriteString("\n")
 
 		for _, s := range shortcuts {
-			content.WriteString(keyStyle.Render(s.key))
-			content.WriteString(descStyle.Render(s.desc))
+			content.WriteString(lipgloss.JoinHorizontal(lipgloss.Top,
+				keyStyle.Render(s.key), descStyle.Render(s.desc)))
 			content.WriteString("\n")
 		}
 
@@ -4830,12 +4830,12 @@ func (m *Model) renderHelpOverlay() string {
 		colorIdx    int
 		shortcuts   []struct{ key, desc string }
 	}{
-		{"Hotkeys", "⚙️", 3, m.hotkeyHelpRows()},
+		{"Hotkeys", "⚙", 3, m.hotkeyHelpRows()},
 		{"Global", "🌐", 2, commonKeyHelp()},
 		{"Tree View", "🌳", 4, viewKeyHelp(focusTree)},
 		{"Board View", "🧭", 0, viewKeyHelp(focusBoard)},
 		{"Graph View", "🔍", 3, viewKeyHelp(focusGraph)},
-		{"Detail View", "✏️", 4, viewKeyHelp(focusDetail)},
+		{"Detail View", "✏", 4, viewKeyHelp(focusDetail)},
 		{"Help Search", "🔍", 3, viewKeyHelp(focusHelp)},
 		{"Status", "🩺", 2, statusSection},
 	}
@@ -4884,7 +4884,7 @@ func (m *Model) renderHelpOverlay() string {
 		body = subtitleStyle.Render(fmt.Sprintf("No shortcuts match %q", strings.TrimSpace(query)))
 	}
 
-	title := titleStyle.Render("⌨️  Keyboard Shortcuts")
+	title := titleStyle.Render("⌨  Keyboard Shortcuts")
 	subtitle := subtitleStyle.Render("Ctrl+S: Search │ Space: Tutorial │ ? or Esc to close")
 	titleBar := lipgloss.JoinVertical(lipgloss.Center,
 		lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", subtitle),
