@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vanderheijden86/b9s/internal/attachref"
+	"github.com/vanderheijden86/b9s/pkg/identity"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
@@ -28,11 +29,12 @@ type detailRelation struct {
 // copy keeps formatIssueMarkdown, because markdown is what gets pasted.
 // decisions holds the rendered decision section of a Memory graph workspace,
 // or nil for a project without one.
-func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t Theme, width int, md *MarkdownRenderer, update *detailUpdateNotice, decisions []string, oldestFirst bool) string {
+func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, identities *identity.Registry, t Theme, width int, md *MarkdownRenderer, update *detailUpdateNotice, decisions []string, oldestFirst bool) string {
 	if width < 20 {
 		width = 20
 	}
 	rawID := item.ID
+	creator, assignee := personLabel(identities, item.CreatedBy), personLabel(identities, item.Assignee)
 	item = sanitizeIssueForTerminal(item)
 	r := t.Renderer
 	muted := r.NewStyle().Foreground(t.Muted)
@@ -90,8 +92,8 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	if item.Priority <= 1 {
 		prioStyle = prioStyle.Foreground(lipgloss.AdaptiveColor{Light: "#c62828", Dark: "#ef5350"})
 	}
-	people := muted.Render("creator ") + detailPerson(r, t, item.CreatedBy, "unknown") +
-		muted.Render("  assignee ") + detailPerson(r, t, item.Assignee, "none")
+	people := muted.Render("creator ") + detailPerson(r, t, creator, "unknown") +
+		muted.Render("  assignee ") + detailPerson(r, t, assignee, "none")
 	meta := chip + "  " + prioStyle.Render(formatPriority(item.Priority)) + "  " + people
 
 	card := r.NewStyle().
@@ -257,7 +259,7 @@ func detailPerson(r *lipgloss.Renderer, t Theme, name, empty string) string {
 	if name == "" {
 		return r.NewStyle().Foreground(t.Muted).Italic(true).Render(empty)
 	}
-	return r.NewStyle().Foreground(t.Base.GetForeground()).Render("@" + name)
+	return r.NewStyle().Foreground(t.Base.GetForeground()).Render(name)
 }
 
 func detailStatusColor(t Theme, s model.Status) lipgloss.AdaptiveColor {
