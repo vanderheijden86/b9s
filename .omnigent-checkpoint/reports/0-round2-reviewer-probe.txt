@@ -1,0 +1,12 @@
+=== RUN   TestReviewerFooterForcedFlatTypeQuery
+=== RUN   TestReviewerFooterForcedFlatTypeQuery/type:task
+    detail_footer_keys_test.go:528: query=type:task key=tab rows before=3 after=3 hints=[0-9 ^R enter g j/k s c | / f e K del esc L F1-4 H]
+    detail_footer_keys_test.go:528: query=type:task key=shift+tab rows before=3 after=3 hints=[0-9 ^R enter g j/k s c | / f e K del esc L F1-4 H]
+=== RUN   TestReviewerFooterForcedFlatTypeQuery/!type:epic
+    detail_footer_keys_test.go:528: query=!type:epic key=tab rows before=3 after=3 hints=[0-9 ^R enter g j/k s c | / f e K del esc L F1-4 H]
+    detail_footer_keys_test.go:528: query=!type:epic key=shift+tab rows before=3 after=3 hints=[0-9 ^R enter g j/k s c | / f e K del esc L F1-4 H]
+--- PASS: TestReviewerFooterForcedFlatTypeQuery (0.05s)
+    --- PASS: TestReviewerFooterForcedFlatTypeQuery/type:task (0.03s)
+    --- PASS: TestReviewerFooterForcedFlatTypeQuery/!type:epic (0.03s)
+PASS
+ok  	github.com/vanderheijden86/b9s/pkg/ui	0.116s
