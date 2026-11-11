@@ -1,0 +1,21 @@
+{
+  "command": [
+    "timeout",
+    "180s",
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-timeout=60s",
+    "./internal/datasource",
+    "-run",
+    "^TestSQLiteReader_(DeferUntil|WithoutDeferUntilPreservesFullFields|FilterSeesDeferUntil)$"
+  ],
+  "exit_code": 1,
+  "counts": {
+    "fail": 5,
+    "pass": 5
+  },
+  "unit": "leaf tests, excluding parent aggregates",
+  "result": "Expected RED: populated defer_until is nil in both schema paths and filter excludes the deferred issue."
+}
