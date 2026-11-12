@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
@@ -163,6 +165,48 @@ func TestHelpSearch_FindsChildrenBeyondNine(t *testing.T) {
 	for _, hint := range []string{"Next sibling", "Previous sibling", "beyond 9", "tree"} {
 		if !strings.Contains(view, hint) {
 			t.Errorf("help search must explain the path past child 9, missing %q:\n%s", hint, view)
+		}
+	}
+}
+
+func TestHelpOverlayWrappedDescriptionsStayInColumn(t *testing.T) {
+	m := keybindingTestModel(t, config.Hotkeys{{
+		Name: "epics", ShortCut: "Ctrl-T", Command: "epic status:open", Description: "Open epics and related issues",
+	}})
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m = updated.(Model)
+	m.helpSearchInput.SetValue("ctrl-t")
+	view := stripANSI(m.renderHelpOverlay())
+	lines := strings.Split(view, "\n")
+	for i, line := range lines {
+		keyAt := strings.Index(line, "Ctrl-T")
+		if keyAt < 0 {
+			continue
+		}
+		descAt := keyAt + 10
+		if i+1 >= len(lines) || len(lines[i+1]) < descAt {
+			t.Fatalf("missing continuation:\n%s", view)
+		}
+		if got := strings.TrimSpace(lines[i+1][keyAt:descAt]); got != "" {
+			t.Fatalf("description wraps into key column: %q\n%s", got, view)
+		}
+		if !strings.HasPrefix(lines[i+1][descAt:], "(:epic status:open)") {
+			t.Fatalf("description continuation must retain the full command:\n%s", view)
+		}
+		return
+	}
+	t.Fatalf("hotkey missing:\n%s", view)
+}
+
+func TestHelpOverlayTerminalCellWidthsAgree(t *testing.T) {
+	m := keybindingTestModel(t, config.Hotkeys{{
+		Name: "epics", ShortCut: "Ctrl-T", Command: "epic status:open", Description: "Open epics",
+	}})
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 160, Height: 40})
+	m = updated.(Model)
+	for i, line := range strings.Split(m.renderHelpOverlay(), "\n") {
+		if grapheme, terminal := ansi.StringWidth(line), ansi.StringWidthWc(line); grapheme != terminal {
+			t.Errorf("help row %d has ambiguous terminal width (%d versus %d): %s", i, grapheme, terminal, line)
 		}
 	}
 }
