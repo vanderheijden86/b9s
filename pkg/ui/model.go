@@ -1578,7 +1578,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						debug.Log("edit-modal: CREATE skipped (no args)")
 					}
 				} else {
-					// If status changed to "deferred", use bd defer (bd-j7mx)
+					// bd defer sets the status and parses relative or absolute dates.
 					if m.editModal.IsDeferring() {
 						deferUntil := m.editModal.DeferUntil()
 						debug.Log("edit-modal: DEFER %s until=%q", m.editModal.issueID, deferUntil)

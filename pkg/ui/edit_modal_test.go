@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +12,90 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+func TestEditModalPopulatesDeferUntil(t *testing.T) {
+	until := time.Date(2099, 11, 20, 16, 45, 30, 0, time.FixedZone("source", -7*3600))
+	modal := NewEditModal(&model.Issue{
+		ID: "bd-1", Title: "Scheduled", Status: model.StatusDeferred, DeferUntil: &until,
+	}, DefaultTheme(lipgloss.DefaultRenderer()))
+
+	if got := modal.DeferUntil(); got != until.Format(time.RFC3339) {
+		t.Fatalf("Defer until = %q, want existing timestamp %q", got, until.Format(time.RFC3339))
+	}
+}
+
+func TestEditModalSaveDeferDate(t *testing.T) {
+	until := time.Date(2099, 11, 20, 16, 45, 30, 0, time.UTC)
+	for _, tc := range []struct {
+		name       string
+		status     model.Status
+		existing   *time.Time
+		date       *string
+		nextStatus string
+		title      string
+		want       []string
+	}{
+		{name: "date alone defers open", status: model.StatusOpen, date: stringPtr("2099-12-01"), want: []string{"defer bd-1 --until=2099-12-01"}},
+		{name: "relative date defers blocked", status: model.StatusBlocked, date: stringPtr("  +3d  "), want: []string{"defer bd-1 --until=+3d"}},
+		{name: "date overrides conflicting status edit", status: model.StatusOpen, date: stringPtr("2099-12-01"), nextStatus: "closed", want: []string{"defer bd-1 --until=2099-12-01"}},
+		{name: "reschedule deferred", status: model.StatusDeferred, existing: &until, date: stringPtr("2099-12-01"), want: []string{"defer bd-1 --until=2099-12-01"}},
+		{name: "clear date reopens deferred", status: model.StatusDeferred, existing: &until, date: stringPtr("  "), want: []string{"update bd-1 --defer= --status=open"}},
+		{name: "clear date respects explicit status", status: model.StatusDeferred, existing: &until, date: stringPtr(""), nextStatus: "in_progress", want: []string{"update bd-1 --defer= --status=in_progress"}},
+		{name: "clear date preserves active status", status: model.StatusInProgress, existing: &until, date: stringPtr(""), want: []string{"update bd-1 --defer="}},
+		{name: "unchanged date preserves schedule", status: model.StatusDeferred, existing: &until},
+		{name: "title edit preserves schedule", status: model.StatusDeferred, existing: &until, title: "Edited", want: []string{"update bd-1 --title=Edited"}},
+		{name: "indefinite defer by status", status: model.StatusOpen, nextStatus: "deferred", want: []string{"defer bd-1"}},
+		{name: "unchanged indefinite defer", status: model.StatusDeferred},
+		{name: "date with other edits", status: model.StatusInProgress, date: stringPtr("2099-12-01"), title: "Edited", want: []string{"defer bd-1 --until=2099-12-01", "update bd-1 --title=Edited"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newBulkMarkModel(t)
+			issue := model.Issue{ID: "bd-1", Title: "Scheduled", Status: tc.status, IssueType: model.TypeTask, DeferUntil: tc.existing}
+			m.editModal = NewEditModal(&issue, m.theme)
+			m.showEditModal = true
+			m.editModalGeneration = m.projectGeneration
+			if tc.date != nil {
+				*m.editModal.deferUntil = *tc.date
+			}
+			if tc.nextStatus != "" {
+				*m.editModal.status = tc.nextStatus
+			}
+			if tc.title != "" {
+				*m.editModal.title = tc.title
+			}
+
+			m, cmd := pressBulkKey(t, m, tea.KeyMsg{Type: tea.KeyCtrlS})
+			if m.showEditModal {
+				t.Fatal("save must close the edit modal")
+			}
+			var got []string
+			var run func(tea.Cmd)
+			run = func(cmd tea.Cmd) {
+				if cmd == nil {
+					return
+				}
+				switch msg := cmd().(type) {
+				case tea.BatchMsg:
+					for _, child := range msg {
+						run(child)
+					}
+				case BdResultMsg:
+					if !msg.Success {
+						t.Fatalf("write failed: %+v", msg)
+					}
+					args := strings.Fields(msg.Output)
+					sort.Strings(args[2:])
+					got = append(got, strings.Join(args, " "))
+				}
+			}
+			run(cmd)
+			sort.Strings(got)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("save commands = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
 func TestNewEditModal_PopulatesFromIssue(t *testing.T) {
 	theme := DefaultTheme(lipgloss.DefaultRenderer())

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vanderheijden86/b9s/pkg/model"
 
@@ -104,6 +105,9 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 	notes := sanitizeTerminalText(issue.Notes)
 
 	deferUntil := ""
+	if issue.DeferUntil != nil {
+		deferUntil = issue.DeferUntil.Format(time.RFC3339Nano)
+	}
 	m := EditModal{
 		theme:       theme,
 		issueID:     issue.ID,
@@ -131,6 +135,7 @@ func NewEditModal(issue *model.Issue, theme Theme, suggestions ...EditSuggestion
 		"labels":      *m.labels,
 		"description": *m.description,
 		"notes":       *m.notes,
+		"defer":       *m.deferUntil,
 	}
 
 	m.form = buildEditForm(&m)
@@ -190,7 +195,7 @@ func buildEditForm(m *EditModal) *huh.Form {
 	deferInput := huh.NewInput().
 		Title("Defer until (e.g. tomorrow, next monday, +3d)").
 		Value(m.deferUntil).
-		Placeholder("leave empty for indefinite defer")
+		Placeholder("clear an existing date to resume")
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title("Title").Value(m.title),
@@ -409,12 +414,13 @@ func (m EditModal) IsCancelRequested() bool {
 	return m.cancelRequested
 }
 
-// IsDeferring returns true if the status was changed to "deferred" (bd-j7mx).
+// IsDeferring reports whether saving requests a new deferral or schedule.
 func (m EditModal) IsDeferring() bool {
 	if m.status == nil || m.originals == nil {
 		return false
 	}
-	return *m.status == "deferred" && m.originals["status"] != "deferred"
+	return (m.DeferUntil() != "" && m.DeferUntil() != m.originals["defer"]) ||
+		(*m.status == "deferred" && m.originals["status"] != "deferred")
 }
 
 // DeferUntil returns the defer-until value (bd-j7mx).
@@ -439,10 +445,17 @@ func (m EditModal) BuildUpdateArgs() map[string]string {
 		"description": *m.description,
 		"notes":       *m.notes,
 	}
+	if m.DeferUntil() == "" && m.originals["defer"] != "" {
+		args["defer"] = ""
+		// Clearing a timed deferral resumes work unless another status was selected.
+		if fields["status"] == "deferred" && m.originals["status"] == "deferred" {
+			fields["status"] = "open"
+		}
+	}
 
 	for key, val := range fields {
 		if orig, ok := m.originals[key]; ok && val != orig {
-			// Skip status when deferring - bd defer handles it (bd-j7mx)
+			// bd defer owns the status when a schedule is requested.
 			if key == "status" && m.IsDeferring() {
 				continue
 			}
