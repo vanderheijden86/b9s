@@ -693,6 +693,8 @@ async function markdownOf(id: string): Promise<string> {
   if (i.parent) lines.push(`- parent: ${i.parent}`);
   if (i.blocked_by.length) lines.push(`- blocked by: ${i.blocked_by.join(", ")}`);
   if (f?.description) lines.push("", f.description);
+  if (f?.close_reason) lines.push("", "### Close Reason", f.close_reason);
+  if (f?.metadata) lines.push("", "### Metadata", "", "    " + f.metadata.replace(/\n/g, "\n    "));
   return lines.join("\n");
 }
 

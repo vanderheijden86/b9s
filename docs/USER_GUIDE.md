@@ -353,6 +353,12 @@ Every issue carries two people, and b9s shows them as separate fields:
 
 The detail pane and the board detail show both. In the tree, `|` adds either one as a column.
 
+The terminal and web issue details also show **Close Reason** and **Metadata**
+when those fields contain data. Metadata appears as formatted JSON, including
+branch names, worktree paths and nested values. Empty metadata objects are hidden.
+Copying an issue as Markdown includes both sections. In the terminal detail pane,
+press `c` to copy the whole issue.
+
 `Ctrl-N` fills in the Assignee with you, and the form title reads `as @you`. b9s finds you as `bd` does: `BEADS_ACTOR`, then `BD_ACTOR`, then `git config user.name` in the project, then `USER`. It passes that name to `bd create --actor`, so it becomes the Creator. Changing the Assignee field changes only the assignee.
 
 ### Mapping names to people

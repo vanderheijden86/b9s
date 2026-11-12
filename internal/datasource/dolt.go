@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -174,6 +175,9 @@ func (r *DoltReader) LoadIssuesFiltered(filter func(*model.Issue) bool) ([]model
 		debug.Log("dolt: comments unavailable, issues will report no comments: %v", commentsErr)
 	}
 	applyCreators(r.db, issues)
+	if err := applyIssueDetails(r.db, issues); err != nil {
+		return nil, err
+	}
 
 	var result []model.Issue
 	for i := range issues {
@@ -274,6 +278,9 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 	}
 
 	applyCreators(r.db, issues)
+	if err := applyIssueDetails(r.db, issues); err != nil {
+		return nil, err
+	}
 
 	// The simple fallback must load comments too, and report a failure
 	// rather than silently returning nil error with no comments at all
@@ -290,6 +297,62 @@ func (r *DoltReader) loadIssuesSimple(filter func(*model.Issue) bool) ([]model.I
 		}
 	}
 	return issues, commentsErr
+}
+
+// loadIssueDetailsWhere keeps optional bd columns separate from the core query,
+// so an older schema does not discard the issue's other text.
+func loadIssueDetailsWhere(db *sql.DB, and string, args ...any) (map[string]IssueText, error) {
+	details := map[string]IssueText{}
+	for _, column := range []string{"close_reason", "metadata"} {
+		rows, err := db.Query("SELECT id, "+column+" FROM issues WHERE 1 = 1"+and, args...)
+		if err != nil {
+			if doltMissingColumnError(err) || sqliteMissingColumnError(err) {
+				continue
+			}
+			return nil, fmt.Errorf("query issue %s: %w", column, err)
+		}
+		for rows.Next() {
+			var id string
+			var value sql.NullString
+			if err := rows.Scan(&id, &value); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan issue %s: %w", column, err)
+			}
+			text := details[id]
+			if column == "close_reason" {
+				text.CloseReason = value.String
+			} else if value.Valid && strings.TrimSpace(value.String) != "" {
+				if !json.Valid([]byte(value.String)) {
+					rows.Close()
+					return nil, fmt.Errorf("read metadata of %s: invalid JSON", id)
+				}
+				text.Metadata = json.RawMessage(value.String)
+			}
+			details[id] = text
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, fmt.Errorf("iterate issue %s: %w", column, err)
+		}
+	}
+	return details, nil
+}
+
+func applyIssueDetails(db *sql.DB, issues []model.Issue) error {
+	if len(issues) == 0 {
+		return nil
+	}
+	// Whole-project reads must not consume one SQL parameter per issue.
+	details, err := loadIssueDetailsWhere(db, "")
+	if err != nil {
+		return err
+	}
+	for i := range issues {
+		issues[i].CloseReason = details[issues[i].ID].CloseReason
+		issues[i].Metadata = details[issues[i].ID].Metadata
+	}
+	return nil
 }
 
 // scanIssue scans a full-schema row from the issues table into a model.Issue.
