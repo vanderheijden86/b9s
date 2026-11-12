@@ -2718,51 +2718,43 @@ func (t *TreeModel) getSiblings(node *IssueTreeNode) []*IssueTreeNode {
 	return node.Parent.Children
 }
 
-// NextSibling moves cursor to the next sibling at the same depth (bd-ryu).
-// If already at the last sibling, does nothing.
+// NextSibling moves cursor to the next visible sibling at the same depth.
+// If already at the last visible sibling, does nothing.
 func (t *TreeModel) NextSibling() {
 	node := t.SelectedNode()
 	if node == nil {
 		return
 	}
 
-	siblings := t.getSiblings(node)
-	for i, s := range siblings {
-		if s == node && i < len(siblings)-1 {
-			next := siblings[i+1]
-			// Find next sibling in flatList
-			for j, n := range t.flatList {
-				if n == next {
-					t.cursor = j
-					t.ensureCursorVisible()
-					return
-				}
-			}
+	for i := t.cursor + 1; i < len(t.flatList); i++ {
+		next := t.flatList[i]
+		if next.Depth < node.Depth {
+			return
+		}
+		if next.Parent == node.Parent {
+			t.cursor = i
+			t.ensureCursorVisible()
 			return
 		}
 	}
 }
 
-// PrevSibling moves cursor to the previous sibling at the same depth (bd-ryu).
-// If already at the first sibling, does nothing.
+// PrevSibling moves cursor to the previous visible sibling at the same depth.
+// If already at the first visible sibling, does nothing.
 func (t *TreeModel) PrevSibling() {
 	node := t.SelectedNode()
 	if node == nil {
 		return
 	}
 
-	siblings := t.getSiblings(node)
-	for i, s := range siblings {
-		if s == node && i > 0 {
-			prev := siblings[i-1]
-			// Find prev sibling in flatList
-			for j, n := range t.flatList {
-				if n == prev {
-					t.cursor = j
-					t.ensureCursorVisible()
-					return
-				}
-			}
+	for i := t.cursor - 1; i >= 0; i-- {
+		prev := t.flatList[i]
+		if prev.Depth < node.Depth {
+			return
+		}
+		if prev.Parent == node.Parent {
+			t.cursor = i
+			t.ensureCursorVisible()
 			return
 		}
 	}
@@ -2955,7 +2947,7 @@ func (t *TreeModel) ExpandToLevel(level int) {
 
 // ExpandOrMoveToChild handles the → / l key:
 // - If node has children and is collapsed: expand it
-// - If node has children and is expanded: move to first child
+// - If node has children and is expanded: move to first visible child
 // - If node is a leaf: do nothing
 func (t *TreeModel) ExpandOrMoveToChild() {
 	node := t.SelectedNode()
@@ -2970,10 +2962,8 @@ func (t *TreeModel) ExpandOrMoveToChild() {
 		t.saveState() // Persist expand/collapse state (bv-19vz)
 		t.ensureCursorVisible()
 	} else {
-		// Move to first child
-		// Find first child in flatList (should be right after current node)
 		for i, n := range t.flatList {
-			if n == node.Children[0] {
+			if n.Parent == node {
 				t.cursor = i
 				t.ensureCursorVisible()
 				return
