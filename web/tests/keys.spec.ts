@@ -450,6 +450,33 @@ test.describe("board keys", () => {
 });
 
 test.describe("view keys", () => {
+  test("flat list: fold keys preserve the tree fold state", async ({ page, project }) => {
+    await open(page, project);
+    await page.keyboard.press("t");
+    await page.keyboard.press("Shift+Z");
+    await page.keyboard.press("t");
+    await expect(row(page, "t-1")).toBeVisible();
+    await cursorTo(page, "t-epic");
+    await page.keyboard.press("Tab");
+    await expect(row(page, "t-1")).toHaveCount(0);
+    await page.keyboard.press("t");
+    await page.keyboard.press("Shift+X");
+    await page.keyboard.press("t");
+    await expect(row(page, "t-1")).toHaveCount(0);
+  });
+
+  test("flat list: t changes the saved choice while type queries keep the list visible", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('[data-chip="type:task"]').click();
+    await expect(page.locator("#treeRows .row")).toHaveCount(3);
+    await page.keyboard.press("t");
+    await page.keyboard.press("t");
+    await expect(row(page, "t-epic")).toHaveCount(0);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+    await page.locator('[data-chip="type:task"]').click();
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:1");
+  });
+
   test("b toggles the board and the tree", async ({ page, project }) => {
     await open(page, project);
     await page.keyboard.press("b");

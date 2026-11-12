@@ -5,7 +5,7 @@
 import * as api from "./api";
 import type { Issue } from "./api.gen";
 import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, openBlockers, pool, progress, projectOf, shortId, type Item } from "./data";
-import { DEFAULT_CHIPS, PC, S, SORTS, chipRowVisible, laneHeight, matches, nextLaneHeight, queryString, stOf, textMatches, treeRows, tyOf, typeTerms, type LaneHeight, type TreeRow } from "./state";
+import { DEFAULT_CHIPS, PC, S, SORTS, chipRowVisible, laneHeight, listLayout, matches, nextLaneHeight, queryString, stOf, textMatches, treeRows, tyOf, typeTerms, type LaneHeight, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
 import { renderMermaidBlocks } from "./mermaid";
 import { renderMemory, renderMemoryDetail } from "./memory";
@@ -181,7 +181,7 @@ function renderBar(): void {
     const on = S.view === v || (v === "more" && S.view === "graph");
     return `<button class="${on ? "on" : ""}" data-view="${v}" aria-current="${on ? "page" : "false"}"><span class="g" aria-hidden="true">${g}</span>${l}</button>`;
   };
-  el.innerHTML = brand + (S.list ? tab("tree", "☰", "List") : tab("tree", "≣", "Tree")) + tab("board", "▥", "Board") + tab("memory", "◇", "Memory") + tab("search", "⌕", "Search") + tab("more", "⋯", "More") + foot;
+  el.innerHTML = brand + (listLayout() ? tab("tree", "☰", "List") : tab("tree", "≣", "Tree")) + tab("board", "▥", "Board") + tab("memory", "◇", "Memory") + tab("search", "⌕", "Search") + tab("more", "⋯", "More") + foot;
 }
 
 export function renderStale(): void {
@@ -203,7 +203,7 @@ function renderTree(): void {
   const { rows } = treeRows();
   const el = $("#treeRows");
   el.className = S.wrap ? "wrap" : "";
-  el.innerHTML = rows.length ? rows.map(r => rowHTML(r, S.list)).join("")
+  el.innerHTML = rows.length ? rows.map(r => rowHTML(r, listLayout())).join("")
     : `<div class="empty">No issues match <b>${esc(queryString())}</b>.<br><br><button data-act="allq">Show all statuses</button></div>`;
   treeList().style.paddingBottom = S.detail ? detailHeightPx() + "px" : "";
 }

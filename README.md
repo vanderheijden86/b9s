@@ -143,6 +143,15 @@ tailscale serve --bg 7979  # publishes it to your tailnet over HTTPS
 
 Open the printed link once on each device: it sets a cookie for 90 days, and the server stays on loopback, so nothing outside your tailnet can reach it. With `qrencode` installed, the link also prints as a QR code. On a phone, swipe a row right to start it and left to close it, long-press to mark, and drag a card between columns, which stack as foldable boxes. A tablet shows the list and the detail side by side. A desktop adds a sidebar, a detail pane and a right-click menu, and takes the terminal's keys. A LAN address works too, over plain HTTP, for a network you trust. [Phone and browser](docs/USER_GUIDE.md#phone-and-browser) has the steps, the gestures and the risks.
 
+With a keyboard:
+
+| Keys | Effect |
+|------|--------|
+| `t` | Open the tree pane. In that pane, switch between tree and flat list, saved per project in this browser |
+| `b` | Switch between board and tree pane |
+| `/` | Search. A positive or negated `type:` predicate forces a flat list with no parent context and sorts across the hierarchy |
+| `?` | Show all keyboard shortcuts |
+
 ## Documentation
 
 - [User guide](docs/USER_GUIDE.md): every view, key, gesture, query, setting and command-line option.

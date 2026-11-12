@@ -52,6 +52,74 @@ test.describe("reading", () => {
     await expect(page.locator("body")).toHaveAttribute("data-copied", /feature\/planning/);
   });
 
+  test("flat list: type queries exclude parent context and sort across the hierarchy", async ({ page, project }, testInfo) => {
+    project.writeIssues([
+      ...SAMPLE,
+      { id: "t-second", title: "Another epic", type: "epic", updatedMinutesAgo: 30 },
+      { id: "t-new", title: "Latest task in another epic", parent: "t-second", updatedMinutesAgo: -1 },
+    ]);
+    await page.addInitScript(() => localStorage.setItem("b9s.sort", JSON.stringify("updated")));
+    await open(page, project);
+    await page.locator('[data-chip="type:task"]').click();
+    await expect(page.locator("#treeRows .row")).toHaveCount(4);
+    await expect(row(page, "t-epic")).toHaveCount(0);
+    await expect(page.locator("#treeRows [data-chev]")).toHaveCount(0);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+    await expect(page.locator('#bar [data-view="tree"]')).toHaveText(/List/);
+    await expect.poll(() => page.locator("#treeRows .row").evaluateAll(els => els.map(e => (e as HTMLElement).dataset.id))).toEqual(["t-new", "t-1", "t-2", "t-3"]);
+    for (const [width, size] of [[390, "phone"], [820, "tablet"], [1440, "desktop"], [2560, "wide"]] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.locator("#app")).toHaveClass(new RegExp(`\\b${size}\\b`));
+      await expect(row(page, "t-new")).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath(`flat-list-${size}.png`) });
+    }
+    await page.locator('[data-chip="type:task"]').click();
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:1");
+  });
+
+  test("flat list: negated type queries force the list", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('#bar [data-view="search"]').click();
+    await page.locator("#sIn").fill("!type:epic");
+    await page.locator("#sApply").click();
+    await expect(row(page, "t-epic")).toHaveCount(0);
+    await expect(page.locator("#treeRows .row")).toHaveCount(4);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+  });
+
+  test("flat list: a type lookup preserves the saved list choice", async ({ page, project }) => {
+    await open(page, project);
+    await page.locator('#bar [data-view="tree"]').click();
+    await page.locator('[data-chip="type:task"]').click();
+    await expect(page.locator("#treeRows .row")).toHaveCount(3);
+    await page.locator('[data-chip="type:task"]').click();
+    await expect(row(page, "t-epic")).toBeVisible();
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+  });
+
+  test("flat list: layout choices are saved per project", async ({ page, project }) => {
+    let key = "project-a";
+    await page.route("**/api/snapshot**", async route => {
+      const response = await route.fetch();
+      const snapshot = await response.json();
+      snapshot.project.key = key;
+      await route.fulfill({ response, json: snapshot });
+    });
+    await open(page, project);
+    await page.locator('#bar [data-view="tree"]').click();
+    await page.reload();
+    await settled(page);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+    key = "project-b";
+    await page.reload();
+    await settled(page);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:1");
+    key = "project-a";
+    await page.reload();
+    await settled(page);
+    await expect(row(page, "t-1").locator(".rc")).toHaveAttribute("style", "--d:0");
+  });
+
   test("detail shows scheduling dates in local time and omits unset dates", async ({ page, project }, testInfo) => {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));

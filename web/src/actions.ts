@@ -6,7 +6,7 @@ import * as api from "./api";
 import type { ProjectEntry, WriteRequest, WriteResult } from "./api.gen";
 import { D, descendants, eff, get, kids, load, openBlockers, pool, shortId, type Item } from "./data";
 import { boardCols, ensureVisible, fullIssue, openCols, render, renderBoard, renderSearch, revealInTree, siblings, treeList } from "./render";
-import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, queryString, saveBoardFolded, saveChips, stOf, typeTerms, type Sheet, type SortKey } from "./state";
+import { PC, S, SORTS, SORT_HELP, ST, TY, defaultDetailSize, listLayout, queryString, saveBoardFolded, saveChips, stOf, typeTerms, type Sheet, type SortKey } from "./state";
 import { syncSoon } from "./nav";
 import { $, $opt, copyText, esc, fmtDate, haptic, split, store } from "./util";
 
@@ -39,7 +39,9 @@ export function refresh(signal?: AbortSignal): Promise<Set<string>> {
   loading = api.snapshot(signal).then(snap => {
     if (signal?.aborted) throw new DOMException("The snapshot was cancelled", "AbortError");
     const first = !D.loaded;
+    const projectChanged = first || D.project.key !== snap.project.key;
     const changed = load(snap);
+    if (projectChanged) S.list = D.project.key ? store.get("list:" + D.project.key, false) : false;
     if (!first) changed.forEach(flash);
     pruneState();
     render();
@@ -346,9 +348,11 @@ export function openSheet(kind: string, data: Partial<Sheet> = {}): void {
  */
 export function showTree(): void {
   if (S.view !== "tree") { S.view = "tree"; render(); return; }
-  S.list = !S.list; store.set("list", S.list); render();
+  S.list = !S.list;
+  if (D.project.key) store.set("list:" + D.project.key, S.list);
+  render();
   if (S.cursor) ensureVisible(S.cursor);
-  toast(S.list ? "Flat list" : "Tree");
+  toast(listLayout() ? "Flat list" : "Tree");
 }
 
 export function closeSheet(): void {
