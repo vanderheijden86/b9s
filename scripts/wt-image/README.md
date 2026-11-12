@@ -39,7 +39,7 @@ Inside a runner Pod, use the existing BuildKit service and local registry:
 
 ```sh
 go run ./scripts/wt-image \
-  --repo /home/omnigent/workspace/b9s \
+  --repo /home/user/workspace/b9s \
   --builder buildkit --delivery registry \
   --buildkit-addr tcp://buildkitd.buildkit.svc.cluster.local:1234 \
   --registry registry.registry.svc.cluster.local:5000 \

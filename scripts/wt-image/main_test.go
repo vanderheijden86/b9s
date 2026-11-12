@@ -24,7 +24,10 @@ func TestMain(m *testing.M) {
 
 func fixture(t *testing.T) string {
 	t.Helper()
-	root := t.TempDir()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	write(t, root, "scripts/preview/Dockerfile.dockerignore", ".git\n.beads\ndocs\ndist\n")
 	write(t, root, ".gitignore", "ignored\n")
 	write(t, root, "cmd/b9s/main.go", "committed\n")
@@ -32,6 +35,8 @@ func fixture(t *testing.T) string {
 	write(t, root, "docs/private", "excluded\n")
 	write(t, root, "pkg/web/dist/app.js", "embedded\n")
 	gitTest(t, root, "init", "-q")
+	// A developer's global ignore file must not decide which fixture files are tracked.
+	gitTest(t, root, "config", "core.excludesFile", os.DevNull)
 	gitTest(t, root, "add", ".")
 	gitTest(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture")
 	return root

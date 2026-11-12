@@ -32,7 +32,7 @@ func projectExport(t *testing.T, input string) []map[string]any {
 }
 
 func TestProjectionDropsPrivateFields(t *testing.T) {
-	rows := projectExport(t, `{"id":"bd-root","title":"Epic","status":"open","priority":1,"issue_type":"epic","assignee":"person@private.test","owner":"owner","created_by":"actor","description":"secret","notes":"secret","design":"secret","acceptance_criteria":"secret","comments":[{"text":"https://private.test/attachment?token=secret"}],"attachments":[{"url":"s3://private/file"}],"metadata":{"token":"secret"},"external_ref":"file:///home/person/doc","unknown_future_field":"secret"}`)
+	rows := projectExport(t, `{"id":"bd-root","title":"Epic","status":"open","priority":1,"issue_type":"epic","assignee":"person@private.test","owner":"owner","created_by":"actor","description":"secret","notes":"secret","design":"secret","acceptance_criteria":"secret","comments":[{"text":"https://private.test/attachment?token=secret"}],"attachments":[{"url":"s3://private/file"}],"metadata":{"token":"secret"},"external_ref":"file:///home/user/doc","unknown_future_field":"secret"}`)
 	for _, field := range []string{"assignee", "owner", "created_by", "description", "notes", "design", "acceptance_criteria", "comments", "attachments", "metadata", "external_ref", "unknown_future_field"} {
 		if _, exists := rows[0][field]; exists {
 			t.Errorf("private field %q survived the projection", field)
@@ -41,7 +41,7 @@ func TestProjectionDropsPrivateFields(t *testing.T) {
 }
 
 func TestProjectionRedactsTitlesAndLabels(t *testing.T) {
-	rows := projectExport(t, `{"id":"bd-root","title":"Contact person@private.test https://private.test/file s3://bucket/file file:///home/person/doc /Users/person/repo C:\\Users\\person\\repo","status":"open","priority":1,"issue_type":"epic","labels":["feature","person@private.test","https://private.test/file","dispatch-session=private","lane-running"]}`)
+	rows := projectExport(t, `{"id":"bd-root","title":"Contact person@private.test https://private.test/file s3://bucket/file file:///home/user/doc /Users/user/repo C:\\Users\\person\\repo","status":"open","priority":1,"issue_type":"epic","labels":["feature","person@private.test","https://private.test/file","dispatch-session=private","lane-running"]}`)
 	encoded, err := json.Marshal(rows)
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestProjectionRedactsTitlesAndLabels(t *testing.T) {
 }
 
 func TestProjectionPreservesIDsAndRelationships(t *testing.T) {
-	input := `{"id":"bd-root.1.1","title":"Task","status":"blocked","priority":2,"issue_type":"task","dependencies":[{"issue_id":"bd-root.1.1","depends_on_id":"bd-root.1","type":"parent-child","created_by":"person@private.test","metadata":{"path":"/home/person"}},{"issue_id":"bd-root.1.1","depends_on_id":"bd-root","type":"blocks"}]}
+	input := `{"id":"bd-root.1.1","title":"Task","status":"blocked","priority":2,"issue_type":"task","dependencies":[{"issue_id":"bd-root.1.1","depends_on_id":"bd-root.1","type":"parent-child","created_by":"person@private.test","metadata":{"path":"/home/user"}},{"issue_id":"bd-root.1.1","depends_on_id":"bd-root","type":"blocks"}]}
 {"id":"bd-root","title":"Epic","status":"open","priority":1,"issue_type":"epic"}
 {"id":"bd-root.1","title":"Feature","status":"in_progress","priority":1,"issue_type":"feature","dependencies":[{"issue_id":"bd-root.1","depends_on_id":"bd-root","type":"parent-child"}]}`
 	rows := projectExport(t, input)
@@ -112,7 +112,10 @@ func fakeBD(t *testing.T, body string) {
 }
 
 func TestRefreshUsesReadOnlyExportAndRecordsCount(t *testing.T) {
-	source := t.TempDir()
+	source, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("SAMPLE_SOURCE", source)
 	t.Setenv("BEADS_DIR", "/unrelated/project/.beads")
 	fakeBD(t, `[ "$BEADS_DIR" = "$SAMPLE_SOURCE/.beads" ]

@@ -519,6 +519,8 @@ func TestViewFooterKeysAllWork(t *testing.T) {
 								ok = exists && m.queryState.Text() == wantQuery
 							case "H":
 								ok = m.pickerVisible != oldHeader
+							case "^o":
+								ok = m.quickView != nil && m.quickView.originID == wantID
 							default:
 								t.Fatalf("footer hint %q needs a behavior assertion", hint)
 							}
