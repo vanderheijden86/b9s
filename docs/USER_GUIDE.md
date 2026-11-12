@@ -191,6 +191,7 @@ Press `/` to query the loaded issues. The query field appears only while you typ
 |------|--------|
 | `Enter` | Hide the field and keep the query |
 | `/` | Edit the query again |
+| `Left`, `Right` while editing | Move the caret through the query. Typed or pasted text inserts at the caret, and `Backspace` deletes the character before it |
 | `Up`, `Down` while editing | Recall the previous or next submitted query. Down past the newest restores your draft |
 | `Esc` | Clear the query |
 | `Tab` | Complete a field name, a value, a label or a word from the loaded issues |

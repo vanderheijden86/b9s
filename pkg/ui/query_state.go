@@ -277,6 +277,7 @@ type QueryState struct {
 	text  string
 	query IssueQuery
 	find  bool
+	caret int // Rune offset, independent of UTF-8 byte lengths.
 
 	history       []string
 	historyCursor int
@@ -306,6 +307,7 @@ const maxSearchHistory = 100
 
 func (s *QueryState) StartEditing() {
 	s.mode = QueryEditing
+	s.caret = len([]rune(s.text))
 	s.historyCursor = len(s.history)
 	s.historyDraft = ""
 }
@@ -322,18 +324,28 @@ func (s *QueryState) Clear() {
 func (s *QueryState) SetText(text string) {
 	s.text = text
 	s.query = ParseIssueQuery(text)
+	s.caret = len([]rune(text))
 }
 
-func (s *QueryState) Append(runes ...rune) {
-	s.SetText(s.text + string(runes))
+func (s *QueryState) Insert(runes ...rune) {
+	text := []rune(s.text)
+	caret := s.caret + len(runes)
+	s.SetText(string(text[:s.caret]) + string(runes) + string(text[s.caret:]))
+	s.caret = caret
+}
+
+func (s *QueryState) MoveCaret(delta int) {
+	s.caret = max(0, min(s.caret+delta, len([]rune(s.text))))
 }
 
 func (s *QueryState) Backspace() {
 	runes := []rune(s.text)
-	if len(runes) == 0 {
+	if s.caret == 0 {
 		return
 	}
-	s.SetText(string(runes[:len(runes)-1]))
+	caret := s.caret - 1
+	s.SetText(string(runes[:caret]) + string(runes[s.caret:]))
+	s.caret = caret
 }
 
 func (s QueryState) Mode() QueryMode {
