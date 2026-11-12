@@ -34,7 +34,8 @@ func TestAttachmentsStockBDLocalBackendE2E(t *testing.T) {
 	home := filepath.Join(dir, "home")
 	bin := filepath.Join(dir, "bin")
 	cfgDir := filepath.Join(home, ".config", "b9s")
-	for _, path := range []string{bin, cfgDir} {
+	tempRoot := filepath.Join(dir, strings.Repeat("long-temp-path-", 8))
+	for _, path := range []string{bin, cfgDir, tempRoot} {
 		if err := os.MkdirAll(path, 0o700); err != nil {
 			t.Fatal(err)
 		}
@@ -58,6 +59,7 @@ func TestAttachmentsStockBDLocalBackendE2E(t *testing.T) {
 		"XDG_CACHE_HOME="+filepath.Join(home, ".cache"),
 		"XDG_DATA_HOME="+filepath.Join(home, ".local", "share"),
 		"XDG_STATE_HOME="+filepath.Join(home, ".local", "state"),
+		"TMPDIR="+tempRoot,
 		"OMNIGENT_BEADS_CONNECTION="+filepath.Join(dir, "no-lane-connection"),
 		"BEADS_DOLT_AUTO_START=0", "BD_NON_INTERACTIVE=1",
 		"BEADS_ACTOR=attachment-e2e", "BD_ACTOR=attachment-e2e",
