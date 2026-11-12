@@ -324,17 +324,19 @@ func (c TreeColumn) String() string {
 }
 
 type treeColumnLayout struct {
-	dispatch   bool
-	priority   bool
-	creator    bool
-	assignee   bool
-	created    bool
-	updated    bool
-	deferred   bool
-	due        bool
-	decisions  bool
-	id         bool
-	maxIDWidth int
+	dispatch      bool
+	priority      bool
+	creator       bool
+	assignee      bool
+	created       bool
+	updated       bool
+	deferred      bool
+	due           bool
+	decisions     bool
+	id            bool
+	maxIDWidth    int
+	creatorWidth  int
+	assigneeWidth int
 }
 
 // IssueTreeNode represents a node in the hierarchical issue tree
@@ -381,7 +383,7 @@ type TreeModel struct {
 	currentFilter      string                  // "all", "open", "closed", "ready"
 	labelFilter        string                  // "" = no label filter, "bug" = filter to label (bd-dlqi)
 	assigneeFilter     string                  // "" = no assignee filter (bd-gs45.1)
-	identities         *identity.Registry      // resolves assignee aliases for the filter
+	identities         *identity.Registry      // resolves people and assignee filters
 	issueQuery         IssueQuery              // Shared ID/title/facet query owned by Model
 	findMode           bool                    // The query marks hits and filters nothing
 	filterMatches      map[string]bool         // Issue IDs that match the filter
@@ -1836,17 +1838,7 @@ func (t *TreeModel) RenderHeader() string {
 	return t.renderHeader(t.resolveColumnLayout())
 }
 
-func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
-	width := t.width
-	if width <= 0 {
-		width = 80
-	}
-	headerStyle := t.theme.Renderer.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
-		Bold(true).
-		Width(width)
-
-	// Mode/filter badges
+func (t *TreeModel) headerIssuePrefix() string {
 	modeBadge := ""
 	if t.IsListView() {
 		modeBadge = "[LIST] "
@@ -1867,14 +1859,10 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 	if leftPrefixWidth < issueCol {
 		leftPrefix += strings.Repeat(" ", issueCol-leftPrefixWidth)
 	}
-	leftPrefix += "Issue"
+	return leftPrefix + "Issue"
+}
 
-	// The sort badge sits beside the Issue label rather than over a column,
-	// because the sort field and the column contents are independent.
-	sortBadge := fmt.Sprintf(" [%s %s]", t.sortField.String(), t.sortDirection.Indicator())
-
-	// Right side matches the row. The dispatcher-owned stage gets its own
-	// column on layouts wide enough to keep the issue title useful.
+func (layout treeColumnLayout) headerColumns() string {
 	rightParts := make([]string, 0, 10)
 	if layout.priority {
 		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePriorityColumnWidth, "PRI"))
@@ -1883,10 +1871,10 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 		rightParts = append(rightParts, fmt.Sprintf("%-12s", strings.ToUpper(dispatchColumnName)))
 	}
 	if layout.creator {
-		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "CREATOR"))
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.creatorWidth, "CREATOR"))
 	}
 	if layout.assignee {
-		rightParts = append(rightParts, fmt.Sprintf("%-*s", treePersonColumnWidth, "ASSIGNEE"))
+		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.assigneeWidth, "ASSIGNEE"))
 	}
 	for _, column := range layout.timeColumns() {
 		rightParts = append(rightParts, fmt.Sprintf("%*s", treeTimeColumnWidth, strings.ToUpper(column.String())))
@@ -1897,13 +1885,30 @@ func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
 	if layout.id {
 		rightParts = append(rightParts, fmt.Sprintf("%-*s", layout.maxIDWidth, "ID"))
 	}
-	rightSide := strings.Join(rightParts, "  ")
+	return strings.Join(rightParts, "  ")
+}
+
+func (t *TreeModel) renderHeader(layout treeColumnLayout) string {
+	width := t.width
+	if width <= 0 {
+		width = 80
+	}
+	headerStyle := t.theme.Renderer.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#333333", Dark: "#F8F8F2"}).
+		Bold(true).
+		Width(width)
+	leftPrefix := t.headerIssuePrefix()
+
+	// The sort badge sits beside the Issue label rather than over a column,
+	// because the sort field and the column contents are independent.
+	sortBadge := fmt.Sprintf(" [%s %s]", t.sortField.String(), t.sortDirection.Indicator())
+	rightSide := layout.headerColumns()
 	rightWidth := lipgloss.Width(rightSide)
 
 	if lipgloss.Width(leftPrefix)+lipgloss.Width(sortBadge)+rightWidth+2 <= width {
 		leftPrefix += sortBadge
 	}
-	leftPrefixWidth = lipgloss.Width(leftPrefix)
+	leftPrefixWidth := lipgloss.Width(leftPrefix)
 
 	// Fill space between "Issue" label and right columns.
 	// Keep the right cluster offset in sync with renderNode() so "ID" starts on
@@ -1954,25 +1959,11 @@ func (t *TreeModel) renderNode(node *IssueTreeNode, isSelected bool, maxIDWidth 
 	return t.renderNodeWithLayout(node, isSelected, layout)
 }
 
-func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, layout treeColumnLayout) string {
-	if node == nil || node.Issue == nil {
-		return ""
-	}
-
+// renderNodePrefix is shared with column sizing so decorations and hierarchy
+// consume the same space in the budget and in the rendered row.
+func (t *TreeModel) renderNodePrefix(node *IssueTreeNode, isSelected bool) string {
 	rawIssue := node.Issue
-	displayIssue := sanitizeIssueForTerminal(*rawIssue)
-	issue := &displayIssue
 	r := t.theme.Renderer
-	width := t.width
-	if width <= 0 {
-		width = 80
-	}
-	// Reduce width by 1 to prevent terminal wrapping on the exact edge,
-	// and by selectionGutterWidth so all rows (selected and non-selected)
-	// render at the same content width — the gutter is filled by the
-	// Selected style's border+padding or by blank padding (bd-6yz).
-	width = width - 1 - selectionGutterWidth
-
 	var leftSide strings.Builder
 
 	// ── Mark indicator (bd-cz0) ──
@@ -1992,13 +1983,13 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	leftSide.WriteString(" ")
 
 	// ── Type icon (JIRA-style, bd-arxp) ──
-	typeIcon, typeIconColor := t.theme.GetTypeIcon(string(issue.IssueType))
+	typeIcon, typeIconColor := t.theme.GetTypeIcon(sanitizeTerminalLine(string(rawIssue.IssueType)))
 	typeIconStyle := r.NewStyle().Foreground(typeIconColor)
 	leftSide.WriteString(typeIconStyle.Render(typeIcon))
 	leftSide.WriteString(" ")
 
 	// ── Status badge (polished, matching delegate) ──
-	statusBadge := RenderStatusBadge(string(issue.Status))
+	statusBadge := RenderStatusBadge(sanitizeTerminalLine(string(rawIssue.Status)))
 	leftSide.WriteString(statusBadge)
 	leftSide.WriteString(" ")
 
@@ -2013,6 +2004,33 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	}
 	leftSide.WriteString(blockerStyle.Render(fmt.Sprintf("%-3s", blockerBadge)))
 	leftSide.WriteString(" ")
+
+	if t.bookmarks[rawIssue.ID] {
+		bookmarkStyle := r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#F1FA8C"})
+		leftSide.WriteString(bookmarkStyle.Render("\u2605"))
+		leftSide.WriteString(" ")
+	}
+	return leftSide.String()
+}
+
+func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, layout treeColumnLayout) string {
+	if node == nil || node.Issue == nil {
+		return ""
+	}
+
+	rawIssue := node.Issue
+	displayIssue := sanitizeIssueForTerminal(*rawIssue)
+	issue := &displayIssue
+	r := t.theme.Renderer
+	width := t.width
+	if width <= 0 {
+		width = 80
+	}
+	// The spare terminal cell prevents wrapping at the right edge.
+	width = width - 1 - selectionGutterWidth
+
+	var leftSide strings.Builder
+	leftSide.WriteString(t.renderNodePrefix(node, isSelected))
 
 	// ── Calculate fixed widths (ID moved to right side, bd-03l) ──
 	// Measure the rendered prefix so multi-width icons and styled badges cannot
@@ -2044,10 +2062,10 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 		personStyle = r.NewStyle().Foreground(darkFg)
 	}
 	if layout.creator {
-		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.CreatedBy)))
+		rightParts = append(rightParts, personStyle.Render(formatPersonCell(personLabel(t.identities, rawIssue.CreatedBy), layout.creatorWidth)))
 	}
 	if layout.assignee {
-		rightParts = append(rightParts, personStyle.Render(formatPersonCell(issue.Assignee)))
+		rightParts = append(rightParts, personStyle.Render(formatPersonCell(personLabel(t.identities, rawIssue.Assignee), layout.assigneeWidth)))
 	}
 	timeStyle := t.theme.MutedText
 	if isSelected {
@@ -2073,19 +2091,10 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 	}
 	rightWidth = lipgloss.Width(strings.Join(rightParts, "  "))
 
-	// ── Bookmark indicator (bd-k4n) ──
-	isBookmarked := t.bookmarks[rawIssue.ID]
-	if isBookmarked {
-		bookmarkStyle := r.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#B8860B", Dark: "#F1FA8C"})
-		leftSide.WriteString(bookmarkStyle.Render("\u2605"))
-		leftSide.WriteString(" ")
-		fixedWidth += 2 // account for the star + space in width calculation
-	}
-
 	// ── Title (fills remaining space) ──
 	titleWidth := width - fixedWidth - rightWidth - 2
-	if titleWidth < 5 {
-		titleWidth = 5
+	if titleWidth < treeMinTitleWidth {
+		titleWidth = treeMinTitleWidth
 	}
 
 	var continuation []string
@@ -2229,6 +2238,40 @@ func (t *TreeModel) resolveColumnLayout() treeColumnLayout {
 	if layout.id {
 		layout.maxIDWidth = t.displayedMaxIDWidth()
 	}
+	layout.creatorWidth, layout.assigneeWidth = treePersonColumnWidth, treePersonColumnWidth
+	// Viewport budgets assume one line per unwrapped issue. Person columns
+	// share the space left by the header, row prefix and minimum title.
+	personLimit := max(treePersonColumnWidth, effectiveWidth/4)
+	if layout.creator || layout.assignee {
+		leftBudget := lipgloss.Width(t.headerIssuePrefix()) + 2
+		for _, node := range t.flatList {
+			if node == nil || node.Issue == nil {
+				continue
+			}
+			rowBudget := 1 + selectionGutterWidth + lipgloss.Width(t.renderNodePrefix(node, false)) + treeMinTitleWidth + 2
+			leftBudget = max(leftBudget, rowBudget)
+			if layout.creator {
+				layout.creatorWidth = min(personLimit, max(layout.creatorWidth, lipgloss.Width(personLabel(t.identities, node.Issue.CreatedBy))))
+			}
+			if layout.assignee {
+				layout.assigneeWidth = min(personLimit, max(layout.assigneeWidth, lipgloss.Width(personLabel(t.identities, node.Issue.Assignee))))
+			}
+		}
+		overflow := leftBudget + lipgloss.Width(layout.headerColumns()) - effectiveWidth
+		for overflow > 0 {
+			shrinkCreator := layout.creator && layout.creatorWidth > len("CREATOR")
+			shrinkAssignee := layout.assignee && layout.assigneeWidth > len("ASSIGNEE")
+			if !shrinkCreator && !shrinkAssignee {
+				break
+			}
+			if shrinkCreator && (!shrinkAssignee || layout.creatorWidth >= layout.assigneeWidth) {
+				layout.creatorWidth--
+			} else {
+				layout.assigneeWidth--
+			}
+			overflow--
+		}
+	}
 	t.columnLayoutCache = layout
 	t.columnLayoutValid = true
 	return layout
@@ -2289,15 +2332,17 @@ func formatPriorityCell(priority int) string {
 	return fmt.Sprintf("%-*s", treePriorityColumnWidth, fmt.Sprintf("P%d", priority))
 }
 
-// treePersonColumnWidth fits "@" plus an eleven-rune name; longer names end in "…".
+// treePersonColumnWidth is the preferred width before labels need more room.
 const treePersonColumnWidth = 12
 
-func formatPersonCell(name string) string {
-	if name == "" {
-		return strings.Repeat(" ", treePersonColumnWidth)
+const treeMinTitleWidth = 5
+
+func formatPersonCell(label string, width int) string {
+	if label == "" {
+		return strings.Repeat(" ", width)
 	}
-	cell := truncateRunesHelper("@"+name, treePersonColumnWidth, "…")
-	return fmt.Sprintf("%-*s", treePersonColumnWidth, cell)
+	cell := truncateRunesHelper(label, width, "…")
+	return cell + strings.Repeat(" ", max(0, width-lipgloss.Width(cell)))
 }
 
 // The absolute layouts show the date and the time to the minute in local time.

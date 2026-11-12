@@ -143,9 +143,9 @@ func TestDetailRerenderHitsTheCommentCache(t *testing.T) {
 	theme := DefaultTheme(lipgloss.NewRenderer(nil))
 	md := NewMarkdownRendererWithTheme(80, theme)
 	issue := commentedIssues(1, 50)[0]
-	first := renderIssueDetail(issue, nil, theme, 80, md, nil, nil, false)
+	first := renderIssueDetail(issue, nil, nil, theme, 80, md, nil, nil, false)
 	misses := md.renderMisses
-	second := renderIssueDetail(issue, nil, theme, 80, md, nil, nil, false)
+	second := renderIssueDetail(issue, nil, nil, theme, 80, md, nil, nil, false)
 	if md.renderMisses != misses {
 		t.Fatalf("re-rendering the same issue missed the cache %d times", md.renderMisses-misses)
 	}
