@@ -5052,7 +5052,6 @@ func (m *Model) renderFooter() string {
 		}
 	case "tree":
 		hints = []hint{
-			{"^o", "preview"},
 			{"0-9", "project"},
 			{"^R", "refresh"},
 		}
@@ -5075,7 +5074,6 @@ func (m *Model) renderFooter() string {
 		)
 	case "board":
 		hints = []hint{
-			{"^o", "preview"},
 			{"1-9", "project"},
 			{"gg/0", "top"},
 			{"^R", "refresh"},
@@ -5160,6 +5158,11 @@ func (m *Model) renderFooter() string {
 		hints = append(hints, hint{"L", "labels"})
 	}
 	hints = append(hints, hint{"F1-4", "type"})
+	// The footer clips on the right, and the preview is also listed in help,
+	// so it yields its place to the filters when the terminal is narrow.
+	if viewName == "tree" || viewName == "board" {
+		hints = append(hints, hint{"^o", "preview"})
+	}
 
 	// Add picker toggle hint if multiple projects exist (bd-e4un)
 	if len(m.allProjects) > 1 {
