@@ -392,9 +392,6 @@ type TreeModel struct {
 	contextDescendants map[string]bool         // Descendant IDs of query hits shown for context (dimmed) (bd-xkxb)
 	globalIssueMap     map[string]*model.Issue // Reference to global issue map (for blocker checks in "ready" filter)
 
-	// PageRank scores for sort-by-pagerank (bd-x3l)
-	pageRankScores map[string]float64 // Issue ID -> PageRank score (set externally)
-
 	// Sort popup state (bd-t4e)
 	sortPopupOpen   bool // Is the sort popup overlay visible?
 	sortPopupCursor int  // Currently highlighted field index in the popup
@@ -1037,14 +1034,6 @@ func (t *TreeModel) compareByField(a, b *model.Issue) bool {
 		if aDeps != bDeps {
 			return aDeps < bDeps
 		}
-	case SortFieldPageRank:
-		// PageRank is stored externally in graph analysis, not on Issue directly.
-		// Use the pageRankScores map if available; otherwise equal (falls to tiebreak).
-		aRank := t.getPageRank(a.ID)
-		bRank := t.getPageRank(b.ID)
-		if aRank != bRank {
-			return aRank < bRank
-		}
 	default:
 		// Default sort: priority, then type, then created
 		if a.Priority != b.Priority {
@@ -1339,19 +1328,6 @@ func (t *TreeModel) RenderColumnPopup() string {
 		Padding(0, 1)
 	titleStyle := r.NewStyle().Foreground(t.theme.Primary).Bold(true)
 	return boxStyle.Render(titleStyle.Render("Columns")+"\n"+content) + "\n"
-}
-
-// SetPageRankScores sets externally-computed PageRank scores for sort-by-pagerank (bd-x3l).
-func (t *TreeModel) SetPageRankScores(scores map[string]float64) {
-	t.pageRankScores = scores
-}
-
-// getPageRank returns the PageRank score for an issue ID, or 0 if not available.
-func (t *TreeModel) getPageRank(id string) float64 {
-	if t.pageRankScores == nil {
-		return 0
-	}
-	return t.pageRankScores[id]
 }
 
 // SetGlobalIssueMap provides the global issue map for blocker resolution in filters (bd-e3w).
