@@ -300,10 +300,18 @@ spec:
             - {name: web, containerPort: 7681}
             - {name: identity, containerPort: 7682}
           readinessProbe:
-            httpGet: {path: /__preview, port: identity}
+            exec:
+              command:
+                - sh
+                - -ec
+                - |
+                  wget -q -T 1 -O /dev/null http://127.0.0.1:7682/__preview
+                  wget -q -T 1 -O /dev/null --header="\${PREVIEW_VIEWER_HEADER}: \${PREVIEW_VIEWER}" http://127.0.0.1:7681/api/session
+                  pane="\$(tmux capture-pane -p -t b9s)"
+                  printf '%s\n' "\$pane" | grep -q '[^[:space:]]'
             initialDelaySeconds: 2
             periodSeconds: 3
-            timeoutSeconds: 2
+            timeoutSeconds: 4
             failureThreshold: 20
           livenessProbe:
             httpGet: {path: /__preview, port: identity}
