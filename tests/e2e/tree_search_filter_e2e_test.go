@@ -64,7 +64,7 @@ func TestSearchHistoryE2E(t *testing.T) {
 		k("/"), k("beta"), k("\r"), k("\x1b"),
 		k("/"), k("draft"),
 		ka(150*time.Millisecond, func() {}, &historyStart),
-		k("\x1b[A"), k("\x1b[A"), k("\x1b[B"), k("\x1b[B"),
+		k("\x1b\x1b[A"), k("\x1b[A"), k("\x1b[B"), k("\x1b[B"),
 	})
 	if err != nil {
 		t.Fatalf("history TUI failed: %v\n%s", err, out)
@@ -92,6 +92,46 @@ func TestSearchHistoryE2E(t *testing.T) {
 		t.Fatalf("history did not survive a restart\n%s", reopened)
 	}
 	fmt.Println("=== SEARCH HISTORY DONE pass=1 fail=0 ===")
+}
+
+func TestSearchArrowsNavigateResultsE2E(t *testing.T) {
+	for _, view := range []string{"tree", "flat tree", "board"} {
+		for _, arrow := range []string{"up", "down"} {
+			t.Run(view+"/"+arrow, func(t *testing.T) {
+				dir := t.TempDir()
+				writeTreeFixture(t, dir, []treeFixtureIssue{
+					{ID: "nav-first", Title: "First navigation task", Description: "NAV FIRST RESULT DETAIL",
+						Status: "open", Priority: 1, IssueType: "task", CreatedAt: "2026-01-02T00:00:00Z"},
+					{ID: "nav-last", Title: "Last navigation task", Description: "NAV LAST RESULT DETAIL",
+						Status: "open", Priority: 2, IssueType: "task", CreatedAt: "2026-01-01T00:00:00Z"},
+				})
+				var steps []keyStep
+				if view == "board" {
+					steps = append(steps, kd("b", 200*time.Millisecond))
+				} else if view == "flat tree" {
+					steps = append(steps, kd("t", 200*time.Millisecond))
+				}
+				key, reverse := "\x1b[B", "\x1b[A"
+				want, absent := "NAV LAST RESULT DETAIL", "NAV FIRST RESULT DETAIL"
+				if arrow == "up" {
+					steps = append(steps, kd("G", 150*time.Millisecond))
+					key, reverse = reverse, key
+					want, absent = absent, want
+				}
+				steps = append(steps,
+					k("/"), k("navigation"), k(key), k(reverse), k(key), k("\r"),
+				)
+				out, err := runTreeTUI(t, dir, 2500, steps)
+				if err != nil {
+					t.Fatalf("search navigation TUI failed: %v\n%s", err, out)
+				}
+				frame := plainFinalFrame(out)
+				if !strings.Contains(frame, want) || strings.Contains(frame, absent) {
+					t.Fatalf("arrows must select results before Enter opens detail:\n%s", frame)
+				}
+			})
+		}
+	}
 }
 
 // makeLabelSearchFixture builds a fixture where the "bug" label is the most used

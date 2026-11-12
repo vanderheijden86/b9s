@@ -123,7 +123,7 @@ func TestSearchHistoryKeepsSelectionVisible(t *testing.T) {
 			m.tree.SelectByID(selectedID)
 			m.tree.ensureCursorVisible()
 
-			updated, _ := m.Update(tea.KeyMsg{Type: key})
+			updated, _ := m.Update(tea.KeyMsg{Type: key, Alt: true})
 			m = updated.(Model)
 
 			if got := m.tree.GetSelectedID(); got != selectedID {
@@ -173,7 +173,7 @@ func TestSearchHistoryKeys(t *testing.T) {
 	m := newSearchFilterModel(t, "")
 	key := func(k tea.KeyType) {
 		t.Helper()
-		updated, _ := m.Update(tea.KeyMsg{Type: k})
+		updated, _ := m.Update(tea.KeyMsg{Type: k, Alt: k == tea.KeyUp || k == tea.KeyDown})
 		m = updated.(Model)
 	}
 	for _, query := range []string{"title:", "label:"} {
@@ -204,13 +204,122 @@ func TestSearchHistoryKeys(t *testing.T) {
 	}
 }
 
+func TestSearchArrowsNavigateTypedResults(t *testing.T) {
+	for _, view := range []string{"tree", "flat tree", "board"} {
+		for _, arrow := range []tea.KeyType{tea.KeyUp, tea.KeyDown} {
+			t.Run(view+"/"+tea.KeyMsg{Type: arrow}.String(), func(t *testing.T) {
+				m := newSearchFilterModel(t, "")
+				switch view {
+				case "tree":
+					m.treeViewActive = true
+				case "flat tree":
+					m.tree.ToggleFlatMode()
+				case "board":
+					m.isBoardView = true
+					m.focused = focusBoard
+				}
+				m.queryState.appendHistory("Beta")
+				m = typeKeys(m, "/", "Alpha")
+				selected := func() string {
+					switch view {
+					case "board":
+						return m.board.SelectedIssue().ID
+					default:
+						return m.tree.GetSelectedID()
+					}
+				}
+				if arrow == tea.KeyUp {
+					switch view {
+					case "board":
+						m.board.MoveDown()
+					default:
+						m.tree.JumpToBottom()
+					}
+				} else if view != "board" {
+					m.tree.JumpToTop()
+				}
+				want := "bv-2"
+				if arrow == tea.KeyUp {
+					want = "bv-1"
+				}
+				if view != "board" {
+					index := 1
+					if arrow == tea.KeyUp {
+						index = 0
+					}
+					want = m.tree.flatList[index].Issue.ID
+				}
+				initial := selected()
+				updated, _ := m.Update(tea.KeyMsg{Type: arrow})
+				m = updated.(Model)
+				if m.queryState.Mode() != QueryIdle || m.queryState.Text() != "Alpha" {
+					t.Fatalf("arrow must accept typed query, got mode=%v text=%q", m.queryState.Mode(), m.queryState.Text())
+				}
+				if got := selected(); got != want {
+					t.Fatalf("arrow selected %q, want %q (focus=%v cursor=%d rows=%v list-filter=%v)", got, want, m.focused, m.tree.cursor, treeVisibleIDs(&m.tree), m.list.FilterState())
+				}
+				if got := m.queryState.history; len(got) != 2 || got[1] != "Alpha" {
+					t.Fatalf("arrow did not save accepted query: %q", got)
+				}
+				next := tea.KeyUp
+				if arrow == tea.KeyUp {
+					next = tea.KeyDown
+				}
+				want = initial
+				updated, _ = m.Update(tea.KeyMsg{Type: next})
+				m = updated.(Model)
+				if got := selected(); got != want {
+					t.Fatalf("next arrow selected %q, want %q", got, want)
+				}
+			})
+		}
+	}
+}
+
+func TestSearchEmptyQueryArrowsRecallHistory(t *testing.T) {
+	m := newSearchFilterModel(t, "")
+	m.queryState.appendHistory("Alpha")
+	m.queryState.appendHistory("Beta")
+	m = typeKeys(m, "/")
+	for _, step := range []struct {
+		key  tea.KeyType
+		want string
+	}{
+		{tea.KeyUp, "Beta"},
+		{tea.KeyUp, "Alpha"},
+		{tea.KeyUp, "Alpha"},
+		{tea.KeyDown, "Beta"},
+		{tea.KeyDown, ""},
+		{tea.KeyDown, ""},
+	} {
+		updated, _ := m.Update(tea.KeyMsg{Type: step.key})
+		m = updated.(Model)
+		if m.queryState.Mode() != QueryEditing || m.queryState.Text() != step.want {
+			t.Fatalf("history key %v: mode=%v query=%q, want editing %q", step.key, m.queryState.Mode(), m.queryState.Text(), step.want)
+		}
+	}
+}
+
+func TestSearchArrowsAcceptQueryWithoutMatches(t *testing.T) {
+	for _, arrow := range []tea.KeyType{tea.KeyUp, tea.KeyDown} {
+		t.Run(tea.KeyMsg{Type: arrow}.String(), func(t *testing.T) {
+			m := typeKeys(newSearchFilterModel(t, ""), "/", "no-such-result")
+			updated, _ := m.Update(tea.KeyMsg{Type: arrow})
+			m = updated.(Model)
+			if m.queryState.Mode() != QueryIdle || m.queryState.Text() != "no-such-result" {
+				t.Fatalf("arrow must accept an unmatched query: %+v", m.queryState)
+			}
+		})
+	}
+}
+
 func TestSearchHistoryEscapeDoesNotSubmitQuery(t *testing.T) {
 	m := newSearchFilterModel(t, "")
 	m = typeKeys(m, "/", "alpha")
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	m = updated.(Model)
 	m = typeKeys(m, "/", "draft")
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp, Alt: true})
 	m = updated.(Model)
 	if got := m.queryState.Text(); got != "draft" {
 		t.Fatalf("Escape submitted canceled query: %q", got)

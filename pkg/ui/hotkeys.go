@@ -17,6 +17,7 @@ import (
 var reservedKeys = []string{
 	"ctrl+c", "esc", "enter", "tab", "shift+tab", "backspace", "space",
 	"up", "down", "left", "right", "pgup", "pgdown", "home", "end",
+	"alt+up", "alt+down",
 	"j", "k", "h", "l", "G",
 	"/", ":", "?", "`",
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
