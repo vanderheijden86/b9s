@@ -267,6 +267,8 @@ The first match is placed in the upper third of the viewport, not at the bottom 
 
 `K` (close), `Delete` and `S` (set status) act on every marked issue, or on the cursor row when nothing is marked. Close and delete ask for confirmation first, and the confirmation lists the issues it covers. When the issue under the cursor disappears, the next issue takes its row.
 
+In the close confirmation, press `Enter` or `Y` to close, or `Esc` to cancel.
+
 `m`, `u`, `Backspace` and `U` keep their Emacs dired meanings, so pressing `m` several times marks consecutive issues.
 
 `V` and `Ctrl-Space` do the same thing. macOS claims `Ctrl-Space` for input-source switching by default, so `V` is the key that always works.

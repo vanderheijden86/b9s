@@ -2354,9 +2354,12 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 				}
 				m.issueConfirm = issueConfirmation{}
 				return m, nil
-			case "y", "Y":
+			case "enter", "y", "Y":
 				confirmation := m.issueConfirm
 				m.issueConfirm = issueConfirmation{}
+				if msg.String() == "enter" && confirmation.action != issueConfirmClose {
+					return m, nil
+				}
 				m.tree.Unmark(confirmation.targetIDs()...)
 				if !m.writeAllowedForGeneration(confirmation.generation) {
 					return m, nil
@@ -4270,13 +4273,17 @@ func (m Model) renderIssueConfirm() string {
 		subject = idStyle.Render(sanitizeTerminalLine(m.issueConfirm.id)) + "\n" + textStyle.Render(title)
 	}
 
-	buttons := keyStyle.Render("[Y] "+confirmLabel) + "  " + textStyle.Render("[Esc] Cancel")
+	confirmButton := keyStyle.Render("[Y] " + confirmLabel)
+	if m.issueConfirm.action == issueConfirmClose {
+		confirmButton = keyStyle.Render("[Enter] "+confirmLabel) + "  " + confirmButton
+	}
+	buttons := confirmButton + "  " + textStyle.Render("[Esc] Cancel")
 	switch {
 	case m.issueConfirm.commenting:
 		warning = "b9s adds this comment, then closes the issue.\n\n" + m.issueConfirm.comment.View()
 		buttons = keyStyle.Render("[Enter] Comment and close") + "  " + textStyle.Render("[Esc] Cancel")
 	case m.issueConfirm.action == issueConfirmClose && len(m.issueConfirm.ids) == 0:
-		buttons = keyStyle.Render("[Y] "+confirmLabel) + "  " + keyStyle.Render("[C] Comment and close") + "  " + textStyle.Render("[Esc] Cancel")
+		buttons = confirmButton + "  " + keyStyle.Render("[C] Comment and close") + "  " + textStyle.Render("[Esc] Cancel")
 	}
 
 	content := titleStyle.Render(heading) + "\n\n" +
