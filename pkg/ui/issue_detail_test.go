@@ -24,7 +24,7 @@ func TestIssueDetailExtraSections(t *testing.T) {
 			}
 			theme := DefaultTheme(lipgloss.NewRenderer(nil))
 			outputs := map[string]string{
-				"TUI":      stripANSI(renderIssueDetail(issue, nil, theme, 100, NewMarkdownRendererWithTheme(100, theme), nil, nil, false)),
+				"TUI":      stripANSI(renderIssueDetail(issue, nil, nil, theme, 100, NewMarkdownRendererWithTheme(100, theme), nil, nil, false)),
 				"Markdown": formatIssueMarkdown(issue, nil),
 			}
 			for name, out := range outputs {
@@ -57,7 +57,7 @@ func TestIssueDetailOmitsEmptyExtraSections(t *testing.T) {
 		}
 		theme := DefaultTheme(lipgloss.NewRenderer(nil))
 		for _, out := range []string{
-			renderIssueDetail(issue, nil, theme, 80, nil, nil, nil, false),
+			renderIssueDetail(issue, nil, nil, theme, 80, nil, nil, nil, false),
 			formatIssueMarkdown(issue, nil),
 		} {
 			if strings.Contains(strings.ToLower(out), "close reason") || strings.Contains(strings.ToLower(out), "metadata") {

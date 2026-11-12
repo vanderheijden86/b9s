@@ -35,7 +35,7 @@ func TestBadgeContrast(t *testing.T) {
 					})
 					t.Run(status+"/detail", func(t *testing.T) {
 						issue := model.Issue{ID: "badge-1", Title: "Contrast", Status: model.Status(status)}
-						out := renderIssueDetail(issue, nil, theme, 100, nil, nil, nil, false)
+						out := renderIssueDetail(issue, nil, nil, theme, 100, nil, nil, nil, false)
 						label := strings.ToUpper(strings.ReplaceAll(status, "_", " "))
 						for _, line := range strings.Split(out, "\n") {
 							if strings.Contains(stripANSI(line), label) {
