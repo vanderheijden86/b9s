@@ -83,7 +83,7 @@ func renderIssueDetail(item model.Issue, issueMap map[string]*model.Issue, t The
 	}
 
 	chip := r.NewStyle().Bold(true).Padding(0, 1).
-		Foreground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}).
+		Foreground(badgeForeground(r, lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#282A36"}, statusColor)).
 		Background(statusColor).
 		Render(strings.ToUpper(strings.ReplaceAll(string(item.Status), "_", " ")))
 	prioStyle := r.NewStyle().Bold(true).Foreground(t.Secondary)
