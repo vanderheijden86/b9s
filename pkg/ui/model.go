@@ -13,6 +13,7 @@ import (
 	"github.com/vanderheijden86/b9s/internal/attachref"
 	"github.com/vanderheijden86/b9s/internal/blobstore"
 	"github.com/vanderheijden86/b9s/internal/datasource"
+	"github.com/vanderheijden86/b9s/pkg/clipboard"
 	"github.com/vanderheijden86/b9s/pkg/config"
 	"github.com/vanderheijden86/b9s/pkg/debug"
 	"github.com/vanderheijden86/b9s/pkg/identity"
@@ -21,7 +22,6 @@ import (
 	"github.com/vanderheijden86/b9s/pkg/updater"
 	"github.com/vanderheijden86/b9s/pkg/watcher"
 
-	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -1240,7 +1240,6 @@ func NewModel(issues []model.Issue, beadsPath string) Model {
 		projectPicker:    NewProjectPicker(nil, theme),
 		statusMsg:        initialStatus,
 		statusIsError:    initialStatusErr,
-		clipboardWrite:   clipboard.WriteAll,
 		doltPollInterval: config.DefaultRefreshPollInterval,
 		activity:         datasource.NewActivity(config.DefaultRefreshIdlePollInterval, nil),
 		pickerVisible:    true, // bd-2me: visible by default, H toggles (bd-j764)
@@ -2603,7 +2602,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 					copyText = m.dbHealth.FilePath
 				}
 				if copyText != "" {
-					if err := clipboard.WriteAll(copyText); err != nil {
+					if err := m.writeClipboard(copyText); err != nil {
 						m.statusMsg = fmt.Sprintf("Copy failed: %v", err)
 						m.statusIsError = true
 					} else {
@@ -3361,7 +3360,7 @@ func (m Model) handleBoardKeys(msg tea.KeyMsg) Model {
 	// Copy ID to clipboard (bv-yg39)
 	case "y":
 		if selected := m.board.SelectedIssue(); selected != nil {
-			if err := clipboard.WriteAll(selected.ID); err != nil {
+			if err := m.writeClipboard(selected.ID); err != nil {
 				m.statusMsg = fmt.Sprintf("❌ Clipboard error: %v", err)
 				m.statusIsError = true
 			} else {
@@ -6398,6 +6397,13 @@ func (m Model) renderTimeTravelPrompt() string {
 	)
 }
 
+func (m *Model) writeClipboard(text string) error {
+	if m.clipboardWrite != nil {
+		return m.clipboardWrite(text)
+	}
+	return clipboard.Write(text, m.appConfig.Clipboard)
+}
+
 // copyIssueToClipboard copies the selected issue to the clipboard as Markdown.
 func (m *Model) copyIssueToClipboard() {
 	selected := m.detailIssue()
@@ -6412,11 +6418,7 @@ func (m *Model) copyIssueToClipboard() {
 		return
 	}
 	issue := *selected
-	writeClipboard := m.clipboardWrite
-	if writeClipboard == nil {
-		writeClipboard = clipboard.WriteAll
-	}
-	err := writeClipboard(formatIssueMarkdown(issue, m.issueMap))
+	err := m.writeClipboard(formatIssueMarkdown(issue, m.issueMap))
 	if err != nil {
 		m.statusMsg = fmt.Sprintf("❌ Clipboard error: %v", err)
 		m.statusIsError = true
@@ -6436,11 +6438,7 @@ func (m *Model) copyTreeIssueIDAndTitle() {
 		m.statusIsError = true
 		return
 	}
-	writeClipboard := m.clipboardWrite
-	if writeClipboard == nil {
-		writeClipboard = clipboard.WriteAll
-	}
-	if err := writeClipboard(issue.ID + " " + issue.Title); err != nil {
+	if err := m.writeClipboard(issue.ID + " " + issue.Title); err != nil {
 		m.statusMsg = fmt.Sprintf("❌ Clipboard error: %v", err)
 		m.statusIsError = true
 		return

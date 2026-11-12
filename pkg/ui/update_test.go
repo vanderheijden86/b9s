@@ -119,6 +119,34 @@ func TestCopyIssueToClipboardInvalidItem(t *testing.T) {
 	}
 }
 
+func TestClipboardCopyPathsUseModelWriter(t *testing.T) {
+	for _, path := range []string{"board", "health"} {
+		t.Run(path, func(t *testing.T) {
+			m := NewModel([]model.Issue{{
+				ID: "bd-copy", Title: "Copy this ticket",
+				Status: model.StatusOpen, IssueType: model.TypeTask,
+			}}, "")
+			key, want := 'y', "bd-copy"
+			m.focused = focusBoard
+			if path == "health" {
+				m.showDBHealth = true
+				m.dbHealth.Error = "connection unavailable"
+				key, want = 'c', m.dbHealth.Error
+			}
+			var copied string
+			m.clipboardWrite = func(text string) error {
+				copied = text
+				return nil
+			}
+			updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{key}})
+			m = updated.(Model)
+			if copied != want || m.statusIsError {
+				t.Fatalf("copied %q, want %q, status %q", copied, want, m.statusMsg)
+			}
+		})
+	}
+}
+
 func TestDetailCKeyCopiesSelectedIssue(t *testing.T) {
 	issue := model.Issue{
 		ID:                 "bd-copy",

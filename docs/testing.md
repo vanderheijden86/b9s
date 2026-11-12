@@ -135,6 +135,16 @@ go test ./pkg/ui -run '^TestDetailCKeyKeepsMermaidSequenceSource$' -count=1 -tim
 go test ./tests/e2e -run '^TestMermaidSequenceProofE2E$' -count=1 -timeout=120s -v
 ```
 
+`TestClipboardOSC52AfterY` uses an isolated config with `clipboard: osc52`,
+enters the board with `b`, then presses `y`. It checks the exact OSC 52 bytes
+for the selected ID and the copy status in the PTY output. It needs no system
+clipboard utility or Dolt server:
+
+```bash
+go test ./tests/e2e -run '^TestClipboardOSC52AfterY$' -count=1 -timeout=120s
+go test ./pkg/clipboard -count=1 -timeout=30s
+```
+
 `TestAttachmentsStockBDLocalBackendE2E` creates an isolated embedded project with
 stock `bd`, attaches a file through the TUI's `I` form, checks the detail and
 `R` picker, and opens it with `B9S_TEST_MODE`. It checks the persisted reference,

@@ -3,9 +3,58 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestClipboardConfigModes(t *testing.T) {
+	for _, mode := range []string{"", "auto", "system", "osc52"} {
+		name := mode
+		if name == "" {
+			name = "default"
+		}
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			content := ""
+			if mode != "" {
+				content = "clipboard: " + mode + "\n"
+			}
+			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := LoadFrom(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			saved := filepath.Join(t.TempDir(), "saved.yaml")
+			if err := SaveTo(cfg, saved); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(saved)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := mode
+			if want == "" {
+				want = "auto"
+			}
+			if !strings.Contains(string(data), "clipboard: "+want+"\n") {
+				t.Fatalf("clipboard mode %q did not survive config save:\n%s", want, data)
+			}
+		})
+	}
+}
+
+func TestClipboardConfigRejectsUnknownMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("clipboard: unknown\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFrom(path); err == nil {
+		t.Fatal("unknown clipboard mode must fail config loading")
+	}
+}
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()

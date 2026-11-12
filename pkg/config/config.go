@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanderheijden86/b9s/pkg/clipboard"
 	"gopkg.in/yaml.v3"
 )
 
@@ -189,6 +190,7 @@ type ExperimentalConfig struct {
 
 // Config is the top-level configuration for b9s.
 type Config struct {
+	Clipboard clipboard.Mode `yaml:"clipboard,omitempty"`
 	// RecentProjects is newest first; see TouchRecent for the ordering rules.
 	RecentProjects []RecentProject    `yaml:"recent_projects,omitempty"`
 	LockRecent     bool               `yaml:"lock_recent,omitempty"`
@@ -225,6 +227,7 @@ func (l legacyConfig) findProject(name string) *Project {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() Config {
 	return Config{
+		Clipboard: clipboard.Auto,
 		UI: UIConfig{
 			Mouse:       true,
 			DefaultView: "list",
