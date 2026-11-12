@@ -108,6 +108,72 @@ func TestStartupWithoutTerminalExitsWithReasonE2E(t *testing.T) {
 	}
 }
 
+func TestStartupConfigLoadWarningE2E(t *testing.T) {
+	tests := []struct {
+		name     string
+		settings string
+		reason   string
+	}{
+		{"sort_field", "ui:\n  sort:\n    field: unknown\n", `invalid ui.sort.field "unknown"`},
+		{"sort_direction", "ui:\n  sort:\n    direction: sideways\n", `invalid ui.sort.direction "sideways"`},
+		{"poll_interval", "refresh:\n  poll_interval: 50ms\n", "refresh poll interval must be at least 100ms"},
+		{"malformed_yaml", "ui: [\n", "parsing config:"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			alpha := recentFixture(t, t.TempDir(), "alpha")
+			configDir := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "b9s")
+			if err := os.MkdirAll(configDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			settings := "# keep my settings\nlock_recent: true\nrecent_projects:\n  - name: saved-project\n    database: saved-project\n" + tt.settings
+			path := filepath.Join(configDir, "config.yaml")
+			if err := os.WriteFile(path, []byte(settings), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			screen := runRecentTUI(t, alpha, 1200)
+
+			for _, want := range []string{"b9s:", path, tt.reason, "using defaults", "alpha work", "Created ▼"} {
+				if !strings.Contains(screen, want) {
+					t.Errorf("startup output lacks %q:\n%s", want, screen)
+				}
+			}
+			assertHeaderSlot(t, screen, 1, "alpha")
+			if strings.Contains(screen, "saved-project") {
+				t.Errorf("startup did not discard the invalid config:\n%s", screen)
+			}
+			saved, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(saved) != settings {
+				t.Errorf("startup overwrote invalid config:\ngot: %s\nwant: %s", saved, settings)
+			}
+		})
+	}
+}
+
+func TestStartupConfigWithoutWarningE2E(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		t.Run(fmt.Sprintf("existing=%t", existing), func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			alpha := recentFixture(t, t.TempDir(), "alpha")
+			if existing {
+				writeRecentConfig(t, alpha)
+			}
+
+			screen := runRecentTUI(t, alpha, 1200)
+
+			if strings.Contains(screen, "using defaults") {
+				t.Errorf("startup warned for valid or missing config:\n%s", screen)
+			}
+			assertHeaderSlot(t, screen, 1, "alpha")
+		})
+	}
+}
+
 func TestSwitchToUnreachableProjectKeepsCurrentE2E(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	root := resolvedTempDir(t)
