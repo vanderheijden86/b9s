@@ -735,6 +735,7 @@ b9s reads `~/.config/b9s/config.yaml`, or `$XDG_CONFIG_HOME/b9s/config.yaml`. Ev
 
 ```yaml
 ui:
+  mouse: true             # capture mouse for wheel scrolling; :mouse saves the choice
   board_epics: rail       # rail or rows; v switches
   date_order: auto        # auto, dmy or mdy: day or month first in dates (T)
   sort:
@@ -977,7 +978,7 @@ Every write is the same `bd` command the TUI runs, in the project's checkout, as
 
 The mouse wheel moves through issues and scrolls the detail pane. Because b9s captures the mouse for this, a drag does not select text, and in tmux with `mouse on` the drag goes to b9s instead of starting copy mode.
 
-Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:mouse` again to scroll with the wheel. Without it, hold the terminal's override key while you drag: `Option` in iTerm2, `Shift` in most other terminals. See [ADR 0003](adr/0003-capture-mouse-wheel-with-shift-selection.md).
+Type `:mouse` to hand the mouse to the terminal, so a drag selects text. Type `:mouse` again to scroll with the wheel. The choice is saved as `ui.mouse` in `config.yaml` and applies on the next start. Set `ui.mouse: false` to start with terminal text selection. The default is `true`, for wheel scrolling. Without it, hold the terminal's override key while you drag: `Option` in iTerm2, `Shift` in most other terminals. See [ADR 0003](adr/0003-capture-mouse-wheel-with-shift-selection.md).
 
 A tmux binding that opens b9s with a query in a new window:
 

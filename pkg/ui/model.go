@@ -697,7 +697,7 @@ type Model struct {
 	// opened (bd-l66t); its save path refuses through writeAllowedForGeneration.
 	editModalGeneration uint64
 	commandPrompt       CommandPrompt
-	// mouseReleased is true after :mouse hands the mouse to the terminal.
+	// mouseReleased leaves text selection to the terminal.
 	mouseReleased bool
 
 	// Project switching (bd-q5z, bd-ey3)
@@ -713,13 +713,13 @@ type Model struct {
 	// checks it through writeAllowedForGeneration before dispatching, so an
 	// overlay left open across a project switch can never write into the new
 	// project under the old project's issue ID (bd-l66t).
-	projectGeneration uint64
-	appConfig         config.Config // Loaded app configuration
-	columnConfigPath  string
-	allProjects       []config.Project // All known projects
-	projectPicker     ProjectPickerModel
-	projectCountCache map[string]projectCounts
-	projectReach      map[string]datasource.Reachability // by projectKey
+	projectGeneration    uint64
+	appConfig            config.Config // Loaded app configuration
+	preferenceConfigPath string
+	allProjects          []config.Project // All known projects
+	projectPicker        ProjectPickerModel
+	projectCountCache    map[string]projectCounts
+	projectReach         map[string]datasource.Reachability // by projectKey
 
 	// All-projects mode (bd-g68w): read-only cross-project view
 	allProjectsMode  bool
@@ -1272,7 +1272,8 @@ func (m Model) WithHotkeys(hotkeys Hotkeys) Model {
 // Call this after NewModel to enable project switching and favorites.
 func (m Model) WithConfig(cfg config.Config, projectName, projectPath string) Model {
 	m.appConfig = cfg
-	m.columnConfigPath = config.ConfigPath()
+	m.preferenceConfigPath = config.ConfigPath()
+	m.mouseReleased = !cfg.UI.Mouse
 	for column := TreeColumn(0); column < treeColumnCount; column++ {
 		preference := ColumnAuto
 		switch cfg.UI.Columns[column.ConfigKey()] {
@@ -3519,10 +3520,10 @@ func (m Model) handleTreeKeys(msg tea.KeyMsg) Model {
 			m.tree.ColumnPopupUp()
 		case " ", "space", "enter":
 			m.tree.CycleColumnPreference()
-			if m.columnConfigPath != "" {
+			if m.preferenceConfigPath != "" {
 				column := TreeColumn(m.tree.columnPopupCursor)
 				preference := strings.ToLower(m.tree.ColumnPreference(column).String())
-				if err := config.SaveColumnPreference(m.columnConfigPath, column.ConfigKey(), preference); err != nil {
+				if err := config.SaveColumnPreference(m.preferenceConfigPath, column.ConfigKey(), preference); err != nil {
 					m.statusMsg = "Saving columns: " + err.Error()
 					m.statusIsError = true
 				}
