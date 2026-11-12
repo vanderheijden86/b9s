@@ -5025,8 +5025,11 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"0-9", "project"},
 			{"^R", "refresh"},
-			{"tab", "fold"},
-			{"⇧tab", "fold all"},
+		}
+		if !m.tree.IsListView() {
+			hints = append(hints, hint{"tab", "fold"}, hint{"⇧tab", "fold all"})
+		}
+		hints = append(hints, []hint{
 			{"enter", "detail"},
 			{"g", "deps"},
 			{"j/k", "nav"},
@@ -5039,7 +5042,7 @@ func (m *Model) renderFooter() string {
 			{"K", "close"},
 			{"del", "delete"},
 			{"esc", "back"},
-		}
+		}...)
 	case "board":
 		hints = []hint{
 			{"1-9", "project"},
@@ -5060,12 +5063,10 @@ func (m *Model) renderFooter() string {
 		hints = []hint{
 			{"0-9", "project"},
 			{"^R", "refresh"},
-			{"tab", "fold"},
 			{"</>", "resize"},
 			{"\\", "layout"},
 			{"t", "tree"},
 			{"b", "board"},
-			{"e", "edit"},
 			{"?", "help"},
 			{"esc", "back"},
 		}
@@ -5102,25 +5103,27 @@ func (m *Model) renderFooter() string {
 			{"^R", "refresh"},
 			{"t", "tree"},
 			{"b", "board"},
-			{"s", "split"},
-			{"/", "filter"},
-			{"e", "edit"},
 			{"K", "close"},
 			{"del", "delete"},
-			{"n", "new"},
+			{"^n", "new"},
 			{"?", "help"},
 			{"esc", "back"},
 		}
 	}
 
-	// Replace "1-9 project" with "1-9 label" when in label mode (bd-gj41)
-	if m.pickerMode == pickerModeLabels {
+	if m.pickerMode == pickerModeLabels || m.pickerMode == pickerModeAssignees {
+		label := "label"
+		if m.pickerMode == pickerModeAssignees {
+			label = "assignee"
+		}
 		for i := range hints {
-			if hints[i].key == "1-9" && hints[i].label == "project" {
-				hints[i].label = "label"
+			if (hints[i].key == "1-9" || hints[i].key == "0-9") && hints[i].label == "project" {
+				hints[i].label = label
 				break
 			}
 		}
+	}
+	if m.pickerMode == pickerModeLabels {
 		hints = append(hints, hint{"P", "projects"})
 	} else {
 		hints = append(hints, hint{"L", "labels"})
