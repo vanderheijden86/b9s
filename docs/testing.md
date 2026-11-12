@@ -145,6 +145,16 @@ go test ./tests/e2e -run '^TestClipboardOSC52AfterY$' -count=1 -timeout=120s
 go test ./pkg/clipboard -count=1 -timeout=30s
 ```
 
+`TestListViewAdvertisedShortcutsE2E` checks the flat list footer, `L` label
+and `A` assignee filters, and `e`, `K` and Delete on the selected row.
+Numeric hints name the active filter. Close and Delete stop at
+confirmation. The test uses isolated JSONL fixtures and makes no Beads writes.
+Flat lists omit folding hints because they have no children to fold (ADR 0027).
+
+```bash
+go test ./tests/e2e -run '^TestListViewAdvertisedShortcutsE2E$' -count=1 -timeout=120s -v
+```
+
 `TestAttachmentsStockBDLocalBackendE2E` creates an isolated embedded project with
 stock `bd`, attaches a file through the TUI's `I` form, checks the detail and
 `R` picker, and opens it with `B9S_TEST_MODE`. It checks the persisted reference,

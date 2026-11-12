@@ -5059,20 +5059,20 @@ func (m *Model) renderFooter() string {
 		if !m.tree.IsListView() {
 			hints = append(hints, hint{"tab", "fold"}, hint{"⇧tab", "fold all"})
 		}
-		hints = append(hints, []hint{
-			{"enter", "detail"},
-			{"g", "deps"},
-			{"j/k", "nav"},
-			{"s", "sort"},
-			{"c", "copy"},
-			{"|", "columns"},
-			{"/", "search"},
-			{"f", "branch"},
-			{"e", "edit"},
-			{"K", "close"},
-			{"del", "delete"},
-			{"esc", "back"},
-		}...)
+		hints = append(hints,
+			hint{"enter", "detail"},
+			hint{"g", "deps"},
+			hint{"j/k", "nav"},
+			hint{"s", "sort"},
+			hint{"c", "copy"},
+			hint{"|", "columns"},
+			hint{"/", "search"},
+			hint{"f", "branch"},
+			hint{"e", "edit"},
+			hint{"K", "close"},
+			hint{"del", "delete"},
+			hint{"esc", "back"},
+		)
 	case "board":
 		hints = []hint{
 			{"^o", "preview"},
@@ -5143,16 +5143,15 @@ func (m *Model) renderFooter() string {
 		}
 	}
 
-	if m.pickerMode == pickerModeLabels || m.pickerMode == pickerModeAssignees {
-		label := "label"
-		if m.pickerMode == pickerModeAssignees {
-			label = "assignee"
-		}
-		for i := range hints {
-			if (hints[i].key == "1-9" || hints[i].key == "0-9") && hints[i].label == "project" {
-				hints[i].label = label
-				break
+	for i := range hints {
+		if (hints[i].key == "1-9" || hints[i].key == "0-9") && hints[i].label == "project" {
+			switch m.pickerMode {
+			case pickerModeLabels:
+				hints[i].label = "label"
+			case pickerModeAssignees:
+				hints[i].label = "assignee"
 			}
+			break
 		}
 	}
 	if m.pickerMode == pickerModeLabels {
