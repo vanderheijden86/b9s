@@ -21,6 +21,9 @@ async function parse<T>(res: Response): Promise<T> {
   return body as T;
 }
 
+/** getJSON reads one API path as JSON. The fleet views use it for their read-only endpoints. */
+export const getJSON = <T>(path: string, signal?: AbortSignal): Promise<T> => get<T>(path, signal);
+
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(path, { credentials: "same-origin", cache: "no-store", signal });
   return parse<T>(res);

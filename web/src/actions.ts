@@ -390,7 +390,7 @@ export const KEYS: [string, string][] = [
   ["e, S, K, Delete", "edit, status, close, delete"], ["Ctrl-N, c", "create, copy ID and title"],
   ["b, t, g, Esc", "board and back, tree or flat list, dependency graph, back"], ["M", "Memory graph and back"], ["Memory: d, l, f, + -", "show or hide the detail, Link labels, fit, zoom"], ["1-9, 0", "open a recent project, all projects"],
   ["L, A, P", "put labels, assignees or projects on 1-9"], ["Ctrl-E H, D", "hide the header, source health"],
-  ["Ctrl-R, F5", "reload"], ["Detail: n p, c, \\", "next or previous sibling, copy as Markdown, full size or back"],
+  ["Ctrl-R", "reload"], ["F1-F6", "fleet: agent board, a session's log, context matrix, projects, constellation, timeline"], ["Detail: n p, c, \\", "next or previous sibling, copy as Markdown, full size or back"],
   ["Board: h j k l, z Z", "move, fold the column, unfold all"], ["Board: Ctrl-D Ctrl-F PgDn, Ctrl-U Ctrl-B PgUp", "a third of the board down or up the column"], ["Board: o i C, r, c", "toggle open, in progress, closed; ready; closed column"],
   ["Board: s, v, e", "group by, epic rows or rail, hide empty columns"], ["Board: y, f, { }", "copy ID, branch, previous or next epic"],
   ["Board: Tab, Shift-Tab", "step the cursor's lane, or every lane, through compact, open and full; on epic rows, fold it"],

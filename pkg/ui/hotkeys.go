@@ -31,8 +31,8 @@ var builtinKeys = []string{
 	"J", "K", "L", "m", "M", "n", "N", "o", "O", "p", "P", "q", "r", "R", "s", "S",
 	"t", "T", "u", "U", "v", "V", "w", "W", "x", "X", "y", "Y", "z", "Z",
 	"[", "]", "{", "}", "\\", "<", ">", "|", "$", "&", "delete",
-	"ctrl+a", "ctrl+b", "ctrl+d", "ctrl+e", "ctrl+f", "ctrl+n", "ctrl+p", "ctrl+r",
-	"ctrl+s", "ctrl+o", "ctrl+u", "ctrl+w", "ctrl+\\", "ctrl+@", "f1", "f2", "f3", "f4", "f5",
+	"ctrl+a", "ctrl+b", "ctrl+d", "ctrl+e", "ctrl+f", "ctrl+k", "ctrl+n", "ctrl+p", "ctrl+r",
+	"ctrl+s", "ctrl+o", "ctrl+u", "ctrl+w", "ctrl+\\", "ctrl+@", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8",
 	"alt+b",
 }
 

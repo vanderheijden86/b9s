@@ -205,6 +205,22 @@ type Config struct {
 	// never produces the latter, because a decoded section always has a
 	// validated Backend.
 	Attachments *AttachmentsConfig `yaml:"attachments,omitempty"`
+	Fleet       FleetConfig        `yaml:"fleet,omitempty"`
+}
+
+// FleetConfig configures the agent fleet views (:agents, :xray, :pulse).
+type FleetConfig struct {
+	Pods FleetPodsConfig `yaml:"pods,omitempty"`
+}
+
+// FleetPodsConfig adds Omnigent lane pods to the agent list. b9s runs only
+// kubectl get and kubectl logs against this context.
+type FleetPodsConfig struct {
+	Enabled   bool   `yaml:"enabled,omitempty"`
+	Context   string `yaml:"context,omitempty"`
+	Namespace string `yaml:"namespace,omitempty"`
+	// Selector is a label selector; empty means omnigent.ai/lane-stage.
+	Selector string `yaml:"selector,omitempty"`
 }
 
 // legacyConfig holds the projects and numbered favorites older versions kept.

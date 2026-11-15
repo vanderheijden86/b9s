@@ -243,3 +243,230 @@ type Event struct {
 	Type    string `json:"type"`
 	Version uint64 `json:"version"`
 }
+
+// AgentSession is one coding-agent conversation, as the fleet views show it.
+// Times are RFC 3339 in UTC, like the issue fields.
+type AgentSession struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Tool           string `json:"tool"`
+	Project        string `json:"project"`
+	Cwd            string `json:"cwd"`
+	Branch         string `json:"branch"`
+	Role           string `json:"role"`
+	TaskID         string `json:"task_id"`
+	State          string `json:"state"`
+	Model          string `json:"model"`
+	ContextTokens  int    `json:"context_tokens"`
+	ContextLimit   int    `json:"context_limit"`
+	ContextPercent int    `json:"context_percent"`
+	TokensPerMin   int    `json:"tokens_per_min"`
+	TotalTokens    int    `json:"total_tokens"`
+	Compactions    int    `json:"compactions"`
+	Started        string `json:"started"`
+	LastActivity   string `json:"last_activity"`
+	// WhereKind is "tmux", "pod" or "" for a session no process hosts.
+	WhereKind  string `json:"where_kind"`
+	WhereLabel string `json:"where_label"`
+	ToolCalls  int    `json:"tool_calls"`
+	Errors     int    `json:"errors"`
+	// Live is false only for a finished session.
+	Live bool `json:"live"`
+}
+
+// AgentsResponse is GET api/agents: every session of the last scan, live
+// ones first.
+type AgentsResponse struct {
+	At       string         `json:"at"`
+	Sessions []AgentSession `json:"sessions"`
+	// PodError says why lane pods are missing from the list, or is "".
+	PodError string `json:"pod_error"`
+}
+
+// AgentEvent is one line of an agent's log.
+type AgentEvent struct {
+	Time   string `json:"time"`
+	Kind   string `json:"kind"`
+	Tool   string `json:"tool"`
+	Text   string `json:"text"`
+	Detail string `json:"detail"`
+}
+
+// AgentLogResponse is GET api/agent/log.
+type AgentLogResponse struct {
+	ID     string       `json:"id"`
+	Events []AgentEvent `json:"events"`
+}
+
+// ContextSource is one thing loaded into a session's context window.
+type ContextSource struct {
+	Layer     string `json:"layer"`
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	Scope     string `json:"scope"`
+	Tokens    int    `json:"tokens"`
+	LoadedAt  string `json:"loaded_at"`
+	ChangedAt string `json:"changed_at"`
+	// Stale is true when the file changed after the session loaded it.
+	Stale bool `json:"stale"`
+}
+
+// ContextLayer is the token estimate of one layer of a context window.
+type ContextLayer struct {
+	Layer  string `json:"layer"`
+	Tokens int    `json:"tokens"`
+}
+
+// AgentContext is GET api/agent/context. Window is the size measured at the
+// last model call, and the layer and source numbers are estimates.
+type AgentContext struct {
+	SessionID string          `json:"session_id"`
+	Window    int             `json:"window"`
+	Limit     int             `json:"limit"`
+	Layers    []ContextLayer  `json:"layers"`
+	Sources   []ContextSource `json:"sources"`
+}
+
+// FleetCard is one issue (or one agent without a known issue) in a stage cell.
+type FleetCard struct {
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
+	// Agents lists the IDs of the live sessions working on the card.
+	Agents []string `json:"agents"`
+}
+
+// FleetStage is one cell of the fleet board. Count is the number of issues
+// in the stage, of which Cards lists the ones the server could name.
+type FleetStage struct {
+	Stage string      `json:"stage"`
+	Count int         `json:"count"`
+	Cards []FleetCard `json:"cards"`
+}
+
+// FleetProject is one row of the fleet board. Current marks the project on
+// screen, the only one whose issues are loaded, so only its stages carry
+// issue cards.
+type FleetProject struct {
+	Key         string       `json:"key"`
+	Name        string       `json:"name"`
+	Current     bool         `json:"current"`
+	Reach       string       `json:"reach"`
+	Open        int          `json:"open"`
+	InProgress  int          `json:"in_progress"`
+	Ready       int          `json:"ready"`
+	Blocked     int          `json:"blocked"`
+	ClosedToday int          `json:"closed_today"`
+	LiveAgents  int          `json:"live_agents"`
+	Stages      []FleetStage `json:"stages"`
+}
+
+// FleetResponse is GET api/fleet.
+type FleetResponse struct {
+	At       string         `json:"at"`
+	Projects []FleetProject `json:"projects"`
+	Sessions []AgentSession `json:"sessions"`
+	PodError string         `json:"pod_error"`
+}
+
+// MatrixSession is one column of the context matrix.
+type MatrixSession struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Project string `json:"project"`
+	State   string `json:"state"`
+	Tool    string `json:"tool"`
+}
+
+// MatrixCell is one session's share of a context source. Loaded is false
+// when the session does not hold the source.
+type MatrixCell struct {
+	Loaded bool `json:"loaded"`
+	Tokens int  `json:"tokens"`
+	Stale  bool `json:"stale"`
+}
+
+// MatrixRow is one context source across the sessions. Cells follow the
+// order of MatrixResponse.Sessions.
+type MatrixRow struct {
+	Key   string `json:"key"`
+	Layer string `json:"layer"`
+	Name  string `json:"name"`
+	Path  string `json:"path"`
+	Scope string `json:"scope"`
+	// Aggregate is true for a layer the sessions fill without a named
+	// source, such as tool output.
+	Aggregate bool         `json:"aggregate"`
+	Cells     []MatrixCell `json:"cells"`
+	Sessions  int          `json:"sessions"`
+	Stale     int          `json:"stale"`
+	Tokens    int          `json:"tokens"`
+}
+
+// Insight is one plain-language finding under a fleet view.
+type Insight struct {
+	Title string `json:"title"`
+	Text  string `json:"text"`
+}
+
+// MatrixResponse is GET api/context-matrix, built from the live sessions.
+type MatrixResponse struct {
+	At       string          `json:"at"`
+	Sessions []MatrixSession `json:"sessions"`
+	Rows     []MatrixRow     `json:"rows"`
+	Layers   []ContextLayer  `json:"layers"`
+	Insights []Insight       `json:"insights"`
+}
+
+// TimelineSegment is a stretch of one session's time in one phase: plan,
+// implement, track (bd calls), fail or idle.
+type TimelineSegment struct {
+	Phase string `json:"phase"`
+	Start string `json:"start"`
+	End   string `json:"end"`
+	Label string `json:"label"`
+}
+
+// TimelineMarker is a point event on a lane: a bd call, an error, a
+// compaction or a commit.
+type TimelineMarker struct {
+	Time  string `json:"time"`
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+}
+
+// TimelineLane is one session's row of the timeline.
+type TimelineLane struct {
+	SessionID string            `json:"session_id"`
+	Name      string            `json:"name"`
+	Project   string            `json:"project"`
+	State     string            `json:"state"`
+	Segments  []TimelineSegment `json:"segments"`
+	Markers   []TimelineMarker  `json:"markers"`
+}
+
+// TimelineResponse is GET api/timeline.
+type TimelineResponse struct {
+	From  string         `json:"from"`
+	To    string         `json:"to"`
+	Hours int            `json:"hours"`
+	Lanes []TimelineLane `json:"lanes"`
+}
+
+// CommitInfo is one commit of the open project's repository.
+type CommitInfo struct {
+	Hash    string   `json:"hash"`
+	Short   string   `json:"short"`
+	Time    string   `json:"time"`
+	Author  string   `json:"author"`
+	Subject string   `json:"subject"`
+	Refs    []string `json:"refs"`
+	// Issues lists the Beads IDs the commit's Refs: trailer names.
+	Issues []string `json:"issues"`
+}
+
+// CommitsResponse is GET api/commits.
+type CommitsResponse struct {
+	Repo    string       `json:"repo"`
+	Commits []CommitInfo `json:"commits"`
+}

@@ -39,7 +39,7 @@ test("the sidebar spans the height with the project, the views and the connectio
   expect(hd.y).toBeLessThanOrEqual(app.y + 1);
   await expect(page.locator("#bar .sbrand b")).toHaveText("b9s");
   await expect(page.locator("#bar .sbrand small")).not.toBeEmpty();
-  await expect(page.locator("#bar [data-view]")).toHaveCount(5);
+  await expect(page.locator("#bar [data-view]")).toHaveCount(6);
   await expect(page.locator('#bar [data-view="tree"]')).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#bar .sfoot .slive")).toHaveText("connected");
   // The glyph sits beside its label in one row of a mouse's height, not a stacked finger target.

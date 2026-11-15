@@ -128,6 +128,8 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		return m.handleShowBranch(command.Arg)
 	case CommandUpdate:
 		m.showSelfUpdateModal()
+	case CommandFleet:
+		return m.openFleet(command.FleetView)
 	}
 	return m, nil
 }

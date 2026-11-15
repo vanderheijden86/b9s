@@ -248,6 +248,8 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	m.resetIssueTexts()
 	m.memoryBrowser, m.memoryVisible, m.memoryRefused = nil, false, false
 	m.memoryGeneration++
+	m.fleet, m.fleetVisible = nil, false
+	m.fleetGeneration++
 	checkout, hasCheckout := NewCheckout(project.ResolvedPath())
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(project.Name)

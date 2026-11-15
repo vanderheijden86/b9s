@@ -178,3 +178,190 @@ export interface IssueMemoryLink {
   memory: MemoryGraphNode;
   outgoing: boolean;
 }
+
+export interface AgentSession {
+  id: string;
+  name: string;
+  tool: string;
+  project: string;
+  cwd: string;
+  branch: string;
+  role: string;
+  task_id: string;
+  state: string;
+  model: string;
+  context_tokens: number;
+  context_limit: number;
+  context_percent: number;
+  tokens_per_min: number;
+  total_tokens: number;
+  compactions: number;
+  started: string;
+  last_activity: string;
+  where_kind: string;
+  where_label: string;
+  tool_calls: number;
+  errors: number;
+  live: boolean;
+}
+
+export interface AgentsResponse {
+  at: string;
+  sessions: AgentSession[];
+  pod_error: string;
+}
+
+export interface AgentEvent {
+  time: string;
+  kind: string;
+  tool: string;
+  text: string;
+  detail: string;
+}
+
+export interface AgentLogResponse {
+  id: string;
+  events: AgentEvent[];
+}
+
+export interface ContextSource {
+  layer: string;
+  name: string;
+  path: string;
+  scope: string;
+  tokens: number;
+  loaded_at: string;
+  changed_at: string;
+  stale: boolean;
+}
+
+export interface ContextLayer {
+  layer: string;
+  tokens: number;
+}
+
+export interface AgentContext {
+  session_id: string;
+  window: number;
+  limit: number;
+  layers: ContextLayer[];
+  sources: ContextSource[];
+}
+
+export interface FleetCard {
+  id: string;
+  title: string;
+  status: string;
+  agents: string[];
+}
+
+export interface FleetStage {
+  stage: string;
+  count: number;
+  cards: FleetCard[];
+}
+
+export interface FleetProject {
+  key: string;
+  name: string;
+  current: boolean;
+  reach: string;
+  open: number;
+  in_progress: number;
+  ready: number;
+  blocked: number;
+  closed_today: number;
+  live_agents: number;
+  stages: FleetStage[];
+}
+
+export interface FleetResponse {
+  at: string;
+  projects: FleetProject[];
+  sessions: AgentSession[];
+  pod_error: string;
+}
+
+export interface MatrixSession {
+  id: string;
+  name: string;
+  project: string;
+  state: string;
+  tool: string;
+}
+
+export interface MatrixCell {
+  loaded: boolean;
+  tokens: number;
+  stale: boolean;
+}
+
+export interface MatrixRow {
+  key: string;
+  layer: string;
+  name: string;
+  path: string;
+  scope: string;
+  aggregate: boolean;
+  cells: MatrixCell[];
+  sessions: number;
+  stale: number;
+  tokens: number;
+}
+
+export interface Insight {
+  title: string;
+  text: string;
+}
+
+export interface MatrixResponse {
+  at: string;
+  sessions: MatrixSession[];
+  rows: MatrixRow[];
+  layers: ContextLayer[];
+  insights: Insight[];
+}
+
+export interface TimelineSegment {
+  phase: string;
+  start: string;
+  end: string;
+  label: string;
+}
+
+export interface TimelineMarker {
+  time: string;
+  kind: string;
+  label: string;
+}
+
+export interface TimelineLane {
+  session_id: string;
+  name: string;
+  project: string;
+  state: string;
+  segments: TimelineSegment[];
+  markers: TimelineMarker[];
+}
+
+export interface TimelineResponse {
+  from: string;
+  to: string;
+  hours: number;
+  lanes: TimelineLane[];
+}
+
+export interface CommitInfo {
+  hash: string;
+  short: string;
+  time: string;
+  author: string;
+  subject: string;
+  refs: string[];
+  issues: string[];
+}
+
+export interface CommitsResponse {
+  repo: string;
+  commits: CommitInfo[];
+}

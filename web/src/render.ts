@@ -8,6 +8,7 @@ import { D, ancestors, blocksOf, descendants, eff, get, isReady, kids, laneOf, o
 import { DEFAULT_CHIPS, PC, S, SORTS, chipRowVisible, laneHeight, listLayout, matches, nextLaneHeight, queryString, stOf, textMatches, treeRows, tyOf, typeTerms, type LaneHeight, type TreeRow } from "./state";
 import { syncHistory } from "./nav";
 import { renderMermaidBlocks } from "./mermaid";
+import { renderFleet } from "./fleet";
 import { renderMemory, renderMemoryDetail } from "./memory";
 import { $, $opt, age, desktop, esc, fmtDate, md, sizeClass, split, store } from "./util";
 
@@ -81,13 +82,14 @@ export function render(): void {
     ? cachedDetailPlace
     : currentPlace;
   renderHeader(); renderChips(); renderBar(); renderStale();
-  (["tree", "board", "search", "more", "graph", "memory"] as const).forEach(v => { $("#v" + v[0].toUpperCase() + v.slice(1)).hidden = S.view !== v; });
+  (["tree", "board", "search", "more", "graph", "memory", "fleet"] as const).forEach(v => { $("#v" + v[0].toUpperCase() + v.slice(1)).hidden = S.view !== v; });
   if (S.view === "tree") renderTree();
   if (S.view === "board") renderBoard();
   if (S.view === "search") renderSearch();
   if (S.view === "more") renderMore();
   if (S.view === "graph") renderGraph();
   if (S.view === "memory") renderMemory();
+  if (S.view === "fleet") renderFleet();
   renderDetail(was);
   syncQuery();
   syncHistory();
@@ -124,7 +126,8 @@ function renderHeader(): void {
  */
 function renderChips(): void {
   const el = $("#chips");
-  el.hidden = !chipRowVisible();
+  // The chips filter issues, which no fleet page lists.
+  el.hidden = !chipRowVisible() || S.view === "fleet";
   const P = pool();
   const onBoard = S.view === "board";
   const keep = onBoard ? focusSet() : null;
@@ -181,7 +184,7 @@ function renderBar(): void {
     const on = S.view === v || (v === "more" && S.view === "graph");
     return `<button class="${on ? "on" : ""}" data-view="${v}" aria-current="${on ? "page" : "false"}"><span class="g" aria-hidden="true">${g}</span>${l}</button>`;
   };
-  el.innerHTML = brand + (listLayout() ? tab("tree", "☰", "List") : tab("tree", "≣", "Tree")) + tab("board", "▥", "Board") + tab("memory", "◇", "Memory") + tab("search", "⌕", "Search") + tab("more", "⋯", "More") + foot;
+  el.innerHTML = brand + (listLayout() ? tab("tree", "☰", "List") : tab("tree", "≣", "Tree")) + tab("board", "▥", "Board") + tab("memory", "◇", "Memory") + (D.public ? "" : tab("fleet", "⌬", "Fleet")) + tab("search", "⌕", "Search") + tab("more", "⋯", "More") + foot;
 }
 
 export function renderStale(): void {

@@ -20,6 +20,7 @@ const (
 	CommandBranch
 	CommandUpdate
 	CommandForget
+	CommandFleet
 )
 
 // Command is a resolved ':' command.
@@ -31,6 +32,8 @@ type Command struct {
 	// Query holds the query terms after a type or issues command. When set,
 	// they replace the shared query instead of editing its type term.
 	Query string
+	// FleetView is the fleet browser view a fleet command opens.
+	FleetView fleetView
 }
 
 func typeFilterCommand(t model.IssueType) Command {
@@ -39,7 +42,7 @@ func typeFilterCommand(t model.IssueType) Command {
 
 // commandNames are the canonical spellings offered as suggestions. The alias
 // table below must resolve every one of them.
-var commandNames = []string{"branch", "bug", "chore", "epic", "feature", "forget", "issues", "layout", "mouse", "project", "task", "update", "wrap"}
+var commandNames = []string{"agents", "branch", "bug", "chore", "commits", "epic", "feature", "forget", "issues", "layout", "mouse", "project", "pulse", "task", "update", "wrap", "xray"}
 
 // commandAliases is a closed table in code rather than config: the set of
 // entity views is fixed by the Beads schema, and tests can check it is total.
@@ -57,7 +60,13 @@ var commandAliases = map[string]Command{
 	"update":  {Kind: CommandUpdate},
 	"forget":  {Kind: CommandForget},
 	"project": {Kind: CommandProjects}, "projects": {Kind: CommandProjects}, "proj": {Kind: CommandProjects},
+	"agents": fleetCommand(fleetAgents), "agent": fleetCommand(fleetAgents), "ag": fleetCommand(fleetAgents), "sessions": fleetCommand(fleetAgents),
+	"xray": fleetCommand(fleetXray), "x": fleetCommand(fleetXray),
+	"pulse":   fleetCommand(fleetPulse),
+	"commits": fleetCommand(fleetCommits), "commit": fleetCommand(fleetCommits), "log": fleetCommand(fleetCommits), "git": fleetCommand(fleetCommits),
 }
+
+func fleetCommand(v fleetView) Command { return Command{Kind: CommandFleet, FleetView: v} }
 
 // ResolveCommand maps prompt text to a command. A type or issues command may
 // carry query terms after its name, as k9s takes a filter after a resource

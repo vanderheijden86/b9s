@@ -1,0 +1,714 @@
+<title>b9s Fleet Mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a contact sheet. Sticky index, then one frame per mockup with a short note beside it.
+   Palette: b9s "calm terminal" (ADR 0052). Terminal frames stay dark in both themes on purpose. */
+:root {
+  --ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --bg: #f4f6f3; --surface: #ffffff; --raised: #eaeee9; --line: #d3dad4; --line-soft: #e4e9e4;
+  --text: #141a16; --soft: #39433d; --muted: #66716a; --ghost: #9aa39c;
+  --open: #2d8a4b; --progress: #24788c; --priority: #94761a; --danger: #b4453e; --violet: #6a4fa6;
+  --accent: #24788c; --hover: rgba(36,120,140,.07); --sel: rgba(36,120,140,.12);
+
+  --t-bg: #0c1113; --t-panel: #111719; --t-line: #29333a; --t-text: #e9ece6; --t-soft: #b9beb7;
+  --t-muted: #7c857e; --t-ghost: #4f5751; --t-open: #7bd88f; --t-prog: #7cc7d8; --t-pri: #d2b25c;
+  --t-danger: #dc7a75; --t-violet: #b9a3e3; --t-sel-bg: #1d4b55; --t-sel-fg: #f3f7f4;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a0e10; --surface: #11171a; --raised: #172024; --line: #2a343b; --line-soft: #1b2428;
+  --text: #f1f3ee; --soft: #c3c8c1; --muted: #848d86; --ghost: #5d655f;
+  --open: #7bd88f; --progress: #7cc7d8; --priority: #d2b25c; --danger: #dc7a75; --violet: #b9a3e3;
+  --accent: #7cc7d8; --hover: rgba(124,199,216,.07); --sel: rgba(124,199,216,.12); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0a0e10; --surface: #11171a; --raised: #172024; --line: #2a343b; --line-soft: #1b2428;
+  --text: #f1f3ee; --soft: #c3c8c1; --muted: #848d86; --ghost: #5d655f;
+  --open: #7bd88f; --progress: #7cc7d8; --priority: #d2b25c; --danger: #dc7a75; --violet: #b9a3e3;
+  --accent: #7cc7d8; --hover: rgba(124,199,216,.07); --sel: rgba(124,199,216,.12); color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1320px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--mono); text-wrap: balance; letter-spacing: -.01em; }
+h1 { font-size: clamp(26px, 4vw, 38px); margin: 40px 0 8px; }
+h2 { font-size: 20px; margin: 56px 0 4px; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; max-width: 68ch; color: var(--soft); }
+code, .k { font-family: var(--mono); font-size: .88em; }
+.k { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); color: var(--text); }
+.lede { font-size: 17px; }
+.eyebrow { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+nav.idx { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line);
+  margin: 24px 0 0; padding: 10px 0; display: flex; gap: 6px 14px; flex-wrap: wrap; font: 12px/1.6 var(--mono); }
+nav.idx a { color: var(--muted); text-decoration: none; white-space: nowrap; }
+nav.idx a:hover, nav.idx a:focus-visible { color: var(--accent); }
+nav.idx b { color: var(--text); font-weight: 600; margin-right: 2px; }
+
+.mock { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px 28px; margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--line-soft); scroll-margin-top: 70px; }
+@media (max-width: 1000px) { .mock { grid-template-columns: minmax(0, 1fr); } }
+.note { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.note .id { font: 700 12px/1 var(--mono); color: var(--accent); }
+.note ul { margin: 0; padding-left: 18px; color: var(--soft); font-size: 14px; }
+.note li { margin: 2px 0; }
+.pros li::marker { content: "+  "; color: var(--open); font-family: var(--mono); }
+.cons li::marker { content: "−  "; color: var(--danger); font-family: var(--mono); }
+.frame { min-width: 0; overflow-x: auto; border-radius: 8px; }
+
+/* ---------- terminal ---------- */
+.term { background: var(--t-bg); color: var(--t-text); border: 1px solid var(--t-line); border-radius: 8px;
+  font: 12px/1.5 var(--mono); padding: 10px 12px; white-space: pre; min-width: 940px; }
+.term .bar { display: flex; gap: 6px; margin: -2px 0 8px; }
+.term .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--t-ghost); }
+.m { color: var(--t-muted); } .g { color: var(--t-ghost); } .s { color: var(--t-soft); }
+.o { color: var(--t-open); } .p { color: var(--t-prog); } .y { color: var(--t-pri); } .r { color: var(--t-danger); } .v { color: var(--t-violet); }
+.b { font-weight: 700; } .hl { background: var(--t-sel-bg); color: var(--t-sel-fg); display: inline-block; width: 100%; }
+.crumbs span { background: var(--t-panel); border: 1px solid var(--t-line); padding: 0 6px; margin-right: 4px; color: var(--t-soft); }
+.crumbs span.on { background: var(--t-prog); color: var(--t-bg); border-color: var(--t-prog); }
+
+/* ---------- web ---------- */
+.web { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 900px; overflow: hidden; font-size: 13px; }
+.web .top { display: flex; align-items: center; gap: 14px; padding: 9px 14px; border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--muted); }
+.web .top .brand { color: var(--text); font-weight: 700; }
+.web .top .tab { padding: 3px 8px; border-radius: 5px; }
+.web .top .tab.on { background: var(--sel); color: var(--text); }
+.web .top .sp { flex: 1; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--open); vertical-align: middle; }
+.dot.run { box-shadow: 0 0 0 0 var(--open); animation: pulse 1.8s infinite; }
+.dot.wait { background: var(--priority); } .dot.fail { background: var(--danger); } .dot.idle { background: var(--ghost); }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(123,216,143,.5);} 70% { box-shadow: 0 0 0 6px rgba(123,216,143,0);} 100% { box-shadow: 0 0 0 0 rgba(123,216,143,0);} }
+@media (prefers-reduced-motion: reduce) { .dot.run { animation: none; } }
+.mono { font-family: var(--mono); }
+.mut { color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 5px; font: 11px/1 var(--mono); padding: 3px 6px; border-radius: 99px; border: 1px solid var(--line); background: var(--bg); color: var(--soft); white-space: nowrap; }
+.chip.agent { border-color: color-mix(in srgb, var(--open) 50%, var(--line)); }
+.chip.fail { border-color: color-mix(in srgb, var(--danger) 60%, var(--line)); color: var(--danger); }
+
+/* fleet board */
+.fleet { display: grid; grid-template-columns: 150px repeat(5, minmax(0, 1fr)); }
+.fleet > div { border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); padding: 8px; min-height: 64px; display: flex; flex-direction: column; gap: 6px; }
+.fleet .hd { min-height: 0; font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+.fleet .pj { font: 600 12px var(--mono); justify-content: center; }
+.fleet .pj small { font-weight: 400; color: var(--muted); }
+.card { border: 1px solid var(--line); border-radius: 6px; padding: 6px 7px; background: var(--surface); display: flex; flex-direction: column; gap: 4px; }
+.card .t { font-size: 12px; line-height: 1.3; }
+.card .id { font: 11px var(--mono); color: var(--muted); }
+.card.live { border-color: color-mix(in srgb, var(--open) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--open) 12%, transparent); }
+.card.bad { border-color: color-mix(in srgb, var(--danger) 60%, var(--line)); }
+.ctxbar { height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+.ctxbar i { display: block; height: 100%; background: var(--progress); }
+.ctxbar i.hot { background: var(--priority); } .ctxbar i.full { background: var(--danger); }
+
+/* split detail */
+.split { display: grid; grid-template-columns: 1.25fr 1fr 260px; min-height: 420px; }
+.split > section { border-right: 1px solid var(--line); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.split > section:last-child { border-right: 0; }
+.log { font: 11.5px/1.55 var(--mono); display: flex; flex-direction: column; gap: 3px; }
+.log .ln { display: grid; grid-template-columns: 58px 54px minmax(0, 1fr); gap: 8px; }
+.log .ts { color: var(--ghost); }
+.tag { font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+.tag.tool { color: var(--progress); } .tag.ai { color: var(--open); } .tag.usr { color: var(--priority); } .tag.err { color: var(--danger); } .tag.ctx { color: var(--violet); }
+.stack { display: flex; height: 22px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.stack i { display: block; height: 100%; }
+.legend { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 4px 8px; font-size: 12px; align-items: center; }
+.legend b { width: 10px; height: 10px; border-radius: 2px; display: block; }
+.legend span:nth-child(3n) { font-family: var(--mono); color: var(--muted); }
+.warn { border: 1px solid color-mix(in srgb, var(--priority) 50%, var(--line)); background: color-mix(in srgb, var(--priority) 8%, transparent); border-radius: 6px; padding: 7px 9px; font-size: 12px; color: var(--soft); }
+
+/* timeline */
+.tl { display: grid; grid-template-columns: 190px minmax(0, 1fr); font-size: 12px; }
+.tl > div { border-bottom: 1px solid var(--line-soft); padding: 7px 10px; min-height: 34px; }
+.tl .who { font-family: var(--mono); display: flex; flex-direction: column; justify-content: center; }
+.tl .who small { color: var(--muted); }
+.lane { position: relative; }
+.lane i { position: absolute; top: 9px; height: 16px; border-radius: 3px; font: 600 10px/16px var(--mono); padding: 0 5px; color: var(--surface); overflow: hidden; white-space: nowrap; }
+.ph-plan { background: var(--violet); } .ph-impl { background: var(--progress); } .ph-rev { background: var(--priority); } .ph-test { background: var(--open); } .ph-fail { background: var(--danger); } .ph-idle { background: var(--ghost); }
+.lane em { position: absolute; top: 5px; width: 2px; height: 24px; background: var(--text); font-style: normal; }
+.lane em::after { content: attr(data-l); position: absolute; left: 4px; top: -2px; font: 10px var(--mono); color: var(--muted); white-space: nowrap; }
+.axis { display: flex; justify-content: space-between; font: 10px var(--mono); color: var(--muted); }
+
+/* heatmap */
+.heat { border-collapse: collapse; font-size: 12px; width: 100%; }
+.heat th, .heat td { border: 1px solid var(--line-soft); padding: 5px 7px; text-align: center; }
+.heat th { font: 600 10.5px var(--mono); color: var(--muted); }
+.heat th.row { text-align: left; font: 12px var(--ui); color: var(--text); white-space: nowrap; }
+.heat th.row small { color: var(--muted); font-family: var(--mono); }
+.heat td { font: 11px var(--mono); color: var(--text); }
+.h0 { color: var(--ghost) !important; }
+.h1 { background: color-mix(in srgb, var(--violet) 14%, transparent); }
+.h2 { background: color-mix(in srgb, var(--violet) 30%, transparent); }
+.h3 { background: color-mix(in srgb, var(--violet) 50%, transparent); }
+.stale { outline: 2px solid var(--priority); outline-offset: -2px; }
+
+/* treemap + insights */
+.tm { display: grid; grid-template-columns: 2.2fr 1.4fr 1fr 1fr; grid-template-rows: 130px 90px 70px; gap: 3px; padding: 12px; }
+.tm div { border-radius: 4px; padding: 8px 9px; display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; border: 1px solid var(--line); }
+.tm b { font-family: var(--mono); font-size: 12.5px; }
+.tm .a3 { background: color-mix(in srgb, var(--open) 30%, var(--surface)); }
+.tm .a2 { background: color-mix(in srgb, var(--open) 18%, var(--surface)); }
+.tm .a1 { background: color-mix(in srgb, var(--open) 8%, var(--surface)); }
+.tm .a0 { background: var(--raised); }
+.tm .blk { border-color: var(--danger); border-width: 2px; }
+.ins { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 0 12px 12px; }
+.ins div { border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; font-size: 12.5px; color: var(--soft); display: flex; flex-direction: column; gap: 3px; }
+.ins div strong { color: var(--text); font-weight: 600; }
+
+.svgbox svg { display: block; width: 100%; height: auto; }
+.svgbox text { font-family: var(--mono); }
+
+.reco { margin-top: 56px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.reco ol { margin: 0; padding-left: 20px; color: var(--soft); max-width: 80ch; }
+.reco li { margin: 6px 0; }
+.src { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.src div { border: 1px solid var(--line-soft); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: var(--soft); background: var(--bg); }
+.src div b { display: block; color: var(--text); font-family: var(--mono); font-size: 12px; margin-bottom: 2px; }
+</style>
+
+<div class="wrap">
+  <h1>b9s fleet: agents, context, every project</h1>
+  <p class="lede">Twelve directions for a cross-project b9s. The terminal mockups add an <code>agents</code> resource, the way k9s has pods. The web mockups use the second dimension the terminal does not have. All names and numbers are examples taken from the current lanes.</p>
+
+  <nav class="idx" aria-label="Mockups">
+    <a href="#t1"><b>T1</b>:agents</a>
+    <a href="#t2"><b>T2</b>logs</a>
+    <a href="#t3"><b>T3</b>context</a>
+    <a href="#t4"><b>T4</b>:projects</a>
+    <a href="#t5"><b>T5</b>xray</a>
+    <a href="#t6"><b>T6</b>pulse</a>
+    <a href="#t7"><b>T7</b>:commits</a>
+    <a href="#t8"><b>T8</b>commit detail</a>
+    <a href="#w1"><b>W1</b>fleet board</a>
+    <a href="#w2"><b>W2</b>agent page</a>
+    <a href="#w3"><b>W3</b>constellation</a>
+    <a href="#w4"><b>W4</b>context matrix</a>
+    <a href="#w5"><b>W5</b>timeline</a>
+    <a href="#w6"><b>W6</b>project map</a>
+    <a href="#reco"><b>→</b>recommendation</a>
+  </nav>
+
+  <h2>Terminal: b9s gets k9s resources</h2>
+  <p><span class="k">:agents</span>, <span class="k">:projects</span>, <span class="k">:xray</span> and <span class="k">:pulse</span> become commands next to the issue views. Every view works across all projects by default. <span class="k">0</span> means all, <span class="k">1</span>–<span class="k">9</span> pick one project, as in the current picker.</p>
+
+  <!-- T1 -->
+  <article class="mock" id="t1">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="m"> Context:</span> <span class="b">all-projects</span>        <span class="y">&lt;l&gt;</span> <span class="s">Logs</span>       <span class="y">&lt;c&gt;</span> <span class="s">Context</span>     <span class="y">&lt;a&gt;</span> <span class="s">Attach tmux</span>     <span class="p"> __    ___</span>
+<span class="m"> Sources:</span> claude codex omnigent <span class="y">&lt;d&gt;</span> <span class="s">Describe</span>   <span class="y">&lt;t&gt;</span> <span class="s">Open task</span>   <span class="y">&lt;ctrl-k&gt;</span> <span class="s">Stop</span>      <span class="p">|__)  (__\  _</span>
+<span class="m"> Agents:</span>  <span class="o">7 running</span> <span class="y">2 waiting</span> <span class="r">1 failed</span>  <span class="y">&lt;f&gt;</span> <span class="s">Follow</span>     <span class="y">&lt;/&gt;</span> <span class="s">Filter</span>      <span class="y">&lt;s&gt;</span> <span class="s">Sort</span>             <span class="p">|__)   __/ _)</span>
+<span class="m"> Tokens:</span>  41.2k/min  $3.10/h     <span class="y">&lt;0&gt;</span> <span class="s">All</span>  <span class="y">&lt;1&gt;</span> <span class="s">omnigent-config</span>  <span class="y">&lt;2&gt;</span> <span class="s">b9s</span>  <span class="y">&lt;3&gt;</span> <span class="s">osenco-infra</span>
+<span class="g">┌──────────────────────────────────────────────── </span><span class="p b">Agents</span><span class="s">(all)</span><span class="y">[11]</span><span class="g"> ────────────────────────────────────────────────┐</span>
+<span class="m b"> NAME↑            PROJECT          TOOL    ROLE         TASK      STATE     CONTEXT          TOK/m  RST AGE  WHERE              </span>
+<span class="hl"> impl-g9h24       omnigent-config  codex   implementer  g9h.24    Running   ███████░░░  78%  6.4k   1  19m  pod lane-g9h24      </span>
+ polly-g9h24      omnigent-config  codex   polly        g9h.24    <span class="o">Running</span>   <span class="p">████░░░░░░</span>  41%  2.1k   0  23m  pod lane-g9h24
+ review-5pt2      omnigent-config  claude  reviewer     5pt.2     <span class="y">Waiting</span>   <span class="p">██░░░░░░░░</span>  22%     0   0   4m  pod lane-5pt2
+ tester-bqj       omnigent-config  codex   tester       bqj       <span class="r">Failed</span>    <span class="r">█████████░</span>  91%     —   2  41m  pod lane-bqj
+ deploy-dew       omnigent-config  codex   deployer     dew       <span class="o">Running</span>   <span class="p">███░░░░░░░</span>  33%  1.8k   0   7m  pod lane-dew
+ claude-b9s       b9s              claude  interactive  m7wt      <span class="o">Running</span>   <span class="p">█░░░░░░░░░</span>  12%  3.0k   0   2m  tmux 1:mayor-loop
+ claude-b9s-web   b9s              claude  interactive  1si3      <span class="y">Waiting</span>   <span class="y">██████░░░░</span>  64%     0   0  38m  tmux 4:preview
+ codex-moneybird  osenco-infra     codex   interactive  —         <span class="g">Idle</span>      <span class="p">█████░░░░░</span>  55%     0   0   1h  tmux osenco-infra
+ claude-energie   vdh-paperwork    claude  interactive  ev2       <span class="o">Running</span>   <span class="p">███░░░░░░░</span>  29%  4.7k   0  12m  tmux 3:energie
+ impl-spc7        spectroscope     codex   implementer  spc.7     <span class="o">Running</span>   <span class="p">██████░░░░</span>  58%  9.9k   0  15m  pod lane-spc7
+ review-spc7      spectroscope     claude  reviewer     spc.7     <span class="g">Pending</span>   <span class="g">░░░░░░░░░░</span>   0%     —   0   0s  pod lane-spc7
+<span class="g">└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+ <span class="crumbs"><span>all</span><span class="on">agents</span></span>  <span class="m">RST = context compactions.  WHERE = pod for lanes, tmux pane for laptop sessions.</span></div></div>
+    <div class="note">
+      <span class="id">T1 · :agents</span>
+      <h3>The pods view, for agents</h3>
+      <p>One row per running session on the laptop or in a lane pod. State, context fill and token rate are the columns you scan. <span class="k">Enter</span> opens the logs, <span class="k">c</span> opens the context.</p>
+      <ul class="pros"><li>Exactly the k9s mental model</li><li>Fits the current table code</li><li>RST counts compactions, like pod restarts</li></ul>
+      <ul class="cons"><li>Needs a session collector per tool</li></ul>
+    </div>
+  </article>
+
+  <!-- T2 -->
+  <article class="mock" id="t2">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌──────────────────────── </span><span class="p b">Logs</span><span class="s">(omnigent-config/impl-g9h24)</span> <span class="o">[follow]</span><span class="g"> ──────────────────────────────────────────────────────┐</span>
+<span class="m"> Autoscroll:</span><span class="o">On</span>  <span class="m">Filter:</span><span class="s">all</span>  <span class="m">Wrap:</span><span class="s">Off</span>  <span class="m">Since:</span><span class="s">start</span>   <span class="y">&lt;1&gt;</span>all <span class="y">&lt;2&gt;</span>messages <span class="y">&lt;3&gt;</span>tools <span class="y">&lt;4&gt;</span>errors <span class="y">&lt;5&gt;</span>bd   <span class="y">&lt;x&gt;</span>expand  <span class="y">&lt;i&gt;</span>inject
+<span class="g"> 21:58:02</span> <span class="y b">TASK </span>  g9h.24 Epic: Move Omnigent to big-hetzner with a Pod per lane  <span class="m">(dispatched by polly-g9h24)</span>
+<span class="g"> 21:58:03</span> <span class="v b">CTX  </span>  loaded AGENTS.md (global 6.1k, project 2.9k) · role implementer.md 0.8k · 2 memories · 2 skills
+<span class="g"> 21:58:09</span> <span class="o b">AI   </span>  I'll read the current lane dispatcher and the k3d manifests before changing anything.
+<span class="g"> 21:58:10</span> <span class="p b">TOOL </span>  Read  charts/lane/templates/pod.yaml  <span class="m">→ 142 lines</span>
+<span class="g"> 21:58:12</span> <span class="p b">TOOL </span>  Bash  kubectl --context big-hetzner get nodes -o wide  <span class="m">→ 3 nodes Ready</span>
+<span class="g"> 21:59:40</span> <span class="p b">TOOL </span>  Edit  charts/lane/templates/pod.yaml  <span class="o">+18</span> <span class="r">-4</span>
+<span class="g"> 22:00:05</span> <span class="p b">TOOL </span>  Bash  helm template charts/lane | kubeconform -strict  <span class="o">→ exit 0</span>
+<span class="g"> 22:01:17</span> <span class="y b">BD   </span>  bd comments add g9h.24  "Pod per lane renders; testing quota limits next."
+<span class="g"> 22:03:44</span> <span class="p b">TOOL </span>  Bash  go test ./internal/lane/... -run Quota  <span class="r">→ exit 1  (2 failed)</span>
+<span class="g"> 22:03:45</span> <span class="r b">ERR  </span>  quota_test.go:88 expected limits.memory 2Gi, got 512Mi
+<span class="g"> 22:04:02</span> <span class="o b">AI   </span>  The LimitRange default overrides the pod spec. I'll set requests explicitly in the template.
+<span class="g"> 22:04:30</span> <span class="v b">CTX  </span>  <span class="y">compaction #1</span> · 182k → 61k tokens · kept: task, AGENTS.md, last 12 turns
+<span class="g"> 22:05:11</span> <span class="p b">TOOL </span>  Edit  charts/lane/templates/pod.yaml  <span class="o">+6</span> <span class="r">-1</span>
+<span class="g"> 22:05:58</span> <span class="p b">TOOL </span>  Bash  go test ./internal/lane/... -run Quota  <span class="o">→ exit 0</span>
+<span class="g"> 22:06:01</span> <span class="o b">AI   </span>  ▍
+<span class="g">└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+ <span class="crumbs"><span>all</span><span>agents</span><span class="on">logs</span></span>  <span class="m">source: ~/.codex/sessions/2026/11/15/rollout-…jsonl  ·  i sends a message into the session (laptop only)</span></div></div>
+    <div class="note">
+      <span class="id">T2 · logs</span>
+      <h3>Transcript as a log stream</h3>
+      <p>The session file is tailed and each event becomes one line with a kind tag. Number keys filter by kind, as k9s does for containers. Context events (load, compaction) show inline in violet.</p>
+      <ul class="pros"><li>Read a lane without attaching to the pod</li><li>Same view for Claude and Codex</li><li><span class="k">x</span> expands a tool result in place</li></ul>
+      <ul class="cons"><li>Thinking blocks may be redacted</li><li>Inject is risky for lanes: keep it laptop-only</li></ul>
+    </div>
+  </article>
+
+  <!-- T3 -->
+  <article class="mock" id="t3">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌──────────────────────── </span><span class="v b">Context</span><span class="s">(omnigent-config/impl-g9h24)</span><span class="g"> ────────────────────────────────────────────────────────────────┐</span>
+<span class="m"> Window   </span> <span class="b">156k / 200k</span>  <span class="p">████████████████</span><span class="g">░░░░</span> 78%   <span class="m">model</span> gpt-5.3-codex   <span class="m">compactions</span> 1   <span class="m">next at</span> ~190k
+<span class="m"> Layers   </span> <span class="v">▇▇</span><span class="y">▇</span><span class="o">▇</span><span class="p">▇▇▇▇▇▇▇</span><span class="s">▇▇▇▇▇▇▇</span><span class="g">▇</span>  <span class="v">■</span> instructions <span class="y">■</span> memory <span class="o">■</span> task <span class="p">■</span> files <span class="s">■</span> tool output <span class="g">■</span> chat
+
+<span class="m b"> LAYER                                      TOKENS  SCOPE     LOADED   STATUS</span>
+ <span class="v">▾ Instructions</span>                               9.8k
+ <span class="g">│ ├─</span> ~/.config/agents/AGENTS.md                6.1k  global    21:58    <span class="y">⚠ changed 22:02 (+14 lines), session has old copy</span>
+ <span class="g">│ ├─</span> omnigent-config/AGENTS.md                 2.9k  project   21:58    <span class="o">current</span>
+ <span class="g">│ └─</span> lane role: implementer.md                 0.8k  role      21:58    <span class="o">current</span>
+ <span class="y">▾ Memories</span>  <span class="m">(bd prime)</span>                         1.2k
+<span class="hl"> │ ├─ b9s-full-go-test-on-the-mac-can           0.3k  project   21:58    shared by 4 running sessions             </span>
+ <span class="g">│ └─</span> lane-quota-needs-explicit-requests        0.4k  project   22:04    <span class="p">new, written by this session</span>
+ <span class="s">▸ Skills</span>                                     4.3k            21:58    test-driven-development, systematic-debugging
+ <span class="o">▸ Task g9h.24</span> + 3 deps + 2 comments          2.0k            21:58
+ <span class="p">▸ Files read</span>   18 files                      38.4k                     top: internal/lane/dispatch.go 9.2k
+ <span class="s">▸ Tool output</span>  41 calls                      91.1k                     top: kubectl describe pod 14.0k
+ <span class="g">▸ Conversation</span>                                 8.6k
+<span class="g">└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+ <span class="crumbs"><span>all</span><span>agents</span><span class="on">context</span></span>  <span class="y">&lt;enter&gt;</span> <span class="m">open file</span>  <span class="y">&lt;w&gt;</span> <span class="m">who else loaded this</span>  <span class="y">&lt;D&gt;</span> <span class="m">diff loaded vs current</span></div></div>
+    <div class="note">
+      <span class="id">T3 · context</span>
+      <h3>What the agent is reading from</h3>
+      <p>The window split by layer, from the instruction files down to tool output. Each source shows when it was loaded and whether the file changed since. <span class="k">w</span> jumps to every other session that loaded the same source.</p>
+      <ul class="pros"><li>Answers "why did it do that"</li><li>Shows stale AGENTS.md in running lanes</li><li>Shows that tool output, not instructions, fills the window</li></ul>
+      <ul class="cons"><li>Token counts are estimates per layer</li></ul>
+    </div>
+  </article>
+
+  <!-- T4 -->
+  <article class="mock" id="t4">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌──────────────────────────────────────────── </span><span class="p b">Projects</span><span class="y">[7]</span><span class="g"> ───────────────────────────────────────────────────────────┐</span>
+<span class="m b"> #  PROJECT           OPEN  READY  PROG  BLOCKED  AGENTS     CLOSED/7d          CTX SHARED  LAST CHANGE        </span>
+<span class="hl"> 1  omnigent-config    110     28    12        9  ●●●●● 5    ▂▃▅▇▆▇█  126       2 memories   12s  impl-g9h24   </span>
+ 2  b9s                 64     19     3        2  <span class="o">●●</span><span class="y">●</span> 3      <span class="p">▃▂▄▃▅▄▃</span>   48       <span class="m">1 memory</span>     2m  claude-b9s
+ 3  spectroscope        37     11     2        4  <span class="o">●</span><span class="g">●</span> 2      <span class="p">▁▁▂▅▇▅▆</span>   31       <span class="m">—</span>            15m impl-spc7
+ 4  osenco-infra        22      6     1        0  <span class="g">●</span> 1      <span class="p">▂▁▁▂▁▃▂</span>    9       <span class="m">—</span>            1h  codex-moneybird
+ 5  vdh-paperwork       18      5     1        0  <span class="o">●</span> 1      <span class="p">▁▂▁▁▃▂▂</span>    7       <span class="m">—</span>            12m claude-energie
+ 6  LP_Team             41      9     0        <span class="r">7</span>  <span class="g">—</span>        <span class="p">▅▃▂▁▁▁▁</span>    4       <span class="m">—</span>            <span class="y">6d</span>  —
+ 7  agents-config       12      3     0        0  <span class="g">—</span>        <span class="p">▁▂▁▃▁▁▁</span>    5       <span class="r">feeds all</span>    3m  (git)
+<span class="g">└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+ <span class="m">Cross-project:</span> <span class="r">3 issues in LP_Team wait on omnigent-config/g9h.24</span>  <span class="m">·</span>  <span class="y">LP_Team stalled 6 days</span>  <span class="m">·</span>  <span class="s">agents-config changed AGENTS.md, 5 running sessions hold the old copy</span></div></div>
+    <div class="note">
+      <span class="id">T4 · :projects</span>
+      <h3>The picker, grown into a dashboard</h3>
+      <p>Every database on the shared Dolt server in one table, with live agents per project and a 7-day trend. A footer line names cross-project facts: blocks between projects, stale projects, stale context.</p>
+      <ul class="pros"><li>Builds on <code>project_table.go</code></li><li>Cheap: counts only</li></ul>
+      <ul class="cons"><li>Blocks between projects need an external-ref convention in Beads</li></ul>
+    </div>
+  </article>
+
+  <!-- T5 -->
+  <article class="mock" id="t5">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌──────────────────────────────────────────── </span><span class="p b">Xray</span><span class="s">(agents)</span><span class="g"> ────────────────────────────────────────────────────────────┐</span>
+ <span class="p">⎈</span> <span class="b">all-projects</span>
+ <span class="g">├──</span> <span class="b">omnigent-config</span>
+ <span class="g">│   ├──</span> <span class="y">◆</span> g9h.24 Epic: Move Omnigent to big-hetzner with a Pod per lane
+ <span class="g">│   │   └──</span> <span class="p">▣</span> lane-g9h24 <span class="m">(pod, big-hetzner)</span>
+<span class="hl"> │   │       ├── ◉ polly-g9h24      codex   polly        Running  41%                                           </span>
+ <span class="g">│   │       └──</span> <span class="o">◉</span> impl-g9h24       codex   implementer  <span class="o">Running</span>  78%  <span class="m">→ PR #61 draft</span>
+ <span class="g">│   ├──</span> <span class="y">◆</span> 5pt.2 Review Spectroscope, with baseline and video options
+ <span class="g">│   │   └──</span> <span class="p">▣</span> lane-5pt2 <span class="g">──</span> <span class="y">◉</span> review-5pt2  claude reviewer <span class="y">Waiting</span> <span class="m">for impl-5pt2 push</span>
+ <span class="g">│   └──</span> <span class="r">◆</span> bqj Omnigent schedule run-now fires a paused task
+ <span class="g">│       └──</span> <span class="p">▣</span> lane-bqj <span class="g">──</span> <span class="r">◉</span> tester-bqj  codex tester <span class="r">Failed</span> <span class="m">2 restarts · last: quota_test.go:88</span>
+ <span class="g">├──</span> <span class="b">b9s</span>
+ <span class="g">│   ├──</span> <span class="y">◆</span> m7wt Mockups: cross-project view and agents resource
+ <span class="g">│   │   └──</span> <span class="s">▤</span> tmux 1:mayor-loop <span class="g">──</span> <span class="o">◉</span> claude-b9s  claude interactive <span class="o">Running</span>
+ <span class="g">│   └──</span> <span class="g">◇</span> <span class="m">(no task)</span>
+ <span class="g">│       └──</span> <span class="s">▤</span> tmux 4:preview <span class="g">──</span> <span class="y">◉</span> claude-b9s-web  <span class="y">Waiting for input 38m</span>
+ <span class="g">└──</span> <span class="b">osenco-infra</span>
+ <span class="g">    └──</span> <span class="g">◇</span> <span class="m">(no task)</span> <span class="g">──</span> <span class="s">▤</span> tmux osenco-infra <span class="g">──</span> <span class="g">◉</span> codex-moneybird <span class="g">Idle 1h</span>
+<span class="g">└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+ <span class="m">◆ task  ▣ pod  ▤ tmux pane  ◉ agent session      Red: agent working without a Beads task is flagged as</span> <span class="y">◇ (no task)</span></div></div>
+    <div class="note">
+      <span class="id">T5 · :xray</span>
+      <h3>Project → task → pod → agent</h3>
+      <p>The k9s xray tree with Beads at the top. It shows which agents work on which task, and which sessions have no task at all.</p>
+      <ul class="pros"><li>Uses the tree code b9s already has</li><li>Makes "work without a task" visible</li></ul>
+      <ul class="cons"><li>Task link needs a convention (lane label, branch name, or <code>bd update --claim</code> by session)</li></ul>
+    </div>
+  </article>
+
+  <!-- T6 -->
+  <article class="mock" id="t6">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌─ </span><span class="p b">Pulse</span><span class="s">(all, last 6h)</span><span class="g"> ──────────────────────────────────────────────────────────────────────────────────────────────┐</span>
+ <span class="g">┌─ </span><span class="b">Agents running</span><span class="g"> ──────────────────────┐ ┌─ </span><span class="b">Tasks closed / h</span><span class="g"> ────────────────────┐ ┌─ </span><span class="b">Tokens / min</span><span class="g"> ─────────────────┐</span>
+ <span class="g">│</span> <span class="o b">10</span> <span class="m">now · peak 14 at 03:10</span>          <span class="g">│ │</span> <span class="o b">4.5</span> <span class="m">avg · 27 since 16:00</span>          <span class="g">│ │</span> <span class="p b">41.2k</span> <span class="m">now · $18.40 today</span>   <span class="g">│</span>
+ <span class="g">│</span>  <span class="o">      ▄▆█▇▆                     </span>  <span class="g">│ │</span>  <span class="o">  ▂   ▅    ▃   ▇   ▄  ▆      </span>   <span class="g">│ │</span>  <span class="p">        ▃▅▇█▆▅▅▆▇           </span><span class="g">│</span>
+ <span class="g">│</span>  <span class="o">  ▂▃▅▇██████▇▅▃▂▂▃▄▅▆▅▆▇▆▅▆▇ </span>   <span class="g">│ │</span>  <span class="o">▁ █ ▃ █ ▂  █ ▁ █ ▂ █ ▃█ ▂  </span>   <span class="g">│ │</span>  <span class="p">▂▃▄▅▆███████████▇▆▅▆▇     </span>  <span class="g">│</span>
+ <span class="g">└──────────────────────────────────────┘ └──────────────────────────────────────┘ └──────────────────────────────┘</span>
+ <span class="g">┌─ </span><span class="b">Failures</span><span class="g"> ────────────────────────────┐ ┌─ </span><span class="b">Context pressure</span><span class="g"> ────────────────────┐ ┌─ </span><span class="b">Waiting on you</span><span class="g"> ───────────────┐</span>
+ <span class="g">│</span> <span class="r b">3</span> <span class="m">in 6h</span>                             <span class="g">│ │</span> <span class="s">impl-g9h24   </span><span class="p">███████░░░</span> 78%     <span class="g">│ │</span> <span class="y">●</span> claude-b9s-web    38m  <span class="g">│</span>
+ <span class="g">│</span> <span class="r">tester-bqj</span>   quota_test.go:88    <span class="g">│ │</span> <span class="s">tester-bqj   </span><span class="r">█████████░</span> 91%     <span class="g">│ │</span> <span class="y">●</span> review-5pt2       4m   <span class="g">│</span>
+ <span class="g">│</span> <span class="r">impl-spc5</span>    usageLimitExceeded  <span class="g">│ │</span> <span class="s">claude-b9s-web</span><span class="y">██████░░░░</span> 64%    <span class="g">│ │</span> <span class="y">●</span> bd human bfe.3     2h   <span class="g">│</span>
+ <span class="g">│</span> <span class="r">polly-dew</span>    pod OOMKilled       <span class="g">│ │</span> <span class="m">compactions today: 11</span>              <span class="g">│ │</span>                          <span class="g">│</span>
+ <span class="g">└──────────────────────────────────────┘ └──────────────────────────────────────┘ └──────────────────────────────┘</span>
+<span class="g">└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span></div></div>
+    <div class="note">
+      <span class="id">T6 · :pulse</span>
+      <h3>The fleet in six panels</h3>
+      <p>A k9s-pulse page for the morning check. "Waiting on you" collects sessions idle at a prompt and open <code>bd human</code> flags across all projects.</p>
+      <ul class="pros"><li>One glance after a night of lanes</li><li>"Waiting on you" is the most useful panel</li></ul>
+      <ul class="cons"><li>Needs history: a small local store of samples</li></ul>
+    </div>
+  </article>
+
+  <h2>Terminal: git log, the lgl way</h2>
+  <p>Your <code>lgl</code> alias runs lazygit on the commit log alone: full screen, author hidden until <span class="k">U</span>, the graph in one colour. b9s can draw the same list and add what lazygit cannot: the Beads issue behind every <code>Refs:</code> line, and the agent that made the commit.</p>
+
+  <!-- T7 -->
+  <article class="mock" id="t7">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌──────────────────────── </span><span class="p b">Commits</span><span class="s">(b9s · release/1.3.6-rc)</span><span class="y">[2,184]</span><span class="g"> ──────────────────────────────────────────────────────────┐</span>
+<span class="m b"> GRAPH   HASH      DATE               ISSUE      BY        SUBJECT                                                        </span>
+<span class="hl"> ●       71aee23d  15/11/2026, 21:40  hffz.20    claude    docs(release): add v1.3.6 release notes   HEAD origin/release/1.3.6-rc </span>
+ <span class="v">●</span>       <span class="y">92e652e3</span>  <span class="p">15/11/2026, 20:12</span>  <span class="o">e5u3.24</span>    <span class="m">claude</span>    fix(ui): keep the type filter hint visible beside the preview hint
+ <span class="v">●</span>       <span class="y">0b8f35e6</span>  <span class="p">15/11/2026, 18:55</span>  <span class="o">hffz.19</span>    <span class="m">codex</span>     test(release): fix integration failures on the 1.3.6 release candidate
+ <span class="v">●─╮</span>     <span class="y">612656f2</span>  <span class="p">15/11/2026, 16:30</span>  <span class="o">2w86</span>       <span class="m">lane</span>      Merge PR #42: feat(preview): run as a lane preview on quota-enforcing clusters
+ <span class="v">│ ●</span>     <span class="y">786aca16</span>  <span class="p">15/11/2026, 14:02</span>  <span class="o">2w86</span>       <span class="m">impl-2w86</span> feat(preview): run as a lane preview on quota-enforcing clusters
+ <span class="v">●─┼─╮</span>   <span class="y">38ad80f3</span>  <span class="p">15/11/2026, 13:47</span>  <span class="o">g94q</span>       <span class="m">lane</span>      Merge PR #58: fix(ui): restore view key routing and picker context
+ <span class="v">│ │ ●</span>   <span class="y">a0105579</span>  <span class="p">15/11/2026, 11:20</span>  <span class="o">g94q</span>       <span class="m">impl-g94q</span> fix(ui): restore view key routing and picker context  <span class="r">origin/omnigent/bd-g94q</span>
+ <span class="v">●─┼─┼─╮</span> <span class="y">e999a845</span>  <span class="p">14/11/2026, 23:05</span>  <span class="o">1si3</span>       <span class="m">lane</span>      Merge PR #57: fix(web): recover stale CSRF sessions on current main
+ <span class="v">│ │ │ ●</span> <span class="y">5c41d0e2</span>  <span class="p">14/11/2026, 21:48</span>  <span class="g">—</span>          <span class="m">andre</span>     wip: csrf  <span class="y">⚠ no Refs</span>
+ <span class="v">│ ●─╯ │</span> <span class="y">c03b9a71</span>  <span class="p">14/11/2026, 19:12</span>  <span class="o">0vdx.2</span>     <span class="m">codex</span>     feat(web): add web theme switch
+<span class="g">└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘</span>
+ <span class="crumbs"><span>b9s</span><span class="on">commits</span></span> <span class="y">&lt;enter&gt;</span><span class="m">files+diff</span> <span class="y">&lt;U&gt;</span><span class="m">author</span> <span class="y">&lt;t&gt;</span><span class="m">open issue</span> <span class="y">&lt;b&gt;</span><span class="m">branch</span> <span class="y">&lt;0&gt;</span><span class="m">all repos</span> <span class="y">&lt;/&gt;</span><span class="m">search</span> <span class="y">&lt;c&gt;</span><span class="m">copy hash</span></div></div>
+    <div class="note">
+      <span class="id">T7 · :commits</span>
+      <h3>The lgl log, with Beads beside it</h3>
+      <p>Same columns and date format as your lazygit config, graph in one colour. The ISSUE column comes from the <code>Refs:</code> line, so <span class="k">t</span> jumps to the task. BY is the author, or the agent session when a lane made it. <span class="k">0</span> merges the logs of every repo into one stream.</p>
+      <ul class="pros"><li>Read-only: <code>git log</code> only, no lazygit write keys</li><li>Commits without <code>Refs:</code> stand out</li><li>The issue view gets a Commits tab from the same data</li></ul>
+      <ul class="cons"><li>Agent name needs the session id in a trailer or the lane branch name</li></ul>
+    </div>
+  </article>
+
+  <!-- T8 -->
+  <article class="mock" id="t8">
+    <div class="frame"><div class="term"><div class="bar"><i></i><i></i><i></i></div><span class="g">┌──── </span><span class="p b">Commit</span><span class="s">(786aca16)</span><span class="g"> ───────────────────────────────────────┐┌──── </span><span class="o b">Issue</span><span class="s">(bd-2w86)</span><span class="g"> ──────────────────────────────────────────┐</span>
+<span class="g">│</span> <span class="b">feat(preview): run as a lane preview on quota-</span>   <span class="g">││</span> <span class="b">[2w86] Preview serves b9s web and a TUI for</span>       <span class="g">│</span>
+<span class="g">│</span> <span class="b">enforcing clusters</span>                               <span class="g">││</span> <span class="b">kubectl exec</span>                                      <span class="g">│</span>
+<span class="g">│</span> <span class="m">15/11/2026, 14:02 · impl-2w86 (codex, lane)</span>     <span class="g">││</span> <span class="o">✓ closed</span> <span class="m">· P1 task · parent hffz</span>                <span class="g">│</span>
+<span class="g">│</span>                                                  <span class="g">││</span>                                                   <span class="g">│</span>
+<span class="g">│</span> <span class="m b">FILES</span>                              <span class="o">+212</span> <span class="r">−38</span>   <span class="g">││</span> <span class="m b">COMMITS FOR THIS ISSUE</span>  <span class="m">git log --grep=bd-2w86</span>     <span class="g">│</span>
+<span class="hl"> │ M  deploy/preview/values.yaml          +41  −6   ││</span> <span class="y">786aca16</span> feat(preview): run as a lane preview   <span class="g">│</span>
+<span class="g">│</span> <span class="o">A</span>  deploy/preview/limitrange.yaml      <span class="o">+28</span>      <span class="g">││</span> <span class="y">612656f2</span> Merge PR #42                          <span class="g">│</span>
+<span class="g">│</span> <span class="y">M</span>  cmd/b9s/web.go                      <span class="o">+64</span> <span class="r">−21</span>  <span class="g">││</span> <span class="y">0b8f35e6</span> test(release): fix integration failures<span class="g">│</span>
+<span class="g">│</span> <span class="y">M</span>  docs/adr/0058-serve-b9s-web-in-…   <span class="o">+52</span>      <span class="g">││</span>                                                   <span class="g">│</span>
+<span class="g">│</span> <span class="y">M</span>  tests/e2e/preview_test.go           <span class="o">+27</span> <span class="r">−11</span>  <span class="g">││</span> <span class="m b">MADE BY</span>                                           <span class="g">│</span>
+<span class="g">│</span>                                                  <span class="g">││</span> <span class="o">◉</span> impl-2w86  <span class="m">codex · 41 min · 212k tokens</span>        <span class="g">│</span>
+<span class="g">│</span> <span class="m b">DIFF</span> <span class="m">deploy/preview/values.yaml</span>                  <span class="g">││</span> <span class="o">◉</span> review-2w86 <span class="m">claude · approved</span>                  <span class="g">│</span>
+<span class="g">│</span> <span class="p">@@ -12,6 +12,12 @@ resources:</span>                    <span class="g">││</span> <span class="m">l</span> <span class="s">opens the session log that wrote it</span>          <span class="g">│</span>
+<span class="g">│</span> <span class="o">+  requests:</span>                                     <span class="g">││</span>                                                   <span class="g">│</span>
+<span class="g">│</span> <span class="o">+    memory: 256Mi</span>                               <span class="g">││</span>                                                   <span class="g">│</span>
+<span class="g">│</span> <span class="o">+    cpu: 100m</span>                                   <span class="g">││</span>                                                   <span class="g">│</span>
+<span class="g">└──────────────────────────────────────────────────┘└───────────────────────────────────────────────────┘</span>
+ <span class="crumbs"><span>b9s</span><span>commits</span><span class="on">786aca16</span></span> <span class="y">&lt;tab&gt;</span><span class="m">switch pane</span> <span class="y">&lt;enter&gt;</span><span class="m">file diff</span> <span class="y">&lt;l&gt;</span><span class="m">agent log</span> <span class="y">&lt;esc&gt;</span><span class="m">back</span></div></div>
+    <div class="note">
+      <span class="id">T8 · commit detail</span>
+      <h3>Commit, issue and agent in one place</h3>
+      <p><span class="k">Enter</span> on a commit opens its files and diff on the left and the linked issue on the right. The right pane lists every commit for that issue and the agent sessions that made them.</p>
+      <ul class="pros"><li>Closes the loop: task → session → commit</li><li>Replaces <code>git log --grep</code> by hand</li></ul>
+      <ul class="cons"><li>The session link survives only while the session file exists</li></ul>
+    </div>
+  </article>
+
+  <h2>Web: use the second dimension</h2>
+  <p>b9s web already ships in the binary (ADR 0019, 0052). These pages add a fleet tab next to Tree and Board. They read the same collectors as the terminal views.</p>
+
+  <!-- W1 -->
+  <article class="mock" id="w1">
+    <div class="frame"><div class="web">
+      <div class="top"><span class="brand">b9s</span><span class="tab">Tree</span><span class="tab">Board</span><span class="tab on">Fleet</span><span class="tab">Context</span><span class="tab">Timeline</span><span class="sp"></span><span><span class="dot run"></span> 7 running · <span style="color:var(--priority)">2 waiting</span> · <span style="color:var(--danger)">1 failed</span></span></div>
+      <div class="fleet">
+        <div class="hd">Project</div><div class="hd">Ready</div><div class="hd">In progress</div><div class="hd">Review</div><div class="hd">Test / deploy</div><div class="hd">Done today</div>
+
+        <div class="pj">omnigent-config<small>110 open · 5 agents</small></div>
+        <div><div class="card"><span class="id">bfe.3</span><span class="t">Harden Polly work dispatch</span></div><div class="card"><span class="id">8an</span><span class="t">no-unattended-agent-timers fails</span></div><span class="mut mono" style="font-size:11px">+26 more</span></div>
+        <div><div class="card live"><span class="id">g9h.24</span><span class="t">Move Omnigent to big-hetzner, Pod per lane</span><span style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip agent"><span class="dot run"></span>polly</span><span class="chip agent"><span class="dot run"></span>impl 78%</span></span><div class="ctxbar"><i class="hot" style="width:78%"></i></div></div></div>
+        <div><div class="card"><span class="id">5pt.2</span><span class="t">Review Spectroscope baseline</span><span class="chip"><span class="dot wait"></span>reviewer waits</span></div></div>
+        <div><div class="card bad"><span class="id">bqj</span><span class="t">schedule run-now fires a paused task</span><span class="chip fail"><span class="dot fail"></span>tester failed ×2</span></div><div class="card live"><span class="id">dew</span><span class="t">Build host image from a shared baseline</span><span class="chip agent"><span class="dot run"></span>deployer</span></div></div>
+        <div><div class="card"><span class="id">t84 · axt · owq</span><span class="t mut">3 closed</span></div></div>
+
+        <div class="pj">b9s<small>64 open · 2 agents</small></div>
+        <div><div class="card"><span class="id">hffz.18</span><span class="t">Public demo of b9s web</span></div><span class="mut mono" style="font-size:11px">+18 more</span></div>
+        <div><div class="card live"><span class="id">m7wt</span><span class="t">Mockups: cross-project view and agents</span><span class="chip agent"><span class="dot run"></span>claude 12%</span><div class="ctxbar"><i style="width:12%"></i></div></div><div class="card"><span class="id">1si3</span><span class="t">Preview web board connection fails</span><span class="chip"><span class="dot wait"></span>waiting for you 38m</span></div></div>
+        <div></div><div></div>
+        <div><div class="card"><span class="id">2grc</span><span class="t mut">1 closed</span></div></div>
+
+        <div class="pj">spectroscope<small>37 open · 2 agents</small></div>
+        <div><div class="card"><span class="id">spc.9</span><span class="t">Isolate local runtime ports</span></div></div>
+        <div><div class="card live"><span class="id">spc.7</span><span class="t">Baseline export with captions</span><span class="chip agent"><span class="dot run"></span>impl 58%</span><span class="chip"><span class="dot idle"></span>reviewer pending</span><div class="ctxbar"><i style="width:58%"></i></div></div></div>
+        <div></div><div></div><div></div>
+
+        <div class="pj">LP_Team<small>41 open · stalled 6d</small></div>
+        <div><div class="card"><span class="id">lp.12</span><span class="t">Waits on omnigent-config g9h.24</span><span class="chip fail">blocked across projects</span></div></div>
+        <div></div><div></div><div></div><div></div>
+      </div>
+    </div></div>
+    <div class="note">
+      <span class="id">W1 · fleet board</span>
+      <h3>Projects × stages, agents on the cards</h3>
+      <p>Rows are projects, columns are stages. A card with a live agent glows and carries its context bar. Read across a row for one project, or down a column for "what is in review everywhere".</p>
+      <ul class="pros"><li>The 2D view the terminal cannot do</li><li>Lane roles map onto columns</li><li>Builds on the existing web board</li></ul>
+      <ul class="cons"><li>Stages need a mapping from Beads status and lane role</li></ul>
+    </div>
+  </article>
+
+  <!-- W2 -->
+  <article class="mock" id="w2">
+    <div class="frame"><div class="web">
+      <div class="top"><span class="brand">b9s</span><span>Fleet</span><span class="mut">/</span><span>omnigent-config</span><span class="mut">/</span><span style="color:var(--text)">impl-g9h24</span><span class="sp"></span><span><span class="dot run"></span> Running 19m · codex · pod lane-g9h24</span></div>
+      <div class="split">
+        <section>
+          <div class="eyebrow">Logs · follow</div>
+          <div class="log">
+            <div class="ln"><span class="ts">21:58:03</span><span class="tag ctx">CTX</span><span>loaded 2 AGENTS.md, role, 2 memories, 2 skills</span></div>
+            <div class="ln"><span class="ts">21:58:09</span><span class="tag ai">AI</span><span>I'll read the lane dispatcher and the k3d manifests first.</span></div>
+            <div class="ln"><span class="ts">21:58:10</span><span class="tag tool">READ</span><span>charts/lane/templates/pod.yaml</span></div>
+            <div class="ln"><span class="ts">21:59:40</span><span class="tag tool">EDIT</span><span>pod.yaml <span style="color:var(--open)">+18</span> <span style="color:var(--danger)">−4</span></span></div>
+            <div class="ln"><span class="ts">22:01:17</span><span class="tag usr">BD</span><span>comment on g9h.24: "Pod per lane renders"</span></div>
+            <div class="ln"><span class="ts">22:03:44</span><span class="tag err">FAIL</span><span>go test ./internal/lane/... -run Quota (2 failed)</span></div>
+            <div class="ln"><span class="ts">22:04:02</span><span class="tag ai">AI</span><span>The LimitRange default overrides the pod spec. I'll set requests explicitly.</span></div>
+            <div class="ln"><span class="ts">22:04:30</span><span class="tag ctx">CTX</span><span>compaction #1 · 182k → 61k</span></div>
+            <div class="ln"><span class="ts">22:05:58</span><span class="tag tool">BASH</span><span>go test … -run Quota <span style="color:var(--open)">exit 0</span></span></div>
+          </div>
+        </section>
+        <section>
+          <div class="eyebrow">Context · 156k of 200k</div>
+          <div class="stack" aria-label="Context layers">
+            <i style="width:6%;background:var(--violet)"></i><i style="width:1%;background:var(--priority)"></i><i style="width:2%;background:var(--open)"></i><i style="width:3%;background:color-mix(in srgb,var(--violet) 50%,var(--surface))"></i><i style="width:19%;background:var(--progress)"></i><i style="width:46%;background:var(--muted)"></i><i style="width:4%;background:var(--ghost)"></i>
+          </div>
+          <div class="legend">
+            <b style="background:var(--violet)"></b><span>Instructions (3 files)</span><span>9.8k</span>
+            <b style="background:var(--priority)"></b><span>Memories (2)</span><span>1.2k</span>
+            <b style="background:var(--open)"></b><span>Task g9h.24 + deps</span><span>2.0k</span>
+            <b style="background:color-mix(in srgb,var(--violet) 50%,var(--surface))"></b><span>Skills (2)</span><span>4.3k</span>
+            <b style="background:var(--progress)"></b><span>Files read (18)</span><span>38.4k</span>
+            <b style="background:var(--muted)"></b><span>Tool output (41 calls)</span><span>91.1k</span>
+            <b style="background:var(--ghost)"></b><span>Conversation</span><span>8.6k</span>
+          </div>
+          <div class="warn"><strong>Stale:</strong> global AGENTS.md changed at 22:02. This session still runs on the 21:58 copy. <u>Show diff</u></div>
+          <div class="eyebrow" style="margin-top:6px">Loaded memories</div>
+          <div style="display:flex;flex-direction:column;gap:4px;font-size:12px">
+            <span><span class="mono">b9s-full-go-test-on-the-mac-can</span> <span class="mut">· in 4 sessions</span></span>
+            <span><span class="mono">lane-quota-needs-explicit-requests</span> <span style="color:var(--progress)">· written here</span></span>
+          </div>
+        </section>
+        <section>
+          <div class="eyebrow">Task</div>
+          <div class="card"><span class="id">g9h.24 · epic · P1</span><span class="t">Move Omnigent to big-hetzner with a Pod per lane</span><span class="mut" style="font-size:11.5px">claimed by lane dispatcher · 3 open children</span></div>
+          <div class="eyebrow" style="margin-top:6px">Work so far</div>
+          <div style="font-size:12px;display:flex;flex-direction:column;gap:3px">
+            <span class="mono">3 files <span style="color:var(--open)">+41</span> <span style="color:var(--danger)">−9</span></span>
+            <span class="mono">PR #61 draft</span>
+            <span class="mono">tests: 1 red → green</span>
+            <span class="mono">tokens 182k in · 9k out</span>
+          </div>
+          <div class="eyebrow" style="margin-top:6px">Lane</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <span class="chip agent"><span class="dot run"></span>polly · 41%</span>
+            <span class="chip agent"><span class="dot run"></span>implementer · 78%</span>
+            <span class="chip"><span class="dot idle"></span>reviewer · not started</span>
+          </div>
+        </section>
+      </div>
+    </div></div>
+    <div class="note">
+      <span class="id">W2 · agent page</span>
+      <h3>Logs, context and task side by side</h3>
+      <p>The web version of T2 and T3 on one screen. The middle column answers "what is it reading", the right column "what has it done for the task".</p>
+      <ul class="pros"><li>Best page to send to a reviewer</li><li>Context stacked bar reads in one second</li></ul>
+      <ul class="cons"><li>Three columns need a desktop width</li></ul>
+    </div>
+  </article>
+
+  <!-- W3 -->
+  <article class="mock" id="w3">
+    <div class="frame"><div class="web">
+      <div class="top"><span class="brand">b9s</span><span class="tab">Fleet</span><span class="tab on">Context</span><span class="tab">Timeline</span><span class="sp"></span><span>10 sessions · 23 context sources</span></div>
+      <div class="svgbox" style="padding:8px 12px">
+        <svg viewBox="0 0 900 470" role="img" aria-label="Context constellation: sessions on the outer ring, shared context sources in the centre">
+          <g stroke="var(--line)" fill="none">
+            <circle cx="450" cy="235" r="90" stroke-dasharray="3 4"></circle>
+            <circle cx="450" cy="235" r="165" stroke-dasharray="3 4"></circle>
+          </g>
+          <g font-size="10" fill="var(--muted)">
+            <text x="450" y="140" text-anchor="middle">global</text>
+            <text x="450" y="65" text-anchor="middle">project</text>
+          </g>
+          <!-- edges from global core -->
+          <g stroke="var(--violet)" stroke-opacity=".55" fill="none">
+            <path d="M450 235 L170 120" stroke-width="3"></path><path d="M450 235 L140 250" stroke-width="3"></path><path d="M450 235 L190 390" stroke-width="3"></path>
+            <path d="M450 235 L730 110" stroke-width="3"></path><path d="M450 235 L770 250" stroke-width="3"></path><path d="M450 235 L700 400" stroke-width="3"></path>
+            <path d="M450 235 L450 445" stroke-width="3"></path><path d="M450 235 L320 435" stroke-width="3"></path>
+          </g>
+          <g stroke="var(--priority)" stroke-opacity=".7" fill="none" stroke-width="1.5">
+            <path d="M560 300 L700 400"></path><path d="M560 300 L770 250"></path><path d="M560 300 L450 445"></path><path d="M560 300 L730 110"></path>
+            <path d="M330 170 L170 120"></path><path d="M330 170 L140 250"></path>
+          </g>
+          <g stroke="var(--progress)" stroke-opacity=".6" fill="none" stroke-width="1.5">
+            <path d="M600 175 L730 110"></path><path d="M600 175 L770 250"></path><path d="M600 175 L700 400"></path>
+            <path d="M310 290 L190 390"></path><path d="M310 290 L320 435"></path>
+          </g>
+          <!-- core -->
+          <circle cx="450" cy="235" r="34" fill="var(--violet)" fill-opacity=".22" stroke="var(--violet)"></circle>
+          <text x="450" y="231" text-anchor="middle" font-size="11" fill="var(--text)" font-weight="700">AGENTS.md</text>
+          <text x="450" y="245" text-anchor="middle" font-size="10" fill="var(--muted)">global · 8 sessions</text>
+          <circle cx="477" cy="208" r="6" fill="var(--priority)"></circle>
+          <text x="487" y="204" font-size="10" fill="var(--priority)">changed 22:02 · 5 stale</text>
+          <!-- inner nodes -->
+          <circle cx="560" cy="300" r="20" fill="var(--priority)" fill-opacity=".2" stroke="var(--priority)"></circle>
+          <text x="560" y="333" text-anchor="middle" font-size="10" fill="var(--text)">memory: go-test-stall</text>
+          <circle cx="600" cy="175" r="16" fill="var(--progress)" fill-opacity=".2" stroke="var(--progress)"></circle>
+          <text x="600" y="155" text-anchor="middle" font-size="10" fill="var(--text)">omnigent AGENTS.md</text>
+          <circle cx="330" cy="170" r="13" fill="var(--priority)" fill-opacity=".2" stroke="var(--priority)"></circle>
+          <text x="330" y="152" text-anchor="middle" font-size="10" fill="var(--text)">memory: hold e5u3.20</text>
+          <circle cx="310" cy="290" r="14" fill="var(--progress)" fill-opacity=".2" stroke="var(--progress)"></circle>
+          <text x="310" y="320" text-anchor="middle" font-size="10" fill="var(--text)">b9s CLAUDE.md</text>
+          <circle cx="390" cy="330" r="9" fill="var(--violet)" fill-opacity=".2" stroke="var(--violet)"></circle>
+          <text x="390" y="352" text-anchor="middle" font-size="10" fill="var(--muted)">skill: tdd</text>
+          <!-- sessions -->
+          <g font-size="11" fill="var(--text)">
+            <g><circle cx="170" cy="120" r="9" fill="var(--open)"></circle><text x="155" y="104" text-anchor="end">claude-b9s</text></g>
+            <g><circle cx="140" cy="250" r="9" fill="var(--priority)"></circle><text x="126" y="254" text-anchor="end">claude-b9s-web</text></g>
+            <g><circle cx="190" cy="390" r="9" fill="var(--open)"></circle><text x="176" y="408" text-anchor="end">claude-energie</text></g>
+            <g><circle cx="320" cy="435" r="9" fill="var(--ghost)"></circle><text x="320" y="460" text-anchor="middle">codex-moneybird</text></g>
+            <g><circle cx="450" cy="445" r="9" fill="var(--open)"></circle><text x="465" y="462">impl-spc7</text></g>
+            <g><circle cx="700" cy="400" r="11" fill="var(--danger)"></circle><text x="716" y="418">tester-bqj</text></g>
+            <g><circle cx="770" cy="250" r="11" fill="var(--open)"></circle><text x="786" y="254">impl-g9h24</text></g>
+            <g><circle cx="730" cy="110" r="9" fill="var(--open)"></circle><text x="746" y="100">polly-g9h24</text></g>
+          </g>
+          <g font-size="10" fill="var(--muted)">
+            <text x="20" y="455">line width = tokens loaded</text>
+            <text x="880" y="30" text-anchor="end">● running  ● waiting  ● failed  ● idle</text>
+          </g>
+        </svg>
+      </div>
+    </div></div>
+    <div class="note">
+      <span class="id">W3 · constellation</span>
+      <h3>Who shares which context</h3>
+      <p>Running sessions on the outside, context sources inside, global sources at the core. Shared memories sit between the sessions that load them. A stale marker shows which sessions run on an old copy.</p>
+      <ul class="pros"><li>Extends the memory constellation (ADR 0039)</li><li>Shows the blast radius of an AGENTS.md change</li></ul>
+      <ul class="cons"><li>Hard to read past ~15 sessions</li><li>Pretty, less actionable than W4</li></ul>
+    </div>
+  </article>
+
+  <!-- W4 -->
+  <article class="mock" id="w4">
+    <div class="frame"><div class="web">
+      <div class="top"><span class="brand">b9s</span><span class="tab">Fleet</span><span class="tab on">Context</span><span class="mut">matrix</span><span class="sp"></span><span>cells = tokens loaded · <span style="outline:2px solid var(--priority);padding:0 4px">outlined</span> = stale copy</span></div>
+      <div style="padding:12px">
+        <table class="heat">
+          <thead><tr><th></th><th>impl-g9h24</th><th>polly-g9h24</th><th>tester-bqj</th><th>review-5pt2</th><th>impl-spc7</th><th>claude-b9s</th><th>claude-b9s-web</th><th>claude-energie</th><th>sessions</th></tr></thead>
+          <tbody>
+            <tr><th class="row">~/.config/agents/AGENTS.md <small>global</small></th><td class="h3 stale">6.1k</td><td class="h3 stale">6.1k</td><td class="h3 stale">6.1k</td><td class="h3">6.3k</td><td class="h3 stale">6.1k</td><td class="h3">6.3k</td><td class="h3 stale">6.1k</td><td class="h3">6.3k</td><td>8</td></tr>
+            <tr><th class="row">omnigent-config/AGENTS.md <small>project</small></th><td class="h2">2.9k</td><td class="h2">2.9k</td><td class="h2">2.9k</td><td class="h2">2.9k</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td>4</td></tr>
+            <tr><th class="row">b9s/.claude/CLAUDE.md <small>project</small></th><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h2">2.2k</td><td class="h2">2.2k</td><td class="h0">·</td><td>2</td></tr>
+            <tr><th class="row">memory: b9s-full-go-test-on-the-mac-can</th><td class="h1">0.3k</td><td class="h1">0.3k</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h1">0.3k</td><td class="h1">0.3k</td><td class="h0">·</td><td>4</td></tr>
+            <tr><th class="row">memory: user-hold-feat-bd-e5u3-20</th><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h1">0.4k</td><td class="h1">0.4k</td><td class="h0">·</td><td>2</td></tr>
+            <tr><th class="row">skill: test-driven-development</th><td class="h2">2.1k</td><td class="h0">·</td><td class="h2">2.1k</td><td class="h0">·</td><td class="h2">2.1k</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td>3</td></tr>
+            <tr><th class="row">ADR 0052 calm terminal <small>file read</small></th><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h0">·</td><td class="h2">3.4k</td><td class="h1">1.1k</td><td class="h0">·</td><td>2</td></tr>
+            <tr><th class="row">tool output <small>all calls</small></th><td class="h3">91k</td><td class="h1">12k</td><td class="h3">118k</td><td class="h1">8k</td><td class="h2">44k</td><td class="h1">9k</td><td class="h3">71k</td><td class="h2">30k</td><td>8</td></tr>
+          </tbody>
+        </table>
+        <div class="ins" style="padding:12px 0 0">
+          <div><strong>5 sessions hold an old global AGENTS.md</strong>Changed 22:02. Restart lanes or send a reload.</div>
+          <div><strong>Tool output fills 58% of all windows</strong>kubectl describe is the top source (14k per call).</div>
+          <div><strong>No memory reaches the spectroscope lane</strong>impl-spc7 loads only global files.</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="note">
+      <span class="id">W4 · context matrix</span>
+      <h3>Sources × sessions</h3>
+      <p>The same data as W3 as a heatmap. Rows are context sources, columns are running sessions. It scales to many sessions and makes gaps and stale copies easy to spot.</p>
+      <ul class="pros"><li>Most actionable context view</li><li>Insights fall out of the table</li></ul>
+      <ul class="cons"><li>Wide: needs horizontal scroll past ~12 sessions</li></ul>
+    </div>
+  </article>
+
+  <!-- W5 -->
+  <article class="mock" id="w5">
+    <div class="frame"><div class="web">
+      <div class="top"><span class="brand">b9s</span><span class="tab">Fleet</span><span class="tab">Context</span><span class="tab on">Timeline</span><span class="sp"></span><span>last 2h · all projects</span></div>
+      <div class="tl">
+        <div></div><div class="axis"><span>20:00</span><span>20:30</span><span>21:00</span><span>21:30</span><span>22:00</span><span>now</span></div>
+        <div class="who">polly-g9h24<small>omnigent-config</small></div><div class="lane"><i class="ph-plan" style="left:72%;width:5%">plan</i><i class="ph-idle" style="left:77%;width:13%"></i><i class="ph-plan" style="left:90%;width:10%">route</i></div>
+        <div class="who">impl-g9h24<small>omnigent-config</small></div><div class="lane"><i class="ph-impl" style="left:78%;width:12%">implement</i><i class="ph-fail" style="left:90%;width:2%"></i><i class="ph-impl" style="left:92%;width:8%">fix</i><em style="left:85%" data-l="push"></em></div>
+        <div class="who">tester-bqj<small>omnigent-config</small></div><div class="lane"><i class="ph-test" style="left:40%;width:15%">test</i><i class="ph-fail" style="left:55%;width:3%"></i><i class="ph-test" style="left:58%;width:10%">retry</i><i class="ph-fail" style="left:68%;width:3%">OOM</i></div>
+        <div class="who">review-5pt2<small>omnigent-config</small></div><div class="lane"><i class="ph-rev" style="left:20%;width:22%">review PR #58</i><em style="left:42%" data-l="approved"></em><i class="ph-idle" style="left:96%;width:4%"></i></div>
+        <div class="who">impl-spc7<small>spectroscope</small></div><div class="lane"><i class="ph-plan" style="left:10%;width:6%">plan</i><i class="ph-impl" style="left:16%;width:50%">implement</i><i class="ph-impl" style="left:87%;width:13%">implement</i><em style="left:66%" data-l="limit hit"></em></div>
+        <div class="who">claude-b9s<small>b9s</small></div><div class="lane"><i class="ph-impl" style="left:0%;width:28%">release 1.3.6</i><em style="left:28%" data-l="v1.3.6 notes"></em><i class="ph-plan" style="left:98%;width:2%"></i></div>
+        <div class="who">claude-b9s-web<small>b9s</small></div><div class="lane"><i class="ph-impl" style="left:45%;width:23%">preview fix</i><i class="ph-idle" style="left:68%;width:32%">waiting for you</i></div>
+        <div class="who">claude-energie<small>vdh-paperwork</small></div><div class="lane"><i class="ph-impl" style="left:90%;width:10%">draft</i></div>
+      </div>
+      <div style="display:flex;gap:14px;padding:9px 12px;font:11px var(--mono);color:var(--muted);flex-wrap:wrap">
+        <span><i class="ph-plan" style="display:inline-block;width:10px;height:10px;border-radius:2px"></i> plan</span><span><i class="ph-impl" style="display:inline-block;width:10px;height:10px;border-radius:2px"></i> implement</span><span><i class="ph-rev" style="display:inline-block;width:10px;height:10px;border-radius:2px"></i> review</span><span><i class="ph-test" style="display:inline-block;width:10px;height:10px;border-radius:2px"></i> test</span><span><i class="ph-fail" style="display:inline-block;width:10px;height:10px;border-radius:2px"></i> failure</span><span><i class="ph-idle" style="display:inline-block;width:10px;height:10px;border-radius:2px"></i> idle / waiting</span><span>│ event</span>
+      </div>
+    </div></div>
+    <div class="note">
+      <span class="id">W5 · timeline</span>
+      <h3>What every agent did, over time</h3>
+      <p>A swimlane per session, coloured by phase, with markers for pushes, approvals and limits. It shows idle time and agents that wait on you for half an hour.</p>
+      <ul class="pros"><li>Good for the morning review of a night run</li><li>Feeds a v2e recording storyline</li></ul>
+      <ul class="cons"><li>Phase detection is a heuristic (tool mix, lane role)</li></ul>
+    </div>
+  </article>
+
+  <!-- W6 -->
+  <article class="mock" id="w6">
+    <div class="frame"><div class="web">
+      <div class="top"><span class="brand">b9s</span><span class="tab on">Projects</span><span class="tab">Fleet</span><span class="sp"></span><span>area = open issues · colour = agent activity · red border = blocked by another project</span></div>
+      <div class="tm">
+        <div class="a3" style="grid-row:1/3"><b>omnigent-config</b><span>110 open · 28 ready · 5 agents<br><span class="mut">126 closed in 7d</span></span></div>
+        <div class="a2"><b>b9s</b><span>64 open · 2 agents</span></div>
+        <div class="a0 blk" style="grid-column:3/5"><b>LP_Team</b><span>41 open · 0 agents · <span style="color:var(--danger)">3 wait on g9h.24</span></span></div>
+        <div class="a2"><b>spectroscope</b><span>37 open · 2 agents</span></div>
+        <div class="a1"><b>osenco-infra</b><span>22 · 1 idle</span></div>
+        <div class="a1"><b>vdh-paperwork</b><span>18 · 1</span></div>
+        <div class="a0" style="grid-column:1/2"><b>agents-config</b><span>12 open · feeds every session</span></div>
+        <div class="a0" style="grid-column:2/5;justify-content:center"><span class="mut mono">+4 quiet projects</span></div>
+      </div>
+      <div class="ins">
+        <div><strong>omnigent-config is the bottleneck</strong>3 LP_Team issues and 1 spectroscope issue wait on g9h.24.</div>
+        <div><strong>LP_Team stalled for 6 days</strong>No closes, no agents, 7 blocked issues.</div>
+        <div><strong>Night run: 27 tasks closed</strong>21 by lanes, 6 interactive. 3 failures, all in omnigent-config.</div>
+      </div>
+    </div></div>
+    <div class="note">
+      <span class="id">W6 · project map</span>
+      <h3>All projects as one surface</h3>
+      <p>A treemap of every project on the shared Dolt server, sized by open work and coloured by agent activity. Plain-language insight cards sit under it.</p>
+      <ul class="pros"><li>Best landing page for <code>b9s web</code> with no project chosen</li><li>Insights are simple queries</li></ul>
+      <ul class="cons"><li>Treemap layout code for the web app</li></ul>
+    </div>
+  </article>
+
+  <section class="reco" id="reco">
+    <span class="eyebrow">Recommendation</span>
+    <h2 style="margin:0">Terminal first for agents, web for the 2D views</h2>
+    <ol>
+      <li><strong>T7 commits as a quick win.</strong> Read-only <code>git log</code> with the Refs column. It needs no new collector and replaces the <code>lgl</code> pane in tmux.</li>
+      <li><strong>T1 + T2 + T3 next.</strong> The <code>agents</code> resource with logs and context. It is the k9s model, it works over ssh, and every later view reads the same collectors.</li>
+      <li><strong>Then W1 and W4 in b9s web.</strong> The fleet board and the context matrix. They need the second dimension and give the most insight per screen.</li>
+      <li><strong>T4 and W6 as the cross-project landing.</strong> Mostly counts that b9s can already read from the shared Dolt server.</li>
+      <li><strong>Later:</strong> T8 commit detail (after T1 gives session links), T5 xray, T6 pulse, W5 timeline (needs history), W3 constellation (after W4 proves the data).</li>
+    </ol>
+    <span class="eyebrow" style="margin-top:8px">Where the data comes from</span>
+    <div class="src">
+      <div><b>Claude Code sessions</b>Transcripts in <code>~/.claude/projects/&lt;path&gt;/*.jsonl</code>. Tail for logs. Loaded CLAUDE.md files and compactions are events in the file.</div>
+      <div><b>Codex sessions</b>Rollouts in <code>~/.codex/sessions/YYYY/MM/DD/*.jsonl</code>. Same tailing collector, different parser.</div>
+      <div><b>Omnigent lanes</b>Pods in the lane namespace via the Kubernetes API. Logs by <code>kubectl logs</code> or the session file in the pod. Lane labels give task and role.</div>
+      <div><b>tmux panes</b><code>tmux list-panes -a</code> maps a laptop session to a pane, so <span class="k">a</span> can attach to it.</div>
+      <div><b>Beads</b>Already read. A task link comes from the lane label, the branch name, or the session id in a claim comment.</div>
+    </div>
+  </section>
+</div>

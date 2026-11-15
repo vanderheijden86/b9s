@@ -2,8 +2,9 @@
 type: ADR
 id: "0034"
 title: "Bind issue types to function keys F1-F4"
-status: active
+status: superseded
 date: 2026-10-06
+superseded_by: "0068"
 ---
 
 ## Context

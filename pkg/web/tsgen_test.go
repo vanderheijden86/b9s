@@ -16,6 +16,10 @@ var tsTypes = []any{
 	ProjectEntry{}, ProjectList{}, OpenProjectRequest{}, QueryResult{},
 	WriteRequest{}, WriteResult{}, Session{}, Event{},
 	MemoryGraphResponse{}, MemoryGraphNode{}, MemoryGraphEdge{}, IssueMemoryLink{},
+	AgentSession{}, AgentsResponse{}, AgentEvent{}, AgentLogResponse{}, ContextSource{}, ContextLayer{}, AgentContext{},
+	FleetCard{}, FleetStage{}, FleetProject{}, FleetResponse{},
+	MatrixSession{}, MatrixCell{}, MatrixRow{}, Insight{}, MatrixResponse{},
+	TimelineSegment{}, TimelineMarker{}, TimelineLane{}, TimelineResponse{}, CommitInfo{}, CommitsResponse{},
 }
 
 var tsWriteOps = []WriteOp{OpStatus, OpClose, OpDelete, OpUpdate, OpCreate, OpComment, OpDefer}

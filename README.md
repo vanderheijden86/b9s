@@ -101,6 +101,8 @@ Each paragraph names the key to press and links to the [user guide](docs/USER_GU
 
 **Switch projects.** Recent projects sit on `1`-`9`, like favourite namespaces in k9s, and `0` shows them all in one read-only view. `:project` lists every Beads database your Dolt user can read. A project that fails to open leaves the one on screen in place and says why. [Projects](docs/USER_GUIDE.md#projects).
 
+**Watch the agents.** `:agents` lists every Claude Code and Codex session across your projects with its task, state, context fill and tmux pane, like `:pods` in k9s. `Enter` shows its log, `c` the context it has loaded, and `a` jumps to its pane. `:xray`, `:pulse` and `:commits` show the sessions by task, the fleet over time, and the git log with the agent behind each commit. `F1` to `F8` open the eight screens directly. [Agent fleet and git log](docs/USER_GUIDE.md#agent-fleet-and-git-log).
+
 **Know who did what.** Every issue shows its Creator, the `bd` actor that made it, and its Assignee, whoever holds it now. One person often appears as a git name, an email and a lane agent; list them once in `bd config` and b9s shows one name. [Creators, assignees and identities](docs/USER_GUIDE.md#creators-assignees-and-identities).
 
 **Attach files.** `I` attaches screenshots, logs or documents to an issue, and `R` lists and opens them. The bytes go to a local folder or an S3-compatible bucket, and the issue holds a reference comment, so Beads stores no binary data. `b9s attach` does the same from a script. Off until you configure a store. [Attachments](docs/USER_GUIDE.md#attachments).

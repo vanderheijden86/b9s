@@ -53,6 +53,17 @@ type Options struct {
 	// MaxStreams caps open event streams; zero means no cap. Public mode
 	// defaults it to publicMaxStreams.
 	MaxStreams int
+	// Agents supplies the coding-agent sessions the fleet views show. Nil
+	// reads this machine's Claude Code and Codex transcripts, once a fleet
+	// endpoint is first requested. A public server serves no agent data.
+	Agents AgentSource
+	// AgentsInterval is the scan period while a fleet view is open, and
+	// AgentsIdle how long scanning goes on after the last request. Zero
+	// picks 3 seconds and 30 seconds.
+	AgentsInterval time.Duration
+	AgentsIdle     time.Duration
+	// Now is the clock the fleet views use; nil means time.Now.
+	Now func() time.Time
 }
 
 // Server is the b9s web HTTP handler.
@@ -70,6 +81,9 @@ type Server struct {
 	streams  int
 	// assetSubs holds one channel per open event stream for AssetsChanged.
 	assetSubs map[chan struct{}]struct{}
+	// feed is nil on a public server.
+	feed   *agentFeed
+	probed projectProbe
 }
 
 // NewServer builds the handler.
@@ -106,6 +120,9 @@ func NewServer(opts Options) (*Server, error) {
 	if opts.Public {
 		s.writes = newRateLimiter(publicWritesPerMinute, time.Minute)
 	}
+	if !opts.Public {
+		s.feed = newAgentFeed(opts)
+	}
 	s.mux = http.NewServeMux()
 	s.routes()
 	return s, nil
@@ -129,6 +146,14 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/query", s.paired(s.handleQuery))
 	s.mux.HandleFunc("GET /api/issue", s.paired(s.handleIssue))
 	s.mux.HandleFunc("GET /api/memory-graph", s.paired(s.handleMemoryGraph))
+	s.mux.HandleFunc("GET /api/agents", s.paired(s.agentsOnly(s.handleAgents)))
+	s.mux.HandleFunc("GET /api/agent", s.paired(s.agentsOnly(s.handleAgent)))
+	s.mux.HandleFunc("GET /api/agent/log", s.paired(s.agentsOnly(s.handleAgentLog)))
+	s.mux.HandleFunc("GET /api/agent/context", s.paired(s.agentsOnly(s.handleAgentContext)))
+	s.mux.HandleFunc("GET /api/fleet", s.paired(s.agentsOnly(s.handleFleet)))
+	s.mux.HandleFunc("GET /api/context-matrix", s.paired(s.agentsOnly(s.handleContextMatrix)))
+	s.mux.HandleFunc("GET /api/timeline", s.paired(s.agentsOnly(s.handleTimeline)))
+	s.mux.HandleFunc("GET /api/commits", s.paired(s.agentsOnly(s.handleCommits)))
 	s.mux.HandleFunc("GET /api/health", s.paired(s.handleHealth))
 	s.mux.HandleFunc("GET /api/events", s.paired(s.handleEvents))
 	s.mux.HandleFunc("GET /api/projects", s.paired(s.handleProjects))

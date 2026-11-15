@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/vanderheijden86/b9s/internal/agents"
 	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/config"
 )
@@ -46,6 +48,17 @@ type ProjectTableModel struct {
 	width     int
 	height    int
 	theme     Theme
+	// counts and agents arrive after the database list: issue counts per
+	// database, and live agent sessions per database.
+	counts     map[string]projectCounts
+	agents     map[string]int
+	countsRead bool
+}
+
+// projectTableCountsMsg carries the per-database columns of the table.
+type projectTableCountsMsg struct {
+	counts map[string]projectCounts
+	agents map[string]int
 }
 
 // NewProjectTable returns a table that has not started loading.
@@ -117,7 +130,7 @@ func (t ProjectTableModel) View() string {
 	}
 	th := t.theme
 
-	boxWidth := 56
+	boxWidth := 96
 	if width-10 < boxWidth {
 		boxWidth = width - 10
 	}
@@ -145,7 +158,12 @@ func (t ProjectTableModel) View() string {
 		if len(t.databases) == 0 {
 			lines = append(lines, dimStyle.Render("No readable Beads databases."))
 		}
-		lines = append(lines, dimStyle.Render(fmt.Sprintf("  %-40s %s", "NAME", "RECENT")))
+		nameW := boxWidth - 6 - 52
+		if nameW < 12 {
+			nameW = 12
+		}
+		lines = append(lines, dimStyle.Render(fmt.Sprintf("  %-*s %5s %5s %9s %-11s %6s %s", nameW, "NAME", "OPEN", "WIP", "CLOSED/7d", "LAST CHANGE", "AGENTS", "RECENT")))
+		now := time.Now()
 		for i, database := range t.databases {
 			recent := ""
 			if slot := t.slots[database]; slot > 0 {
@@ -157,7 +175,24 @@ func (t ProjectTableModel) View() string {
 				prefix = "▸ "
 				style = cursorStyle
 			}
-			lines = append(lines, style.Render(fmt.Sprintf("%s%-40s %s", prefix, database, recent)))
+			open, wip, closed, last := "…", "…", "…", "…"
+			if t.countsRead {
+				open, wip, closed, last = "-", "-", "-", "-"
+				if c, ok := t.counts[database]; ok {
+					open, wip, closed = strconv.Itoa(c.open), strconv.Itoa(c.inProgress), strconv.Itoa(c.closed7d)
+					if !c.lastChange.IsZero() {
+						last = fmtAge(now.Sub(c.lastChange)) + " ago"
+					}
+				}
+			}
+			agentCol := ""
+			if n := t.agents[database]; n > 0 {
+				agentCol = fmt.Sprintf("● %d", n)
+			}
+			lines = append(lines, style.Render(fmt.Sprintf("%s%-*s %5s %5s %9s %-11s %6s %s", prefix, nameW, truncateRunesHelper(database, nameW, "…"), open, wip, closed, last, agentCol, recent)))
+		}
+		if t.countsRead {
+			lines = append(lines, "", dimStyle.Render(t.facts()))
 		}
 	}
 
@@ -170,6 +205,73 @@ func (t ProjectTableModel) View() string {
 		Width(boxWidth).
 		Render(strings.Join(lines, "\n"))
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, box)
+}
+
+// facts is the footer line of cross-project numbers.
+func (t ProjectTableModel) facts() string {
+	live, withAgents, closed := 0, 0, 0
+	busiest, most := "", 0
+	for _, database := range t.databases {
+		if n := t.agents[database]; n > 0 {
+			live += n
+			withAgents++
+		}
+		c := t.counts[database]
+		closed += c.closed7d
+		if c.closed7d > most {
+			busiest, most = database, c.closed7d
+		}
+	}
+	out := fmt.Sprintf("%d live agents in %d projects · %d issues closed in 7 days", live, withAgents, closed)
+	if busiest != "" {
+		out += fmt.Sprintf(" · busiest: %s (%d)", busiest, most)
+	}
+	return out
+}
+
+// loadProjectTableCountsCmd reads every listed database's issue counts and
+// counts the live agent sessions working in each project. A session belongs
+// to a database when its project is the database, the header project's name
+// or the base name of that project's checkout.
+func loadProjectTableCountsCmd(projects map[string]config.Project, startupUser string, collector *agents.Collector) tea.Cmd {
+	return func() tea.Msg {
+		list := make([]config.Project, 0, len(projects))
+		for _, p := range projects {
+			list = append(list, p)
+		}
+		byKey, _ := probeProjects(list, startupUser)
+		msg := projectTableCountsMsg{counts: map[string]projectCounts{}, agents: map[string]int{}}
+		names := map[string]string{}
+		for database, p := range projects {
+			if c, ok := byKey[projectKey(p)]; ok {
+				msg.counts[database] = c
+			}
+			names[strings.ToLower(database)] = database
+			if p.Name != "" {
+				names[strings.ToLower(p.Name)] = database
+			}
+			if p.Path != "" {
+				names[strings.ToLower(agents.ProjectFromCwd(p.Path))] = database
+			}
+		}
+		if collector != nil {
+			snap := collector.Last()
+			if snap.At.IsZero() {
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				snap = collector.Scan(ctx)
+				cancel()
+			}
+			for _, s := range snap.Sessions {
+				if !s.Live() {
+					continue
+				}
+				if database, ok := names[strings.ToLower(s.Project)]; ok {
+					msg.agents[database]++
+				}
+			}
+		}
+		return msg
+	}
 }
 
 // loadProjectTableCmd lists the databases on host readable by user.
@@ -195,12 +297,22 @@ func (m Model) openProjectTable() (Model, tea.Cmd) {
 	return m, loadProjectTableCmd(m.startupDoltHost, m.startupDoltUser)
 }
 
-func (m Model) handleProjectTableLoaded(msg projectTableLoadedMsg) Model {
+func (m Model) handleProjectTableLoaded(msg projectTableLoadedMsg) (Model, tea.Cmd) {
 	if !m.showProjectTable {
-		return m
+		return m, nil
 	}
 	m.projectTable.finishLoading(msg.databases, msg.err, m.projectTableSlots())
-	return m
+	if msg.err != nil {
+		return m, nil
+	}
+	if m.fleetCollector == nil {
+		m.fleetCollector = agents.NewCollector(m.fleetCollectorOptions())
+	}
+	projects := make(map[string]config.Project, len(msg.databases))
+	for _, database := range msg.databases {
+		projects[database] = m.projectForDatabase(database)
+	}
+	return m, loadProjectTableCountsCmd(projects, m.startupDoltUser, m.fleetCollector)
 }
 
 // projectTableSlots maps each database shown in the header to its number key.

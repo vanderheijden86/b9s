@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/vanderheijden86/b9s/internal/agents"
 	"github.com/vanderheijden86/b9s/internal/attachref"
 	"github.com/vanderheijden86/b9s/internal/blobstore"
 	"github.com/vanderheijden86/b9s/internal/datasource"
@@ -269,6 +270,10 @@ type projectCounts struct {
 	inProgress int
 	ready      int
 	blocked    int
+	// closed7d counts issues closed in the seven days before the read, and
+	// lastChange is the newest update or close time of any issue.
+	closed7d   int
+	lastChange time.Time
 }
 
 var workerSpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -463,6 +468,10 @@ type Model struct {
 	memoryBrowser    *MemoryBrowser
 	memoryVisible    bool
 	memoryGeneration uint64
+	fleet            *FleetBrowser
+	fleetVisible     bool
+	fleetGeneration  uint64
+	fleetCollector   *agents.Collector
 	// memoryRefused stops background graph requests after the project's
 	// Memory browser failed to open; a project switch clears it.
 	memoryRefused bool
@@ -962,7 +971,19 @@ func summarizeProjectIssues(issues []model.Issue) projectCounts {
 	for _, issue := range issues {
 		issueMap[issue.ID] = issue
 	}
+	weekAgo := time.Now().Add(-7 * 24 * time.Hour)
 	for _, issue := range issues {
+		if issue.UpdatedAt.After(counts.lastChange) {
+			counts.lastChange = issue.UpdatedAt
+		}
+		if issue.ClosedAt != nil {
+			if issue.ClosedAt.After(counts.lastChange) {
+				counts.lastChange = *issue.ClosedAt
+			}
+			if issue.ClosedAt.After(weekAgo) {
+				counts.closed7d++
+			}
+		}
 		if isClosedLikeStatus(issue.Status) {
 			continue
 		}
@@ -1447,6 +1468,11 @@ func (m Model) Init() tea.Cmd {
 // that changes the layout (resize, query bar, picker, split) re-follows the
 // cursor at the new height.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if next, cmd, handled := m.updateFleet(msg); handled {
+		return next, cmd
+	} else {
+		m = next
+	}
 	if envelope, ok := msg.(embeddedMemoryMsg); ok {
 		if m.memoryBrowser == nil || envelope.generation != m.memoryGeneration {
 			return m, nil
@@ -2124,7 +2150,13 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 		return m.openProjectTable()
 
 	case projectTableLoadedMsg:
-		return m.handleProjectTableLoaded(msg), nil
+		return m.handleProjectTableLoaded(msg)
+
+	case projectTableCountsMsg:
+		if m.showProjectTable {
+			m.projectTable.counts, m.projectTable.agents, m.projectTable.countsRead = msg.counts, msg.agents, true
+		}
+		return m, nil
 
 	case projectOpenedMsg:
 		return m.handleProjectOpened(msg)
@@ -2512,12 +2544,15 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// F1-F4 show one issue type in every view.
-		if name, ok := typeForFunctionKey(msg.String()); ok && !m.showHelp && !m.showTutorial &&
+		// F1-F8 open the fleet screens in every view (ADR 0068).
+		if fk := msg.String(); isFleetFunctionKey(fk) && !m.showHelp && !m.showTutorial &&
 			m.list.FilterState() != list.Filtering && m.focused != focusLabelPicker &&
 			!m.tree.IsSortPopupOpen() && !m.tree.IsColumnPopupOpen() {
-			m.showOnlyType(name)
-			return m, tea.Batch(cmds...)
+			if fk == fleetProjectsKey {
+				return m, tea.Batch(append(cmds, func() tea.Msg { return OpenProjectTableMsg{} })...)
+			}
+			next, open := m.openFleet(fleetFunctionKeys[fk])
+			return next, tea.Batch(append(cmds, open)...)
 		}
 
 		// Handle tutorial toggle (backtick `) - bv-8y31
@@ -2533,8 +2568,8 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Ctrl+R and F5 trigger an immediate reload.
-		if (msg.String() == "ctrl+r" || msg.String() == "f5") && m.list.FilterState() != list.Filtering {
+		// Ctrl+R triggers an immediate reload.
+		if msg.String() == "ctrl+r" && m.list.FilterState() != list.Filtering {
 			now := time.Now()
 			if !m.lastForceRefresh.IsZero() && now.Sub(m.lastForceRefresh) < time.Second {
 				return m, nil
@@ -4075,6 +4110,9 @@ func (m Model) View() string {
 	if !m.ready {
 		return "Initializing..."
 	}
+	if m.fleetVisible && m.fleet != nil {
+		return m.fleet.View()
+	}
 	if m.memoryVisible && m.memoryBrowser != nil {
 		return m.memoryBrowser.View()
 	}
@@ -4709,7 +4747,7 @@ func commonKeyHelp() []struct{ key, desc string } {
 		{"esc", "Back / clear / quit"}, {"ctrl+c", "Force quit"},
 		{"K", "Close marked / selected"},
 		{"delete", "Delete marked / selected"},
-		{"ctrl+r", "Force refresh"}, {"f5", "Force refresh"},
+		{"ctrl+r", "Force refresh"},
 		{"ctrl+n", "Create new issue"},
 	}
 }
@@ -5157,7 +5195,7 @@ func (m *Model) renderFooter() string {
 	} else {
 		hints = append(hints, hint{"L", "labels"})
 	}
-	hints = append(hints, hint{"F1-4", "type"})
+	hints = append(hints, hint{"F1-8", "fleet"})
 	// The footer clips on the right, and the preview is also listed in help,
 	// so it yields its place to the filters when the terminal is narrow.
 	if viewName == "tree" || viewName == "board" {
