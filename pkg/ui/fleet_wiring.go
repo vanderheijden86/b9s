@@ -36,11 +36,11 @@ func (m Model) openFleet(view fleetView) (Model, tea.Cmd) {
 	if m.fleet != nil {
 		b = *m.fleet
 		b.deps = deps.withDefaults()
-		b.width, b.height = m.width, m.height
 	} else {
 		b = NewFleetBrowser(deps, m.theme, m.width, m.height, fleetAgents)
 	}
 	b, root, _ := b.switchRoot(view)
+	b.width, b.height = m.fleetSize(b)
 	m.fleetGeneration++
 	cmd := b.Init()
 	m.fleet, m.fleetVisible = &b, true
@@ -101,7 +101,10 @@ func (m Model) updateFleet(msg tea.Msg) (Model, tea.Cmd, bool) {
 		return m, wrapFleetCmd(cmd, m.fleetGeneration), true
 	}
 	if size, ok := msg.(tea.WindowSizeMsg); ok && m.fleet != nil {
-		b, _, _ := m.fleet.Update(size)
+		sized := m
+		sized.width, sized.height = size.Width, size.Height
+		w, h := sized.fleetSize(*m.fleet)
+		b, _, _ := m.fleet.Update(tea.WindowSizeMsg{Width: w, Height: h})
 		m.fleet = &b
 		return m, nil, false
 	}
@@ -119,6 +122,7 @@ func (m Model) updateFleet(msg tea.Msg) (Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 	b, cmd, out := m.fleet.Update(msg)
+	b.width, b.height = m.fleetSize(b)
 	m.fleet = &b
 	cmd = wrapFleetCmd(cmd, m.fleetGeneration)
 	switch {

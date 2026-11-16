@@ -4108,7 +4108,7 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 	if m.fleetVisible && m.fleet != nil {
-		return m.fleet.View()
+		return m.renderFleet()
 	}
 	if m.memoryVisible && m.memoryBrowser != nil {
 		return m.memoryBrowser.View()
@@ -4214,7 +4214,40 @@ func (m Model) View() string {
 		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
 	}
 
-	// Unified picker header with cross-filter title bar (bd-j764)
+	if pickerHeader := m.renderPickerHeader(); pickerHeader != "" {
+		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, pickerHeader, body, footer))
+	}
+	return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
+}
+
+// renderFleet draws the fleet under the header the issue views share, in
+// place of their body and footer. Fullscreen logs take the whole screen.
+func (m Model) renderFleet() string {
+	b := *m.fleet
+	b.width, b.height = m.fleetSize(b)
+	frame := lipgloss.NewStyle().Width(m.width).Height(m.height).MaxHeight(m.height)
+	header := m.renderPickerHeader()
+	if header == "" || b.height == m.height {
+		return frame.Render(b.View())
+	}
+	return frame.Render(lipgloss.JoinVertical(lipgloss.Left, header, b.View()))
+}
+
+// fleetSize is the area the fleet draws in: the screen below the shared
+// header, which bodyHeight measures, or all of it in fullscreen logs. Update
+// and View both size the browser from here, so its scrolling matches what is
+// on screen.
+func (m Model) fleetSize(b FleetBrowser) (width, height int) {
+	if b.view() == fleetLogs && b.fullscreen {
+		return m.width, m.height
+	}
+	return m.width, m.bodyHeight() + 1
+}
+
+// renderPickerHeader is the header above the issue views: the project picker
+// with the unified title bar (bd-j764), a label or assignee bar, or the
+// minimized picker.
+func (m Model) renderPickerHeader() string {
 	var pickerHeader string
 	titleBar := m.renderUnifiedTitleBar(m.width)
 	if m.pickerVisible {
@@ -4240,11 +4273,7 @@ func (m Model) View() string {
 			pickerHeader = m.projectPicker.ViewMinimized()
 		}
 	}
-
-	if pickerHeader != "" {
-		return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, pickerHeader, body, footer))
-	}
-	return finalStyle.Render(lipgloss.JoinVertical(lipgloss.Left, body, footer))
+	return pickerHeader
 }
 
 func (m Model) renderQuitConfirm() string {

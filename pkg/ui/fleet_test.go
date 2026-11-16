@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/vanderheijden86/b9s/internal/agents"
+	"github.com/vanderheijden86/b9s/pkg/config"
 )
 
 var fleetNow = time.Date(2026, 11, 15, 10, 12, 0, 0, time.UTC)
@@ -387,5 +388,28 @@ func TestFleetLogsShiftKeysOpenTaskAndContext(t *testing.T) {
 	}
 	if b, _ = fleetDrive(t, b, "C"); b.view() != fleetContext {
 		t.Errorf("C opened %v", b.view())
+	}
+}
+
+// The fleet draws under the header every issue view shares (ADR 0069), and the
+// two together fill the screen exactly.
+func TestFleetDrawsUnderTheSharedHeader(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	m := keybindingTestModel(t, nil)
+	m.allProjects = []config.Project{{Name: "one", Path: t.TempDir()}, {Name: "two", Path: t.TempDir()}}
+	issues := strings.Split(m.View(), "\n")
+	m, _ = m.executeCommand(fleetCommand(fleetAgents))
+	fleet := strings.Split(m.View(), "\n")
+	if !strings.Contains(strings.Join(fleet, "\n"), "b9s fleet") {
+		t.Fatalf("the fleet view is missing:\n%s", strings.Join(fleet, "\n"))
+	}
+	if len(fleet) != m.height {
+		t.Fatalf("fleet view has %d lines, want the screen height %d", len(fleet), m.height)
+	}
+	if _, h := m.fleetSize(*m.fleet); lipgloss.Height(m.renderPickerHeader())+h != m.height {
+		t.Fatalf("header %d rows + fleet %d rows, want %d", lipgloss.Height(m.renderPickerHeader()), h, m.height)
+	}
+	if fleet[0] != issues[0] || !strings.Contains(strings.Join(fleet, "\n"), "Types") {
+		t.Fatalf("the fleet lost the shared header:\nissues: %q\nfleet:  %q", issues[0], fleet[0])
 	}
 }
