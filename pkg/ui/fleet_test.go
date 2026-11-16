@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/vanderheijden86/b9s/internal/agents"
 	"github.com/vanderheijden86/b9s/pkg/config"
+	"github.com/vanderheijden86/b9s/pkg/model"
 )
 
 var fleetNow = time.Date(2026, 11, 15, 10, 12, 0, 0, time.UTC)
@@ -171,6 +173,20 @@ func TestFleetLogsAndContextOpenFromTheTable(t *testing.T) {
 	b, out := fleetDrive(t, b, "esc", "esc", "esc")
 	if !out.close {
 		t.Errorf("third esc should close, stack %v", b.stack)
+	}
+}
+
+// TestFleetLogsDrawOnTheKeyThatOpensThem pins that the logs page has its
+// lines on the frame after Enter, from what the last scan read, without
+// waiting for a command to return.
+func TestFleetLogsDrawOnTheKeyThatOpensThem(t *testing.T) {
+	b, _ := newFleetTest(t, fleetAgents)
+	b, _, _ = b.Update(fleetKey("enter"))
+	if b.view() != fleetLogs || len(b.events) == 0 {
+		t.Fatalf("view %v with %d events before any command ran", b.view(), len(b.events))
+	}
+	if v := b.View(); !strings.Contains(v, "Review bd-ab12.3 please") {
+		t.Errorf("logs view lacks the first prompt:\n%s", v)
 	}
 }
 
@@ -522,5 +538,32 @@ func fleetCmdMsgs(cmd tea.Cmd, limit time.Duration) []tea.Msg {
 		case <-deadline:
 			return msgs
 		}
+	}
+}
+
+// BenchmarkFleetKeyAndView measures one cursor move and the frame after it,
+// the work behind every key press in the agents view. With
+// B9S_FLEET_BENCH_HOME set it uses that home's real sessions.
+func BenchmarkFleetKeyAndView(b *testing.B) {
+	b.Setenv("B9S_TEST_MODE", "1")
+	m := NewModel([]model.Issue{{ID: "t-1", Title: "one", Status: model.StatusOpen, IssueType: model.TypeTask}}, "").WithConfig(config.DefaultConfig(), "p", b.TempDir())
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 150, Height: 45})
+	m = updated.(Model)
+	m.allProjectsMode = true
+	m, _ = m.executeCommand(fleetCommand(fleetAgents))
+	if home := os.Getenv("B9S_FLEET_BENCH_HOME"); home != "" {
+		m.fleet.snap = agents.NewCollector(agents.Options{Home: home}).Scan(context.Background())
+	} else {
+		for i := 0; i < 50; i++ {
+			m.fleet.snap.Sessions = append(m.fleet.snap.Sessions, agents.Session{ID: fmt.Sprint(i), Name: fmt.Sprintf("session-%d", i), Project: fmt.Sprintf("p%d", i%7), LastActivity: time.Now()})
+		}
+	}
+	m.fleet.scanned = true
+	down := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		updated, _ := m.Update(down)
+		m = updated.(Model)
+		_ = m.View()
 	}
 }

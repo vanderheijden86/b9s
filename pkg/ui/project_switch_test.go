@@ -524,3 +524,42 @@ func TestStartupFailurePopupNamesFallbackProject(t *testing.T) {
 		}
 	}
 }
+
+// TestAllProjectsLoadLeavesTheUpdateLoopAtOnce pins that the all-projects
+// reload queries the databases in a command. A query to every database takes
+// seconds, and inside Update it would hold every key press behind it.
+func TestAllProjectsLoadLeavesTheUpdateLoopAtOnce(t *testing.T) {
+	m, _, _ := switchModel(t)
+	defer func() { m.Stop() }()
+	reader := &datasource.MultiDoltReader{}
+	m.allProjectsMode, m.multiDoltReader = true, reader
+	before := []model.Issue{{ID: "kept-1", Title: "kept", Status: model.StatusOpen, IssueType: model.TypeTask}}
+	m.issues = before
+
+	updated, cmd := m.Update(AllProjectsLoadMsg{})
+	m = updated.(Model)
+	if len(m.issues) != 1 || m.issues[0].ID != "kept-1" {
+		t.Fatalf("issues changed inside Update: %+v", m.issues)
+	}
+	if cmd == nil {
+		t.Fatal("no command loads the databases")
+	}
+	loaded, ok := cmd().(allProjectsLoadedMsg)
+	if !ok {
+		t.Fatalf("command returned %T", cmd())
+	}
+
+	stale := loaded
+	stale.reader = &datasource.MultiDoltReader{}
+	updated, _ = m.Update(stale)
+	m = updated.(Model)
+	if len(m.issues) != 1 {
+		t.Fatalf("a load from a closed reader replaced the issues: %+v", m.issues)
+	}
+
+	updated, _ = m.Update(loaded)
+	m = updated.(Model)
+	if len(m.issues) != 0 || !strings.HasPrefix(m.statusMsg, "All projects: 0 issues") {
+		t.Errorf("loaded result not applied: %d issues, status %q", len(m.issues), m.statusMsg)
+	}
+}

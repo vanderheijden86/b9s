@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -100,14 +101,7 @@ func (c *Collector) Scan(ctx context.Context) Snapshot {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for path, tool := range paths {
-		st := c.files[path]
-		if st == nil {
-			st = &fileState{tr: newTranscript(tool, path)}
-			c.files[path] = st
-		}
-		c.readAppended(path, st)
-	}
+	c.readAll(paths)
 	var list []*Session
 	for path, st := range c.files {
 		if _, ok := paths[path]; !ok {
@@ -193,6 +187,33 @@ func (c *Collector) transcripts(now time.Time) map[string]Tool {
 	return out
 }
 
+// readAll reads what was appended to each transcript, several files at a
+// time. A first scan parses hundreds of megabytes of JSON, and one core per
+// file brings that wait down from seconds to the largest file's share. Every
+// worker owns one fileState, and c.mu, held by the caller, keeps readers out
+// until all of them finish.
+func (c *Collector) readAll(paths map[string]Tool) {
+	work := make(chan string, len(paths))
+	for path, tool := range paths {
+		if c.files[path] == nil {
+			c.files[path] = &fileState{tr: newTranscript(tool, path)}
+		}
+		work <- path
+	}
+	close(work)
+	var wg sync.WaitGroup
+	for range min(runtime.GOMAXPROCS(0), len(paths)) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for path := range work {
+				c.readAppended(path, c.files[path])
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 // readAppended feeds the complete lines written after st.offset. A partial
 // last line stays unread until the writer finishes it.
 func (c *Collector) readAppended(path string, st *fileState) {
@@ -266,6 +287,25 @@ func (c *Collector) Events(ctx context.Context, id string) ([]Event, error) {
 		return nil, nil
 	}
 	return append([]Event(nil), tr.events...), nil
+}
+
+// ReadEvents returns the events the last scan read for a local session
+// without waiting. It reports false for a pod session, whose log comes over
+// the network, and while a scan holds the collector, so a UI goroutine can
+// draw from memory and fall back to Events in a command.
+func (c *Collector) ReadEvents(id string) ([]Event, bool) {
+	if !c.mu.TryLock() {
+		return nil, false
+	}
+	defer c.mu.Unlock()
+	if _, pod := c.pods[id]; pod {
+		return nil, false
+	}
+	tr := c.transcriptOf(id)
+	if tr == nil {
+		return nil, false
+	}
+	return append([]Event(nil), tr.events...), true
 }
 
 // Context builds the context report of one session.

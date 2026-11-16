@@ -1800,7 +1800,15 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		debug.Log("AllProjectsLoadMsg: loading from multi-reader")
-		allIssues, err := m.multiDoltReader.LoadAllIssues()
+		return m, loadAllProjectsCmd(m.multiDoltReader)
+
+	case allProjectsLoadedMsg:
+		// A reader that All mode has since closed or replaced answers for
+		// databases the screen no longer shows, and its watcher has stopped.
+		if msg.reader != m.multiDoltReader {
+			return m, nil
+		}
+		allIssues, err := msg.issues, msg.err
 		if err != nil && !errors.Is(err, datasource.ErrCommentsUnavailable) {
 			m.statusMsg = fmt.Sprintf("All-projects load error: %v", err)
 			m.statusIsError = true
@@ -6728,6 +6736,24 @@ func (m *Model) leaveAllProjectsMode() {
 
 // AllProjectsLoadMsg triggers loading all issues from multi-reader.
 type AllProjectsLoadMsg struct{}
+
+// allProjectsLoadedMsg carries the issues one load read from every database,
+// with the reader that read them.
+type allProjectsLoadedMsg struct {
+	reader *datasource.MultiDoltReader
+	issues []model.Issue
+	err    error
+}
+
+// loadAllProjectsCmd queries every database off the Update loop. The query
+// crosses the network once per database and takes seconds with many
+// projects, and inside Update every key would wait for it.
+func loadAllProjectsCmd(reader *datasource.MultiDoltReader) tea.Cmd {
+	return func() tea.Msg {
+		issues, err := reader.LoadAllIssues()
+		return allProjectsLoadedMsg{reader: reader, issues: issues, err: err}
+	}
+}
 
 // MultiDoltWatchCmd waits for any database change in multi-watcher.
 func MultiDoltWatchCmd(w *datasource.MultiDoltWatcher) tea.Cmd {

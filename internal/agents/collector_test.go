@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,5 +140,81 @@ func TestCollectorActivityBuckets(t *testing.T) {
 	}
 	if a.Errors[1] != 1 || a.Tokens[1] != 400 || a.Tokens[2] != 50 {
 		t.Errorf("errors = %v tokens = %v", a.Errors, a.Tokens)
+	}
+}
+
+// BenchmarkScanRealHome measures a rescan of a real home directory, the cost
+// the fleet pays every refresh. It reads the transcripts and never writes;
+// set B9S_FLEET_BENCH_HOME to run it.
+func BenchmarkScanRealHome(b *testing.B) {
+	home := os.Getenv("B9S_FLEET_BENCH_HOME")
+	if home == "" {
+		b.Skip("B9S_FLEET_BENCH_HOME is not set")
+	}
+	c := NewCollector(Options{Home: home})
+	start := time.Now()
+	snap := c.Scan(context.Background())
+	b.Logf("first scan: %d sessions in %v", len(snap.Sessions), time.Since(start))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c.Scan(context.Background())
+	}
+}
+
+// BenchmarkActivityRealHome measures the activity buckets the pulse view
+// builds after every scan. It runs on the UI goroutine.
+func BenchmarkActivityRealHome(b *testing.B) {
+	home := os.Getenv("B9S_FLEET_BENCH_HOME")
+	if home == "" {
+		b.Skip("B9S_FLEET_BENCH_HOME is not set")
+	}
+	c := NewCollector(Options{Home: home})
+	snap := c.Scan(context.Background())
+	events := 0
+	for _, st := range c.files {
+		events += len(st.tr.events)
+	}
+	b.Logf("%d sessions, %d events", len(snap.Sessions), events)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		c.Activity(time.Now(), 36, 10*time.Minute)
+	}
+}
+
+// TestScanReadsEveryTranscriptOfAManyFileHome pins what a scan of many
+// transcripts returns: each file is its own session with all its events. The
+// files are read side by side, so run it with -race.
+func TestScanReadsEveryTranscriptOfAManyFileHome(t *testing.T) {
+	home, project, _ := fixtureHome(t)
+	data, err := os.ReadFile("testdata/claude.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 11, 15, 10, 12, 0, 0, time.UTC)
+	const n = 40
+	for i := 0; i < n; i++ {
+		id := fmt.Sprintf("s-many-%02d", i)
+		body := strings.ReplaceAll(string(data), "/work/b9s/.worktrees/feat-x", project)
+		body = strings.ReplaceAll(body, "s-claude-1", id)
+		p := filepath.Join(home, ".claude", "projects", ClaudeProjectDir(project), id+".jsonl")
+		writeFile(t, p, body)
+		os.Chtimes(p, now, now)
+	}
+	c := NewCollector(Options{Home: home, Now: func() time.Time { return now }, Panes: func(context.Context) []Pane { return nil }})
+	snap := c.Scan(context.Background())
+	seen := map[string]bool{}
+	for _, s := range snap.Sessions {
+		seen[s.ID] = true
+	}
+	want, _ := c.Events(context.Background(), "s-many-00")
+	for i := 0; i < n; i++ {
+		id := fmt.Sprintf("s-many-%02d", i)
+		if !seen[id] {
+			t.Fatalf("session %s missing from %d sessions", id, len(snap.Sessions))
+		}
+		got, _ := c.Events(context.Background(), id)
+		if len(got) == 0 || len(got) != len(want) {
+			t.Errorf("%s has %d events, want %d", id, len(got), len(want))
+		}
 	}
 }

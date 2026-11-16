@@ -691,6 +691,14 @@ func (b FleetBrowser) agentsKey(key string) (FleetBrowser, tea.Cmd, fleetOutcome
 func (b FleetBrowser) openLogs(s agents.Session) (FleetBrowser, tea.Cmd, fleetOutcome) {
 	b.selected, b.events, b.logCursor, b.follow, b.expanded, b.logErr = s.ID, nil, 0, true, false, ""
 	b.push(fleetLogs)
+	if c := b.deps.Collector; c != nil {
+		if ev, ok := c.ReadEvents(s.ID); ok {
+			b.events = ev
+			b.logCursor = len(b.filteredEvents()) - 1
+			b.clampCursors()
+			return b, nil, fleetOutcome{}
+		}
+	}
 	return b, b.eventsCmd(s.ID), fleetOutcome{}
 }
 
