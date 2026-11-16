@@ -740,6 +740,8 @@ b9s reads the transcripts under `~/.claude/projects` and `~/.codex/sessions` and
 
 The fleet draws under the same header as the issue views: logo, projects, key hints and the type legend. The function keys keep their issue meaning inside it. `F1`-`F4` close the fleet and show one type, and `F5` closes it and reloads ([ADR 0069](adr/0069-open-the-fleet-from-commands-and-keep-function-keys-for-issues.md)).
 
+The fleet follows the header's project. With a project active, the agents, xray and pulse views show its sessions and the commits view its git log. Under All (`0`) they show every project and the merged log of every recent project with a checkout. In the agents, xray, pulse and commits views, `1`-`9` and `0` switch the project as they do in the header, and the fleet stays on screen.
+
 | View | Key | Effect |
 |------|-----|--------|
 | Agents | `Enter`, `l` | Open the session's log |
@@ -750,7 +752,6 @@ The fleet draws under the same header as the issue views: logo, projects, key hi
 | Agents, xray | `t` | Close the fleet and select the session's task |
 | Logs | `T` | Close the fleet and select the session's task |
 | Agents | `s` | Sort by activity, context, project or state |
-| Agents | `1`-`9`, `0` | Show one project's sessions, or all |
 | Logs | `1`-`5` | All events, messages, tools, errors, `bd` commands |
 | Logs | `s` | Autoscroll: follow new events |
 | Logs | `w` | Wrap long lines onto more rows |
@@ -767,7 +768,6 @@ The fleet draws under the same header as the issue views: logo, projects, key hi
 | Commits | `Enter` | Open the commit: files, diff, issue and the agent that made it |
 | Commits | `U` | Show the git author in place of the agent |
 | Commits | `b` | All branches, or `HEAD` only |
-| Commits | `0` | Merge the logs of every recent project with a checkout |
 | Commits, commit | `c` | Copy the full hash |
 | Commits | `r` | Read the log again |
 | Commit | `l` | Open the log of the agent that made the commit |

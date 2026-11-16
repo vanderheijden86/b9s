@@ -564,14 +564,38 @@ func (b FleetBrowser) pageSize() int {
 	return 1
 }
 
-// visibleSessions applies the project filter, the text filter and the sort.
+// scopedSessions are the sessions of the project the header has active, or
+// all of them when the header shows All (empty project).
+func (b FleetBrowser) scopedSessions() []agents.Session {
+	if b.project == "" {
+		return b.snap.Sessions
+	}
+	var out []agents.Session
+	for _, s := range b.snap.Sessions {
+		if s.Project == b.project {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// rescope points the fleet at the header's project and repository scope. A
+// change resets the cursors and makes the commit log read again.
+func (b FleetBrowser) rescope(project string, allRepos bool) FleetBrowser {
+	if b.project == project && b.allRepos == allRepos {
+		return b
+	}
+	b.project, b.allRepos = project, allRepos
+	b.cursor, b.commitCursor = 0, 0
+	b.commitsRead = false
+	return b
+}
+
+// visibleSessions applies the project scope, the text filter and the sort.
 func (b FleetBrowser) visibleSessions() []agents.Session {
 	var out []agents.Session
 	f := strings.ToLower(b.filter)
-	for _, s := range b.snap.Sessions {
-		if b.project != "" && s.Project != b.project {
-			continue
-		}
+	for _, s := range b.scopedSessions() {
 		if f != "" && !strings.Contains(strings.ToLower(strings.Join([]string{s.Name, s.Project, s.TaskID, s.Role, string(s.Tool), string(s.State), s.Branch}, " ")), f) {
 			continue
 		}
@@ -600,21 +624,6 @@ func (b FleetBrowser) visibleSessions() []agents.Session {
 	return out
 }
 
-// projects lists the distinct projects of the scanned sessions; keys 1 to 9
-// pick one of the first nine.
-func (b FleetBrowser) projects() []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, s := range b.snap.Sessions {
-		if s.Project != "" && !seen[s.Project] {
-			seen[s.Project] = true
-			out = append(out, s.Project)
-		}
-	}
-	sort.Strings(out)
-	return out
-}
-
 func (b FleetBrowser) currentSession() (agents.Session, bool) {
 	list := b.visibleSessions()
 	if b.cursor >= 0 && b.cursor < len(list) {
@@ -638,14 +647,6 @@ func (b FleetBrowser) agentsKey(key string) (FleetBrowser, tea.Cmd, fleetOutcome
 	case "s":
 		b.sortBy = (b.sortBy + 1) % fleetSortCount
 		b.status = "sort: " + fleetSortNames[b.sortBy]
-	case "0":
-		b.project = ""
-	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		ps := b.projects()
-		if i := int(key[0] - '1'); i < len(ps) {
-			b.project = ps[i]
-			b.cursor = 0
-		}
 	case "enter", "l":
 		if ok {
 			return b.openLogs(s)
@@ -939,7 +940,7 @@ type xrayRow struct {
 
 func (b FleetBrowser) xrayRows() []xrayRow {
 	byProject := map[string]map[string][]agents.Session{}
-	for _, s := range b.snap.Sessions {
+	for _, s := range b.scopedSessions() {
 		if !s.Live() {
 			continue
 		}
@@ -1039,11 +1040,6 @@ func (b FleetBrowser) commitsKey(key string) (FleetBrowser, tea.Cmd, fleetOutcom
 	case "b":
 		b.allBranches = !b.allBranches
 		b.status = map[bool]string{true: "all branches", false: "HEAD only"}[b.allBranches]
-		return b, b.commitsCmd(), fleetOutcome{}
-	case "0":
-		b.allRepos = !b.allRepos
-		b.commitCursor = 0
-		b.status = map[bool]string{true: "all repositories", false: "active project only"}[b.allRepos]
 		return b, b.commitsCmd(), fleetOutcome{}
 	case "t":
 		if cur != nil && len(cur.Issues) > 0 {

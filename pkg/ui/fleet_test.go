@@ -413,3 +413,114 @@ func TestFleetDrawsUnderTheSharedHeader(t *testing.T) {
 		t.Fatalf("the fleet lost the shared header:\nissues: %q\nfleet:  %q", issues[0], fleet[0])
 	}
 }
+
+// fleetWithTwoProjects opens the fleet over switchModel's alpha and beta, with
+// one session in each.
+func fleetWithTwoProjects(t *testing.T) (Model, config.Project) {
+	t.Helper()
+	t.Setenv("B9S_TEST_MODE", "1")
+	m, _, beta := switchModel(t)
+	m, _ = m.executeCommand(fleetCommand(fleetAgents))
+	m.fleet.snap = agents.Snapshot{Sessions: []agents.Session{
+		{ID: "a", Name: "works-on-alpha", Project: "alpha", LastActivity: time.Now()},
+		{ID: "b", Name: "works-on-beta", Project: "beta", LastActivity: time.Now()},
+	}}
+	m.fleet.scanned = true
+	return m, beta
+}
+
+// The fleet shows the sessions of the header's active project, and every
+// project under All (bd-m5js.21).
+func TestFleetFollowsTheActiveProject(t *testing.T) {
+	m, _ := fleetWithTwoProjects(t)
+	v := m.View()
+	if !strings.Contains(v, "works-on-alpha") || strings.Contains(v, "works-on-beta") {
+		t.Fatalf("with alpha active the fleet must list only alpha's session:\n%s", v)
+	}
+	m.allProjectsMode = true
+	v = m.View()
+	if !strings.Contains(v, "works-on-alpha") || !strings.Contains(v, "works-on-beta") {
+		t.Fatalf("under All the fleet must list every session:\n%s", v)
+	}
+}
+
+// A project switch keeps the fleet on screen and shows the new project's
+// sessions.
+func TestProjectSwitchKeepsTheFleetOpen(t *testing.T) {
+	m, beta := fleetWithTwoProjects(t)
+	snap := m.fleet.snap
+	m, _ = requestSwitch(t, m, beta)
+	updated, _ := m.Update(projectOpenedMsg{generation: m.projectSwitch.generation, project: beta})
+	m = updated.(Model)
+	if !m.FleetVisible() {
+		t.Fatal("the project switch closed the fleet")
+	}
+	m.fleet.snap = snap
+	v := m.View()
+	if !strings.Contains(v, "works-on-beta") || strings.Contains(v, "works-on-alpha") {
+		t.Fatalf("after the switch to beta the fleet must list only beta's session:\n%s", v)
+	}
+}
+
+// A digit in the fleet switches the project, as it does in the header.
+func TestDigitInTheFleetSwitchesTheProject(t *testing.T) {
+	m, beta := fleetWithTwoProjects(t)
+	n := 0
+	for _, e := range m.projectPicker.entries {
+		if e.Project.Name == beta.Name {
+			n = e.FavoriteNum
+		}
+	}
+	if n < 1 || n > 9 {
+		t.Fatalf("beta has no number in the header (%d)", n)
+	}
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{rune('0' + n)}})
+	m = updated.(Model)
+	if !m.FleetVisible() || cmd == nil {
+		t.Fatalf("digit %d: fleet visible %v, cmd %v", n, m.FleetVisible(), cmd != nil)
+	}
+	found := false
+	for _, msg := range fleetCmdMsgs(cmd, time.Second) {
+		if sw, ok := msg.(SwitchProjectMsg); ok && sw.Project.Name == beta.Name {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("digit %d did not ask to switch to beta", n)
+	}
+}
+
+// fleetCmdMsgs runs every leaf of cmd and returns the messages that arrive
+// within limit; a tick or a blocked read contributes nothing.
+func fleetCmdMsgs(cmd tea.Cmd, limit time.Duration) []tea.Msg {
+	out := make(chan tea.Msg, 64)
+	var run func(tea.Cmd)
+	run = func(c tea.Cmd) {
+		if c == nil {
+			return
+		}
+		go func() {
+			msg := c()
+			if batch, ok := msg.(tea.BatchMsg); ok {
+				for _, sub := range batch {
+					run(sub)
+				}
+				return
+			}
+			if msg != nil {
+				out <- msg
+			}
+		}()
+	}
+	run(cmd)
+	var msgs []tea.Msg
+	deadline := time.After(limit)
+	for {
+		select {
+		case msg := <-out:
+			msgs = append(msgs, msg)
+		case <-deadline:
+			return msgs
+		}
+	}
+}

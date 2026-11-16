@@ -248,8 +248,16 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	m.resetIssueTexts()
 	m.memoryBrowser, m.memoryVisible, m.memoryRefused = nil, false, false
 	m.memoryGeneration++
-	m.fleet, m.fleetVisible = nil, false
-	m.fleetGeneration++
+	// A fleet on screen follows the switch, as the header does; a hidden one
+	// holds the previous project's commits and is dropped.
+	var fleetCmd tea.Cmd
+	if m.fleetVisible && m.fleet != nil {
+		m, fleetCmd = m.openFleet(m.fleet.stack[0])
+		cmds = append(cmds, fleetCmd)
+	} else {
+		m.fleet, m.fleetVisible = nil, false
+		m.fleetGeneration++
+	}
 	checkout, hasCheckout := NewCheckout(project.ResolvedPath())
 	m.issueWriter.SetCheckout(checkout)
 	m.board.SetActiveProjectName(project.Name)
@@ -274,7 +282,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 		if err != nil && !hasDoltSource {
 			m.statusMsg = fmt.Sprintf("No beads found in %s", project.Name)
 			m.statusIsError = true
-			return m, nil
+			return m, fleetCmd
 		}
 		if err != nil {
 			newPath = filepath.Join(beadsDir, "issues.jsonl")
@@ -282,7 +290,7 @@ func (m Model) applyProjectSwitch(project config.Project) (Model, tea.Cmd) {
 	} else if !hasDoltSource {
 		m.statusMsg = fmt.Sprintf("No beads found in %s", project.Name)
 		m.statusIsError = true
-		return m, nil
+		return m, fleetCmd
 	}
 	// Stop background worker and old watchers (bd-87w)
 	if m.backgroundWorker != nil {

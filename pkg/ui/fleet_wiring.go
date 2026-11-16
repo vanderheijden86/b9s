@@ -39,8 +39,9 @@ func (m Model) openFleet(view fleetView) (Model, tea.Cmd) {
 	} else {
 		b = NewFleetBrowser(deps, m.theme, m.width, m.height, fleetAgents)
 	}
+	b = m.scopeFleet(b)
 	b, root, _ := b.switchRoot(view)
-	b.width, b.height = m.fleetSize(b)
+	b = m.scopeFleet(b)
 	m.fleetGeneration++
 	cmd := b.Init()
 	m.fleet, m.fleetVisible = &b, true
@@ -121,8 +122,12 @@ func (m Model) updateFleet(msg tea.Msg) (Model, tea.Cmd, bool) {
 		m.updateViewportContent()
 		return m, nil, false
 	}
+	if key, ok := msg.(tea.KeyMsg); ok && m.fleet.prompt == fleetPromptNone && len(m.fleet.stack) == 1 && isDigitKey(key.String()) {
+		next, cmd := m.fleetProjectKey(key)
+		return next, cmd, true
+	}
 	b, cmd, out := m.fleet.Update(msg)
-	b.width, b.height = m.fleetSize(b)
+	b = m.scopeFleet(b)
 	m.fleet = &b
 	cmd = wrapFleetCmd(cmd, m.fleetGeneration)
 	switch {
@@ -146,3 +151,43 @@ func (m Model) updateFleet(msg tea.Msg) (Model, tea.Cmd, bool) {
 	}
 	return m, cmd, true
 }
+
+// scopeFleet gives the browser what it shares with the header: the active
+// project (empty under All), the repository scope of the commit log, the
+// project's issues, and the area below the header.
+func (m Model) scopeFleet(b FleetBrowser) FleetBrowser {
+	project := ""
+	if !m.allProjectsMode {
+		project = agents.ProjectFromCwd(m.activeProjectPath)
+		if project == "" {
+			project = m.activeProjectName
+		}
+	}
+	b = b.rescope(project, m.allProjectsMode)
+	d := m.fleetDeps()
+	b.deps.RepoDir, b.deps.Repos, b.deps.Issue, b.deps.Closed = d.RepoDir, d.Repos, d.Issue, d.Closed
+	b.width, b.height = m.fleetSize(b)
+	return b
+}
+
+// fleetProjectKey runs a digit pressed in a fleet root view as the header
+// runs it: 1-9 switch to that project and 0 toggles All. The fleet stays on
+// screen and follows the switch.
+func (m Model) fleetProjectKey(key tea.KeyMsg) (Model, tea.Cmd) {
+	if key.String() != "0" {
+		var cmd tea.Cmd
+		m.projectPicker, cmd = m.projectPicker.Update(key)
+		return m, cmd
+	}
+	var cmd tea.Cmd
+	if m.allProjectsMode {
+		m.exitAllProjectsMode()
+		cmd = func() tea.Msg { return FileChangedMsg{} }
+	} else {
+		cmd = m.enterAllProjectsMode()
+	}
+	next, fleetCmd := m.openFleet(m.fleet.stack[0])
+	return next, tea.Batch(cmd, fleetCmd)
+}
+
+func isDigitKey(k string) bool { return len(k) == 1 && k[0] >= '0' && k[0] <= '9' }

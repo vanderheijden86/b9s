@@ -4223,8 +4223,7 @@ func (m Model) View() string {
 // renderFleet draws the fleet under the header the issue views share, in
 // place of their body and footer. Fullscreen logs take the whole screen.
 func (m Model) renderFleet() string {
-	b := *m.fleet
-	b.width, b.height = m.fleetSize(b)
+	b := m.scopeFleet(*m.fleet)
 	frame := lipgloss.NewStyle().Width(m.width).Height(m.height).MaxHeight(m.height)
 	header := m.renderPickerHeader()
 	if header == "" || b.height == m.height {

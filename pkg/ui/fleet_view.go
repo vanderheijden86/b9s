@@ -158,7 +158,7 @@ func (b FleetBrowser) View() string {
 
 func (b FleetBrowser) header() string {
 	live, waiting, failed := 0, 0, 0
-	for _, s := range b.snap.Sessions {
+	for _, s := range b.scopedSessions() {
 		if s.Live() {
 			live++
 		}
@@ -173,11 +173,13 @@ func (b FleetBrowser) header() string {
 	if !b.scanned {
 		return left + b.muted(" scanning transcripts…")
 	}
-	stats := fmt.Sprintf(" %d sessions · %d live · ", len(b.snap.Sessions), live) +
+	stats := fmt.Sprintf(" %d sessions · %d live · ", len(b.scopedSessions()), live) +
 		b.style(b.theme.InProgress).Render(fmt.Sprintf("%d waiting", waiting)) + " · " +
 		b.style(b.theme.Blocked).Render(fmt.Sprintf("%d failed", failed))
 	if b.project != "" {
 		stats += b.muted("  project:") + b.project
+	} else {
+		stats += b.muted("  all projects")
 	}
 	if b.snap.PodError != "" {
 		stats += b.style(b.theme.Blocked).Render("  pods: " + b.snap.PodError)
@@ -227,7 +229,7 @@ func (b FleetBrowser) hints() string {
 	case fleetPulse:
 		h = "tab view  : command  q quit"
 	case fleetCommits:
-		h = "enter detail  t issue  U author  b branches  0 all repos  c copy hash  r reload  / filter  esc quit"
+		h = "enter detail  t issue  U author  b branches  0-9 project  c copy hash  r reload  / filter  esc quit"
 	case fleetCommit:
 		h = "j/k scroll diff  t issue  l agent log  c copy hash  esc back"
 	case fleetText:
@@ -576,7 +578,7 @@ func (b FleetBrowser) pulseBody(h int) []string {
 	counts := map[agents.State]int{}
 	var failed, waiting, pressure []agents.Session
 	tpm := 0
-	for _, s := range b.snap.Sessions {
+	for _, s := range b.scopedSessions() {
 		counts[s.State]++
 		if !s.Live() {
 			continue
