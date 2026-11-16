@@ -760,11 +760,18 @@ The function keys open each screen directly, from the issue views and from insid
 | Agents | `d` | Describe the session: ids, paths, model, tokens |
 | Agents | `a` | Switch the tmux client to the session's pane |
 | Agents | `Ctrl-K` twice | Send `Escape` to the pane, which stops the agent's turn |
-| Agents, logs, xray | `t` | Close the fleet and select the session's task |
+| Agents, xray | `t` | Close the fleet and select the session's task |
+| Logs | `T` | Close the fleet and select the session's task |
 | Agents | `s` | Sort by activity, context, project or state |
 | Agents | `1`-`9`, `0` | Show one project's sessions, or all |
 | Logs | `1`-`5` | All events, messages, tools, errors, `bd` commands |
-| Logs | `f` | Follow new events |
+| Logs | `s` | Autoscroll: follow new events |
+| Logs | `w` | Wrap long lines onto more rows |
+| Logs | `t` | Show or hide the timestamps |
+| Logs | `f` | Full screen: hide the header, breadcrumbs and hints |
+| Logs | `c` | Copy the log, as filtered, to the clipboard |
+| Logs | `Ctrl-S` | Save the log, as filtered, to `$TMPDIR/b9s-logs/<session>-<time>.log` |
+| Logs | `C` | Show the context the session has loaded |
 | Logs | `x`, `Enter` | Expand the event's full text |
 | Logs | `i` | Type a line into the session's pane and press `Enter` |
 | Context | `Enter` | Fold a layer, or open a file |

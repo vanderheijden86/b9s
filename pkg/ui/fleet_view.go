@@ -113,7 +113,11 @@ func (b FleetBrowser) View() string {
 	if b.width <= 0 || b.height <= 0 {
 		return ""
 	}
+	full := b.view() == fleetLogs && b.fullscreen
 	bodyH := b.height - 4
+	if full {
+		bodyH = b.height - 1
+	}
 	if bodyH < 1 {
 		bodyH = 1
 	}
@@ -139,8 +143,13 @@ func (b FleetBrowser) View() string {
 	for len(body) < bodyH {
 		body = append(body, "")
 	}
-	lines := append([]string{b.header(), b.crumbs()}, body[:bodyH]...)
-	lines = append(lines, b.hints(), b.statusLine())
+	var lines []string
+	if full {
+		lines = append(append(lines, body[:bodyH]...), b.statusLine())
+	} else {
+		lines = append([]string{b.header(), b.crumbs()}, body[:bodyH]...)
+		lines = append(lines, b.hints(), b.statusLine())
+	}
 	for i, l := range lines {
 		lines[i] = fit(l, b.width)
 	}
@@ -210,7 +219,7 @@ func (b FleetBrowser) hints() string {
 	case fleetAgents:
 		h = "enter logs  c context  d describe  a attach  t task  ctrl+k stop  s sort  0-9 project  / filter  tab view  : command  q quit"
 	case fleetLogs:
-		h = "1 all 2 msgs 3 tools 4 errors 5 bd  f follow  x expand  i inject  c context  t task  / search  esc back"
+		h = "1 all 2 msgs 3 tools 4 errors 5 bd  s autoscroll  w wrap  t timestamps  f fullscreen  c copy  ctrl+s save  x expand  i inject  C context  T task  / search  esc back"
 	case fleetContext:
 		h = "enter fold/open  w who else loaded this  D diff since load  esc back"
 	case fleetXray:
@@ -309,8 +318,13 @@ func (b FleetBrowser) logsBody(h int) []string {
 	s, _ := b.sessionByID(b.selected)
 	evs := b.filteredEvents()
 	title := fmt.Sprintf(" %s  %s  %s  %s  ctx %d%%  filter:%s", b.bold(s.Name), s.Project, s.TaskID, b.style(b.stateColor(s.State)).Render(string(s.State)), s.ContextPercent(), fleetLogFilters[b.logFilter].name)
-	if b.follow {
-		title += b.style(b.theme.Open).Render("  following")
+	for _, on := range []struct {
+		set  bool
+		name string
+	}{{b.follow, "following"}, {b.wrap, "wrap"}, {b.hideTime, "no-timestamps"}} {
+		if on.set {
+			title += b.style(b.theme.Open).Render("  " + on.name)
+		}
 	}
 	lines := []string{title}
 	if b.logErr != "" {
@@ -335,17 +349,68 @@ func (b FleetBrowser) logsBody(h int) []string {
 		}
 		listH -= len(detail)
 	}
-	start, end := window(b.logCursor, len(evs), listH)
+	rows := make([][]string, len(evs))
+	heights := make([]int, len(evs))
+	for i, e := range evs {
+		rows[i] = b.logRow(e, i == b.logCursor)
+		heights[i] = len(rows[i])
+	}
+	start, end := wrapWindow(heights, b.logCursor, listH)
 	for i := start; i < end; i++ {
-		e := evs[i]
-		tool := e.Tool
-		row := e.Time.Local().Format("15:04:05") + " " + b.style(b.kindColor(e.Kind)).Render(fit(string(e.Kind), 6)) + " " + b.muted(fit(tool, 8)) + " " + e.Text
-		lines = append(lines, b.selectedLine(row, i == b.logCursor))
+		lines = append(lines, rows[i]...)
+	}
+	if max := h - len(detail); len(lines) > max && max >= 0 {
+		lines = lines[:max]
 	}
 	for len(lines) < h-len(detail) {
 		lines = append(lines, "")
 	}
 	return append(lines, detail...)
+}
+
+// logRow draws one event as one screen row, or as several when wrap is on,
+// with the continuation rows indented under the text column.
+func (b FleetBrowser) logRow(e agents.Event, on bool) []string {
+	prefix := ""
+	if !b.hideTime {
+		prefix = e.Time.Local().Format("15:04:05") + " "
+	}
+	prefix += b.style(b.kindColor(e.Kind)).Render(fit(string(e.Kind), 6)) + " " + b.muted(fit(e.Tool, 8)) + " "
+	text := strings.ReplaceAll(e.Text, "\n", " ")
+	if !b.wrap {
+		return []string{b.selectedLine(prefix+text, on)}
+	}
+	indent := lipgloss.Width(prefix)
+	parts := wrapCells(text, b.width-1-indent)
+	out := []string{b.selectedLine(prefix+parts[0], on)}
+	for _, p := range parts[1:] {
+		out = append(out, b.selectedLine(strings.Repeat(" ", indent)+p, on))
+	}
+	return out
+}
+
+// wrapWindow picks the events [start, end) whose rows fill h screen rows
+// around the cursor event: half the room above it, the rest below, and any
+// room left at the bottom of the log goes back to the rows above.
+func wrapWindow(heights []int, cursor, h int) (int, int) {
+	if len(heights) == 0 || h <= 0 {
+		return 0, 0
+	}
+	start, end := cursor, cursor+1
+	used := heights[cursor]
+	for start > 0 && used+heights[start-1] <= h/2 {
+		start--
+		used += heights[start]
+	}
+	for end < len(heights) && used+heights[end] <= h {
+		used += heights[end]
+		end++
+	}
+	for start > 0 && used+heights[start-1] <= h {
+		start--
+		used += heights[start]
+	}
+	return start, end
 }
 
 // wrapCells splits a line into pieces of at most w cells.

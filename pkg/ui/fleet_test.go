@@ -80,6 +80,8 @@ func fleetKey(s string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyEsc}
 	case "tab":
 		return tea.KeyMsg{Type: tea.KeyTab}
+	case "ctrl+s":
+		return tea.KeyMsg{Type: tea.KeyCtrlS}
 	case "ctrl+k":
 		return tea.KeyMsg{Type: tea.KeyCtrlK}
 	}
@@ -161,7 +163,7 @@ func TestFleetLogsAndContextOpenFromTheTable(t *testing.T) {
 	if len(b.filteredEvents()) >= all {
 		t.Error("tools filter dropped nothing")
 	}
-	b, _ = fleetDrive(t, b, "c")
+	b, _ = fleetDrive(t, b, "C")
 	if b.view() != fleetContext || b.ctx.SessionID != "s-claude-1" {
 		t.Fatalf("context view %v %q", b.view(), b.ctx.SessionID)
 	}
@@ -295,5 +297,98 @@ func TestModelOpensAndClosesTheFleet(t *testing.T) {
 	m = next.(Model)
 	if m.FleetVisible() {
 		t.Error("q should close the fleet")
+	}
+}
+
+// logsWith opens the logs view of the fixture session and replaces its events.
+func logsWith(t *testing.T, evs ...agents.Event) FleetBrowser {
+	t.Helper()
+	b, _ := newFleetTest(t, fleetAgents)
+	b, _ = fleetDrive(t, b, "enter")
+	b.events = evs
+	b.logCursor = len(evs) - 1
+	return b
+}
+
+func TestFleetLogsWrapKeyShowsTheWholeLine(t *testing.T) {
+	long := strings.Repeat("word ", 60) + "TAILMARK"
+	b := logsWith(t, agents.Event{Time: fleetNow, Kind: agents.EventAI, Text: long})
+	if strings.Contains(b.View(), "TAILMARK") {
+		t.Fatal("an unwrapped line must be cut at the screen edge")
+	}
+	b, _ = fleetDrive(t, b, "w")
+	v := b.View()
+	if !strings.Contains(v, "TAILMARK") || !strings.Contains(v, "wrap") {
+		t.Errorf("w must wrap the line onto continuation rows:\n%s", v)
+	}
+	for _, ln := range strings.Split(v, "\n") {
+		if lipgloss.Width(ln) > b.width {
+			t.Errorf("row wider than the screen: %q", ln)
+		}
+	}
+}
+
+func TestFleetLogsTimestampKeyHidesTheTime(t *testing.T) {
+	b := logsWith(t, agents.Event{Time: fleetNow, Kind: agents.EventAI, Text: "hello"})
+	stamp := fleetNow.Local().Format("15:04:05")
+	if !strings.Contains(b.View(), stamp) {
+		t.Fatalf("timestamps show by default")
+	}
+	b, _ = fleetDrive(t, b, "t")
+	if strings.Contains(b.View(), stamp) {
+		t.Errorf("t must hide timestamps:\n%s", b.View())
+	}
+}
+
+func TestFleetLogsAutoscrollAndFullscreenKeys(t *testing.T) {
+	b := logsWith(t, agents.Event{Time: fleetNow, Kind: agents.EventAI, Text: "hello"})
+	b, _ = fleetDrive(t, b, "s")
+	if b.follow || strings.Contains(b.View(), "following") {
+		t.Error("s must turn autoscroll off")
+	}
+	b, _ = fleetDrive(t, b, "f")
+	v := b.View()
+	if strings.Contains(v, "b9s fleet") || strings.Contains(v, "F1-8") || !strings.Contains(v, "hello") {
+		t.Errorf("f must hide the header and hints and keep the log:\n%s", v)
+	}
+	if got := len(strings.Split(v, "\n")); got != b.height {
+		t.Errorf("fullscreen draws %d rows, want %d", got, b.height)
+	}
+	b, _ = fleetDrive(t, b, "f")
+	if !strings.Contains(b.View(), "b9s fleet") {
+		t.Error("a second f must restore the header")
+	}
+}
+
+func TestFleetLogsCopyAndSaveTheLog(t *testing.T) {
+	b := logsWith(t,
+		agents.Event{Time: fleetNow, Kind: agents.EventUser, Text: "first line"},
+		agents.Event{Time: fleetNow, Kind: agents.EventAI, Text: "second line"})
+	var copied string
+	b.deps.Clipboard = func(s string) error { copied = s; return nil }
+	b, _ = fleetDrive(t, b, "c")
+	if !strings.Contains(copied, "first line") || !strings.Contains(copied, "second line") {
+		t.Errorf("c copied %q", copied)
+	}
+	dir := t.TempDir()
+	t.Setenv("TMPDIR", dir)
+	b, _ = fleetDrive(t, b, "ctrl+s")
+	files, _ := filepath.Glob(filepath.Join(dir, "b9s-logs", "*.log"))
+	if len(files) != 1 {
+		t.Fatalf("ctrl+s wrote %v, status %q", files, b.status)
+	}
+	data, _ := os.ReadFile(files[0])
+	if !strings.Contains(string(data), "second line") || !strings.Contains(b.status, files[0]) {
+		t.Errorf("saved %q, status %q", data, b.status)
+	}
+}
+
+func TestFleetLogsShiftKeysOpenTaskAndContext(t *testing.T) {
+	b := logsWith(t, agents.Event{Time: fleetNow, Kind: agents.EventAI, Text: "hello"})
+	if _, out := fleetDrive(t, b, "T"); out.openIssue != "bd-ab12.3" {
+		t.Errorf("T outcome = %+v", out)
+	}
+	if b, _ = fleetDrive(t, b, "C"); b.view() != fleetContext {
+		t.Errorf("C opened %v", b.view())
 	}
 }

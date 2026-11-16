@@ -186,6 +186,10 @@ type FleetBrowser struct {
 	logFilter int
 	expanded  bool
 	logErr    string
+	// wrap, hideTime and fullscreen are the k9s log toggles w, t and f.
+	wrap       bool
+	hideTime   bool
+	fullscreen bool
 
 	ctx       agents.ContextReport
 	ctxCursor int
@@ -486,6 +490,10 @@ func (b FleetBrowser) handleKey(msg tea.KeyMsg) (FleetBrowser, tea.Cmd, fleetOut
 			b.expanded = false
 			return b, nil, fleetOutcome{}
 		}
+		if b.view() == fleetLogs && b.fullscreen {
+			b.fullscreen = false
+			return b, nil, fleetOutcome{}
+		}
 		if b.filter != "" && key == "esc" {
 			b.filter = ""
 			return b, nil, fleetOutcome{}
@@ -766,14 +774,32 @@ func (b FleetBrowser) logsKey(key string) (FleetBrowser, tea.Cmd, fleetOutcome) 
 	case "1", "2", "3", "4", "5":
 		b.logFilter = int(key[0] - '1')
 		b.logCursor = len(b.filteredEvents()) - 1
-	case "f":
+	case "s":
 		b.follow = !b.follow
 		if b.follow {
 			b.logCursor = len(b.filteredEvents()) - 1
 		}
+	case "w":
+		b.wrap = !b.wrap
+	case "t":
+		b.hideTime = !b.hideTime
+	case "f":
+		b.fullscreen = !b.fullscreen
 	case "x", "enter":
 		b.expanded = !b.expanded
 	case "c":
+		if b.deps.Clipboard == nil {
+			b.status = "no clipboard"
+			break
+		}
+		if err := b.deps.Clipboard(b.logText()); err != nil {
+			b.status = "copy: " + err.Error()
+			break
+		}
+		b.status = fmt.Sprintf("copied %d log lines", len(b.filteredEvents()))
+	case "ctrl+s":
+		return b, b.saveLogCmd(), fleetOutcome{}
+	case "C":
 		if s, ok := b.sessionByID(b.selected); ok {
 			return b.openContext(s)
 		}
@@ -784,12 +810,50 @@ func (b FleetBrowser) logsKey(key string) (FleetBrowser, tea.Cmd, fleetOutcome) 
 			break
 		}
 		b.prompt, b.input = fleetPromptInject, ""
-	case "t":
+	case "T":
 		if s, ok := b.sessionByID(b.selected); ok && s.TaskID != "" {
 			return b, nil, fleetOutcome{close: true, openIssue: s.TaskID}
 		}
 	}
 	return b, nil, fleetOutcome{}
+}
+
+// logText is the filtered log as plain text, one event per line, the way
+// copy and save hand it out.
+func (b FleetBrowser) logText() string {
+	var sb strings.Builder
+	for _, e := range b.filteredEvents() {
+		fmt.Fprintf(&sb, "%s %-6s %-8s %s\n", e.Time.Local().Format("2006-01-02 15:04:05"), e.Kind, e.Tool, e.Text)
+	}
+	return sb.String()
+}
+
+// saveLogCmd writes the filtered log under the temp directory, as k9s does
+// with ctrl+s, and reports the path.
+func (b FleetBrowser) saveLogCmd() tea.Cmd {
+	s, _ := b.sessionByID(b.selected)
+	name := strings.Map(func(r rune) rune {
+		if r == '/' || r == os.PathSeparator || r == ' ' {
+			return '-'
+		}
+		return r
+	}, s.Name)
+	if name == "" {
+		name = "session"
+	}
+	text := b.logText()
+	stamp := b.deps.Now().Format("20060102-150405")
+	return func() tea.Msg {
+		dir := filepath.Join(os.TempDir(), "b9s-logs")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return fleetStatusMsg{text: "save: " + err.Error()}
+		}
+		path := filepath.Join(dir, name+"-"+stamp+".log")
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			return fleetStatusMsg{text: "save: " + err.Error()}
+		}
+		return fleetStatusMsg{text: "saved " + path}
+	}
 }
 
 func (b FleetBrowser) filteredEvents() []agents.Event {
