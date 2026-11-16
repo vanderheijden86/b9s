@@ -35,7 +35,7 @@ func (m Model) openFleet(view fleetView) (Model, tea.Cmd) {
 	var b FleetBrowser
 	if m.fleet != nil {
 		b = *m.fleet
-		b.deps = deps
+		b.deps = deps.withDefaults()
 		b.width, b.height = m.width, m.height
 	} else {
 		b = NewFleetBrowser(deps, m.theme, m.width, m.height, fleetAgents)

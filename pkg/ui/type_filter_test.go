@@ -97,3 +97,21 @@ func TestFunctionKeysAreBuiltIn(t *testing.T) {
 		}
 	}
 }
+
+// Reopening the fleet keeps the browser's default clock and command runner,
+// so the agents table can draw and attach after a close.
+func TestFunctionKeyReopensTheFleetAfterAClose(t *testing.T) {
+	t.Setenv("B9S_TEST_MODE", "1")
+	m := keybindingTestModel(t, nil)
+	m, _ = pressFKey(m, 1)
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	m = updated.(Model)
+	if m.FleetVisible() {
+		t.Fatal("q did not close the fleet")
+	}
+	m, _ = pressFKey(m, 1)
+	if m.fleet.deps.Now == nil || m.fleet.deps.Exec == nil {
+		t.Fatalf("reopened fleet lost its defaults: Now %v Exec %v", m.fleet.deps.Now != nil, m.fleet.deps.Exec != nil)
+	}
+	_ = m.View()
+}

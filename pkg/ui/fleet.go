@@ -289,13 +289,14 @@ func (b FleetBrowser) resolvePending() (FleetBrowser, tea.Cmd) {
 	return b, nil
 }
 
-// NewFleetBrowser opens the browser on one root view.
-func NewFleetBrowser(deps FleetDeps, theme Theme, width, height int, view fleetView) FleetBrowser {
-	if deps.Now == nil {
-		deps.Now = time.Now
+// withDefaults fills the clock and the command runner the browser calls
+// without a nil check. Every path that hands the browser deps goes through it.
+func (d FleetDeps) withDefaults() FleetDeps {
+	if d.Now == nil {
+		d.Now = time.Now
 	}
-	if deps.Exec == nil {
-		deps.Exec = func(name string, args ...string) error {
+	if d.Exec == nil {
+		d.Exec = func(name string, args ...string) error {
 			// A test run must never drive the tmux server it happens to run under.
 			if testMode() {
 				return nil
@@ -303,6 +304,12 @@ func NewFleetBrowser(deps FleetDeps, theme Theme, width, height int, view fleetV
 			return exec.Command(name, args...).Run()
 		}
 	}
+	return d
+}
+
+// NewFleetBrowser opens the browser on one root view.
+func NewFleetBrowser(deps FleetDeps, theme Theme, width, height int, view fleetView) FleetBrowser {
+	deps = deps.withDefaults()
 	return FleetBrowser{deps: deps, theme: theme, width: width, height: height, stack: []fleetView{view}, follow: true, ctxFold: map[agents.Layer]bool{}}
 }
 
