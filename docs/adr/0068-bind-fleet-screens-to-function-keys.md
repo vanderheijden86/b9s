@@ -2,9 +2,9 @@
 type: ADR
 id: "0068"
 title: "Bind the fleet screens to function keys F1-F8"
-status: active
+status: superseded
 date: 2026-11-15
-superseded_by: null
+superseded_by: "0069"
 ---
 
 ## Context

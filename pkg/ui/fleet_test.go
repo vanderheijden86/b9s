@@ -85,9 +85,6 @@ func fleetKey(s string) tea.KeyMsg {
 	case "ctrl+k":
 		return tea.KeyMsg{Type: tea.KeyCtrlK}
 	}
-	if len(s) == 2 && s[0] == 'f' && s[1] >= '1' && s[1] <= '8' {
-		return tea.KeyMsg{Type: functionKeyTypes[s[1]-'1']}
-	}
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
 

@@ -724,17 +724,17 @@ func (m *ProjectPickerModel) RenderTypeLegendColumn() []string {
 
 	keyStyle := t.Renderer.NewStyle().Foreground(t.Primary).Bold(true)
 
-	// Each type's key is its : command; F1-F8 belong to the fleet screens.
+	// The function keys match typeFunctionKeys; chore has none.
 	types := []struct {
 		key   string
 		typ   string
 		label string
 	}{
-		{":epic", "epic", "Epic"},
-		{":feat", "feature", "Feature"},
-		{":task", "task", "Task"},
-		{":bug ", "bug", "Bug"},
-		{":chore", "chore", "Chore"},
+		{"F1", "epic", "Epic"},
+		{"F2", "feature", "Feature"},
+		{"F3", "task", "Task"},
+		{"F4", "bug", "Bug"},
+		{"  ", "chore", "Chore"},
 	}
 
 	lines := make([]string, panelRows)

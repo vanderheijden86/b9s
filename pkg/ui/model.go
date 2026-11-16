@@ -2544,15 +2544,12 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// F1-F8 open the fleet screens in every view (ADR 0068).
-		if fk := msg.String(); isFleetFunctionKey(fk) && !m.showHelp && !m.showTutorial &&
+		// F1-F4 show one issue type in every view (ADR 0069).
+		if name, ok := typeForFunctionKey(msg.String()); ok && !m.showHelp && !m.showTutorial &&
 			m.list.FilterState() != list.Filtering && m.focused != focusLabelPicker &&
 			!m.tree.IsSortPopupOpen() && !m.tree.IsColumnPopupOpen() {
-			if fk == fleetProjectsKey {
-				return m, tea.Batch(append(cmds, func() tea.Msg { return OpenProjectTableMsg{} })...)
-			}
-			next, open := m.openFleet(fleetFunctionKeys[fk])
-			return next, tea.Batch(append(cmds, open)...)
+			m.showOnlyType(name)
+			return m, tea.Batch(cmds...)
 		}
 
 		// Handle tutorial toggle (backtick `) - bv-8y31
@@ -2568,8 +2565,8 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Ctrl+R triggers an immediate reload.
-		if msg.String() == "ctrl+r" && m.list.FilterState() != list.Filtering {
+		// Ctrl+R and F5 trigger an immediate reload.
+		if (msg.String() == "ctrl+r" || msg.String() == "f5") && m.list.FilterState() != list.Filtering {
 			now := time.Now()
 			if !m.lastForceRefresh.IsZero() && now.Sub(m.lastForceRefresh) < time.Second {
 				return m, nil
@@ -4747,7 +4744,7 @@ func commonKeyHelp() []struct{ key, desc string } {
 		{"esc", "Back / clear / quit"}, {"ctrl+c", "Force quit"},
 		{"K", "Close marked / selected"},
 		{"delete", "Delete marked / selected"},
-		{"ctrl+r", "Force refresh"},
+		{"ctrl+r", "Force refresh"}, {"f5", "Force refresh"},
 		{"ctrl+n", "Create new issue"},
 	}
 }
@@ -5195,7 +5192,7 @@ func (m *Model) renderFooter() string {
 	} else {
 		hints = append(hints, hint{"L", "labels"})
 	}
-	hints = append(hints, hint{"F1-8", "fleet"})
+	hints = append(hints, hint{"F1-4", "type"})
 	// The footer clips on the right, and the preview is also listed in help,
 	// so it yields its place to the filters when the terminal is narrow.
 	if viewName == "tree" || viewName == "board" {

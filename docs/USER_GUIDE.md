@@ -102,7 +102,7 @@ The tree is always present. Every issue sits under its parent, and an issue with
 |------|--------|
 | `o`, `C`, `r`, `a` | Show open, closed, ready or all issues |
 | `L`, `A` | Put the labels or the assignees on `1`-`9`; press a digit to filter, `a` to clear |
-| `F1`-`F8` | Open the fleet screens: agents, logs, context, projects, xray, pulse, commits, commit detail. See [Agent fleet and git log](#agent-fleet-and-git-log). To show one type, use `:epic`, `:feature`, `:task`, `:bug` or `:chore` |
+| `F1` `F2` `F3` `F4` | Show only epics, features, tasks or bugs. The key writes `type:<name>` into the search query in place of any other type term and keeps every other term; the same key again removes it. `Esc` clears the whole query. Works in the list, tree and board, and the header's type legend shows the keys. Help is on `?` only |
 | `f` | Show only the top-level branch of the issue under the cursor. Each further press steps one parent down the path to that issue (epic, child epic, feature), skipping an issue without children, and the press after the lowest one shows the whole tree again |
 | `x` | Show only the subtree of the issue under the cursor. Press again to undo |
 | `F` | Follow: when another agent changes an issue, move the cursor to it |
@@ -738,20 +738,7 @@ Press `r` in the popup to retry. When the folder b9s starts in cannot be opened,
 
 b9s reads the transcripts under `~/.claude/projects` and `~/.codex/sessions` and never writes to them. It matches a session to a tmux pane by window name, then by working directory. A session with a pane, or one that wrote in the last 30 minutes, is live. A live session is `Running`, `Waiting` once the model finished its turn, `Idle` after 5 quiet minutes and `Failed` after an API error. The task comes from a `bd update <id> --claim` in the session, a lane prompt or the branch name.
 
-The function keys open each screen directly, from the issue views and from inside the fleet, like the resource keys of k9s:
-
-| Key | Screen | Opens |
-|-----|--------|-------|
-| `F1` | Agents | Every session, as `:agents` |
-| `F2` | Logs | The log of the session under the agents cursor |
-| `F3` | Context | The context of the session under the agents cursor |
-| `F4` | Projects | The `:projects` table, with open, in progress, closed in 7 days and live agents per project |
-| `F5` | X-ray | Sessions grouped by project and task, as `:xray` |
-| `F6` | Pulse | The fleet over time, as `:pulse` |
-| `F7` | Commits | The git log, as `:commits` |
-| `F8` | Commit | The detail of the commit under the commits cursor |
-
-`F2`, `F3` and `F8` wait for the first scan or the first read of the log, and open as soon as it arrives. A hotkey with `override: true` can take a function key back (see [Hotkeys](#hotkeys)).
+The fleet draws under the same header as the issue views: logo, projects, key hints and the type legend. The function keys keep their issue meaning inside it. `F1`-`F4` close the fleet and show one type, and `F5` closes it and reloads ([ADR 0069](adr/0069-open-the-fleet-from-commands-and-keep-function-keys-for-issues.md)).
 
 | View | Key | Effect |
 |------|-----|--------|
@@ -834,7 +821,7 @@ In proxied-server mode bd runs a loopback proxy in front of a private Dolt serve
 
 ### Live reload
 
-b9s polls the Dolt working-set hash every 500 ms by default, so changes from `bd` or another agent appear by themselves, uncommitted ones included. JSONL files reload on filesystem events, with polling on network filesystems where events are unreliable. A reload from a Dolt server reads only the issues that changed since the last one, and reads everything again every five minutes. `Ctrl-R` reloads everything at once.
+b9s polls the Dolt working-set hash every 500 ms by default, so changes from `bd` or another agent appear by themselves, uncommitted ones included. JSONL files reload on filesystem events, with polling on network filesystems where events are unreliable. A reload from a Dolt server reads only the issues that changed since the last one, and reads everything again every five minutes. `Ctrl-R` or `F5` reloads everything at once.
 
 ## Configuration
 
@@ -899,9 +886,9 @@ hotKeys:
     command: issues label:urgent
     override: true               # needed because U is a built-in key
   chores:
-    shortCut: F8
+    shortCut: F1
     command: chore
-    override: true               # F8 opens the commit detail until you replace it
+    override: true               # F1 is the epic key until you replace it
 ```
 
 `command` is anything the `:` prompt accepts. A type command (`epic`, `feature`, `task`, `bug`, `chore`) or `issues` may carry query terms, and then the command replaces the whole query: `epic status:open` shows open epics, `issues label:ui` shows every type with that label. Without terms, a type command keeps the other terms of the query and swaps the type. The same terms work at the prompt, so `:task status:open` does what that hotkey does.
@@ -913,7 +900,7 @@ Hotkeys lead the footer and fill the Hotkeys panel of the `?` overlay. They work
 b9s checks the file at startup and refuses to start when an entry breaks a rule, printing each problem with the entry's name and exiting with code 2. A misspelt field (`shortcut` for `shortCut`) or a file of the wrong shape stops startup the same way. The rules:
 
 - Every entry needs a `shortCut` and a `command`. A query term may use only the fields `id`, `title`, `status`, `priority`, `type`, `label`, `assignee` and `project`.
-- Each key once. A built-in key, such as `x` or `F2`, needs `override: true`, and then the hotkey replaces the built-in on that key.
+- Each key once. A built-in key, such as `x` or `F1`, needs `override: true`, and then the hotkey replaces the built-in on that key.
 - Never rebindable: `Ctrl-C`, `Esc`, `Enter`, `Tab`, `Backspace`, `Space`, the arrow and paging keys, `j` `k` `h` `l` `G`, `/` `:` `?` and the backtick, and the digits.
 
 b9s reads the file once at startup. See [ADR 0035](adr/0035-take-hotkeys-from-a-k9s-style-hotkeys-file.md).
@@ -1088,8 +1075,8 @@ With a keyboard, the web UI takes the TUI's keys, with the same case-sensitive m
 | `b`, `M`, `g`, `Esc` | Board, Memory graph, dependency graph of the cursor, back |
 | `t` | Open the tree pane, or switch its saved tree/list layout. A `type:` predicate keeps the list visible |
 | `1`-`9`, `0`, `L` `A` `P` | Toggle a label or assignee filter, or open a project, all projects; `L` `A` `P` choose what the digits stand for |
-| `F1` `F2` `F3` `F4` `F5` `F6` | Open the fleet screens, as in the terminal UI: the agent board, a session's log, the context matrix, the project treemap, the constellation and the timeline. `F7` and `F8` (commits) have no web page. A public server has no fleet. To show one type, use the type chips or the query |
-| `Ctrl-E` `H`, `D`, `Ctrl-R` | Hide the header chips, source health, reload |
+| Fleet tab | The agent board, the context matrix, the constellation, the timeline and the project treemap, each a button in the tab's own bar. A chip opens a session's log. A public server has no fleet |
+| `Ctrl-E` `H`, `D`, `Ctrl-R` `F5` | Hide the header chips, source health, reload |
 | Detail: `n` `p`, `c`, `d` | Next or previous sibling, copy as Markdown, close |
 | Detail: `1`-`9`, `Backspace` | Open the child with that number, instead of a project; go back to the issue before |
 | Detail: `e`, `O` | Edit the issue the detail shows; open it as a read-only Markdown file in `$VISUAL` or `$EDITOR`, with any backend (the footer lists `n` `p` only in the tree and `Backspace` only after opening a child) |

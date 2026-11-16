@@ -40,11 +40,11 @@ func (m Model) openFleet(view fleetView) (Model, tea.Cmd) {
 	} else {
 		b = NewFleetBrowser(deps, m.theme, m.width, m.height, fleetAgents)
 	}
-	b, jump, _ := b.jump(view)
+	b, root, _ := b.switchRoot(view)
 	m.fleetGeneration++
 	cmd := b.Init()
 	m.fleet, m.fleetVisible = &b, true
-	return m, wrapFleetCmd(tea.Batch(cmd, jump), m.fleetGeneration)
+	return m, wrapFleetCmd(tea.Batch(cmd, root), m.fleetGeneration)
 }
 
 func (m *Model) fleetDeps() FleetDeps {
@@ -111,6 +111,11 @@ func (m Model) updateFleet(msg tea.Msg) (Model, tea.Cmd, bool) {
 	switch msg.(type) {
 	case tea.KeyMsg, tea.MouseMsg:
 	default:
+		return m, nil, false
+	}
+	if key, ok := msg.(tea.KeyMsg); ok && fleetIssueKeys[key.String()] && m.fleet.prompt == fleetPromptNone {
+		m.fleetVisible = false
+		m.updateViewportContent()
 		return m, nil, false
 	}
 	b, cmd, out := m.fleet.Update(msg)

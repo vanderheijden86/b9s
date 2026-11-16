@@ -50,10 +50,17 @@ async function key(page: Page, k: string): Promise<void> {
   await page.keyboard.press(k);
 }
 
+/** show opens the Fleet tab and, when a page is named, that page of its navigation. */
+async function show(page: Page, label?: string): Promise<void> {
+  await page.locator('[data-view="fleet"]').click();
+  await expect(fleet(page)).toBeVisible();
+  if (label) await fleet(page).locator(".fl-nav button", { hasText: label }).click();
+}
+
 test.describe("fleet views", () => {
-  test("F1 shows the board with a card for each live session", async ({ page, project }) => {
+  test("the Fleet tab shows the board with a card for each live session", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F1");
+    await show(page);
     await expect(on(page)).toHaveText("Fleet");
     await expect(fleet(page)).toContainText("review-thing");
     await expect(fleet(page)).toContainText("bd-ab12.3");
@@ -62,7 +69,7 @@ test.describe("fleet views", () => {
 
   test("an agent chip opens the session page with its log and context", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F1");
+    await show(page);
     await fleet(page).locator("[data-fl-agent]").first().click();
     await expect(fleet(page).locator(".fl-title")).toContainText("review-thing");
     await expect(fleet(page).locator(".fl-log")).toContainText("Review bd-ab12.3 please");
@@ -74,7 +81,8 @@ test.describe("fleet views", () => {
 
   test("a log filter switches one kind of line off and on", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F2");
+    await show(page);
+    await fleet(page).locator("[data-fl-agent]").first().click();
     const log = fleet(page).locator(".fl-log");
     await expect(log).toContainText("Review done.");
     const ai = fleet(page).locator('[data-fl-kind="AI"]');
@@ -86,27 +94,27 @@ test.describe("fleet views", () => {
     await expect(log).toContainText("Review done.");
   });
 
-  test("F3 shows the context matrix with a stale copy outlined", async ({ page, project }) => {
+  test("the Context page shows the context matrix with a stale copy outlined", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F3");
+    await show(page, "Context");
     await expect(on(page)).toHaveText("Context");
     await expect(fleet(page).locator(".fl-heat")).toContainText("no-shared-dolt");
     await expect(fleet(page).locator(".fl-heat td.fl-stale").first()).toBeVisible();
     await expect(fleet(page).locator(".fl-insights .fl-ins").first()).toBeVisible();
   });
 
-  test("F5 draws the constellation with a node for each session", async ({ page, project }) => {
+  test("the Constellation page draws with a node for each session", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F5");
+    await show(page, "Constellation");
     await expect(on(page)).toHaveText("Constellation");
     await expect(fleet(page).locator("svg.fl-svg")).toBeVisible();
     await expect(fleet(page).locator(".fl-sess")).toHaveCount(2);
     await expect(fleet(page).locator(".fl-src-node").first()).toBeAttached();
   });
 
-  test("F6 draws a lane for each session and the hours picker reloads it", async ({ page, project }) => {
+  test("the Timeline page draws a lane for each session and the hours picker reloads it", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F6");
+    await show(page, "Timeline");
     await expect(on(page)).toHaveText("Timeline");
     await expect(fleet(page).locator(".fl-lane")).toHaveCount(2);
     await fleet(page).locator('[data-fl-hours="6"]').click();
@@ -114,9 +122,9 @@ test.describe("fleet views", () => {
     await expect(fleet(page).locator(".fl-lane")).toHaveCount(2);
   });
 
-  test("F4 shows a tile for each project", async ({ page, project }) => {
+  test("the Projects page shows a tile for each project", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F4");
+    await show(page, "Projects");
     await expect(on(page)).toHaveText("Projects");
     await expect(fleet(page).locator(".fl-tile").first()).toBeVisible();
     await expect(fleet(page).locator(".fl-ins").first()).toBeVisible();
@@ -124,21 +132,16 @@ test.describe("fleet views", () => {
 });
 
 test.describe("fleet keys", () => {
-  test("F7 and F8 have no web screen and leave the view alone", async ({ page, project }) => {
+  test("function keys keep their issue meaning and leave the view alone", async ({ page, project }) => {
     await open(page, project);
-    await expect(page.locator("#vTree")).toBeVisible();
-    await key(page, "F7");
-    await key(page, "F8");
+    for (const k of ["F1", "F2", "F3", "F4", "F6", "F7", "F8"]) await key(page, k);
     await expect(page.locator("#vTree")).toBeVisible();
     await expect(fleet(page)).toBeHidden();
-    await key(page, "F1");
-    await key(page, "F7");
-    await expect(on(page)).toHaveText("Fleet");
   });
 
   test("Esc leaves the session page for the page before it, then the fleet", async ({ page, project }) => {
     await open(page, project);
-    await key(page, "F3");
+    await show(page, "Context");
     await fleet(page).locator("[data-fl-agent]").first().click();
     await expect(fleet(page).locator(".fl-title")).toBeVisible();
     await key(page, "Escape");
@@ -147,13 +150,10 @@ test.describe("fleet keys", () => {
     await expect(page.locator("#vTree")).toBeVisible();
   });
 
-  test("F5 no longer reloads and the keys sheet lists the fleet keys", async ({ page, project }) => {
+  test("the keys sheet lists F5 as reload", async ({ page, project }) => {
     await open(page, project);
     await key(page, "?");
-    const sheet = page.locator("#sheetHost .msheet");
-    await expect(sheet).toContainText("F1-F6");
-    await expect(sheet).toContainText("fleet");
-    await expect(sheet).not.toContainText("Ctrl-R, F5");
+    await expect(page.locator("#sheetHost .msheet")).toContainText("Ctrl-R, F5");
   });
 });
 

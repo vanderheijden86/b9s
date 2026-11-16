@@ -5,12 +5,10 @@
 // while the view is on screen and stops when another view takes over.
 
 import type {
-  AgentsResponse,
   AgentContext, AgentEvent, AgentLogResponse, AgentSession, FleetCard, FleetProject, FleetResponse, MatrixResponse, MatrixRow, TimelineResponse,
 } from "./api.gen";
 import { ApiError, getJSON } from "./api";
 import { get } from "./data";
-import { render } from "./render";
 import { S } from "./state";
 import { $opt, esc, parseTime } from "./util";
 
@@ -132,28 +130,6 @@ export function openAgent(id: string): void {
 export function fleetBack(): boolean {
   if (S.view !== "fleet" || F.page !== "agent") return false;
   go(F.from);
-  return true;
-}
-
-/**
- * fleetKey opens the fleet screen the TUI binds to function key n (ADR 0068).
- * F1 is the board, F2 a session's log, F3 the context matrix, F4 the project
- * treemap, F5 the constellation and F6 the timeline. F7 and F8 are the TUI's
- * commit screens, which the web has no page for, so those keys stay free.
- */
-export function fleetKey(n: number, public_: boolean): boolean {
-  const pages: Record<number, Exclude<FleetPage, "agent">> = { 1: "board", 3: "context", 4: "projects", 5: "constellation", 6: "timeline" };
-  if (public_ || (n !== 2 && !pages[n])) return false;
-  S.view = "fleet";
-  S.detail = null;
-  if (n !== 2) { render(); go(pages[n]); return true; }
-  render();
-  if (F.page === "agent" || F.agentId) { if (F.page !== "agent") openAgent(F.agentId); return true; }
-  // No session was opened yet: take the first live one, else the first one listed.
-  void getJSON<AgentsResponse>("api/agents").then(r => {
-    const pick = r.sessions.find(x => x.live) ?? r.sessions[0];
-    if (pick) openAgent(pick.id); else go("board");
-  }).catch(() => go("board"));
   return true;
 }
 

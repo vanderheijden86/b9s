@@ -269,7 +269,7 @@ func TestAdvertisedCommonKeysRouteThroughModel(t *testing.T) {
 					ok = m.issueConfirm.action == issueConfirmClose
 				case "delete":
 					ok = m.issueConfirm.action == issueConfirmDelete
-				case "ctrl+r":
+				case "ctrl+r", "f5":
 					ok = !m.lastForceRefresh.IsZero()
 				case "ctrl+n":
 					ok = m.showEditModal

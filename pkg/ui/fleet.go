@@ -214,80 +214,12 @@ type FleetBrowser struct {
 	textTitle  string
 	text       []string
 	textScroll int
-
-	// pending is a drill-down view a function key asked for before its data
-	// arrived: logs or context once a scan names a session, a commit detail
-	// once the log is read.
-	pending    fleetView
-	hasPending bool
 }
 
-// fleetFunctionKeys bind F1-F8 to the eight fleet screens, the way k9s binds
-// resources to function keys. F4 is the :projects table, which lives outside
-// the fleet browser. See ADR 0068.
-var fleetFunctionKeys = map[string]fleetView{
-	"f1": fleetAgents, "f2": fleetLogs, "f3": fleetContext, "f5": fleetXray,
-	"f6": fleetPulse, "f7": fleetCommits, "f8": fleetCommit,
-}
-
-// fleetProjectsKey opens the :projects table.
-const fleetProjectsKey = "f4"
-
-// isFleetFunctionKey reports whether key is one of F1-F8.
-func isFleetFunctionKey(key string) bool {
-	_, ok := fleetFunctionKeys[key]
-	return ok || key == fleetProjectsKey
-}
-
-// jump opens view the way its function key does. Logs and context open on
-// the session under the agents cursor, and a commit detail on the commit
-// under the commits cursor; when that data is not read yet, the view opens
-// as soon as it is.
-func (b FleetBrowser) jump(v fleetView) (FleetBrowser, tea.Cmd, fleetOutcome) {
-	b.hasPending = false
-	switch v {
-	case fleetLogs, fleetContext:
-		b.stack = []fleetView{fleetAgents}
-		s, ok := b.currentSession()
-		if !ok {
-			b.pending, b.hasPending = v, true
-			return b, nil, fleetOutcome{}
-		}
-		if v == fleetLogs {
-			return b.openLogs(s)
-		}
-		return b.openContext(s)
-	case fleetCommit:
-		b, cmd, _ := b.switchRoot(fleetCommits)
-		if !b.commitsRead || len(b.visibleCommits()) == 0 {
-			b.pending, b.hasPending = v, true
-			return b, cmd, fleetOutcome{}
-		}
-		return b.commitsKey("enter")
-	}
-	return b.switchRoot(v)
-}
-
-// resolvePending opens a pending drill-down once its data is there.
-func (b FleetBrowser) resolvePending() (FleetBrowser, tea.Cmd) {
-	if !b.hasPending {
-		return b, nil
-	}
-	switch b.pending {
-	case fleetLogs, fleetContext:
-		if _, ok := b.currentSession(); ok && b.view() == fleetAgents {
-			b, cmd, _ := b.jump(b.pending)
-			return b, cmd
-		}
-	case fleetCommit:
-		if b.view() == fleetCommits && len(b.visibleCommits()) > 0 {
-			b.hasPending = false
-			b, cmd, _ := b.commitsKey("enter")
-			return b, cmd
-		}
-	}
-	return b, nil
-}
+// fleetIssueKeys are the function keys the issue views own: the type
+// filters and reload (ADR 0069). Inside the fleet they close it and do what
+// they do everywhere else.
+var fleetIssueKeys = map[string]bool{"f1": true, "f2": true, "f3": true, "f4": true, "f5": true}
 
 // withDefaults fills the clock and the command runner the browser calls
 // without a nil check. Every path that hands the browser deps goes through it.
@@ -425,8 +357,7 @@ func (b FleetBrowser) Update(msg tea.Msg) (FleetBrowser, tea.Cmd, fleetOutcome) 
 			b.activity = b.deps.Collector.Activity(b.deps.Now(), 36, 10*time.Minute)
 		}
 		b.clampCursors()
-		b, pend := b.resolvePending()
-		return b, tea.Batch(fleetTick(), pend), fleetOutcome{}
+		return b, fleetTick(), fleetOutcome{}
 	case fleetEventsMsg:
 		if msg.id != b.selected {
 			return b, nil, fleetOutcome{}
@@ -452,8 +383,6 @@ func (b FleetBrowser) Update(msg tea.Msg) (FleetBrowser, tea.Cmd, fleetOutcome) 
 			b.commitErr = msg.err.Error()
 		}
 		b.clampCursors()
-		b, pend := b.resolvePending()
-		return b, pend, fleetOutcome{}
 	case fleetDetailMsg:
 		b.detail, b.detailDir, b.detailIssue, b.detailErr = msg.detail, msg.dir, msg.issue, ""
 		if msg.err != nil {
@@ -485,12 +414,6 @@ func (b FleetBrowser) handleKey(msg tea.KeyMsg) (FleetBrowser, tea.Cmd, fleetOut
 		b.stopArm = ""
 	}
 	b.status = ""
-	if v, ok := fleetFunctionKeys[key]; ok {
-		return b.jump(v)
-	}
-	if key == fleetProjectsKey {
-		return b, nil, fleetOutcome{close: true, command: "projects"}
-	}
 	switch key {
 	case "q", "esc":
 		if b.view() == fleetLogs && b.expanded {

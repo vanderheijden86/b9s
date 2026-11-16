@@ -190,7 +190,7 @@ func TestHotkeyOverridesBuiltInKey(t *testing.T) {
 
 func TestHotkeyOverridesFunctionKey(t *testing.T) {
 	m := keybindingTestModel(t, config.Hotkeys{{Name: "chores", ShortCut: "F1", Command: "chore", Override: true}})
-	m, _ = pressFKey(m, 1)
+	m = pressFKey(m, 1)
 	if got := m.QueryText(); got != "type:chore" {
 		t.Errorf("query = %q, want type:chore", got)
 	}

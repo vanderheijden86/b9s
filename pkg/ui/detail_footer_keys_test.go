@@ -50,7 +50,7 @@ var footerKeyPress = map[string]tea.KeyMsg{
 	"L":        {Type: tea.KeyRunes, Runes: []rune("L")},
 	"P":        {Type: tea.KeyRunes, Runes: []rune("P")},
 	"H":        {Type: tea.KeyRunes, Runes: []rune("H")},
-	"F1-8":     {Type: tea.KeyF1},
+	"F1-4":     {Type: tea.KeyF1},
 }
 
 // effectOf is everything a key press may change that the user can see.
@@ -208,10 +208,9 @@ func viewFooterModel(t *testing.T, view string, mode int) Model {
 	switch view {
 	case "flat tree":
 		m.tree.ToggleFlatMode()
-	case "type:task", "!type:epic", ":task type query":
-		if view == ":task type query" {
-			command, _ := ResolveCommand("task")
-			m, _ = m.executeCommand(command)
+	case "type:task", "!type:epic", "F3 type query":
+		if view == "F3 type query" {
+			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyF3})
 		} else {
 			m.setQueryText(view)
 		}
@@ -275,10 +274,10 @@ func viewFooterPresses(hint string) [][]tea.KeyMsg {
 		return [][]tea.KeyMsg{{runeKey("g"), runeKey("g")}, {runeKey("0")}}
 	case "</>":
 		return [][]tea.KeyMsg{{runeKey("<")}, {runeKey(">")}}
-	case "F1-8":
+	case "F1-4":
 		return [][]tea.KeyMsg{
-			{{Type: tea.KeyF1}}, {{Type: tea.KeyF2}}, {{Type: tea.KeyF3}}, {{Type: tea.KeyF4}},
-			{{Type: tea.KeyF5}}, {{Type: tea.KeyF6}}, {{Type: tea.KeyF7}}, {{Type: tea.KeyF8}},
+			{{Type: tea.KeyF1}}, {{Type: tea.KeyF2}},
+			{{Type: tea.KeyF3}}, {{Type: tea.KeyF4}},
 		}
 	case "tab":
 		return [][]tea.KeyMsg{{{Type: tea.KeyTab}}}
@@ -301,7 +300,7 @@ func viewFooterPresses(hint string) [][]tea.KeyMsg {
 func TestViewFooterKeysAllWork(t *testing.T) {
 	t.Setenv("B9S_TEST_MODE", "1")
 	for _, view := range []string{
-		"tree", "flat tree", "type:task", "!type:epic", ":task type query",
+		"tree", "flat tree", "type:task", "!type:epic", "F3 type query",
 		"board", "graph", "split", "list",
 	} {
 		for _, mode := range []int{pickerModeProjects, pickerModeLabels, pickerModeAssignees} {
@@ -454,7 +453,7 @@ func TestViewFooterKeysAllWork(t *testing.T) {
 								ok = !m.isGraphView && m.focused == focusTree
 							case "s":
 								switch view {
-								case "tree", "flat tree", "type:task", "!type:epic", ":task type query":
+								case "tree", "flat tree", "type:task", "!type:epic", "F3 type query":
 									ok = m.tree.IsSortPopupOpen()
 								case "board":
 									ok = m.board.GetSwimLaneMode() != oldSwim
@@ -511,14 +510,13 @@ func TestViewFooterKeysAllWork(t *testing.T) {
 								ok = m.pickerMode == pickerModeLabels
 							case "P":
 								ok = m.pickerMode == pickerModeProjects && m.projectPicker.Filtering()
-							case "F1-8":
-								if key == fleetProjectsKey {
-									_, ok = cmd().(OpenProjectTableMsg)
-								} else {
-									want := fleetFunctionKeys[key]
-									// Logs, context and a commit wait for their data.
-									ok = m.FleetVisible() && (m.fleet.view() == want || (m.fleet.hasPending && m.fleet.pending == want))
+							case "F1-4":
+								name, exists := typeForFunctionKey(key)
+								wantQuery := "type:" + name
+								if oldQuery == wantQuery {
+									wantQuery = ""
 								}
+								ok = exists && m.queryState.Text() == wantQuery
 							case "H":
 								ok = m.pickerVisible != oldHeader
 							case "^o":

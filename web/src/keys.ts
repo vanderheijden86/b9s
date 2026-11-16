@@ -18,7 +18,7 @@ import {
   setFocus, setStatus, switchProject, toast, toggleMark,
 } from "./actions";
 import * as api from "./api";
-import { fleetBack, fleetKey } from "./fleet";
+import { fleetBack } from "./fleet";
 import { memoryKey } from "./memory";
 import { D, eff, get, kids, laneOf, pool } from "./data";
 import { detailKids, ensureVisible, railShown, render, renderBoard, revealBoardCursor, siblings } from "./render";
@@ -52,8 +52,6 @@ export function onKey(e: KeyboardEvent): boolean {
     if (k === "Escape") { closeSheet(); return true; }
     return false;
   }
-  // F1-F8 are the fleet screens in every view, as in the TUI.
-  if (/^F[1-8]$/.test(k)) return fleetKey(+k.slice(1), D.public);
   // The Memory view owns its detail, so the tree's hidden detail must not catch \ or the digits.
   if (S.view === "memory") {
     if (memoryKey(k)) return true;
@@ -157,7 +155,7 @@ function globalKey(k: string): boolean {
     case "?": openSheet("keys"); return true;
     case "D": void act("health"); return true;
     case "C-e": case "H": void act("togglechips"); return true;
-    case "C-r": void act("reload"); return true;
+    case "C-r": case "F5": void act("reload"); return true;
     case "/": void act("search"); return true;
     case "F": void act("follow"); return true;
     case "C-n": void act("create"); return true;

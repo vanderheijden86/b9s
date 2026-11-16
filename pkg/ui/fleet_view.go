@@ -233,7 +233,7 @@ func (b FleetBrowser) hints() string {
 	case fleetText:
 		h = "j/k scroll  esc back"
 	}
-	return b.muted(" F1-8 screens  " + h)
+	return b.muted(" " + h)
 }
 
 func (b FleetBrowser) statusLine() string {
