@@ -128,6 +128,14 @@ func (m Model) executeCommand(command Command) (Model, tea.Cmd) {
 		return m.handleShowBranch(command.Arg)
 	case CommandUpdate:
 		m.showSelfUpdateModal()
+	case CommandPreview:
+		if m.canOpenQuickView() {
+			m.openQuickView()
+		}
+		if m.quickView == nil {
+			m.statusMsg = "preview needs a selected issue in the tree, list, board or detail"
+			m.statusIsError = true
+		}
 	}
 	return m, nil
 }

@@ -95,8 +95,13 @@ func (m *LabelPickerModel) SelectedLabel() string {
 
 // UpdateInput processes a key message for the text input
 func (m *LabelPickerModel) UpdateInput(msg interface{}) {
+	before := m.input.Value()
 	m.input, _ = m.input.Update(msg)
-	m.filterLabels()
+	// Refiltering puts the selection back on the first label, so a key that
+	// leaves the text as it was must not do it.
+	if m.input.Value() != before {
+		m.filterLabels()
+	}
 }
 
 // Reset clears the input and resets selection

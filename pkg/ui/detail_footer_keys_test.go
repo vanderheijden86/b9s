@@ -40,7 +40,7 @@ var footerKeyPress = map[string]tea.KeyMsg{
 	"1-9":      {Type: tea.KeyRunes, Runes: []rune("1")},
 	"bksp":     {Type: tea.KeyBackspace},
 	"^R":       {Type: tea.KeyCtrlR},
-	"^o":       {Type: tea.KeyCtrlO},
+	"^p":       {Type: tea.KeyCtrlP},
 	"n/p":      {Type: tea.KeyRunes, Runes: []rune("n")},
 	"e":        {Type: tea.KeyRunes, Runes: []rune("e")},
 	"s":        {Type: tea.KeyRunes, Runes: []rune("s")},
@@ -519,7 +519,7 @@ func TestViewFooterKeysAllWork(t *testing.T) {
 								ok = exists && m.queryState.Text() == wantQuery
 							case "H":
 								ok = m.pickerVisible != oldHeader
-							case "^o":
+							case "^p":
 								ok = m.quickView != nil && m.quickView.originID == wantID
 							default:
 								t.Fatalf("footer hint %q needs a behavior assertion", hint)

@@ -8,7 +8,7 @@ import (
 
 func TestQuickViewE2E(t *testing.T) {
 	const pause = 200 * time.Millisecond
-	detail := []keyStep{kd("\r", pause), kd("\x0f", pause), kd("quick-child.1", pause), kd("\r", pause)}
+	detail := []keyStep{kd("\r", pause), kd("\x10", pause), kd("quick-child.1", pause), kd("\r", pause)}
 	readOnly := append([]keyStep{}, detail...)
 	for _, key := range "eSKIy1:b" {
 		readOnly = append(readOnly, kd(string(key), 20*time.Millisecond))
@@ -19,8 +19,8 @@ func TestQuickViewE2E(t *testing.T) {
 		want []string
 		deny []string
 	}{
-		{"row-preview", []keyStep{kd("\x0f", pause)}, []string{"Quick view", "Original issue"}, []string{"Edit Issue"}},
-		{"flat-list-preview", []keyStep{kd("t", pause), kd("\x0f", pause)}, []string{"Quick view", "Original issue"}, []string{"Edit Issue"}},
+		{"row-preview", []keyStep{kd("\x10", pause)}, []string{"Quick view", "Original issue"}, []string{"Edit Issue"}},
+		{"flat-list-preview", []keyStep{kd("t", pause), kd("\x10", pause)}, []string{"Quick view", "Original issue"}, []string{"Edit Issue"}},
 		{"related-preview", detail, []string{"Quick view", "FIRST PREVIEW BODY"}, []string{"Edit Issue"}},
 		{"sibling-cycle", append(append([]keyStep{}, detail...), kd("n", pause)), []string{"Quick view", "SECOND PREVIEW BODY"}, nil},
 		{"read-only", readOnly, []string{"Quick view", "FIRST PREVIEW BODY"}, []string{"Edit Issue", "Set Status"}},

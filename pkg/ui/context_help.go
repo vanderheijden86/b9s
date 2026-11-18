@@ -87,7 +87,7 @@ const contextHelpList = `## List View
 **Navigation**
   j/k       Move up/down
   Enter     View issue details
-  Ctrl-O    Preview selected issue (read-only)
+  Ctrl-P    Preview selected issue (read-only)
   G         Jump to bottom
   ^d/^u     Page down/up
 
@@ -116,7 +116,7 @@ const contextHelpTree = `## Tree View
   l         Expand or go to child
   PgUp/PgDn Page back/fwd (^u/^d half)
   Enter     Open detail
-  Ctrl-O    Preview selected issue (read-only)
+  Ctrl-P    Preview selected issue (read-only)
   Home/End  Jump to top/bottom (G also bottom)
   p         Jump to parent node
 
@@ -195,7 +195,7 @@ const contextHelpDetail = `## Detail View
   n/p       Next/previous sibling issue (tree)
   1-9       Open the numbered child
   Backspace Back to the issue a number was pressed on
-  Ctrl-O    Preview a related or mentioned issue
+  Ctrl-P    Preview a related or mentioned issue
   Esc       Return to list
   Tab       Switch to split view
 

@@ -170,7 +170,7 @@ Mermaid code fences render as terminal diagrams for `graph` and `flowchart` with
 | `n`, `p` | Open the next or previous sibling in tree detail, including children beyond the ninth |
 | `1`-`9` | Open the child with that number in the CHILDREN list. In the detail pane the digits stand for children, not projects |
 | `Backspace` | Go back to the issue a child's number was pressed on |
-| `Ctrl-O` | Choose another issue by ID or title and preview it in a read-only modal |
+| `Ctrl-P`, `:preview` | Choose another issue by ID or title and preview it in a read-only modal |
 | `c` | Copy the whole issue as Markdown |
 | `d` | Hide the pane |
 | `Enter`, `Esc` | Return to the tree |
@@ -191,7 +191,7 @@ children. Child numbers and the active filter stay unchanged.
 From a board or graph detail, press `Esc` until the tree has focus, then `Enter`
 to open its detail before using this path.
 
-`Ctrl-O` on a list or tree row (including the flat list), or on a board card,
+`Ctrl-P` on a list or tree row (including the flat list), or on a board card,
 previews the selected issue directly. In the detail pane, it opens a chooser
 with related and mentioned issues first. Type an ID or title to search all
 loaded issues, including those hidden by the current filter. Use `Up` and
@@ -202,7 +202,8 @@ The preview accepts only scrolling (`j`/`k`, arrows, page keys, `Home`/`End`),
 Sibling cycling wraps and includes loaded siblings hidden by the original
 filter. It has no issue actions. `Esc` returns directly to the original
 detail or row with its selection, query, scroll position and child history.
-`Ctrl-O` does not replace an existing default binding.
+`:preview` does what `Ctrl-P` does, so a [hotkey](#hotkeys) can put the
+preview on another key.
 
 ## Search
 
@@ -660,6 +661,7 @@ Opening a graph workspace with plain `b9s` loads its Issues from the workspace's
 | `:mouse` | | Hand the mouse to the terminal, or take it back |
 | `:layout` | | Stack the detail pane below the tree, or put it back to the right |
 | `:wrap` | | Wrap long titles onto extra lines, or truncate them again, as `v` does |
+| `:preview` | | Preview the selected issue, or choose one from the detail pane, as `Ctrl-P` does |
 | `:branch <id>` | | Select the issue and show only its top-level branch, as the first `f` does. The short id shown on screen works too |
 
 ## Steering b9s from another program
@@ -819,6 +821,9 @@ hotKeys:
     shortCut: F1
     command: chore
     override: true               # F1 is the epic key until you replace it
+  preview:
+    shortCut: Ctrl-O
+    command: preview             # the issue preview; Ctrl-P keeps working
 ```
 
 `command` is anything the `:` prompt accepts. A type command (`epic`, `feature`, `task`, `bug`, `chore`) or `issues` may carry query terms, and then the command replaces the whole query: `epic status:open` shows open epics, `issues label:ui` shows every type with that label. Without terms, a type command keeps the other terms of the query and swaps the type. The same terms work at the prompt, so `:task status:open` does what that hotkey does.

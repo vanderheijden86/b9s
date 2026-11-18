@@ -35,7 +35,7 @@ func quickViewModel(t *testing.T) Model {
 }
 
 func chooseQuickView(m Model, id string) Model {
-	return pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlO}, runeKey(id), tea.KeyMsg{Type: tea.KeyEnter})
+	return pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlP}, runeKey(id), tea.KeyMsg{Type: tea.KeyEnter})
 }
 
 func TestQuickViewDetailRestoresContext(t *testing.T) {
@@ -70,9 +70,9 @@ func TestQuickViewListPreviewsSelectedRow(t *testing.T) {
 				m.board.SelectIssueByID("q-origin")
 			}
 			before, focus := stripANSI(m.View()), m.focused
-			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlO})
+			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlP})
 			if rendered := stripANSI(m.View()); !strings.Contains(rendered, "Quick view") || !strings.Contains(rendered, "Original context") {
-				t.Fatalf("Ctrl-O must preview the cursor row:\n%s", rendered)
+				t.Fatalf("Ctrl-P must preview the cursor row:\n%s", rendered)
 			}
 			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyEsc})
 			if m.focused != focus || stripANSI(m.View()) != before {
@@ -108,9 +108,9 @@ func TestQuickViewRestoresOriginalActionTarget(t *testing.T) {
 
 func TestQuickViewDoesNotInterruptQueryEntry(t *testing.T) {
 	m := quickViewModel(t)
-	m = pressKeys(m, runeKey("/"), tea.KeyMsg{Type: tea.KeyCtrlO})
+	m = pressKeys(m, runeKey("/"), tea.KeyMsg{Type: tea.KeyCtrlP})
 	if strings.Contains(stripANSI(m.View()), "Quick view") || m.queryState.Mode() != QueryEditing {
-		t.Fatal("Ctrl-O must stay inside the active query input")
+		t.Fatal("Ctrl-P must stay inside the active query input")
 	}
 }
 
@@ -138,7 +138,7 @@ func TestQuickViewOwnsAllContextualKeysAndMouse(t *testing.T) {
 		runeKey("e"), runeKey("S"), runeKey("K"), runeKey("C"), runeKey("c"), runeKey("y"),
 		runeKey("I"), runeKey("R"), runeKey("1"), runeKey("s"), runeKey("b"), runeKey("M"),
 		runeKey("/"), runeKey(":"), runeKey("?"), runeKey("q"),
-		{Type: tea.KeyDelete}, {Type: tea.KeyCtrlN}, {Type: tea.KeyCtrlO}, {Type: tea.KeyCtrlR},
+		{Type: tea.KeyDelete}, {Type: tea.KeyCtrlN}, {Type: tea.KeyCtrlP}, {Type: tea.KeyCtrlR},
 		{Type: tea.KeyEnter}, {Type: tea.KeyTab}, {Type: tea.KeyBackspace},
 	} {
 		t.Run(key.String(), func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestQuickViewOwnsAllContextualKeysAndMouse(t *testing.T) {
 func TestQuickViewChooserOffersRelationsAndMentions(t *testing.T) {
 	m := quickViewModel(t)
 	m.focused = focusDetail
-	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlO})
+	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlP})
 	view := stripANSI(m.View())
 	for _, text := range []string{"Preview issue", "q-child.1", "q-child.2"} {
 		if !strings.Contains(view, text) {
@@ -194,7 +194,7 @@ func TestQuickViewLoadsAbridgedText(t *testing.T) {
 			m.textLoader = func(_ doltReloadRequest, id string) (datasource.IssueText, error) {
 				return datasource.IssueText{Description: "FETCHED PREVIEW BODY"}, loadErr
 			}
-			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlO}, runeKey("q-child.1"))
+			m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlP}, runeKey("q-child.1"))
 			next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 			m = next.(Model)
 			if !strings.Contains(stripANSI(m.View()), "Loading the description") {

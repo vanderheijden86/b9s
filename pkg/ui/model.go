@@ -2477,8 +2477,7 @@ func (m Model) dispatchMsg(msg tea.Msg) (Model, tea.Cmd) {
 			next, cmd := m.executeCommand(hotkey.command)
 			return next, tea.Batch(append(cmds, cmd)...)
 		}
-		if msg.String() == "ctrl+o" && m.list.FilterState() != list.Filtering &&
-			(m.focused == focusTree || m.focused == focusList || m.focused == focusBoard || m.focused == focusDetail) {
+		if msg.String() == "ctrl+p" && m.canOpenQuickView() {
 			m.openQuickView()
 			return m, tea.Batch(cmds...)
 		}
@@ -3878,7 +3877,7 @@ func (m Model) handleLabelPickerKeys(msg tea.KeyMsg) Model {
 		m.focused = m.labelPickerReturnFocus
 	case "j", "down", "ctrl+n":
 		m.labelPicker.MoveDown()
-	case "k", "up", "ctrl+p":
+	case "k", "up":
 		m.labelPicker.MoveUp()
 	case "enter":
 		if selected := m.labelPicker.SelectedLabel(); selected != "" {
@@ -4773,7 +4772,7 @@ func viewKeyHelp(view focus) []struct{ key, desc string } {
 			{"p", "Previous sibling (tree)"},
 			{"backspace", "Return after opening child"},
 			{"e", "Edit issue"},
-			{"ctrl+o", "Preview another issue"},
+			{"ctrl+p", "Preview another issue"},
 		}
 	case focusHelp:
 		return []struct{ key, desc string }{{"ctrl+s", "Search this help"}}
@@ -5108,7 +5107,7 @@ func (m *Model) renderFooter() string {
 		}
 		hints = []hint{
 			{"enter", "back to " + returnTo},
-			{"^o", "preview issue"},
+			{"^p", "preview issue"},
 			{"j/k", "scroll"},
 			{"home/end", "top/bottom"},
 			{"1-9", "child"},
@@ -5161,7 +5160,7 @@ func (m *Model) renderFooter() string {
 	// The footer clips on the right, and the preview is also listed in help,
 	// so it yields its place to the filters when the terminal is narrow.
 	if viewName == "tree" || viewName == "board" {
-		hints = append(hints, hint{"^o", "preview"})
+		hints = append(hints, hint{"^p", "preview"})
 	}
 
 	// Add picker toggle hint if multiple projects exist (bd-e4un)

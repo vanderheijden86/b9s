@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"github.com/charmbracelet/bubbles/list"
 	"sort"
 	"strings"
 
@@ -30,6 +31,19 @@ type quickView struct {
 	cursor      int
 	viewport    viewport.Model
 	renderer    *MarkdownRenderer
+}
+
+// canOpenQuickView reports whether the focused pane has a selected issue to
+// start a preview from, and no list filter input is taking keys.
+func (m Model) canOpenQuickView() bool {
+	if m.list.FilterState() == list.Filtering {
+		return false
+	}
+	switch m.focused {
+	case focusTree, focusList, focusBoard, focusDetail:
+		return true
+	}
+	return false
 }
 
 func (m *Model) openQuickView() {

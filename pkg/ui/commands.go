@@ -20,6 +20,7 @@ const (
 	CommandBranch
 	CommandUpdate
 	CommandForget
+	CommandPreview
 )
 
 // Command is a resolved ':' command.
@@ -38,8 +39,9 @@ func typeFilterCommand(t model.IssueType) Command {
 }
 
 // commandNames are the canonical spellings offered as suggestions. The alias
-// table below must resolve every one of them.
-var commandNames = []string{"branch", "bug", "chore", "epic", "feature", "forget", "issues", "layout", "mouse", "project", "task", "update", "wrap"}
+// table below must resolve every one of them. The first name that extends the
+// typed text wins, so project comes before preview to keep :pr on project.
+var commandNames = []string{"branch", "bug", "chore", "epic", "feature", "forget", "issues", "layout", "mouse", "project", "preview", "task", "update", "wrap"}
 
 // commandAliases is a closed table in code rather than config: the set of
 // entity views is fixed by the Beads schema, and tests can check it is total.
@@ -56,6 +58,7 @@ var commandAliases = map[string]Command{
 	"wrap":    {Kind: CommandWrap},
 	"update":  {Kind: CommandUpdate},
 	"forget":  {Kind: CommandForget},
+	"preview": {Kind: CommandPreview},
 	"project": {Kind: CommandProjects}, "projects": {Kind: CommandProjects}, "proj": {Kind: CommandProjects},
 }
 

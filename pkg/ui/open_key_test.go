@@ -8,7 +8,7 @@ import (
 
 // Occur lives on & in the tree, as less's &pattern shows only the matching
 // lines: it shows only the matches of the last search, and neither O nor
-// ctrl+o touches it.
+// ctrl+p, the preview key, touches it.
 func TestTreeAmpersandTogglesOccur(t *testing.T) {
 	t.Setenv("B9S_TEST_MODE", "1")
 	t.Setenv("TMPDIR", t.TempDir())
@@ -29,12 +29,12 @@ func TestTreeAmpersandTogglesOccur(t *testing.T) {
 		t.Fatal("O entered occur mode; occur is on &")
 	}
 
-	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlO})
+	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyCtrlP})
 	if m.tree.IsOccurMode() {
-		t.Fatal("ctrl+o entered occur mode; occur is on &")
+		t.Fatal("ctrl+p entered occur mode; occur is on &")
 	}
 	if m.quickView == nil {
-		t.Fatal("ctrl+o must open a read-only preview")
+		t.Fatal("ctrl+p must open a read-only preview")
 	}
 	m = pressKeys(m, tea.KeyMsg{Type: tea.KeyEsc})
 
