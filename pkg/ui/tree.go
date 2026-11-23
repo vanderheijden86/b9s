@@ -14,6 +14,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/vanderheijden86/b9s/internal/datasource"
 	"github.com/vanderheijden86/b9s/pkg/identity"
 	"github.com/vanderheijden86/b9s/pkg/model"
@@ -2134,9 +2135,10 @@ func (t *TreeModel) renderNodeWithLayout(node *IssueTreeNode, isSelected bool, l
 
 	leftSide.WriteString(titlePortion)
 
-	// Apply row width clamping
+	// Style.Width word-wraps an over-wide row onto a second line, which shifts
+	// every row below it. Cut the row first so Width only pads.
 	rowStyle := r.NewStyle().Width(width).MaxWidth(width)
-	rows := []string{rowStyle.Render(leftSide.String())}
+	rows := []string{rowStyle.Render(ansi.Truncate(leftSide.String(), width, ""))}
 
 	// Continuation lines start under the title so the columns to the left
 	// stay readable as one block per issue.
